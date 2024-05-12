@@ -23,6 +23,7 @@ pytest = "^8.2.0"
 pytest-cov = "^5.0.0"
 types-toml = "^0.10.8.20240310"
 types-pyyaml = "^6.0.12.20240311"
+pre-commit = "^3.7.1"
 
 [build-system]
 requires = ["poetry-core"]
@@ -37,6 +38,7 @@ addopts = [
 
 [tool.flake8]
 max-line-length = 140
+ignore = ["E402","E501","W503"]
 
 [tool.isort]
 line_length = 140
