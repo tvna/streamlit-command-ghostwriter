@@ -3,6 +3,7 @@
     "version": "0.1.0",
     "main": "./build/electron/main.js",
     "description": "Electron application with streamlit",
+    "license": "MIT",
     "author": {
         "name": "Nagano, Tsubasa",
         "email": "tsubasa.nagano@icloud.com"
