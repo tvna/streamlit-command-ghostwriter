@@ -3,5 +3,5 @@
 ファイルをアップロードして、「テキスト整形の実行」をクリックして結果を確認してください。
 
 # プラットフォーム
-- Streamlit Cloud
+- [Streamlit Cloud](https://command-ghostwriter.streamlit.app/)
 - Desktop App (build by Electron)
