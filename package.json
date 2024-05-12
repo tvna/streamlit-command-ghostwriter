@@ -15,7 +15,7 @@
     },
     "build": {
       "files": ["build/**/*"],
-      "productName": "Command Ghostwriter",
+      "productName": "CommandGhostwriter",
       "directories": {
         "buildResources": "assets"
       },
