@@ -19,7 +19,8 @@
         "ms-python.flake8",
         "ms-python.isort",
         "MS-CEINTL.vscode-language-pack-ja",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "github.vscode-github-actions"
       ]
     }
   },
