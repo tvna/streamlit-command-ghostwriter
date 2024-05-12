@@ -2,6 +2,7 @@
     "name": "command_ghostwriter",
     "version": "0.1.0",
     "main": "./build/electron/main.js",
+    "description": "Electron application with streamlit",
     "author": {
         "name": "Nagano, Tsubasa",
         "email": "tsubasa.nagano@icloud.com"
