@@ -8,6 +8,7 @@ RUN apt-get update \
         wine32 \
     && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs \
+    && pip install -U pip && pip install --no-cache-dir poetry \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
