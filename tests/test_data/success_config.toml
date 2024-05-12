@@ -1,0 +1,6 @@
+url = "https://example.com/samplefile.txt"
+date = 2024-04-01
+
+[users.john]
+first_name = "john"
+last_name = "doe"
