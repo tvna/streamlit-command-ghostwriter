@@ -1,6 +1,6 @@
 {
     "name": "command_ghostwriter",
-    "version": "0.1.0",
+    "version": "0.1.0-alpha.0",
     "main": "./build/electron/main.js",
     "description": "Electron application with streamlit",
     "license": "MIT",
