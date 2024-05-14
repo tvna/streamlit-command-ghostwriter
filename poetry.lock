@@ -381,6 +381,16 @@ files = [
 setuptools = "*"
 
 [[package]]
+name = "cohesion"
+version = "1.1.0"
+description = "A tool for measuring Python class cohesion."
+optional = false
+python-versions = "*"
+files = [
+    {file = "cohesion-1.1.0-py2.py3-none-any.whl", hash = "sha256:2ab1534d936428c61385e973c30cbd0381796401ad1083a5bf08562a9de9fee6"},
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -727,6 +737,17 @@ files = [
 [package.dependencies]
 cognitive_complexity = "*"
 setuptools = "*"
+
+[[package]]
+name = "flake8-plugin-utils"
+version = "1.3.3"
+description = "The package provides base classes and utils for flake8 plugin writing"
+optional = false
+python-versions = ">=3.6,<4.0"
+files = [
+    {file = "flake8-plugin-utils-1.3.3.tar.gz", hash = "sha256:39f6f338d038b301c6fd344b06f2e81e382b68fa03c0560dff0d9b1791a11a2c"},
+    {file = "flake8_plugin_utils-1.3.3-py3-none-any.whl", hash = "sha256:e4848c57d9d50f19100c2d75fa794b72df068666a9041b4b0409be923356a3ed"},
+]
 
 [[package]]
 name = "flake8-plugin-utils"
@@ -1393,6 +1414,7 @@ files = [
 flake8 = ">=5.0.0"
 
 [[package]]
+<<<<<<< HEAD
 name = "pexpect"
 version = "4.9.0"
 description = "Pexpect allows easy control of interactive console applications."
@@ -1407,6 +1429,8 @@ files = [
 ptyprocess = ">=0.5"
 
 [[package]]
+=======
+>>>>>>> f50defb (Added more flake8-related modules)
 name = "pillow"
 version = "10.3.0"
 description = "Python Imaging Library (Fork)"
@@ -2576,4 +2600,8 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
+<<<<<<< HEAD
 content-hash = "09669c660f253c6f094325b499ca0db6074392b66446cb2b34455d320999b3ed"
+=======
+content-hash = "f09dcaddad577509f4e7a2b0233effe45798bb7e81ac57772a3ee02b715c62ac"
+>>>>>>> f50defb (Added more flake8-related modules)
