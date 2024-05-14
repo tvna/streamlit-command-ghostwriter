@@ -258,6 +258,16 @@ files = [
 setuptools = "*"
 
 [[package]]
+name = "cohesion"
+version = "1.1.0"
+description = "A tool for measuring Python class cohesion."
+optional = false
+python-versions = "*"
+files = [
+    {file = "cohesion-1.1.0-py2.py3-none-any.whl", hash = "sha256:2ab1534d936428c61385e973c30cbd0381796401ad1083a5bf08562a9de9fee6"},
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -376,6 +386,56 @@ pycodestyle = ">=2.11.0,<2.12.0"
 pyflakes = ">=3.2.0,<3.3.0"
 
 [[package]]
+name = "flake8-annotations"
+version = "3.1.0"
+description = "Flake8 Type Annotation Checks"
+optional = false
+python-versions = ">=3.8.1"
+files = [
+    {file = "flake8_annotations-3.1.0-py3-none-any.whl", hash = "sha256:aa4660bedaa1aff4a5220e92c4469188fbd6e463a21d9a7bad60d1cde42b25bb"},
+    {file = "flake8_annotations-3.1.0.tar.gz", hash = "sha256:e1a2f0d0190aa20b8621e8d899a6d8e27a05650ae0717765a5c857d71cd0359e"},
+]
+
+[package.dependencies]
+attrs = ">=21.4"
+flake8 = ">=5.0"
+
+[[package]]
+name = "flake8-bugbear"
+version = "24.4.26"
+description = "A plugin for flake8 finding likely bugs and design problems in your program. Contains warnings that don't belong in pyflakes and pycodestyle."
+optional = false
+python-versions = ">=3.8.1"
+files = [
+    {file = "flake8_bugbear-24.4.26-py3-none-any.whl", hash = "sha256:cb430dd86bc821d79ccc0b030789a9c87a47a369667f12ba06e80f11305e8258"},
+    {file = "flake8_bugbear-24.4.26.tar.gz", hash = "sha256:ff8d4ba5719019ebf98e754624c30c05cef0dadcf18a65d91c7567300e52a130"},
+]
+
+[package.dependencies]
+attrs = ">=19.2.0"
+flake8 = ">=6.0.0"
+
+[package.extras]
+dev = ["coverage", "hypothesis", "hypothesmith (>=0.2)", "pre-commit", "pytest", "tox"]
+
+[[package]]
+name = "flake8-builtins"
+version = "2.5.0"
+description = "Check for python builtins being used as variables or parameters"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "flake8_builtins-2.5.0-py3-none-any.whl", hash = "sha256:8cac7c52c6f0708c0902b46b385bc7e368a9068965083796f1431c0d2e6550cf"},
+    {file = "flake8_builtins-2.5.0.tar.gz", hash = "sha256:bdaa3dd823e4f5308c5e712d19fa5f69daa52781ea874f5ea9c3637bcf56faa6"},
+]
+
+[package.dependencies]
+flake8 = "*"
+
+[package.extras]
+test = ["pytest"]
+
+[[package]]
 name = "flake8-cognitive-complexity"
 version = "0.1.0"
 description = "An extension for flake8 that validates cognitive functions complexity"
@@ -405,6 +465,17 @@ flake8 = ">=3"
 pydocstyle = ">=2.1"
 
 [[package]]
+name = "flake8-plugin-utils"
+version = "1.3.3"
+description = "The package provides base classes and utils for flake8 plugin writing"
+optional = false
+python-versions = ">=3.6,<4.0"
+files = [
+    {file = "flake8-plugin-utils-1.3.3.tar.gz", hash = "sha256:39f6f338d038b301c6fd344b06f2e81e382b68fa03c0560dff0d9b1791a11a2c"},
+    {file = "flake8_plugin_utils-1.3.3-py3-none-any.whl", hash = "sha256:e4848c57d9d50f19100c2d75fa794b72df068666a9041b4b0409be923356a3ed"},
+]
+
+[[package]]
 name = "flake8-pyproject"
 version = "1.2.3"
 description = "Flake8 plug-in loading the configuration from pyproject.toml"
@@ -419,6 +490,20 @@ Flake8 = ">=5"
 
 [package.extras]
 dev = ["pyTest", "pyTest-cov"]
+
+[[package]]
+name = "flake8-pytest-style"
+version = "2.0.0"
+description = "A flake8 plugin checking common style issues or inconsistencies with pytest-based tests."
+optional = false
+python-versions = "<4.0.0,>=3.8.1"
+files = [
+    {file = "flake8_pytest_style-2.0.0-py3-none-any.whl", hash = "sha256:abcb9f56f277954014b749e5a0937fae215be01a21852e9d05e7600c3de6aae5"},
+    {file = "flake8_pytest_style-2.0.0.tar.gz", hash = "sha256:919c328cacd4bc4f873ea61ab4db0d8f2c32e0db09a3c73ab46b1de497556464"},
+]
+
+[package.dependencies]
+flake8-plugin-utils = ">=1.3.2,<2.0.0"
 
 [[package]]
 name = "gitdb"
@@ -903,6 +988,20 @@ files = [
     {file = "pathspec-0.12.1-py3-none-any.whl", hash = "sha256:a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08"},
     {file = "pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712"},
 ]
+
+[[package]]
+name = "pep8-naming"
+version = "0.13.3"
+description = "Check PEP-8 naming conventions, plugin for flake8"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pep8-naming-0.13.3.tar.gz", hash = "sha256:1705f046dfcd851378aac3be1cd1551c7c1e5ff363bacad707d43007877fa971"},
+    {file = "pep8_naming-0.13.3-py3-none-any.whl", hash = "sha256:1a86b8c71a03337c97181917e2b472f0f5e4ccb06844a0d6f0a33522549e7a80"},
+]
+
+[package.dependencies]
+flake8 = ">=5.0.0"
 
 [[package]]
 name = "pillow"
@@ -1730,4 +1829,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "7996be83b722640ea15a372f491edfd5778ec3d2a0438d1de44a44e5dfd69989"
+content-hash = "f09dcaddad577509f4e7a2b0233effe45798bb7e81ac57772a3ee02b715c62ac"
