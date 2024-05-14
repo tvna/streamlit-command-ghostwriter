@@ -8,10 +8,6 @@
 		"terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "ByPass", "-NoExit", "-Command", "& '${workspaceFolderBasename}/.venv/Scripts/Activate.ps1'"],
 		"terminal.integrated.shellArgs.osx": ["--rcfile", " ${workspaceFolderBasename}/.venv/bin/activate"],
 		"editor.defaultFormatter": "ms-python.black-formatter",
-		"flake8.args": [
-			"--max-line-length=140",
-			"--ignore=E203,W503,W504"
-		],
 		"editor.formatOnSave": true,
 		"editor.codeActionsOnSave": {
 		},

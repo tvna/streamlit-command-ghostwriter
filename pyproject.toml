@@ -42,7 +42,7 @@ addopts = [
 
 [tool.flake8]
 max-line-length = 140
-ignore = ["D100", "E402","E501","W503"]
+ignore = ["D100","D202","E402","E501","W503"]
 count = true
 
 [tool.isort]
