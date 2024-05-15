@@ -79,7 +79,8 @@ def main() -> None:
         if generate_text:
             generate_markdown = False
             if config_data is not None and template_file is not None:
-                render = GhostwriterRender(template_file, config_data, is_strict_undefined)
+                render = GhostwriterRender(is_strict_undefined)
+                render.load_template_file(template_file).apply_context(config_data)
                 formatted_text = render.render_content
                 if formatted_text:
                     st.success(texts["success_formatted_text"])
@@ -92,7 +93,8 @@ def main() -> None:
         if generate_markdown:
             generate_text = False
             if config_data is not None and template_file is not None:
-                render = GhostwriterRender(template_file, config_data, is_strict_undefined)
+                render = GhostwriterRender(is_strict_undefined)
+                render.load_template_file(template_file).apply_context(config_data)
                 formatted_text = render.render_content
                 if formatted_text:
                     st.success(texts["success_formatted_text"])
