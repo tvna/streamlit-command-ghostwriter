@@ -50,7 +50,8 @@ def main() -> None:
 
             config_data = None
             if config_file is not None:
-                parser = GhostwriterParser(config_file)
+                parser = GhostwriterParser()
+                parser.load_config_file(config_file)
                 config_data = parser.parsed_dict
                 if config_data is None:
                     st.error(f"{texts['error_toml_parse']}: {parser.error_message} in '{config_file.name}'")
@@ -114,7 +115,8 @@ def main() -> None:
             debug_config_text: Optional[str]
 
             if debug_config_file is not None:
-                debug_parser = GhostwriterParser(debug_config_file)
+                debug_parser = GhostwriterParser()
+                debug_parser.load_config_file(debug_config_file)
                 config_data = debug_parser.parsed_dict
                 if config_data is None:
                     st.error(f"{texts['error_debug_config']}: {debug_parser.error_message}")
