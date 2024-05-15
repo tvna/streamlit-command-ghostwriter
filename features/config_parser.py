@@ -8,30 +8,49 @@ import yaml
 
 
 class GhostwriterParser:
-    def __init__(self, config_file: BytesIO) -> None:
+    def __init__(self) -> None:
         """
         TOMLファイルをパースするためのクラスを初期化する。
         """
 
+        self.__file_extension: Optional[str] = None
+        self.__config_data: Optional[str] = None
         self.__parsed_dict: Optional[Dict[str, Any]] = None
-        self.__error_message: str = "Not failed"
+        self.__error_message: Optional[str] = None
+
+    def load_config_file(self, config_file: BytesIO):
 
         try:
-            file_extension: str = config_file.name.split(".")[-1]
-            config_data = config_file.read().decode("utf-8")
+            self.__file_extension = config_file.name.split(".")[-1]
+            self.__config_data = config_file.read().decode("utf-8")
+            if self.__file_extension not in ["toml", "yaml", "yml"]:
+                self.__error_message = "Unsupported file type"
         except AttributeError:
             self.__error_message = "バイナリが引数に指定されていません。"
-            return None
         except UnicodeDecodeError as e:
             self.__error_message = str(e)
-            return None
 
-        if file_extension == "toml":
-            self.__parsed_dict = self.__parse_toml(config_data)  # type: ignore
-        elif file_extension in ["yaml", "yml"]:
-            self.__parsed_dict = self.__parse_yaml(config_data)  # type: ignore
-        else:
-            self.__error_message = "Unsupported file type"
+        return self
+
+    def parse(self) -> bool:
+
+        if self.__config_data is None:
+            return False
+
+        match self.__file_extension:
+            case "toml":
+                self.__parsed_dict = self.__parse_toml(self.__config_data)
+
+            case "yaml":
+                self.__parsed_dict = self.__parse_yaml(self.__config_data)
+
+            case "yml":
+                self.__parsed_dict = self.__parse_yaml(self.__config_data)
+
+            case _:
+                return False
+
+        return True
 
     def __parse_toml(self, source_content: str) -> Optional[Dict[str, Any]]:
         """TOMLファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
@@ -66,6 +85,6 @@ class GhostwriterParser:
         return pprint.pformat(self.__parsed_dict)
 
     @property
-    def error_message(self) -> str:
+    def error_message(self) -> Optional[str]:
         """エラーメッセージを返す。"""
         return self.__error_message
