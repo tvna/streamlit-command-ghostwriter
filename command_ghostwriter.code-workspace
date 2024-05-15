@@ -21,5 +21,14 @@
 		"python.analysis.extraPaths": [
 			"${workspaceFolderBasename}/.ven/*/site-packages"
 		],
+		"cSpell.words": [
+			"isort",
+			"micropip",
+			"mypy",
+			"pyodide",
+			"rcfile",
+			"streamlit",
+			"venv"
+		],
 	}
 }

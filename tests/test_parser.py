@@ -1,4 +1,5 @@
 from io import BytesIO
+
 from features.config_parser import GhostwriterParser
 
 

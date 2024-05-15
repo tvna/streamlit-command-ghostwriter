@@ -40,7 +40,7 @@
       "desktop": {
         "files": ["app.py", "i11n.py", "features/*.py"],
         "nodeJsWorker": true,
-        "dependecies": ["streamlit", "pyyaml", "jinja2"],
+        "dependencies": ["streamlit", "pyyaml", "jinja2"],
         "entrypoint": "app.py"
       }
     }
