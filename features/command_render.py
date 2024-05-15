@@ -1,7 +1,7 @@
+from io import BytesIO
 from typing import Any, Dict, Optional
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, Template, UndefinedError, TemplateSyntaxError
-from io import BytesIO
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, Template, TemplateSyntaxError, UndefinedError
 
 
 class GhostwriterRender:

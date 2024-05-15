@@ -1,20 +1,10 @@
 #! /usr/bin/env python
+import pprint
+import tomllib
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-import tomllib
-import pprint
-
-
-try:
-    # pyodide専用
-    import asyncio
-    import micropip
-
-    loop = asyncio.get_running_loop()
-    loop.create_task(micropip.install("pyyaml"))
-except RuntimeError:
-    pass
+import yaml
 
 
 class GhostwriterParser:
@@ -27,7 +17,7 @@ class GhostwriterParser:
         self.__error_message: str = "Not failed"
 
         try:
-            file_extention: str = config_file.name.split(".")[-1]
+            file_extension: str = config_file.name.split(".")[-1]
             config_data = config_file.read().decode("utf-8")
         except AttributeError:
             self.__error_message = "バイナリが引数に指定されていません。"
@@ -36,9 +26,9 @@ class GhostwriterParser:
             self.__error_message = str(e)
             return None
 
-        if file_extention == "toml":
+        if file_extension == "toml":
             self.__parsed_dict = self.__parse_toml(config_data)  # type: ignore
-        elif file_extention in ["yaml", "yml"]:
+        elif file_extension in ["yaml", "yml"]:
             self.__parsed_dict = self.__parse_yaml(config_data)  # type: ignore
         else:
             self.__error_message = "Unsupported file type"
@@ -54,8 +44,6 @@ class GhostwriterParser:
 
     def __parse_yaml(self, source_content) -> Optional[Dict[str, Any]]:
         """YAMLファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
-        import yaml
-
         try:
             yaml_dict = yaml.safe_load(source_content)
             return yaml_dict

@@ -10,8 +10,14 @@ from features.config_parser import GhostwriterParser
 from i11n import LANGUAGES
 
 
+def parse_filename(filename: str, file_extension: str, is_append_timestamp: bool) -> str:
+    """Parse filename with timestamp and extension."""
+    suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
+    return f"{filename}{suffix}.{str(file_extension)}"
+
+
 def main() -> None:
-    """Streamlitアプリのメイン関数"""
+    """Generate Streamlit web screens."""
 
     texts: Dict[str, str] = LANGUAGES["日本語"]
 
@@ -19,16 +25,12 @@ def main() -> None:
     st.title("Command ghostwriter :ghost:")
     formatted_text: Optional[str] = None
 
-    def parse_filename(filename: str, file_extention: str, is_append_timestamp: bool) -> str:
-        suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
-        return f"{filename}{suffix}.{str(file_extention)}"
-
     with st.sidebar:
         st.write(texts["welcome"])
         with st.expander(texts["advanced_option"], expanded=False):
             download_filename = st.text_input(texts["download_filename"], "command")
             is_append_timestamp = st.toggle(texts["append_timestamp_filename"], value=True)
-            donwload_file_ext = st.radio(texts["download_file_extension"], ["txt", "md"])
+            download_file_ext = st.radio(texts["download_file_extension"], ["txt", "md"])
             is_strict_undefined = st.toggle(texts["strict_undefined"], value=True)
         with st.expander(texts["syntax_of_each_file"], expanded=False):
             st.markdown(
@@ -46,13 +48,12 @@ def main() -> None:
         with row1_col1:
             config_file = st.container(border=True).file_uploader(texts["upload_config"], type=["toml", "yaml", "yml"], key="config_file")
 
+            config_data = None
             if config_file is not None:
-                paresr = GhostwriterParser(config_file)
-                config_data = paresr.parsed_dict
+                parser = GhostwriterParser(config_file)
+                config_data = parser.parsed_dict
                 if config_data is None:
-                    st.error(f"{texts['error_toml_parse']}: {paresr.error_message} in '{config_file.name}'")
-            else:
-                config_data = None
+                    st.error(f"{texts['error_toml_parse']}: {parser.error_message} in '{config_file.name}'")
 
         with row1_col2:
             template_file = st.container(border=True).file_uploader(texts["upload_template"], type=["jinja2", "j2"], key="template_file")
@@ -65,15 +66,12 @@ def main() -> None:
             generate_markdown = st.button(texts["generate_markdown_button"], use_container_width=True)
 
         with row2_col3:
-            if generate_text or generate_markdown:
-                is_download_disabled = False
-            else:
-                is_download_disabled = True
+            is_download_disabled = False if generate_text or generate_markdown else True
 
             st.download_button(
                 texts["download_button"],
                 formatted_text or "No data available",
-                parse_filename(download_filename, donwload_file_ext, is_append_timestamp),  # type: ignore
+                parse_filename(download_filename, download_file_ext, is_append_timestamp),  # type: ignore
                 disabled=is_download_disabled,
                 use_container_width=True,
             )
@@ -114,12 +112,12 @@ def main() -> None:
             debug_config_text: Optional[str]
 
             if debug_config_file is not None:
-                debug_paresr = GhostwriterParser(debug_config_file)
-                config_data = debug_paresr.parsed_dict
+                debug_parser = GhostwriterParser(debug_config_file)
+                config_data = debug_parser.parsed_dict
                 if config_data is None:
-                    st.error(f"{texts['error_debug_config']}: {debug_paresr.error_message}")
+                    st.error(f"{texts['error_debug_config']}: {debug_parser.error_message}")
                 debug_config_filename: str = debug_config_file.name
-                debug_config_text = debug_paresr.parsed_str
+                debug_config_text = debug_parser.parsed_str
             else:
                 config_data = None
                 debug_config_text = None
