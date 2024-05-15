@@ -2,14 +2,7 @@ import re
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-from jinja2 import (
-    Environment,
-    FileSystemLoader,
-    StrictUndefined,
-    Template,
-    TemplateSyntaxError,
-    UndefinedError,
-)
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, Template, TemplateSyntaxError, UndefinedError
 
 
 class GhostwriterRender:
@@ -37,6 +30,9 @@ class GhostwriterRender:
             return False
 
         try:
+            if self.__template_content is None:
+                return False
+
             if self.__is_strict_undefined:
                 env: Environment = Environment(loader=FileSystemLoader("."), undefined=StrictUndefined)
                 strict_template: Template = env.from_string(self.__template_content)
