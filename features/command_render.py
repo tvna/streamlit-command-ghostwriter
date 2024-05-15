@@ -2,7 +2,14 @@ import re
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, Template, TemplateSyntaxError, UndefinedError
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    StrictUndefined,
+    Template,
+    TemplateSyntaxError,
+    UndefinedError,
+)
 
 
 class GhostwriterRender:
