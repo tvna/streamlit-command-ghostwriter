@@ -11,8 +11,6 @@ from i11n import LANGUAGES
 
 
 def handle_config_file(config_file: Optional[BytesIO], texts: Dict[str, str]) -> None:
-    st.session_state.tab1_result_text = None
-
     if config_file is None:
         return None
 
@@ -43,6 +41,9 @@ def handle_template_file(template_file: Optional[BytesIO], texts: Dict[str, str]
         return None
 
     st.session_state.tab1_result_text = formatted_text
+
+    suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if st.session_state.is_append_timestamp else ""
+    st.session_state.download_full_filename = f"{st.session_state.download_filename}{suffix}.{str(st.session_state.download_file_ext)}"
 
 
 def handle_debug_config_file(config_file: Optional[BytesIO], texts: Dict[str, str]) -> None:
@@ -85,14 +86,6 @@ def show_tab1_result(is_submit_text: bool, is_submit_markdown: bool, texts: Dict
     st.success(texts["success_formatted_text"])
     st.container(border=True).markdown(display_text)
 
-    """Parse filename with timestamp and extension."""
-    filename = st.session_state.download_filename
-    file_extension = st.session_state.download_file_ext
-    is_append_timestamp = st.session_state.is_append_timestamp
-
-    suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
-    st.session_state.download_full_filename = f"{filename}{suffix}.{str(file_extension)}"
-
 
 def show_tab2_result(is_submit: bool, texts: Dict[str, str]) -> None:
 
@@ -100,9 +93,6 @@ def show_tab2_result(is_submit: bool, texts: Dict[str, str]) -> None:
         return None
 
     debug_config_text = st.session_state.debug_config_text
-
-    print(f"debug_config_text: {st.session_state.debug_config_text}")
-    print(f"tab2_error_message: {st.session_state.tab2_error_message}")
 
     if isinstance(st.session_state.tab2_error_message, str):
         st.error(st.session_state.tab2_error_message)
@@ -174,14 +164,12 @@ def main() -> None:
         with row2_col3:
             if is_submit_text or is_submit_markdown:
                 is_download_disabled = False
-                download_content = None
             else:
                 is_download_disabled = True
-                download_content = st.session_state.tab1_result_text
 
             st.download_button(
                 label=texts["download_button"],
-                data=download_content or "No data available",
+                data=st.session_state.tab1_result_text or "No data available",
                 file_name=st.session_state.download_full_filename,
                 disabled=is_download_disabled,
                 use_container_width=True,
