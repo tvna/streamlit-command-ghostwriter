@@ -8,7 +8,7 @@ import yaml
 
 
 class GhostwriterParser:
-    def __init__(self) -> None:
+    def __init__(self: "GhostwriterParser") -> None:
         """
         TOMLファイルをパースするためのクラスを初期化する。
         """
@@ -18,7 +18,7 @@ class GhostwriterParser:
         self.__parsed_dict: Optional[Dict[str, Any]] = None
         self.__error_message: Optional[str] = None
 
-    def load_config_file(self, config_file: BytesIO):
+    def load_config_file(self: "GhostwriterParser", config_file: BytesIO) -> "GhostwriterParser":
 
         try:
             self.__file_extension = config_file.name.split(".")[-1]
@@ -32,7 +32,7 @@ class GhostwriterParser:
 
         return self
 
-    def parse(self) -> bool:
+    def parse(self: "GhostwriterParser") -> bool:
 
         if self.__config_data is None:
             return False
@@ -52,7 +52,7 @@ class GhostwriterParser:
 
         return True
 
-    def __parse_toml(self, source_content: str) -> Optional[Dict[str, Any]]:
+    def __parse_toml(self: "GhostwriterParser", source_content: str) -> Optional[Dict[str, Any]]:
         """TOMLファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
         try:
             toml_dict = tomllib.loads(source_content)
@@ -61,7 +61,7 @@ class GhostwriterParser:
             self.__error_message = str(e)
             return None
 
-    def __parse_yaml(self, source_content) -> Optional[Dict[str, Any]]:
+    def __parse_yaml(self: "GhostwriterParser", source_content: str) -> Optional[Dict[str, Any]]:
         """YAMLファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
         try:
             yaml_dict = yaml.safe_load(source_content)
@@ -71,20 +71,20 @@ class GhostwriterParser:
             return None
 
     @property
-    def parsed_dict(self) -> Optional[Dict[str, Any]]:
+    def parsed_dict(self: "GhostwriterParser") -> Optional[Dict[str, Any]]:
         """
         コンフィグファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。
         """
         return self.__parsed_dict
 
     @property
-    def parsed_str(self) -> str:
+    def parsed_str(self: "GhostwriterParser") -> str:
         """
         コンフィグファイルをパースして文字列を返す。エラーが発生した場合は"None"を返す。
         """
         return pprint.pformat(self.__parsed_dict)
 
     @property
-    def error_message(self) -> Optional[str]:
+    def error_message(self: "GhostwriterParser") -> Optional[str]:
         """エラーメッセージを返す。"""
         return self.__error_message

@@ -25,7 +25,9 @@ def handle_config_file(config_file: Optional[BytesIO], texts: Dict[str, str]) ->
     return config_data
 
 
-def handle_template_file(template_file: Optional[BytesIO], config_data: Dict[str, Any], is_strict_undefined: bool, texts: Dict[str, str]):
+def handle_template_file(
+    template_file: Optional[BytesIO], config_data: Optional[Dict[str, Any]], is_strict_undefined: bool, texts: Dict[str, str]
+) -> Optional[str]:
     if template_file is None:
         return None
 
@@ -37,30 +39,29 @@ def handle_template_file(template_file: Optional[BytesIO], config_data: Dict[str
         st.error(f"{texts['error_template_generate']}: {render.error_message} in '{template_file.name}'")
         return None
 
-    return formatted_text
-
-
-def display_formatted_text(is_submit_text, is_submit_markdown, config_data, template_file, texts, is_strict_undefined):
-    if not (is_submit_text or is_submit_markdown):
-        return None
-
     if not (config_data or template_file):
         st.error(texts["error_both_files"])
         return None
 
-    formatted_text = handle_template_file(template_file, config_data, is_strict_undefined, texts)
+    return formatted_text
 
-    if formatted_text is None:
+
+def display_formatted_text(is_submit_text: bool, is_submit_markdown: bool, display_text: Optional[str], texts: Dict[str, str]) -> None:
+
+    if not (is_submit_text or is_submit_markdown):
+        return None
+
+    if display_text is None:
         return None
 
     if is_submit_text:
         st.success(texts["success_formatted_text"])
-        st.text_area(texts["formatted_text"], formatted_text, height=500)
+        st.text_area(texts["formatted_text"], display_text, height=500)
         return None
 
     if is_submit_markdown:
         st.success(texts["success_formatted_text"])
-        st.container(border=True).markdown(formatted_text)
+        st.container(border=True).markdown(display_text)
 
 
 def parse_filename(filename: str, file_extension: str, is_append_timestamp: bool) -> str:
@@ -126,13 +127,13 @@ def main() -> None:
 
         row2_col1, row2_col2, row2_col3 = st.columns(3)
         with row2_col1:
-            generate_text = st.button(texts["generate_text_button"], use_container_width=True)
+            is_submit_text = st.button(texts["generate_text_button"], use_container_width=True)
 
         with row2_col2:
-            generate_markdown = st.button(texts["generate_markdown_button"], use_container_width=True)
+            is_submit_markdown = st.button(texts["generate_markdown_button"], use_container_width=True)
 
         with row2_col3:
-            is_download_disabled = False if generate_text or generate_markdown else True
+            is_download_disabled = False if is_submit_text or is_submit_markdown else True
 
             st.download_button(
                 texts["download_button"],
@@ -142,7 +143,8 @@ def main() -> None:
                 use_container_width=True,
             )
 
-        display_formatted_text(generate_text, generate_markdown, config_data, template_file, texts, is_strict_undefined)
+        formatted_text = handle_template_file(template_file, config_data, is_strict_undefined, texts)
+        display_formatted_text(is_submit_text, is_submit_markdown, formatted_text, texts)
 
     with tab2:
         with st.container(border=True):
