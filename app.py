@@ -64,7 +64,7 @@ def display_formatted_text(is_submit_text: bool, is_submit_markdown: bool, displ
         st.container(border=True).markdown(display_text)
 
 
-def parse_filename(filename: str, file_extension: str, is_append_timestamp: bool) -> str:
+def parse_filename(filename: Optional[str], file_extension: Optional[str], is_append_timestamp: bool = True) -> str:
     """Parse filename with timestamp and extension."""
     suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
     return f"{filename}{suffix}.{str(file_extension)}"
@@ -133,12 +133,12 @@ def main() -> None:
             is_submit_markdown = st.button(texts["generate_markdown_button"], use_container_width=True)
 
         with row2_col3:
-            is_download_disabled = False if is_submit_text or is_submit_markdown else True
+            is_download_disabled = False if (is_submit_text or is_submit_markdown) else True
 
             st.download_button(
                 texts["download_button"],
-                formatted_text or "No data available",
-                parse_filename(download_filename, download_file_ext, is_append_timestamp),  # type: ignore
+                handle_template_file(template_file, config_data, is_strict_undefined, texts) or "No data available",
+                parse_filename(download_filename, download_file_ext, is_append_timestamp),
                 disabled=is_download_disabled,
                 use_container_width=True,
             )
