@@ -30,7 +30,7 @@ def handle_template_file(template_file: Optional[BytesIO], texts: Dict[str, str]
     if not (template_file and config_data):
         return None
 
-    render = GhostwriterRender(st.session_state.is_strict_undefined)
+    render = GhostwriterRender(st.session_state.is_strict_undefined, st.session_state.is_remove_multiple_newline)
     render.load_template_file(template_file).apply_context(config_data)
     formatted_text = render.render_content
 
@@ -131,6 +131,7 @@ def main() -> None:
             st.session_state.is_append_timestamp = st.toggle(texts["append_timestamp_filename"], value=True)
             st.session_state.download_file_ext = st.radio(texts["download_file_extension"], ["txt", "md"])
             st.session_state.is_strict_undefined = st.toggle(texts["strict_undefined"], value=True)
+            st.session_state.is_remove_multiple_newline = st.toggle(texts["remove_multiple_newline"], value=True)
         with st.expander(texts["syntax_of_each_file"], expanded=False):
             st.markdown(
                 f"""

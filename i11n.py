@@ -13,6 +13,7 @@ LANGUAGES = {
         "download_file_extension": "ダウンロード時のファイル拡張子",
         "append_timestamp_filename": "ファイル名の末尾にタイプスタンプを付与",
         "strict_undefined": "テンプレートの変数チェック厳格化",
+        "remove_multiple_newline": "整形後の余分な改行を削除",
         "syntax_of_each_file": "各ファイルの構文",
         "toml_syntax_doc": "https://toml.io/ja/v1.0.0",
         "yaml_syntax_doc": "https://docs.ansible.com/ansible/2.9_ja/reference_appendices/YAMLSyntax.html",
