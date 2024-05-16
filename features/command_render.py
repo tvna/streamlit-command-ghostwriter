@@ -1,3 +1,4 @@
+import re
 from io import BytesIO
 from typing import Any, Dict, Optional
 
@@ -5,11 +6,12 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, Template, Tem
 
 
 class GhostwriterRender:
-    def __init__(self: "GhostwriterRender", is_strict_undefined: bool = True) -> None:
+    def __init__(self: "GhostwriterRender", is_strict_undefined: bool = True, is_remove_multiple_newline: bool = True) -> None:
         self.__template_content: Optional[str] = None
         self.__render_content: Optional[str] = None
         self.__error_message: Optional[str] = None
         self.__is_strict_undefined: bool = is_strict_undefined
+        self.__is_remove_multiple_newline: bool = is_remove_multiple_newline
 
     def load_template_file(self: "GhostwriterRender", template_file: BytesIO) -> "GhostwriterRender":
         try:
@@ -19,6 +21,10 @@ class GhostwriterRender:
 
         return self
 
+    def __remove_whitespaces_and_multiple_newlines(self: "GhostwriterRender", source_text: str) -> str:
+        replace_whitespaces = re.sub(r"^\s+$\n", "\n", source_text, flags=re.MULTILINE)
+        return re.sub(r"\n\n+", "\n\n", replace_whitespaces)
+
     def apply_context(self: "GhostwriterRender", context: Optional[Dict[str, Any]]) -> bool:
         if self.__template_content is None:
             return False
@@ -27,15 +33,18 @@ class GhostwriterRender:
             if self.__is_strict_undefined:
                 env: Environment = Environment(loader=FileSystemLoader("."), undefined=StrictUndefined)
                 strict_template: Template = env.from_string(self.__template_content)
-                self.__render_content = strict_template.render(context)
-                return True
-
-            template: Template = Template(self.__template_content)
-            self.__render_content = template.render(context)
+                render_content = strict_template.render(context)
+            else:
+                template: Template = Template(self.__template_content)
+                render_content = template.render(context)
 
         except (FileNotFoundError, TypeError, UndefinedError, TemplateSyntaxError) as e:
             self.__error_message = str(e)
             return False
+
+        self.__render_content = (
+            self.__remove_whitespaces_and_multiple_newlines(render_content) if self.__is_remove_multiple_newline else render_content
+        )
 
         return True
 
