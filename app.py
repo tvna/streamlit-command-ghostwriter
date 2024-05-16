@@ -49,11 +49,14 @@ def handle_template_file(template_file: Optional[BytesIO], texts: Dict[str, str]
 def handle_debug_config_file(config_file: Optional[BytesIO], texts: Dict[str, str]) -> None:
 
     if config_file is None:
+        st.session_state.tab2_error_message = f"{texts['error_not_found_debug_config']}"
         return None
 
     debug_parser = GhostwriterParser()
     debug_parser.load_config_file(config_file).parse()
     config_data = debug_parser.parsed_dict
+
+    print(f"debug_parser.error_message: {debug_parser.error_message}")
 
     if config_data is None:
         st.session_state.tab2_error_message = f"{texts['error_debug_config']}: {debug_parser.error_message}"
