@@ -28,8 +28,8 @@ interface {{ name }}
   switchport mode {{ intf["mode"] }}
   {% if intf["mode"] == "access" %}
   switchport access vlan {{ intf["access_vlan"] }}
-  {% else %}
-    {% if intf["trunk_vlan"] is defined %}
+{% else %}
+{% if intf["trunk_vlan"] is defined %}
   switchport trunk vlan {{ intf["trunk_vlan"] }}
     {% endif %}
     {% if intf["native_vlan"] is defined %}
@@ -52,3 +52,5 @@ exit
 # show commands
 show int status
 show int trunk
+show running-config
+show startup-config
