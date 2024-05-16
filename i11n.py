@@ -20,6 +20,7 @@ LANGUAGES = {
         "tab_convert_text": "テキスト整形",
         "tab_debug_config": "設定デバッグ",
         "upload_config": "設定ファイルをアップロード",
+        "upload_debug_config": "設定ファイル(解析用)をアップロード",
         "upload_template": "テンプレートファイルをアップロード",
         "generate_text_button": "テキスト整形の実行",
         "generate_markdown_button": "Markdown整形を実行",
