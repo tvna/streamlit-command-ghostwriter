@@ -675,6 +675,39 @@ pycodestyle = ">=2.11.0,<2.12.0"
 pyflakes = ">=3.2.0,<3.3.0"
 
 [[package]]
+name = "flake8-annotations"
+version = "3.1.0"
+description = "Flake8 Type Annotation Checks"
+optional = false
+python-versions = ">=3.8.1"
+files = [
+    {file = "flake8_annotations-3.1.0-py3-none-any.whl", hash = "sha256:aa4660bedaa1aff4a5220e92c4469188fbd6e463a21d9a7bad60d1cde42b25bb"},
+    {file = "flake8_annotations-3.1.0.tar.gz", hash = "sha256:e1a2f0d0190aa20b8621e8d899a6d8e27a05650ae0717765a5c857d71cd0359e"},
+]
+
+[package.dependencies]
+attrs = ">=21.4"
+flake8 = ">=5.0"
+
+[[package]]
+name = "flake8-bugbear"
+version = "24.4.26"
+description = "A plugin for flake8 finding likely bugs and design problems in your program. Contains warnings that don't belong in pyflakes and pycodestyle."
+optional = false
+python-versions = ">=3.8.1"
+files = [
+    {file = "flake8_bugbear-24.4.26-py3-none-any.whl", hash = "sha256:cb430dd86bc821d79ccc0b030789a9c87a47a369667f12ba06e80f11305e8258"},
+    {file = "flake8_bugbear-24.4.26.tar.gz", hash = "sha256:ff8d4ba5719019ebf98e754624c30c05cef0dadcf18a65d91c7567300e52a130"},
+]
+
+[package.dependencies]
+attrs = ">=19.2.0"
+flake8 = ">=6.0.0"
+
+[package.extras]
+dev = ["coverage", "hypothesis", "hypothesmith (>=0.2)", "pre-commit", "pytest", "tox"]
+
+[[package]]
 name = "flake8-builtins"
 version = "2.5.0"
 description = "Check for python builtins being used as variables or parameters"
@@ -2570,4 +2603,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "ef088e1ef3fabbe30960b4b2aefbd538e77215cd65f27325796865222e479c48"
+content-hash = "6e5ba677b61ea9d7ceb3d45e946f7c2e29110ebffc8fa3576cbdff097aa2ea1b"
