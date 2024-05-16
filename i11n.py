@@ -35,5 +35,6 @@ LANGUAGES = {
         "error_template_generate": "テキスト整形に失敗しました。",
         "error_both_files": "設定ファイルとJinjaテンプレートファイルの両方をアップロードしてください。",
         "error_debug_config": "設定ファイル解析に失敗しました。",
+        "error_not_found_debug_config": "設定ファイル解析が見つかりませんでした。",
     },
 }
