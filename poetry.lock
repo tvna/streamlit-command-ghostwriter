@@ -381,16 +381,6 @@ files = [
 setuptools = "*"
 
 [[package]]
-name = "cohesion"
-version = "1.1.0"
-description = "A tool for measuring Python class cohesion."
-optional = false
-python-versions = "*"
-files = [
-    {file = "cohesion-1.1.0-py2.py3-none-any.whl", hash = "sha256:2ab1534d936428c61385e973c30cbd0381796401ad1083a5bf08562a9de9fee6"},
-]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -1104,23 +1094,6 @@ files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
 ]
-
-[[package]]
-name = "micropip"
-version = "0.6.0"
-description = "A lightweight Python package installer for the web"
-optional = false
-python-versions = ">=3.10"
-files = [
-    {file = "micropip-0.6.0-py3-none-any.whl", hash = "sha256:d6ebd9581a2f446141f782f813c3b9a41efdebedddd9d2e0cc11b2cee3d23761"},
-    {file = "micropip-0.6.0.tar.gz", hash = "sha256:d53f6c2df634db4e960734209f337c2bd1e58d75dde310de7485a963c11bbed1"},
-]
-
-[package.dependencies]
-packaging = ">=23.0"
-
-[package.extras]
-test = ["build (==0.7.0)", "pytest (<8.0.0)", "pytest-cov", "pytest-httpserver", "pytest-pyodide"]
 
 [[package]]
 name = "more-itertools"
@@ -2603,4 +2576,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "6e5ba677b61ea9d7ceb3d45e946f7c2e29110ebffc8fa3576cbdff097aa2ea1b"
+content-hash = "09669c660f253c6f094325b499ca0db6074392b66446cb2b34455d320999b3ed"
