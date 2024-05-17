@@ -25,7 +25,7 @@ class GhostwriterRender:
         replace_whitespaces = re.sub(r"^\s+$\n", "\n", source_text, flags=re.MULTILINE)
         return re.sub(r"\n\n+", "\n\n", replace_whitespaces)
 
-    def apply_context(self: "GhostwriterRender", context: Optional[Dict[str, Any]]) -> bool:
+    def apply_context(self: "GhostwriterRender", context: Dict[str, Any]) -> bool:
         if self.__template_content is None:
             return False
 
