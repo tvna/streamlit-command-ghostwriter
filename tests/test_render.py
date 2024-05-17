@@ -3,7 +3,7 @@ from io import BytesIO
 from features.command_render import GhostwriterRender
 
 
-def test_render_template_success():
+def test_render_template_success() -> None:
     template_content = b"Hello {{ name }}!"
     template_file = BytesIO(template_content)
     context = {"name": "World"}
@@ -13,7 +13,7 @@ def test_render_template_success():
     assert result == "Hello World!"
 
 
-def test_render_template_not_strict_undefined_success():
+def test_render_template_not_strict_undefined_success() -> None:
     template_content = b"Hello {{ name }}!"
     template_file = BytesIO(template_content)
     render = GhostwriterRender(False)
@@ -22,7 +22,7 @@ def test_render_template_not_strict_undefined_success():
     assert result == "Hello !"
 
 
-def test_render_template_with_undefined_error():
+def test_render_template_with_undefined_error() -> None:
     template_content = b"Hello {{ user }}!"
     template_file = BytesIO(template_content)
     context = {"name": "World"}  # 'user' is not defined in the context
@@ -33,7 +33,7 @@ def test_render_template_with_undefined_error():
     assert "undefined" in str(render.error_message).lower()
 
 
-def test_render_template_with_unicode_decode_error():
+def test_render_template_with_unicode_decode_error() -> None:
     template_content = b"\x80\x81\x82\x83"
     template_file = BytesIO(template_content)
     context = {"name": "World"}
@@ -44,7 +44,7 @@ def test_render_template_with_unicode_decode_error():
     assert "'utf-8' codec can't decode byte 0x80 in position 0" in str(render.error_message)
 
 
-def test_render_template_with_not_binary_error():
+def test_render_template_with_not_binary_error() -> None:
     template_file = "Hello {{ user }}!"
     context = {"name": "World"}
     render = GhostwriterRender()
@@ -54,7 +54,7 @@ def test_render_template_with_not_binary_error():
     assert "'str' object has no attribute 'read'" in str(render.error_message)
 
 
-def test_render_template_with_syntax_error():
+def test_render_template_with_syntax_error() -> None:
     template_content = b"Hello {{ name }!"
     template_file = BytesIO(template_content)
     render = GhostwriterRender(False)
