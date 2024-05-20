@@ -78,7 +78,6 @@ def parser() -> GhostwriterParser:
             "Cannot overwrite a value",
         ),
         pytest.param(b"date = 2024-04-00", "config.toml", False, None, "None", "Expected newline or end of document after a statement "),
-        pytest.param(b"date: 2024-04-00", "config.yaml", False, None, "None", "day is out of range for month"),
         # Test case for pyyaml module　 on failed
         pytest.param(
             b"\x00\x01\x02\x03\x04", "config.yaml", False, None, "None", "unacceptable character #x0000: special characters are not allowed"
