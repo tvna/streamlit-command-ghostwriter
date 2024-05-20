@@ -22,11 +22,11 @@ class GhostwriterParser:
 
         try:
             self.__file_extension = config_file.name.split(".")[-1]
-            self.__config_data = config_file.read().decode("utf-8")
             if self.__file_extension not in ["toml", "yaml", "yml"]:
                 self.__error_message = "Unsupported file type"
-        except AttributeError:
-            self.__error_message = "バイナリが引数に指定されていません。"
+                return self
+
+            self.__config_data = config_file.read().decode("utf-8")
         except UnicodeDecodeError as e:
             self.__error_message = str(e)
 
@@ -37,38 +37,23 @@ class GhostwriterParser:
         if self.__config_data is None:
             return False
 
-        match self.__file_extension:
-            case "toml":
-                self.__parsed_dict = self.__parse_toml(self.__config_data)
-
-            case "yaml":
-                self.__parsed_dict = self.__parse_yaml(self.__config_data)
-
-            case "yml":
-                self.__parsed_dict = self.__parse_yaml(self.__config_data)
-
-            case _:
-                return False
-
-        return True
-
-    def __parse_toml(self: "GhostwriterParser", source_content: str) -> Optional[Dict[str, Any]]:
-        """TOMLファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
         try:
-            toml_dict = tomllib.loads(source_content)
-            return toml_dict
+            if self.__file_extension == "toml":
+                self.__parsed_dict = tomllib.loads(self.__config_data)
+
+            if self.__file_extension in {"yaml", "yml"}:
+                self.__parsed_dict = yaml.load(self.__config_data, yaml.FullLoader)
+
         except (tomllib.TOMLDecodeError, TypeError) as e:
             self.__error_message = str(e)
-            return None
-
-    def __parse_yaml(self: "GhostwriterParser", source_content: str) -> Optional[Dict[str, Any]]:
-        """YAMLファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
-        try:
-            yaml_dict = yaml.safe_load(source_content)
-            return yaml_dict
-        except (yaml.YAMLError, ValueError) as e:
+            return False
+        except (yaml.MarkedYAMLError, yaml.reader.ReaderError, ValueError) as e:
             self.__error_message = str(e)
-            return None
+
+        if self.__parsed_dict is None:
+            return False
+
+        return True
 
     @property
     def parsed_dict(self: "GhostwriterParser") -> Optional[Dict[str, Any]]:
