@@ -30,9 +30,6 @@ class GhostwriterRender:
             return False
 
         try:
-            if self.__template_content is None:
-                return False
-
             if self.__is_strict_undefined:
                 env: Environment = Environment(loader=FileSystemLoader("."), undefined=StrictUndefined)
                 strict_template: Template = env.from_string(self.__template_content)
