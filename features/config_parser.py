@@ -50,6 +50,10 @@ class GhostwriterParser:
         except (yaml.MarkedYAMLError, yaml.reader.ReaderError, ValueError) as e:
             self.__error_message = str(e)
 
+        if isinstance(self.__parsed_dict, str):
+            self.__error_message = "Invalid YAML file loaded."
+            self.__parsed_dict = None
+
         if self.__parsed_dict is None:
             return False
 

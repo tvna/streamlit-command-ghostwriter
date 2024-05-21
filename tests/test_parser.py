@@ -68,9 +68,11 @@ def parser() -> GhostwriterParser:
         pytest.param(b"\x00\x01\x02\x03\x04", "config.toml", False, None, "None", "Invalid statement"),
         pytest.param(b"\x80\x81\x82\x83", "config.toml", False, None, "None", "invalid start byte"),
         pytest.param(b"title 'TOML test'", "config.toml", False, None, "None", "after a key in a key/value pair (at line 1, column 7)"),
-        pytest.param(b"title 'TOML test", "config.toml", False, None, "None", "after a key in a key/value pair (at line 1, column 7)"),
         pytest.param(
-            b"title = 'TOML' \n title = 'TOML test'",
+            b"""
+            title = 'TOML'
+            title = 'TOML test'
+            """,
             "config.toml",
             False,
             None,
@@ -84,6 +86,7 @@ def parser() -> GhostwriterParser:
         ),
         pytest.param(b"\x80\x81\x82\x83", "config.yaml", False, None, "None", "invalid start byte"),
         pytest.param(b"\x80\x81\x82\x83", "config.yml", False, None, "None", "invalid start byte"),
+        pytest.param(b"title = 'YAML test'", "config.yaml", False, None, "None", "Invalid YAML file loaded."),
         pytest.param(b"title: title: YAML test", "config.yaml", False, None, "None", "mapping values are not allowed here"),
         pytest.param(b"title: title: YAML test", "config.yml", False, None, "None", "mapping values are not allowed here"),
         pytest.param(b"date: 2024-04-00", "config.yaml", False, None, "None", "day is out of range for month"),
