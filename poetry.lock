@@ -1753,6 +1753,20 @@ carto = ["pydeck-carto"]
 jupyter = ["ipykernel (>=5.1.2)", "ipython (>=5.8.0)", "ipywidgets (>=7,<8)", "traitlets (>=4.3.2)"]
 
 [[package]]
+name = "pydeps"
+version = "1.12.20"
+description = "Display module dependencies"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pydeps-1.12.20-py3-none-any.whl", hash = "sha256:7278a8912bdada26b773d3550f0cc8fd76bed172d23dc1472c457d6292b67fd7"},
+    {file = "pydeps-1.12.20.tar.gz", hash = "sha256:4f6a833a7998bfa24e339c55535882905c22960efc14902c361f74b2952aff19"},
+]
+
+[package.dependencies]
+stdlib-list = "*"
+
+[[package]]
 name = "pyflakes"
 version = "3.2.0"
 description = "passive checker of Python programs"
@@ -2267,6 +2281,24 @@ files = [
 ]
 
 [[package]]
+name = "stdlib-list"
+version = "0.10.0"
+description = "A list of Python Standard Libraries (2.7 through 3.12)."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "stdlib_list-0.10.0-py3-none-any.whl", hash = "sha256:b3a911bc441d03e0332dd1a9e7d0870ba3bb0a542a74d7524f54fb431256e214"},
+    {file = "stdlib_list-0.10.0.tar.gz", hash = "sha256:6519c50d645513ed287657bfe856d527f277331540691ddeaf77b25459964a14"},
+]
+
+[package.extras]
+dev = ["build", "stdlib-list[doc,lint,test]"]
+doc = ["furo", "sphinx"]
+lint = ["black", "mypy", "ruff"]
+support = ["sphobjinv"]
+test = ["coverage[toml]", "pytest", "pytest-cov"]
+
+[[package]]
 name = "streamlit"
 version = "1.34.0"
 description = "A faster way to build and share data apps"
@@ -2578,4 +2610,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "09669c660f253c6f094325b499ca0db6074392b66446cb2b34455d320999b3ed"
+content-hash = "62c6c9823499b0fb7a94d8c4bbed5f250fb14a6f040979a50f3fd0c1c04eb682"
