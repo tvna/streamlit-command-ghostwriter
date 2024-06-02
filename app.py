@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 from datetime import datetime
 from io import BytesIO
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import streamlit as st
 
@@ -10,58 +10,64 @@ from features.config_parser import GhostwriterParser
 from i11n import LANGUAGES
 
 
-def handle_config_file(config_file: Optional[BytesIO], texts: Dict[str, str]) -> None:
+def handle_config_file(config_file: Optional[BytesIO], error_message: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     if config_file is None:
-        return None
+        return None, None
 
     parser = GhostwriterParser()
     parser.load_config_file(config_file).parse()
     config_data = parser.parsed_dict
 
-    if config_data is None:
-        st.session_state.tab1_error_message = f"{texts['error_toml_parse']}: {parser.error_message} in '{config_file.name}'"
-        return None
+    if config_data is None or isinstance(parser.error_message, str):
+        return None, f"{error_message}: {parser.error_message} in '{config_file.name}'"
 
-    st.session_state.config_data = config_data
+    return config_data, None
 
 
-def handle_template_file(template_file: Optional[BytesIO], texts: Dict[str, str]) -> None:
-    config_data = st.session_state.config_data
+def handle_template_file(
+    template_file: Optional[BytesIO],
+    config_data: Optional[Dict[str, Any]],
+    error_message: str,
+    is_strict_undefined: bool,
+    is_remove_multiple_newline: bool,
+) -> Tuple[Optional[str], Optional[str]]:
     if not (template_file and config_data):
-        return None
+        return None, None
 
-    render = GhostwriterRender(st.session_state.is_strict_undefined, st.session_state.is_remove_multiple_newline)
-    render.load_template_file(template_file).apply_context(config_data)
+    render = GhostwriterRender(is_strict_undefined, is_remove_multiple_newline)
+    is_successful = render.load_template_file(template_file).apply_context(config_data)
     formatted_text = render.render_content
 
-    if formatted_text is None:
-        error_message = f"{texts['error_template_generate']}: {render.error_message} in '{template_file.name}'"
-        st.session_state.tab1_error_message = error_message
-        st.session_state.tab1_result_text = None
+    if not is_successful or formatted_text is None or isinstance(render.error_message, str):
+        return None, f"{error_message}: {render.error_message} in '{template_file.name}'"
+
+    return formatted_text, None
+
+
+def init_download_filename(download_filename: Optional[str], download_file_ext: Optional[str], is_append_timestamp: bool) -> Optional[str]:
+
+    if download_filename is None or download_file_ext is None:
         return None
 
-    st.session_state.tab1_result_text = formatted_text
+    suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
+    filename = f"{download_filename}{suffix}.{str(download_file_ext)}"
 
-    suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if st.session_state.is_append_timestamp else ""
-    st.session_state.download_full_filename = f"{st.session_state.download_filename}{suffix}.{str(st.session_state.download_file_ext)}"
+    return filename
 
 
-def handle_debug_config_file(config_file: Optional[BytesIO], texts: Dict[str, str]) -> None:
+def handle_debug_config_file(config_file: Optional[BytesIO], error_message: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
 
     if config_file is None:
-        st.session_state.tab2_error_message = f"{texts['error_not_found_debug_config']}"
-        return None
+        return None, None, None
 
     debug_parser = GhostwriterParser()
     debug_parser.load_config_file(config_file).parse()
-    config_data = debug_parser.parsed_dict
+    config_text = debug_parser.parsed_str
 
-    if config_data is None:
-        st.session_state.tab2_error_message = f"{texts['error_debug_config']}: {debug_parser.error_message}"
-        return None
+    if config_text is None or isinstance(debug_parser.error_message, str):
+        return None, None, f"{error_message}: {debug_parser.error_message}"
 
-    st.session_state.debug_config_text = debug_parser.parsed_str
-    st.session_state.debug_config_filename = config_file.name
+    return config_text, config_file.name, None
 
 
 def show_tab1_result(is_submit_text: bool, is_submit_markdown: bool, texts: Dict[str, str]) -> None:
@@ -79,11 +85,13 @@ def show_tab1_result(is_submit_text: bool, is_submit_markdown: bool, texts: Dict
         st.error(texts["error_both_files"])
         return None
 
+    # display raw text
     if is_submit_text:
         st.success(texts["success_formatted_text"])
         st.text_area(texts["formatted_text"], display_text, height=500)
         return None
 
+    # display markdown document
     st.success(texts["success_formatted_text"])
     st.container(border=True).markdown(display_text)
 
@@ -114,7 +122,6 @@ def main() -> None:
     st.session_state.config_file = None
     st.session_state.config_data = None
     st.session_state.template_file = None
-    st.session_state.download_full_filename = None
     st.session_state.debug_config_text = None
     st.session_state.debug_config_filename = None
     st.session_state.tab1_result_text = None
@@ -149,12 +156,19 @@ def main() -> None:
         with row1_col1:
             with st.container(border=True):
                 config_file = st.file_uploader(texts["upload_config"], type=["toml", "yaml", "yml"])
-                handle_config_file(config_file, texts)
+                config_data, error_message = handle_config_file(config_file, texts["error_toml_parse"])
+                st.session_state.update({"config_data": config_data, "tab1_error_message": error_message})
 
         with row1_col2:
-            with st.container(border=True):
-                template_file = st.file_uploader(texts["upload_template"], type=["jinja2", "j2"])
-                handle_template_file(template_file, texts)
+            template_file = st.file_uploader(texts["upload_template"], type=["jinja2", "j2"])
+            result, error_message = handle_template_file(
+                template_file,
+                st.session_state.get("config_data"),
+                texts["error_template_generate"],
+                st.session_state.is_strict_undefined,
+                st.session_state.is_remove_multiple_newline,
+            )
+            st.session_state.update({"tab1_result_text": result, "tab1_error_message": error_message})
 
         row2_col1, row2_col2, row2_col3 = st.columns(3)
         with row2_col1:
@@ -169,10 +183,16 @@ def main() -> None:
             else:
                 is_download_disabled = True
 
+            download_filename = init_download_filename(
+                st.session_state.download_filename,
+                st.session_state.download_file_ext,
+                st.session_state.is_append_timestamp,
+            )
+
             st.download_button(
                 label=texts["download_button"],
                 data=st.session_state.tab1_result_text or "No data available",
-                file_name=st.session_state.download_full_filename,
+                file_name=download_filename,
                 disabled=is_download_disabled,
                 use_container_width=True,
             )
@@ -182,7 +202,10 @@ def main() -> None:
     with tab2:
         with st.container(border=True):
             debug_config_file = st.file_uploader(texts["upload_debug_config"], type=["toml", "yaml", "yml"])
-            handle_debug_config_file(debug_config_file, texts)
+            result, debug_config_filename, error_message = handle_debug_config_file(debug_config_file, texts["error_debug_config"])
+            st.session_state.update(
+                {"debug_config_text": result, "debug_config_filename": debug_config_filename, "tab2_error_message": error_message}
+            )
             is_submit_debug = st.button(texts["generate_debug_config"])
 
             show_tab2_result(is_submit_debug, texts)
