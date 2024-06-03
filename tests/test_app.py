@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from app import handle_config_file, handle_debug_config_file, handle_template_file, init_download_filename
+from app import AppModel
 
 
 class MockParser:
@@ -87,10 +87,10 @@ class MockRender:
 
 
 @pytest.fixture
-def init_mock(monkeypatch: pytest.MonkeyPatch) -> None:
+def model(monkeypatch: pytest.MonkeyPatch) -> AppModel:
     monkeypatch.setattr("app.GhostwriterParser", MockParser)
     monkeypatch.setattr("app.GhostwriterRender", MockRender)
-    return None
+    return AppModel()
 
 
 @pytest.mark.parametrize(
@@ -102,7 +102,7 @@ def init_mock(monkeypatch: pytest.MonkeyPatch) -> None:
     ],
 )
 def test_handle_config_file(
-    config_content: Optional[bytes], expected_data: Optional[Dict[str, Any]], expected_error: Optional[str], init_mock: None
+    config_content: Optional[bytes], expected_data: Optional[Dict[str, Any]], expected_error: Optional[str], model: AppModel
 ) -> None:
 
     if isinstance(config_content, bytes):
@@ -110,7 +110,7 @@ def test_handle_config_file(
     else:
         config_file = None
 
-    config_data, error_message = handle_config_file(config_file, "[ERROR_HEADER]")
+    config_data, error_message = model.handle_config_file(config_file, "[ERROR_HEADER]")
     assert config_data == expected_data
     assert error_message == expected_error
 
@@ -140,14 +140,14 @@ def test_handle_template_file(
     config_data: Optional[Dict[str, Any]],
     expected_result: Optional[str],
     expected_error: Optional[str],
-    init_mock: None,
+    model: AppModel,
 ) -> None:
     if isinstance(template_content, bytes):
         template_file, template_file.name = BytesIO(template_content), "template.j2"
     else:
         template_file = None
 
-    result_text, error_message = handle_template_file(template_file, config_data, "[ERROR_HEADER]", is_strict_undefined, True)
+    result_text, error_message = model.handle_template_file(template_file, config_data, "[ERROR_HEADER]", is_strict_undefined, True)
     assert result_text == expected_result
     assert error_message == expected_error
 
@@ -169,8 +169,9 @@ def test_init_download_filename(
     name_suffix: Optional[str],
     expected_prefix: str,
     expected_suffix: str,
+    model: AppModel,
 ) -> None:
-    filename = init_download_filename(name_prefix, name_suffix, is_append_timestamp)
+    filename = model.init_download_filename(name_prefix, name_suffix, is_append_timestamp)
 
     if not isinstance(filename, str):
         assert filename is None
@@ -198,7 +199,7 @@ def test_handle_debug_config_file(
     expected_text: Optional[str],
     expected_filename: Optional[str],
     expected_error: Optional[str],
-    init_mock: None,
+    model: AppModel,
 ) -> None:
 
     if isinstance(config_content, bytes):
@@ -206,7 +207,7 @@ def test_handle_debug_config_file(
     else:
         config_file = None
 
-    config_text, config_filename, error_message = handle_debug_config_file(config_file, "[ERROR_HEADER]")
+    config_text, config_filename, error_message = model.handle_debug_config_file(config_file, "[ERROR_HEADER]")
     assert config_text == expected_text
     assert config_filename == expected_filename
     assert error_message == expected_error
