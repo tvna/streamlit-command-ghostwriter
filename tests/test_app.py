@@ -33,15 +33,13 @@ class MockParser:
 
     @property
     def parsed_str(self: "MockParser") -> Optional[str]:
-        print(self.__is_successful)
         if not self.__is_successful:
             return None
 
-        return "key=POSITIVE"
+        return "{'key':POSITIVE'}"
 
     @property
     def error_message(self: "MockParser") -> Optional[str]:
-        print(self.__is_successful)
         if not self.__is_successful:
             return "parser_module_error"
 
@@ -76,7 +74,7 @@ class MockRender:
         if not self.__is_successful:
             return None
 
-        return "POSITIVE"
+        return "This is POSITIVE"
 
     @property
     def error_message(self: "MockRender") -> Optional[str]:
@@ -94,15 +92,19 @@ def model(monkeypatch: pytest.MonkeyPatch) -> AppModel:
 
 
 @pytest.mark.parametrize(
-    ("config_content", "expected_data", "expected_error"),
+    ("config_content", "expected_dict", "expected_text", "expected_error"),
     [
-        pytest.param(None, None, None),
-        pytest.param(b"POSITIVE", {"key": "POSITIVE"}, None),
-        pytest.param(b"negative", None, "[ERROR_HEADER]: parser_module_error in 'config.toml'"),
+        pytest.param(None, None, None, None),
+        pytest.param(b"POSITIVE", {"key": "POSITIVE"}, "{'key':POSITIVE'}", None),
+        pytest.param(b"negative", None, None, "[ERROR_HEADER]: parser_module_error in 'config.toml'"),
     ],
 )
-def test_handle_config_file(
-    config_content: Optional[bytes], expected_data: Optional[Dict[str, Any]], expected_error: Optional[str], model: AppModel
+def test_load_config_file(
+    config_content: Optional[bytes],
+    expected_dict: Optional[Dict[str, Any]],
+    expected_text: Optional[str],
+    expected_error: Optional[str],
+    model: AppModel,
 ) -> None:
 
     if isinstance(config_content, bytes):
@@ -110,9 +112,10 @@ def test_handle_config_file(
     else:
         config_file = None
 
-    config_data, error_message = model.handle_config_file(config_file, "[ERROR_HEADER]")
-    assert config_data == expected_data
-    assert error_message == expected_error
+    model.load_config_file(config_file, "[ERROR_HEADER]")
+    assert model.config_dict == expected_dict
+    assert model.config_str == expected_text
+    assert model.config_error_message == expected_error
 
 
 @pytest.mark.parametrize(
@@ -121,20 +124,20 @@ def test_handle_config_file(
         pytest.param(True, None, None, None, None),
         pytest.param(True, None, {"key": "POSITIVE"}, None, None),
         pytest.param(True, b"POSITIVE", None, None, None),
-        pytest.param(True, b"POSITIVE", {"key": "POSITIVE"}, "POSITIVE", None),
+        pytest.param(True, b"POSITIVE", {"key": "POSITIVE"}, "This is POSITIVE", None),
         pytest.param(True, b"negative", {"key": "POSITIVE"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
         pytest.param(True, b"POSITIVE", {"key": "negative"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
         pytest.param(True, b"negative", {"key": "negative"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
         pytest.param(False, None, None, None, None),
         pytest.param(False, None, {"key": "POSITIVE"}, None, None),
         pytest.param(False, b"POSITIVE", None, None, None),
-        pytest.param(False, b"POSITIVE", {"key": "POSITIVE"}, "POSITIVE", None),
-        pytest.param(False, b"POSITIVE", {"key": "negative"}, "POSITIVE", None),
+        pytest.param(False, b"POSITIVE", {"key": "POSITIVE"}, "This is POSITIVE", None),
+        pytest.param(False, b"POSITIVE", {"key": "negative"}, "This is POSITIVE", None),
         pytest.param(False, b"negative", {"key": "POSITIVE"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
         pytest.param(False, b"negative", {"key": "negative"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
     ],
 )
-def test_handle_template_file(
+def test_load_template_file(
     is_strict_undefined: bool,
     template_content: Optional[bytes],
     config_data: Optional[Dict[str, Any]],
@@ -142,14 +145,17 @@ def test_handle_template_file(
     expected_error: Optional[str],
     model: AppModel,
 ) -> None:
+
+    model.set_config_dict(config_data)
+
     if isinstance(template_content, bytes):
         template_file, template_file.name = BytesIO(template_content), "template.j2"
     else:
         template_file = None
 
-    result_text, error_message = model.handle_template_file(template_file, config_data, "[ERROR_HEADER]", is_strict_undefined, True)
-    assert result_text == expected_result
-    assert error_message == expected_error
+    model.load_template_file(template_file, "[ERROR_HEADER]", is_strict_undefined, True)
+    assert model.formatted_text == expected_result
+    assert model.template_error_message == expected_error
 
 
 @pytest.mark.parametrize(
@@ -163,7 +169,7 @@ def test_handle_template_file(
         pytest.param(False, "output", None, "", ""),
     ],
 )
-def test_init_download_filename(
+def test_get_download_filename(
     is_append_timestamp: bool,
     name_prefix: Optional[str],
     name_suffix: Optional[str],
@@ -171,7 +177,7 @@ def test_init_download_filename(
     expected_suffix: str,
     model: AppModel,
 ) -> None:
-    filename = model.init_download_filename(name_prefix, name_suffix, is_append_timestamp)
+    filename = model.get_download_filename(name_prefix, name_suffix, is_append_timestamp)
 
     if not isinstance(filename, str):
         assert filename is None
@@ -186,50 +192,10 @@ def test_init_download_filename(
         assert filename == f"{expected_prefix}{expected_suffix}"
 
 
-@pytest.mark.parametrize(
-    ("config_content", "expected_text", "expected_filename", "expected_error"),
-    [
-        pytest.param(None, None, None, None),
-        pytest.param(b"POSITIVE", "key=POSITIVE", "config.toml", None),
-        pytest.param(b"negative", None, None, "[ERROR_HEADER]: parser_module_error"),
-    ],
-)
-def test_handle_debug_config_file(
-    config_content: Optional[bytes],
-    expected_text: Optional[str],
-    expected_filename: Optional[str],
-    expected_error: Optional[str],
-    model: AppModel,
-) -> None:
-
-    if isinstance(config_content, bytes):
-        config_file, config_file.name = BytesIO(config_content), "config.toml"
-    else:
-        config_file = None
-
-    config_text, config_filename, error_message = model.handle_debug_config_file(config_file, "[ERROR_HEADER]")
-    assert config_text == expected_text
-    assert config_filename == expected_filename
-    assert error_message == expected_error
-
-
-def test_main() -> None:
+def test_main_startup(model: AppModel) -> None:
     at = AppTest.from_file("app.py").run()
-    session_state_keys = (
-        "config_file",
-        "config_data",
-        "template_file",
-        "debug_config_text",
-        "debug_config_filename",
-        "tab1_result_text",
-        "tab2_result_text",
-        "tab1_error_message",
-        "tab2_error_message",
-    )
 
-    for state_key in session_state_keys:
-        assert at.session_state[state_key] is None
-
+    # startup
     assert at.title.len == 1
     assert len(at.tabs) == 2
     assert len(at.columns) == 5
@@ -238,6 +204,71 @@ def test_main() -> None:
     assert at.button[0].value is False
     assert at.button[1].value is False
     assert at.button[2].value is False
+    assert len(at.error) == 0
     assert len(at.warning) == 0
     assert len(at.success) == 0
     assert at.text_area.len == 0
+
+    # click "generate_text_button" without uploaded files
+    at.button[0].click().run()
+    assert at.button[0].value is True
+    assert at.button[1].value is False
+    assert at.button[2].value is False
+    assert len(at.error) == 1
+    assert len(at.warning) == 0
+    assert len(at.success) == 0
+
+    # click "generate_markdown_button" without uploaded files
+    at.button[1].click().run()
+    assert at.button[0].value is False
+    assert at.button[1].value is True
+    assert at.button[2].value is False
+    assert len(at.error) == 1
+    assert len(at.warning) == 0
+    assert len(at.success) == 0
+
+    # click "generate_debug_config" without uploaded file
+    at.button[2].click().run()
+    assert at.button[0].value is False
+    assert at.button[1].value is False
+    assert at.button[2].value is True
+    assert len(at.error) == 1
+    assert len(at.warning) == 0
+    assert len(at.success) == 0
+
+
+def test_main_generate_text(model: AppModel) -> None:
+    # click "generate_text_button" with uploaded files
+    config_file = BytesIO(b"POSITIVE")
+    config_file.name = "config.toml"
+    template_file = BytesIO(b"POSITIVE")
+    template_file.name = "template.j2"
+
+    at = AppTest.from_file("app.py")
+    at.session_state["tab1_config_file"] = config_file
+    at.session_state["tab1_template_file"] = template_file
+    at.run()
+    at.button[0].click().run()
+    assert at.button[0].value is True
+    assert at.text_area.len == 1
+    assert at.text_area[0].value == "POSITIVE"
+    assert len(at.error) == 0
+    assert len(at.warning) == 0
+    assert len(at.success) == 1
+
+
+def test_main_debug_text(model: AppModel) -> None:
+    # click "generate_text_button" with uploaded files
+    config_file = BytesIO(b"POSITIVE")
+    config_file.name = "config.toml"
+
+    at = AppTest.from_file("app.py")
+    at.session_state["tab2_config_file"] = config_file
+    at.run()
+    at.button[2].click().run()
+    assert at.button[2].value is True
+    assert at.text_area.len == 1
+    assert at.text_area[0].value == "{}"
+    assert len(at.error) == 0
+    assert len(at.warning) == 0
+    assert len(at.success) == 1
