@@ -197,9 +197,10 @@ def test_main_startup(model: AppModel) -> None:
 
     # startup
     assert at.title.len == 1
-    assert len(at.tabs) == 2
-    assert len(at.columns) == 5
-    assert len(at.sidebar) == 3
+    assert len(at.tabs) == 3
+    assert len(at.columns) == 12
+    assert len(at.sidebar) == 2
+    assert len(at.markdown) == 2
     assert at.button.len == 3
     assert at.button[0].value is False
     assert at.button[1].value is False
@@ -207,6 +208,9 @@ def test_main_startup(model: AppModel) -> None:
     assert len(at.error) == 0
     assert len(at.warning) == 0
     assert len(at.success) == 0
+    assert at.radio.len == 1
+    assert at.toggle.len == 3
+    assert at.text_input.len == 1
     assert at.text_area.len == 0
 
     # click "generate_text_button" without uploaded files

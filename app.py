@@ -168,14 +168,7 @@ def main() -> None:
     with st.sidebar:
         st.write(texts["welcome"])
 
-        with st.expander(texts["advanced_option"], expanded=False):
-            st.session_state.download_filename = st.text_input(texts["download_filename"], "command")
-            st.session_state.is_append_timestamp = st.toggle(texts["append_timestamp_filename"], value=True)
-            st.session_state.download_file_ext = st.radio(texts["download_file_extension"], ["txt", "md"])
-            st.session_state.is_strict_undefined = st.toggle(texts["strict_undefined"], value=True)
-            st.session_state.is_remove_multiple_newline = st.toggle(texts["remove_multiple_newline"], value=True)
-
-        with st.expander(texts["syntax_of_each_file"], expanded=False):
+        with st.expander(texts["syntax_of_each_file"], expanded=True):
             st.markdown(
                 f"""
             - [toml syntax docs]({texts["toml_syntax_doc"]})
@@ -184,46 +177,39 @@ def main() -> None:
             """
             )
 
-    tab1, tab2 = st.tabs([texts["tab_convert_text"], texts["tab_debug_config"]])
+    tab1, tab2, tab3 = st.tabs([texts["tab_convert_text"], texts["tab_debug_config"], "詳細設定"])
 
     with tab1:
         tab1_model = AppModel()
-        row1_col1, row1_col2 = st.columns(2)
-        with row1_col1.container(border=True):
+        tab1_row1_col1, tab1_row1_col2 = st.columns(2)
+        with tab1_row1_col1.container(border=True):
             st.file_uploader(texts["upload_config"], type=["toml", "yaml", "yml"], key="tab1_config_file")
-            tab1_model.load_config_file(st.session_state.get("tab1_config_file"), texts["error_toml_parse"])
 
-        with row1_col2.container(border=True):
+        with tab1_row1_col2.container(border=True):
             st.file_uploader(texts["upload_template"], type=["jinja2", "j2"], key="tab1_template_file")
-            tab1_model.load_template_file(
-                st.session_state.get("tab1_template_file"),
-                texts["error_template_generate"],
-                st.session_state.is_strict_undefined,
-                st.session_state.is_remove_multiple_newline,
-            )
 
-        row2_col1, row2_col2, row2_col3 = st.columns(3)
-        with row2_col1:
-            st.button(texts["generate_text_button"], use_container_width=True, key="tab1_execute_text")
+        tab1_row2_col1, tab1_row2_col2, tab1_row2_col3 = st.columns(3)
+        tab1_row2_col1.button(texts["generate_text_button"], use_container_width=True, key="tab1_execute_text")
+        tab1_row2_col2.button(texts["generate_markdown_button"], use_container_width=True, key="tab1_execute_markdown")
+        tab1_row2_col3.download_button(
+            label=texts["download_button"],
+            data=tab1_model.formatted_text or "No data available",
+            file_name=tab1_model.get_download_filename(
+                st.session_state.get("download_filename", "command"),
+                st.session_state.get("download_file_ext", "txt"),
+                st.session_state.get("is_append_timestamp", True),
+            ),
+            disabled=False if tab1_model.is_ready_formatted else True,
+            use_container_width=True,
+        )
 
-        with row2_col2:
-            st.button(texts["generate_markdown_button"], use_container_width=True, key="tab1_execute_markdown")
-
-        with row2_col3:
-            download_filename = tab1_model.get_download_filename(
-                st.session_state.download_filename,
-                st.session_state.download_file_ext,
-                st.session_state.is_append_timestamp,
-            )
-
-            st.download_button(
-                label=texts["download_button"],
-                data=tab1_model.formatted_text or "No data available",
-                file_name=download_filename,
-                disabled=False if tab1_model.is_ready_formatted else True,
-                use_container_width=True,
-            )
-
+        tab1_model.load_config_file(st.session_state.get("tab1_config_file"), texts["error_toml_parse"])
+        tab1_model.load_template_file(
+            st.session_state.get("tab1_template_file"),
+            texts["error_template_generate"],
+            st.session_state.get("is_strict_undefined", True),
+            st.session_state.get("is_remove_multiple_newline", True),
+        )
         show_tab1_result(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
@@ -233,14 +219,17 @@ def main() -> None:
             tab1_model.template_error_message,
         )
 
-    with tab2.container(border=True):
+    with tab2:
         tab2_model = AppModel()
-        st.file_uploader(texts["upload_debug_config"], type=["toml", "yaml", "yml"], key="tab2_config_file")
-        tab2_model.load_config_file(st.session_state.get("tab2_config_file"), texts["error_debug_config"])
-        if isinstance(tab2_model.config_str, str):
-            st.session_state.update({"tab2_result": tab2_model.config_str})
+        tab2_row1_col1, _ = st.columns(2)
+        with tab2_row1_col1.container(border=True):
+            st.file_uploader(texts["upload_debug_config"], type=["toml", "yaml", "yml"], key="tab2_config_file")
+            tab2_model.load_config_file(st.session_state.get("tab2_config_file"), texts["error_debug_config"])
+            if isinstance(tab2_model.config_str, str):
+                st.session_state.update({"tab2_result": tab2_model.config_str})
 
-        st.button(texts["generate_debug_config"], key="tab2_execute")
+        tab2_row2_col1, _, _ = st.columns(3)
+        tab2_row2_col1.button(texts["generate_debug_config"], use_container_width=True, key="tab2_execute")
 
         show_tab2_result(
             st.session_state.get("tab2_execute", False),
@@ -249,6 +238,15 @@ def main() -> None:
             tab2_model.get_uploaded_filename(st.session_state.get("tab2_config_file")),
             tab2_model.config_error_message,
         )
+
+    with tab3:
+        tab3_row1_col1, _ = st.columns(2)
+        with tab3_row1_col1.container(border=True):
+            st.session_state.download_filename = st.text_input(texts["download_filename"], "command")
+            st.session_state.is_append_timestamp = st.toggle(texts["append_timestamp_filename"], value=True)
+            st.session_state.download_file_ext = st.radio(texts["download_file_extension"], ["txt", "md"])
+            st.session_state.is_strict_undefined = st.toggle(texts["strict_undefined"], value=True)
+            st.session_state.is_remove_multiple_newline = st.toggle(texts["remove_multiple_newline"], value=True)
 
 
 if __name__ == "__main__":
