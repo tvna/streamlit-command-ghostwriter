@@ -1,4 +1,4 @@
-name: Test, Build, and Publish
+name: Test, Build, and Publish in develop branch
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
@@ -75,14 +75,3 @@ jobs:
     - name: Dump package
       run: |
         npm run dump
-
-    # - name: Build/release Electron app
-    #   uses: samuelmeuli/action-electron-builder@v1
-    #   with:
-    #     # GitHub token, automatically provided to the action
-    #     # (No need to define this secret in the repo settings)
-    #     github_token: ${{ secrets.github_token }}
-
-    #     # If the commit is tagged with a version (e.g. "v1.0.0"),
-    #     # release the app after building
-    #     release: ${{ startsWith(github.ref, 'refs/tags/v') }}
