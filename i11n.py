@@ -34,6 +34,7 @@ LANGUAGES = {
         "error_toml_parse": "設定ファイルの読み込みに失敗",
         "error_template_generate": "Jinjaテンプレートの読み込みに失敗",
         "error_both_files": "テキスト整形に必要な全ファイルが揃っていません",
+        "error_debug_not_found": "設定ファイルが読み込まれていません",
         "error_debug_config": "設定ファイルの読み込みに失敗",
     },
 }

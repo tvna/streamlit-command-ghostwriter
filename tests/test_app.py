@@ -50,6 +50,7 @@ class MockRender:
     def __init__(self: "MockRender", is_strict_undefined: bool = True, is_remove_multiple_newline: bool = True) -> None:
         self.__is_successful: bool = False
         self.__is_strict_undefined: bool = is_strict_undefined
+        self.__render_content: str = "This is POSITIVE"
 
     def load_template_file(self: "MockRender", file: BytesIO) -> "MockRender":
         content = file.read().decode()
@@ -58,6 +59,9 @@ class MockRender:
             self.__is_successful = True
 
         return self
+
+    def validate_template(self: "MockRender") -> bool:
+        return self.__is_successful
 
     def apply_context(self: "MockRender", content: Dict[str, Any]) -> bool:
         if not self.__is_successful:
@@ -74,7 +78,7 @@ class MockRender:
         if not self.__is_successful:
             return None
 
-        return "This is POSITIVE"
+        return self.__render_content
 
     @property
     def error_message(self: "MockRender") -> Optional[str]:
@@ -106,7 +110,6 @@ def test_load_config_file(
     expected_error: Optional[str],
     model: AppModel,
 ) -> None:
-
     if isinstance(config_content, bytes):
         config_file, config_file.name = BytesIO(config_content), "config.toml"
     else:
@@ -145,7 +148,6 @@ def test_load_template_file(
     expected_error: Optional[str],
     model: AppModel,
 ) -> None:
-
     model.set_config_dict(config_data)
 
     if isinstance(template_content, bytes):
@@ -192,7 +194,14 @@ def test_get_download_filename(
         assert filename == f"{expected_prefix}{expected_suffix}"
 
 
-def test_main_startup(model: AppModel) -> None:
+###################################
+#
+# Integration Tests
+#
+###################################
+
+
+def test_main_layout() -> None:
     at = AppTest.from_file("app.py").run()
 
     # startup
@@ -218,8 +227,8 @@ def test_main_startup(model: AppModel) -> None:
     assert at.button[0].value is True
     assert at.button[1].value is False
     assert at.button[2].value is False
-    assert len(at.error) == 1
-    assert len(at.warning) == 0
+    assert len(at.error) == 0
+    assert len(at.warning) == 1
     assert len(at.success) == 0
 
     # click "generate_markdown_button" without uploaded files
@@ -227,8 +236,8 @@ def test_main_startup(model: AppModel) -> None:
     assert at.button[0].value is False
     assert at.button[1].value is True
     assert at.button[2].value is False
-    assert len(at.error) == 1
-    assert len(at.warning) == 0
+    assert len(at.error) == 0
+    assert len(at.warning) == 1
     assert len(at.success) == 0
 
     # click "generate_debug_config" without uploaded file
@@ -236,43 +245,111 @@ def test_main_startup(model: AppModel) -> None:
     assert at.button[0].value is False
     assert at.button[1].value is False
     assert at.button[2].value is True
-    assert len(at.error) == 1
-    assert len(at.warning) == 0
+    assert len(at.error) == 0
+    assert len(at.warning) == 1
     assert len(at.success) == 0
 
 
-def test_main_generate_text(model: AppModel) -> None:
-    # click "generate_text_button" with uploaded files
-    config_file = BytesIO(b"POSITIVE")
-    config_file.name = "config.toml"
-    template_file = BytesIO(b"POSITIVE")
-    template_file.name = "template.j2"
+@pytest.mark.parametrize(
+    (
+        "active_button",
+        "config_filename",
+        "config_file_content",
+        "template_filename",
+        "template_file_content",
+        "expected_text_area_len",
+        "expected_markdown_len",
+        "expected_text_area_value",
+        "expected_error_objects",
+        "expected_warning_objects",
+        "expected_success_objects",
+    ),
+    [
+        pytest.param(0, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key }} ###", 1, 2, "", 0, 0, 1),  # broken
+        pytest.param(0, "config.toml", b"date=2024-04-00", "template.j2", b"### This is {{ key }} ###", 1, 2, "", 0, 0, 1),  # broken
+        pytest.param(0, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key ###", 1, 2, "", 0, 0, 1),  # broken
+        pytest.param(1, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key }} ###", 0, 3, "", 0, 0, 1),  # broken
+    ],
+)
+def test_main_tab1(
+    active_button: int,
+    config_filename: Optional[str],
+    config_file_content: bytes,
+    template_filename: Optional[str],
+    template_file_content: bytes,
+    expected_text_area_len: int,
+    expected_markdown_len: int,
+    expected_text_area_value: Optional[str],
+    expected_error_objects: int,
+    expected_warning_objects: int,
+    expected_success_objects: int,
+) -> None:
+    config_file = None
+    template_file = None
+
+    if isinstance(config_filename, str):
+        config_file = BytesIO(config_file_content)
+        config_file.name = config_filename
+
+    if isinstance(template_filename, str):
+        template_file = BytesIO(template_file_content)
+        template_file.name = template_filename
 
     at = AppTest.from_file("app.py")
     at.session_state["tab1_config_file"] = config_file
     at.session_state["tab1_template_file"] = template_file
     at.run()
-    at.button[0].click().run()
-    assert at.button[0].value is True
-    assert at.text_area.len == 1
-    assert at.text_area[0].value == "POSITIVE"
-    assert len(at.error) == 0
-    assert len(at.warning) == 0
-    assert len(at.success) == 1
+    at.button[active_button].click().run()
+    assert at.session_state["tab1_config_file"] == config_file
+    assert at.session_state["tab1_template_file"] == template_file
+    assert at.session_state["tab1_result_content"] == expected_text_area_value  # broken
+    assert at.button[active_button].value is True
+    assert at.text_area.len == expected_text_area_len
+    assert at.markdown.len == expected_markdown_len
+    assert len(at.error) == expected_error_objects
+    assert len(at.warning) == expected_warning_objects
+    assert len(at.success) == expected_success_objects
 
 
-def test_main_debug_text(model: AppModel) -> None:
-    # click "generate_text_button" with uploaded files
-    config_file = BytesIO(b"POSITIVE")
-    config_file.name = "config.toml"
+@pytest.mark.parametrize(
+    (
+        "config_filename",
+        "config_file_content",
+        "expected_text_area_len",
+        "expected_text_area_value",
+        "expected_error_objects",
+        "expected_warning_objects",
+        "expected_success_objects",
+    ),
+    [
+        pytest.param("config.toml", b'key="POSITIVE"', 1, "{}", 0, 0, 1),  # broken
+        pytest.param(None, b"", 0, None, 0, 1, 0),
+        pytest.param("config.toml", b"key=", 1, "{}", 0, 0, 1),  # broken
+    ],
+)
+def test_main_tab2(
+    config_filename: Optional[str],
+    config_file_content: bytes,
+    expected_text_area_len: int,
+    expected_text_area_value: Optional[str],
+    expected_error_objects: int,
+    expected_warning_objects: int,
+    expected_success_objects: int,
+) -> None:
+    if isinstance(config_filename, str):
+        config_file = BytesIO(config_file_content)
+        config_file.name = config_filename
+    else:
+        config_file = None
 
     at = AppTest.from_file("app.py")
     at.session_state["tab2_config_file"] = config_file
     at.run()
     at.button[2].click().run()
     assert at.button[2].value is True
-    assert at.text_area.len == 1
-    assert at.text_area[0].value == "{}"
-    assert len(at.error) == 0
-    assert len(at.warning) == 0
-    assert len(at.success) == 1
+    assert at.text_area.len == expected_text_area_len
+    if expected_text_area_len > 0:
+        assert at.text_area[0].value == expected_text_area_value
+    assert len(at.error) == expected_error_objects
+    assert len(at.warning) == expected_warning_objects
+    assert len(at.success) == expected_success_objects
