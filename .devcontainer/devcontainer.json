@@ -14,7 +14,6 @@
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "ms-python.black-formatter",
         "ms-python.mypy-type-checker",
         "ms-python.flake8",
         "ms-python.isort",
@@ -28,7 +27,8 @@
         "streetsidesoftware.code-spell-checker",
         "bungcip.better-toml",
         "redhat.vscode-yaml",
-        "wholroyd.jinja"
+        "wholroyd.jinja",
+        "charliermarsh.ruff"
       ]
     }
   },

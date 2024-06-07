@@ -5,9 +5,7 @@
 		}
 	],
 	"settings": {
-		"terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "ByPass", "-NoExit", "-Command", "& '${workspaceFolderBasename}/.venv/Scripts/Activate.ps1'"],
-		"terminal.integrated.shellArgs.osx": ["--rcfile", " ${workspaceFolderBasename}/.venv/bin/activate"],
-		"editor.defaultFormatter": "ms-python.black-formatter",
+		"editor.defaultFormatter": "charliermarsh.ruff",
 		"editor.formatOnSave": true,
 		"editor.codeActionsOnSave": {
 		},
@@ -15,20 +13,48 @@
 			"--profile",
 			"black"
 		],
-		"black-formatter.args": [
-			"--line-length", "140",
-		],
 		"python.analysis.extraPaths": [
-			"${workspaceFolderBasename}/.ven/*/site-packages"
+			"${workspaceFolderBasename}/.venv/*/site-packages"
 		],
 		"cSpell.words": [
+			"charliermarsh",
+			"devcontainer",
 			"isort",
 			"micropip",
 			"mypy",
+			"pycache",
 			"pyodide",
+			"pytest",
 			"rcfile",
 			"streamlit",
 			"venv"
+		],
+		"python.analysis.typeCheckingMode": "basic",
+		"files.exclude": {
+			".coverage": true,
+			".mypy_cache": true,
+			".pytest_cache": true,
+			".venv": true,
+			"**/__pycache__": true,
+			"build": true,
+			"coverage.xml": true,
+			"node_modules": true,
+			"requirements.txt": true,
+			"poetry.lock": true,
+			"package-lock.json": true
+		},
+		"explorer.excludeGitIgnore": false,
+		"python.analysis.ignore": [
+			"/opt/homebrew/Cellar/python**"
+		],
+		"cSpell.ignorePaths": [
+			"package-lock.json",
+			"node_modules",
+			"vscode-extension",
+			".git/objects",
+			".vscode",
+			".vscode-insiders",
+			"**/.cursor/extensions/ms-python.vscode-pylance**"
 		],
 	}
 }

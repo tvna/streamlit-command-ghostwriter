@@ -34,6 +34,9 @@ flake8-bugbear = "^24.4.26"
 flake8-annotations = "^3.1.0"
 pydeps = "^1.12.20"
 
+[tool.ruff]
+indent-width = 4
+line-length = 140
 
 [build-system]
 requires = ["poetry-core"]
