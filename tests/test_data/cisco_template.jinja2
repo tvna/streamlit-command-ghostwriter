@@ -1,0 +1,56 @@
+enable
+{{ global.password.enable }}
+
+ter len 0
+
+# show commands
+show running-config
+show startup-config
+show int status
+show int trunk
+
+# change config commands
+conf t
+
+hostname {{ global.hostname }}
+
+{% for vlan in global.vlans %}
+vlan {{ vlan }}
+  name ##_VLAN-{{ vlan }}_##
+exit
+{% endfor %}
+
+no ip domain-lookup
+vtp mode transparent
+
+{% for name, intf in interfaces.items() %}
+interface {{ name }}
+  switchport mode {{ intf["mode"] }}
+  {% if intf["mode"] == "access" %}
+  switchport access vlan {{ intf["access_vlan"] }}
+{% else %}
+{% if intf["trunk_vlan"] is defined %}
+  switchport trunk vlan {{ intf["trunk_vlan"] }}
+    {% endif %}
+    {% if intf["native_vlan"] is defined %}
+  switchport trunk native vlan {{ intf["native_vlan"] }}
+    {% endif %}
+  {% endif %}
+  switchport nonegotiate
+  {% if intf["description"] is defined %}
+  description {{ intf["description"] }}
+  {% endif %}
+  {% if intf["cdp_enable"] == true %}
+  cdp enable
+  {% else %}
+  no cdp enable
+  {% endif %}
+exit
+{% endfor %}
+
+
+# show commands
+show int status
+show int trunk
+show running-config
+show startup-config

@@ -1,83 +1,79 @@
 #! /usr/bin/env python
+import pprint
+import tomllib
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-import tomllib
-import pprint
-
-
-try:
-    # pyodide専用
-    import asyncio
-    import micropip
-
-    loop = asyncio.get_running_loop()
-    loop.create_task(micropip.install("pyyaml"))
-except RuntimeError:
-    pass
+import yaml
 
 
 class GhostwriterParser:
-    def __init__(self, config_file: BytesIO) -> None:
+    def __init__(self: "GhostwriterParser") -> None:
         """
         TOMLファイルをパースするためのクラスを初期化する。
         """
 
+        self.__file_extension: Optional[str] = None
+        self.__config_data: Optional[str] = None
         self.__parsed_dict: Optional[Dict[str, Any]] = None
-        self.__error_message: str = "Not failed"
+        self.__error_message: Optional[str] = None
+
+    def load_config_file(self: "GhostwriterParser", config_file: BytesIO) -> "GhostwriterParser":
 
         try:
-            file_extention: str = config_file.name.split(".")[-1]
-            config_data = config_file.read().decode("utf-8")
-        except AttributeError:
-            self.__error_message = "バイナリが引数に指定されていません。"
-            return None
+            self.__file_extension = config_file.name.split(".")[-1]
+            if self.__file_extension not in ["toml", "yaml", "yml"]:
+                self.__error_message = "Unsupported file type"
+                return self
+
+            self.__config_data = config_file.read().decode("utf-8")
         except UnicodeDecodeError as e:
             self.__error_message = str(e)
-            return None
 
-        if file_extention == "toml":
-            self.__parsed_dict = self.__parse_toml(config_data)  # type: ignore
-        elif file_extention in ["yaml", "yml"]:
-            self.__parsed_dict = self.__parse_yaml(config_data)  # type: ignore
-        else:
-            self.__error_message = "Unsupported file type"
+        return self
 
-    def __parse_toml(self, source_content: str) -> Optional[Dict[str, Any]]:
-        """TOMLファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
+    def parse(self: "GhostwriterParser") -> bool:
+
+        if self.__config_data is None:
+            return False
+
         try:
-            toml_dict = tomllib.loads(source_content)
-            return toml_dict
+            if self.__file_extension == "toml":
+                self.__parsed_dict = tomllib.loads(self.__config_data)
+
+            if self.__file_extension in {"yaml", "yml"}:
+                self.__parsed_dict = yaml.load(self.__config_data, yaml.FullLoader)
+
         except (tomllib.TOMLDecodeError, TypeError) as e:
             self.__error_message = str(e)
-            return None
-
-    def __parse_yaml(self, source_content) -> Optional[Dict[str, Any]]:
-        """YAMLファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
-        import yaml
-
-        try:
-            yaml_dict = yaml.safe_load(source_content)
-            return yaml_dict
-        except (yaml.YAMLError, ValueError) as e:
+            return False
+        except (yaml.MarkedYAMLError, yaml.reader.ReaderError, ValueError) as e:
             self.__error_message = str(e)
-            return None
+
+        if isinstance(self.__parsed_dict, str):
+            self.__error_message = "Invalid YAML file loaded."
+            self.__parsed_dict = None
+
+        if self.__parsed_dict is None:
+            return False
+
+        return True
 
     @property
-    def parsed_dict(self) -> Optional[Dict[str, Any]]:
+    def parsed_dict(self: "GhostwriterParser") -> Optional[Dict[str, Any]]:
         """
         コンフィグファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。
         """
         return self.__parsed_dict
 
     @property
-    def parsed_str(self) -> str:
+    def parsed_str(self: "GhostwriterParser") -> str:
         """
         コンフィグファイルをパースして文字列を返す。エラーが発生した場合は"None"を返す。
         """
         return pprint.pformat(self.__parsed_dict)
 
     @property
-    def error_message(self) -> str:
+    def error_message(self: "GhostwriterParser") -> Optional[str]:
         """エラーメッセージを返す。"""
         return self.__error_message
