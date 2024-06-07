@@ -21,21 +21,38 @@ class GhostwriterRender:
 
         return self
 
+    def validate_template(self: "GhostwriterRender") -> bool:
+        template = self.__template_content
+
+        if template is None:
+            return False
+
+        try:
+            env = Environment()
+            env.parse(template)
+            return True
+
+        except TemplateSyntaxError as e:
+            self.__error_message = str(e)
+            return False
+
     def __remove_whitespaces_and_multiple_newlines(self: "GhostwriterRender", source_text: str) -> str:
         replace_whitespaces = re.sub(r"^\s+$\n", "\n", source_text, flags=re.MULTILINE)
         return re.sub(r"\n\n+", "\n\n", replace_whitespaces)
 
     def apply_context(self: "GhostwriterRender", context: Dict[str, Any]) -> bool:
-        if self.__template_content is None:
+        template_str = self.__template_content
+
+        if template_str is None:
             return False
 
         try:
             if self.__is_strict_undefined:
                 env: Environment = Environment(loader=FileSystemLoader("."), undefined=StrictUndefined)
-                strict_template: Template = env.from_string(self.__template_content)
+                strict_template: Template = env.from_string(template_str)
                 render_content = strict_template.render(context)
             else:
-                template: Template = Template(self.__template_content)
+                template: Template = Template(template_str)
                 render_content = template.render(context)
 
         except (FileNotFoundError, TypeError, UndefinedError, TemplateSyntaxError) as e:
