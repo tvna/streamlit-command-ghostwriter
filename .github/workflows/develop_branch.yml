@@ -5,12 +5,16 @@ on:
     branches:
       - develop
     paths-ignore:
-      - ".devcontainer"
+      - .devcontainer
+      - README.md
+      - command_ghostwriter.code-workspace
   pull_request:
     branches:
       - develop
     paths-ignore:
-      - ".devcontainer"
+      - .devcontainer
+      - README.md
+      - command_ghostwriter.code-workspace
 
 jobs:
   test:
