@@ -1,0 +1,43 @@
+name: static analysis
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{github.workflow}}${{github.ref}}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - name: Set up environment variable
+        env:
+          COMMIT_MESSAGE: "${{ github.event.head_commit.message }}"
+        run: echo "Checking commit '$COMMIT_MESSAGE}'"
+      - uses: actions/checkout@v4
+      - run: |
+          docker run --rm -v "$(pwd):$(pwd)" -w "$(pwd)" rhysd/actionlint:latest

@@ -37,3 +37,10 @@ repos:
   hooks:
     - id: poetry-export
       args: ["-f", "requirements.txt", "-o", "./requirements.txt", "--without-hashes", "-v"]
+
+- repo: local
+  hooks:
+    - id: actionlint
+      name: linting github actions workflows
+      entry: bash -c 'if command -v actionlint >/dev/null 2>&1; then actionlint .github/workflows/*.yml; else echo "actionlint not found, skipping."; fi'
+      language: system
