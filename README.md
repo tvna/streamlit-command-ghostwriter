@@ -1,11 +1,11 @@
 <div align="center">
 
 [![streamlit][streamlit-img]](https://streamlit.io/)
-[![build status][build-img]](build-link)
-[![codecov][codecov-img]](codecov-link)
-[![License: MIT][license-img]](license-link)
+[![build status][build-img]][build-link]
+[![codecov][codecov-img]][codecov-link]
+[![License: MIT][license-img]][license-link]
 
-[![Streamlit App][streamlit-cloud-img]](streamlit-cloud-link)
+[![Streamlit App][streamlit-cloud-img]][streamlit-cloud-link]
 
 </div>
 
@@ -27,5 +27,5 @@ TBA
 [build-img]: https://github.com/tvna/streamlit-command-ghostwriter/actions/workflows/develop_branch.yml/badge.svg?branch=develop
 [codecov-link]: https://codecov.io/gh/tvna/streamlit-command-ghostwriter
 [codecov-img]: https://codecov.io/gh/tvna/streamlit-command-ghostwriter/graph/badge.svg?token=I2LDXQHXB5
-[license]: https://github.com/tvna/streamlit-command-ghostwriter/blob/main/LICENSE
+[license-link]: https://github.com/tvna/streamlit-command-ghostwriter/blob/main/LICENSE
 [license-img]: https://img.shields.io/badge/license-MIT-blue
