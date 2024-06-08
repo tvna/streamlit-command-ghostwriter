@@ -9,6 +9,8 @@ updates:
     directory: /
     schedule:
       interval: daily
+      time: "11:00"
+      timezone: "Japan"
     groups:
       github-actions:
         patterns:
@@ -18,9 +20,13 @@ updates:
     directory: /
     schedule:
       interval: daily
+      time: "11:00"
+      timezone: "Japan"
     target-branch: develop
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: daily
+      time: "11:00"
+      timezone: "Japan"
     target-branch: develop
