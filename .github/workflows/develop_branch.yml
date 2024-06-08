@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.12"
+          - 3.12
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             .venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install dependencies
         shell: bash
