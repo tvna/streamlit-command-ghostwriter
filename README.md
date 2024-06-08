@@ -1,19 +1,28 @@
 <div align="center">
+
 [![streamlit][streamlit-img]](https://streamlit.io/)
 [![build status][build-img]](build-link)
 [![codecov][codecov-img]](codecov-link)
 [![License: MIT][license-img]](license-link)
+
+[![Streamlit App][streamlit-cloud-img]](streamlit-cloud-link)
+
 </div>
 
-# Command ghostwriter
+# Welcome to Command ghostwriter
 このアプリケーションでは、設定ファイル(toml/yaml)とJinjaテンプレートファイルをアップロードして、インフラ構築コマンドなどのテキスト整形ができます。
 ファイルをアップロードして、「テキスト整形の実行」をクリックして結果を確認してください。
 
-# プラットフォーム
-- [Streamlit Cloud](https://command-ghostwriter.streamlit.app/)
+# Platform
+- Streamlit Cloud
 - Desktop App (build by Electron)
 
+# Quickstart
+TBA
+
 [streamlit-img]: https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white
+[streamlit-cloud-img]: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
+[streamlit-cloud-link]: https://command-ghostwriter.streamlit.app/
 [build-link]: https://github.com/tvna/streamlit-command-ghostwriter/actions/workflows/develop_branch.yml
 [build-img]: https://github.com/tvna/streamlit-command-ghostwriter/actions/workflows/develop_branch.yml/badge.svg?branch=develop
 [codecov-link]: https://codecov.io/gh/tvna/streamlit-command-ghostwriter
