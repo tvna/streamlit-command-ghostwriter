@@ -8,7 +8,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: daily
     groups:
       github-actions:
         patterns:
@@ -17,10 +17,10 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: monthly
+      interval: daily
     target-branch: develop
   - package-ecosystem: pip
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
     target-branch: develop

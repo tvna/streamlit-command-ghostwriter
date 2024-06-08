@@ -1,0 +1,36 @@
+name: Auto-merge for dependabot
+on:
+  pull_request:
+jobs:
+  merge:
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'github-actions' }}
+        run: |
+          gh pr review ${ GTIHUB_HEAD_REF } -approve
+          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm' && steps.meta.outputs.update-type == 'version-update:semver-patch' }}
+        run: |
+          gh pr review ${ GTIHUB_HEAD_REF } -approve
+          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm' && steps.meta.outputs.update-type == 'version-update:semver-minor' }}
+        run: |
+          gh pr review ${ GTIHUB_HEAD_REF } -approve
+          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'pip' && steps.meta.outputs.update-type == 'version-update:semver-patch' }}
+        run: |
+          gh pr review ${ GTIHUB_HEAD_REF } -approve
+          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'pip' && steps.meta.outputs.update-type != 'version-update:semver-minor' }}
+        run: |
+          gh pr review ${ GTIHUB_HEAD_REF } -approve
+          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
