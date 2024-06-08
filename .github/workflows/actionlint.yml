@@ -16,10 +16,6 @@ on:
       - ".github/workflows/*.yml"
       - ".github/workflows/*.yaml"
 
-defaults:
-  run:
-    shell: bash
-
 concurrency:
   group: ${{github.workflow}}${{github.ref}}
   cancel-in-progress: true
@@ -31,8 +27,6 @@ jobs:
         os:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
-    container:
-      image: rhysd/actionlint:latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
