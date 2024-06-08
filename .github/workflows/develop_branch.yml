@@ -44,6 +44,15 @@ jobs:
         run: poetry config virtualenvs.in-project false
         shell: bash
 
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+
       - name: Install dependencies
         shell: bash
         run: |
@@ -80,6 +89,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+
+      - name: Cache node dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
 
       - name: Install stlite
         run: |
