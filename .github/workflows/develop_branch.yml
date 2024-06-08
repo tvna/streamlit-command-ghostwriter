@@ -1,4 +1,4 @@
-name: Test, Build, and Publish in develop branch
+name: Test & Build
 
 on:
   push:
