@@ -1,4 +1,4 @@
-name: static analysis
+name: Lint GitHub Actions workflows
 
 on:
   push:
@@ -30,14 +30,13 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest
     runs-on: ${{ matrix.os }}
+    container:
+      image: rhysd/actionlint:latest
     timeout-minutes: 5
     steps:
-      - name: Set up environment variable
-        env:
-          COMMIT_MESSAGE: "${{ github.event.head_commit.message }}"
-        run: echo "Checking commit '$COMMIT_MESSAGE}'"
       - uses: actions/checkout@v4
-      - run: |
-          docker run --rm -v "$(pwd):$(pwd)" -w "$(pwd)" rhysd/actionlint:latest
+      - name: Check workflow files
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color -config-file .github/workflows/*.yml
