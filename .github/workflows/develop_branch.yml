@@ -42,7 +42,7 @@ jobs:
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
         shell: bash
-      - name: Cache pip dependencies
+      - name: Restore cache pip dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -50,15 +50,15 @@ jobs:
             ~/.cache/pip
             .venv
           key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      - name: Install dependencies
-        shell: bash
-        run: |
-          poetry install
-      - name: Cache playwright browsers
+      - name: Restore cache playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-pytest-playwright-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        shell: bash
+        run: |
+          poetry install
       - name: Install Playwright Browsers
         run: |
           poetry run playwright install
@@ -72,25 +72,16 @@ jobs:
         uses: codecov/codecov-action@v4.4.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-  coverage:
-    name: coverage
-    needs:
-      - test-develop
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm install -g yarn
-      - run: yarn install
-      - uses: paambaati/codeclimate-action@v6.0.0
+      - name: Setup Code Climate
+        uses: remarkablemark/setup-codeclimate@v2
+
+      - name: Run Test and Upload Coverage
+        run: |
+          cc-test-reporter before-build
+          # insert your test command here
+          cc-test-reporter after-build --exit-code $?
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
-        with:
-          coverageCommand: yarn coverage
   build:
     runs-on: ${{ matrix.os }}
     needs:
@@ -111,7 +102,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Cache node-electron dependecies
+      - name: Restore cache node-electron dependecies
         uses: actions/cache@v4
         with:
           path: |
