@@ -48,6 +48,14 @@ jobs:
         shell: bash
         run: |
           poetry install
+      - name: Cache playwright browsers
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-pytest-playwright-${{ hashFiles('**/poetry.lock') }}
+      - name: Install Playwright Browsers
+        run: |
+          poetry run playwright install
       - name: Run mypy
         run: |
           poetry run mypy . --exclude build
