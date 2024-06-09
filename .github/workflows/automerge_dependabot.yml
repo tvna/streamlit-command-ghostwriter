@@ -1,6 +1,14 @@
 name: Auto-merge for dependabot
 on:
   pull_request:
+    branches:
+      - develop
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   merge:
     if: ${{ github.actor == 'dependabot[bot]' }}
