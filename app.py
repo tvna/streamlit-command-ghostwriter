@@ -130,7 +130,7 @@ def show_tab1(
     elif (is_submit_text or is_submit_markdown) and isinstance(result_text, str):
         show_tab1_result(is_submit_text, is_submit_markdown, texts, result_text)
     elif is_submit_text or is_submit_markdown:
-        st.warning(texts["error_both_files"])
+        st.warning(texts["tab1_error_both_files"])
 
 
 def show_tab1_result(
@@ -177,11 +177,11 @@ def show_tab2_result(
 
     # エラーなしで、応答結果なし
     if parsed_config is None:
-        st.warning(f"{texts['error_debug_not_found']}")
+        st.warning(f"{texts['tab2_error_debug_not_found']}")
         return None
 
-    st.success(texts["success_debug_config"])
-    st.text_area(texts["debug_config_text"], parsed_config, height=500)
+    st.success(texts["tab2_success_debug_config"])
+    st.text_area(texts["tab2_debug_config_text"], parsed_config, height=500)
 
 
 def main() -> None:

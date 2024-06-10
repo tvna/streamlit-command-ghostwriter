@@ -209,7 +209,7 @@ def test_main_layout() -> None:
     assert len(at.tabs) == 3
     assert len(at.columns) == 12
     assert len(at.sidebar) == 2
-    assert len(at.markdown) == 2
+    assert len(at.markdown) == 3
     assert at.button.len == 3
     assert at.button[0].value is False
     assert at.button[1].value is False
@@ -265,10 +265,10 @@ def test_main_layout() -> None:
         "expected_success_objects",
     ),
     [
-        pytest.param(0, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key }} ###", 1, 2, "", 0, 0, 1),  # broken
-        pytest.param(0, "config.toml", b"date=2024-04-00", "template.j2", b"### This is {{ key }} ###", 1, 2, "", 0, 0, 1),  # broken
-        pytest.param(0, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key ###", 1, 2, "", 0, 0, 1),  # broken
-        pytest.param(1, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key }} ###", 0, 3, "", 0, 0, 1),  # broken
+        pytest.param(0, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key }} ###", 1, 3, "", 0, 0, 1),  # broken
+        pytest.param(0, "config.toml", b"date=2024-04-00", "template.j2", b"### This is {{ key }} ###", 1, 3, "", 0, 0, 1),  # broken
+        pytest.param(0, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key ###", 1, 3, "", 0, 0, 1),  # broken
+        pytest.param(1, "config.toml", b'key="POSITIVE"', "template.j2", b"### This is {{ key }} ###", 0, 4, "", 0, 0, 1),  # broken
     ],
 )
 def test_main_tab1(
