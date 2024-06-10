@@ -18,6 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
+    name: Test streamlit web-app
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -68,6 +69,13 @@ jobs:
       - name: Run pytest
         run: |
           poetry run pytest --cov . --cov-report=xml
+      - name: Start Streamlit app
+        run: |
+          nohup poetry run streamlit run app.py &
+          sleep 5
+      - name: Check if Streamlit app is running
+        run: |
+          curl -f http://localhost:8501 || exit 1
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
@@ -77,6 +85,7 @@ jobs:
             .coverage
             htmlcov
   coverage:
+    name: Upload coverage to some services
     runs-on: ubuntu-latest
     needs:
       - test
@@ -103,6 +112,7 @@ jobs:
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
   build:
+    name: Build electron desktop-app
     runs-on: ${{ matrix.os }}
     needs:
       - test
