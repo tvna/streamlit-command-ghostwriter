@@ -215,7 +215,7 @@ def main() -> None:
             """
             )
 
-    tab1, tab2, tab3 = st.tabs([texts["tab1_convert_text"], texts["tab2_debug_config"], texts["tab3_advanced_option"]])
+    tab1, tab2, tab3 = st.tabs([texts["tab1_menu_convert_text"], texts["tab2_menu_debug_config"], texts["tab3_menu_advanced_option"]])
 
     with tab1:
         tab1_model = AppModel()
