@@ -142,7 +142,7 @@ def show_tab1_result(
     # display raw text
     if is_submit_text:
         st.success(texts["tab1_success_formatted_text"])
-        st.text_area(texts["tab1_formatted_text"], result_text, height=500)
+        st.container(border=True).text_area(texts["tab1_formatted_text"], result_text, height=500)
         return None
 
     # display markdown document
