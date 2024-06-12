@@ -19,7 +19,6 @@ class GhostwriterParser:
         self.__error_message: Optional[str] = None
 
     def load_config_file(self: "GhostwriterParser", config_file: BytesIO) -> "GhostwriterParser":
-
         try:
             self.__file_extension = config_file.name.split(".")[-1]
             if self.__file_extension not in ["toml", "yaml", "yml"]:
@@ -33,7 +32,6 @@ class GhostwriterParser:
         return self
 
     def parse(self: "GhostwriterParser") -> bool:
-
         if self.__config_data is None:
             return False
 
@@ -42,7 +40,7 @@ class GhostwriterParser:
                 self.__parsed_dict = tomllib.loads(self.__config_data)
 
             if self.__file_extension in {"yaml", "yml"}:
-                self.__parsed_dict = yaml.load(self.__config_data, yaml.FullLoader)
+                self.__parsed_dict = yaml.safe_load(self.__config_data)
 
         except (tomllib.TOMLDecodeError, TypeError) as e:
             self.__error_message = str(e)
@@ -50,12 +48,12 @@ class GhostwriterParser:
         except (yaml.MarkedYAMLError, yaml.reader.ReaderError, ValueError) as e:
             self.__error_message = str(e)
 
-        if isinstance(self.__parsed_dict, str):
-            self.__error_message = "Invalid YAML file loaded."
-            self.__parsed_dict = None
-
         if self.__parsed_dict is None:
             return False
+
+        if not isinstance(self.__parsed_dict, dict):
+            self.__error_message = "Invalid YAML file loaded."
+            self.__parsed_dict = None
 
         return True
 
