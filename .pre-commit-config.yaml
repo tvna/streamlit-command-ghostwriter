@@ -9,6 +9,13 @@ repos:
   - id: detect-private-key
   - id: destroyed-symlinks
 
+- repo: https://github.com/tox-dev/pyproject-fmt
+  rev: 2.1.3
+  hooks:
+    - id: pyproject-fmt
+      # https://pyproject-fmt.readthedocs.io/en/latest/#calculating-max-supported-python-version
+      additional_dependencies: ["tox>=4.9"]
+
 - repo: https://github.com/pycqa/isort
   rev: 5.13.2
   hooks:
@@ -37,10 +44,3 @@ repos:
   hooks:
     - id: poetry-export
       args: ["-f", "requirements.txt", "-o", "./requirements.txt", "--without-hashes", "-v"]
-
-- repo: local
-  hooks:
-    - id: actionlint
-      name: linting github actions workflows
-      entry: bash -c 'if command -v actionlint >/dev/null 2>&1; then actionlint .github/workflows/*.yml; else echo "actionlint not found, skipping."; fi'
-      language: system

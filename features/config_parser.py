@@ -54,6 +54,7 @@ class GhostwriterParser:
         if not isinstance(self.__parsed_dict, dict):
             self.__error_message = "Invalid YAML file loaded."
             self.__parsed_dict = None
+            return False
 
         return True
 

@@ -155,7 +155,7 @@ jobs:
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
   build:
-    name: Build electron desktop-app
+    name: Build desktop-app
     runs-on: ${{ matrix.os }}
     needs:
       - security

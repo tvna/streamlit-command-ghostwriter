@@ -704,21 +704,6 @@ attrs = ">=21.4"
 flake8 = ">=5.0"
 
 [[package]]
-name = "flake8-bandit"
-version = "4.1.1"
-description = "Automated security testing with bandit and flake8."
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "flake8_bandit-4.1.1-py3-none-any.whl", hash = "sha256:4c8a53eb48f23d4ef1e59293657181a3c989d0077c9952717e98a0eace43e06d"},
-    {file = "flake8_bandit-4.1.1.tar.gz", hash = "sha256:068e09287189cbfd7f986e92605adea2067630b75380c6b5733dab7d87f9a84e"},
-]
-
-[package.dependencies]
-bandit = ">=1.7.3"
-flake8 = ">=5.0.0"
-
-[[package]]
 name = "flake8-bugbear"
 version = "24.4.26"
 description = "A plugin for flake8 finding likely bugs and design problems in your program. Contains warnings that don't belong in pyflakes and pycodestyle."
@@ -2845,4 +2830,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "7f0ae2a3ad81e7a43c436d944a3790ec1569d991ccc23ff2e69eddac229544da"
+content-hash = "37d7e3767ab33187cf16744b0791d167b466f84ce386dcdbbfe7e4062cfcf2cf"
