@@ -61,11 +61,6 @@ jobs:
       - name: Run pytest
         run: |
           poetry run pytest --cov . --cov-report=xml
-      - name: Run lizard (analize CCN)
-        run: |
-          lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN ${LIZARD_CCN_COUNT}
-        env:
-          LIZARD_CCN_COUNT: 10
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
@@ -129,8 +124,8 @@ jobs:
       - name: Check if Streamlit app is running
         run: |
           curl -f http://localhost:8501 || exit 1
-  analyze:
-    name: Conunt CCN number
+  analyze_ccn:
+    name: Analyze CCN number
     runs-on: ubuntu-latest
     needs:
       - test
@@ -140,6 +135,8 @@ jobs:
           - 3.12
     permissions:
       contents: read
+    env:
+      LIZARD_CCN_COUNT: 10
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -171,9 +168,7 @@ jobs:
           poetry install
       - name: Run lizard (analize CCN)
         run: |
-          lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN ${LIZARD_CCN_COUNT}
-        env:
-          LIZARD_CCN_COUNT: 10
+          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN ${LIZARD_CCN_COUNT}
   security:
     # https://bandit.readthedocs.io/en/latest/index.html
     name: Run security linter
@@ -225,6 +220,8 @@ jobs:
       - test
     permissions:
       contents: read
+    env:
+      CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -243,15 +240,13 @@ jobs:
           cc-test-reporter before-build
           # insert your test command here
           cc-test-reporter after-build --exit-code $?
-        env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
   build:
     name: Build desktop-app
     runs-on: ${{ matrix.os }}
     needs:
       - e2e_test
       - security
-      - analyze
+      - analyze_ccn
     strategy:
       matrix:
         os:
