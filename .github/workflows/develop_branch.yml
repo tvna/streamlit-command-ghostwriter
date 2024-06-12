@@ -18,8 +18,67 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
-    name: Test streamlit web-app
+    name: Run unittest web-app
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - 3.12
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Bootstrap poetry
+        run: |
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Configure poetry
+        run: poetry config virtualenvs.in-project false
+        shell: bash
+      - name: Restore cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        shell: bash
+        run: |
+          poetry install
+      - name: Run mypy
+        run: |
+          poetry run mypy . --exclude build
+      - name: Run pytest
+        run: |
+          poetry run pytest --cov . --cov-report=xml
+      - name: Run lizard (analize CCN)
+        run: |
+          lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN ${LIZARD_CCN_COUNT}
+        env:
+          LIZARD_CCN_COUNT: 10
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: |
+            coverage.xml
+            .coverage
+            htmlcov
+  e2e_test:
+    name: Run E2E-test web-app
+    runs-on: ubuntu-latest
+    needs:
+      - test
     strategy:
       matrix:
         python-version:
@@ -63,12 +122,6 @@ jobs:
       - name: Install Playwright Browsers
         run: |
           poetry run playwright install
-      - name: Run mypy
-        run: |
-          poetry run mypy . --exclude build
-      - name: Run pytest
-        run: |
-          poetry run pytest --cov . --cov-report=xml
       - name: Start Streamlit app
         run: |
           nohup poetry run streamlit run app.py &
@@ -76,16 +129,54 @@ jobs:
       - name: Check if Streamlit app is running
         run: |
           curl -f http://localhost:8501 || exit 1
-      - name: Archive code coverage results
-        uses: actions/upload-artifact@v4
+  analyze:
+    name: Conunt CCN number
+    runs-on: ubuntu-latest
+    needs:
+      - test
+    strategy:
+      matrix:
+        python-version:
+          - 3.12
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
-          name: code-coverage-report
+          python-version: ${{ matrix.python-version }}
+      - name: Bootstrap poetry
+        run: |
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Configure poetry
+        run: poetry config virtualenvs.in-project false
+        shell: bash
+      - name: Restore cache pip dependencies
+        uses: actions/cache@v4
+        with:
           path: |
-            coverage.xml
-            .coverage
-            htmlcov
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        shell: bash
+        run: |
+          poetry install
+      - name: Run lizard (analize CCN)
+        run: |
+          lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN ${LIZARD_CCN_COUNT}
+        env:
+          LIZARD_CCN_COUNT: 10
   security:
-    name: Apply security linter
+    # https://bandit.readthedocs.io/en/latest/index.html
+    name: Run security linter
     runs-on: ubuntu-latest
     needs:
       - test
@@ -128,7 +219,7 @@ jobs:
         run: |
           poetry run bandit -c pyproject.toml -r .
   coverage:
-    name: Upload coverage to some services
+    name: Upload coverage
     runs-on: ubuntu-latest
     needs:
       - test
@@ -158,7 +249,9 @@ jobs:
     name: Build desktop-app
     runs-on: ${{ matrix.os }}
     needs:
+      - e2e_test
       - security
+      - analyze
     strategy:
       matrix:
         os:
