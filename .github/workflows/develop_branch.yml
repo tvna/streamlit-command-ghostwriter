@@ -251,7 +251,6 @@ jobs:
       matrix:
         os:
           - macos-latest
-          - ubuntu-latest
           - windows-latest
     permissions:
       contents: read
@@ -275,3 +274,9 @@ jobs:
       - name: Dump package
         run: |
           npm run dump
+          npm run dist
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-build-artifact
+          path: ./dist
