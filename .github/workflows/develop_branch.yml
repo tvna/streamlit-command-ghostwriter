@@ -125,6 +125,7 @@ jobs:
         run: |
           curl -f http://localhost:8501 || exit 1
   analyze_ccn:
+    # https://github.com/terryyin/lizard
     name: Analyze CCN number
     runs-on: ubuntu-latest
     needs:
@@ -213,8 +214,8 @@ jobs:
       - name: Run mypy
         run: |
           poetry run bandit -c pyproject.toml -r .
-
   add_requirements:
+    # https://python-poetry.org/docs/cli/#export
     runs-on: ubuntu-latest
     needs:
       - test
@@ -249,7 +250,7 @@ jobs:
         with:
           name: requirements-txt
           path: |
-          $GITHUB_WORKSPACE/requirements.txt
+            $GITHUB_WORKSPACE/requirements.txt
   coverage:
     name: Upload coverage
     runs-on: ubuntu-latest
