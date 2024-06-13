@@ -231,14 +231,15 @@ jobs:
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Create a new file
         run: |
-          poetry export -f requirements.txt -o ./requirements.txt --without-hashes -v
+          pwd
+          poetry export -f requirements.txt -o $GITHUB_WORKSPACE/requirements.txt --without-hashes -v
       - name: Configure Git
         run: |
           git config --global user.name "${{ secrets.GIT_CONFIG_USERNAME }}"
           git config --global user.email "${{ secrets.GIT_CONFIG_EMAIL }}"
       - name: Commit and push changes
         run: |
-          git add requirements.txt
+          git add $GITHUB_WORKSPACE/requirements.txt
           git commit -m "Add requirements.txt"
           git push
         env:
@@ -248,7 +249,7 @@ jobs:
         with:
           name: requirements-txt
           path: |
-            equirements.txt
+          $GITHUB_WORKSPACE/requirements.txt
   coverage:
     name: Upload coverage
     runs-on: ubuntu-latest
