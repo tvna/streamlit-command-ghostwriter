@@ -289,7 +289,6 @@ jobs:
       - e2e_test
       - security
       - analyze_ccn
-      - add_requirements
     strategy:
       matrix:
         os:
