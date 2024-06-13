@@ -223,8 +223,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Bootstrap poetry
+        run: |
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Create a new file
         run: |
           poetry export -f requirements.txt -o ./requirements.txt --without-hashes -v
