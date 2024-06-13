@@ -33,6 +33,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Restore cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
@@ -43,14 +51,6 @@ jobs:
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
         shell: bash
-      - name: Restore cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-            .venv
-          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
         shell: bash
         run: |
@@ -87,16 +87,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Bootstrap poetry
-        run: |
-          curl -sL https://install.python-poetry.org | python - -y
-        shell: bash
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-        shell: bash
-      - name: Configure poetry
-        run: poetry config virtualenvs.in-project false
-        shell: bash
       - name: Restore cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -110,6 +100,16 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-pytest-playwright-${{ hashFiles('**/poetry.lock') }}
+      - name: Bootstrap poetry
+        run: |
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Configure poetry
+        run: poetry config virtualenvs.in-project false
+        shell: bash
       - name: Install dependencies
         shell: bash
         run: |
@@ -145,6 +145,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Restore cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
@@ -155,14 +163,6 @@ jobs:
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
         shell: bash
-      - name: Restore cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-            .venv
-          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
         shell: bash
         run: |
@@ -189,6 +189,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Restore cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
@@ -199,14 +207,6 @@ jobs:
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
         shell: bash
-      - name: Restore cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-            .venv
-          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
         shell: bash
         run: |
@@ -221,6 +221,8 @@ jobs:
       - test
     permissions:
       contents: write
+    env:
+      REQUIREMENTS_TXT: $GITHUB_WORKSPACE/requirements.txt
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -232,15 +234,16 @@ jobs:
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Create a new file
         run: |
-          pwd
-          poetry export -f requirements.txt -o $GITHUB_WORKSPACE/requirements.txt --without-hashes -v
+          poetry export -f requirements.txt -o ${REQUIREMENTS_TXT} --without-hashes -v
+          echo "# dummy change" >> ${REQUIREMENTS_TXT}
+          cat ${REQUIREMENTS_TXT}
       - name: Configure Git
         run: |
           git config --global user.name "${{ secrets.GIT_CONFIG_USERNAME }}"
           git config --global user.email "${{ secrets.GIT_CONFIG_EMAIL }}"
       - name: Commit and push changes
         run: |
-          git add $GITHUB_WORKSPACE/requirements.txt
+          git add ${REQUIREMENTS_TXT}
           git commit -m "Add requirements.txt"
           git push
         env:
@@ -250,7 +253,7 @@ jobs:
         with:
           name: requirements-txt
           path: |
-            $GITHUB_WORKSPACE/requirements.txt
+            ${REQUIREMENTS_TXT}
   coverage:
     name: Upload coverage
     runs-on: ubuntu-latest
