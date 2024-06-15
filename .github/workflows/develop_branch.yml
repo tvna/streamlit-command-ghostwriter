@@ -326,11 +326,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-build-artifact
-          path: ./dist/*.exe
-        if: ${{ runner.os }} == "windows-latest"
+          path: ./dist/command_ghostwriter-win32-x64.exe
+        if: ${{ runner.os == 'windows-latest' }}
       - name: Upload artifact (MacOS)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-build-artifact
-          path: ./dist/*.dmg
-        if: ${{ runner.os }} == "macos-latest"
+          path: ./dist/command_ghostwriter-mac-arm64.dmg
+        if: ${{ runner.os == 'macos-latest' }}

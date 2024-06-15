@@ -18,6 +18,7 @@
     "build": {
       "files": ["build/**/*"],
       "productName": "CommandGhostwriter",
+      "artifactName": "${name}-${os}-${arch}.${ext}",
       "directories": {
         "buildResources": "assets"
       },
