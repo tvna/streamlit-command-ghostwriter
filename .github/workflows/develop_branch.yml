@@ -127,7 +127,7 @@ jobs:
       - name: Check if Streamlit app is running
         run: |
           curl -f http://localhost:8501 || exit 1
-  analyze_ccn:
+  analyze:
     # https://github.com/terryyin/lizard
     name: Analyze CCN number
     runs-on: ubuntu-latest
@@ -170,9 +170,18 @@ jobs:
         shell: bash
         run: |
           poetry install
-      - name: Run lizard (analize CCN)
+      - name: Run lizard (analyze CCN)
         run: |
           poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN ${LIZARD_CCN_COUNT}
+      - name: Show AST (app.py)
+        run: |
+          python -c 'import ast; print(ast.dump(ast.parse(open("app.py").read()), indent=2))'
+      - name: Show AST (command_render.py)
+        run: |
+          python -c 'import ast; print(ast.dump(ast.parse(open("features/command_render.py").read()), indent=2))'
+      - name: Show AST (config_parser.py)
+        run: |
+          python -c 'import ast; print(ast.dump(ast.parse(open("features/config_parser.py").read()), indent=2))'
   add_requirements:
     # https://python-poetry.org/docs/cli/#export
     name: Add requirements.txt
@@ -247,7 +256,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs:
       - e2e_test
-      - analyze_ccn
+      - analyze
     strategy:
       matrix:
         os:
