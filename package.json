@@ -57,6 +57,8 @@
             ],
             "nodeJsWorker": true,
             "entrypoint": "app.py",
+            "embed": true,
+            "dependencies": ["streamlit", "pyyaml", "jinja2"],
             "requirementsTxtFiles": [
                 "requirements.txt"
             ]
