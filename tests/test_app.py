@@ -95,6 +95,7 @@ def model(monkeypatch: pytest.MonkeyPatch) -> AppModel:
     return AppModel()
 
 
+@pytest.mark.unit()
 @pytest.mark.parametrize(
     ("config_content", "expected_dict", "expected_text", "expected_error"),
     [
@@ -121,6 +122,7 @@ def test_load_config_file(
     assert model.config_error_message == expected_error
 
 
+@pytest.mark.unit()
 @pytest.mark.parametrize(
     ("is_strict_undefined", "template_content", "config_data", "expected_result", "expected_error"),
     [
@@ -160,6 +162,7 @@ def test_load_template_file(
     assert model.template_error_message == expected_error
 
 
+@pytest.mark.unit()
 @pytest.mark.parametrize(
     ("is_append_timestamp", "name_prefix", "name_suffix", "expected_prefix", "expected_suffix"),
     [
@@ -194,13 +197,7 @@ def test_get_download_filename(
         assert filename == f"{expected_prefix}{expected_suffix}"
 
 
-###################################
-#
-# Integration Tests
-#
-###################################
-
-
+@pytest.mark.unit()
 def test_main_layout() -> None:
     at = AppTest.from_file("app.py").run()
 
@@ -250,6 +247,14 @@ def test_main_layout() -> None:
     assert len(at.success) == 0
 
 
+###################################
+#
+# Integration Tests
+#
+###################################
+
+
+@pytest.mark.integration()
 @pytest.mark.parametrize(
     (
         "active_button",
@@ -311,6 +316,7 @@ def test_main_tab1(
     assert len(at.success) == expected_success_objects
 
 
+@pytest.mark.integration()
 @pytest.mark.parametrize(
     (
         "config_filename",

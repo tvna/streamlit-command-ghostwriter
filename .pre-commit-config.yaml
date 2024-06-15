@@ -37,3 +37,16 @@ repos:
     - id: mypy
       description: "Run 'mypy' for Python linting"
       additional_dependencies: ["types-PyYAML"]
+
+- repo: local
+  hooks:
+    - id: pytest_unit
+      name: pytest (unit)
+      entry: pytest -m unit --disable-warnings
+      language: system
+      pass_filenames: false
+    - id: pytest_integration
+      name: pytest (integration)
+      entry: pytest -m integration --disable-warnings
+      language: system
+      pass_filenames: false

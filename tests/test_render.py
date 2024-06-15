@@ -6,6 +6,7 @@ import pytest
 from features.command_render import GhostwriterRender
 
 
+@pytest.mark.unit()
 @pytest.mark.parametrize(
     (
         "is_strict_undefined",

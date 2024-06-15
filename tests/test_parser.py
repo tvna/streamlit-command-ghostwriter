@@ -12,6 +12,7 @@ def parser() -> GhostwriterParser:
     return GhostwriterParser()
 
 
+@pytest.mark.unit()
 @pytest.mark.parametrize(
     ("content", "filename", "is_successful", "expected_dict", "expected_str", "expected_error"),
     [

@@ -102,6 +102,11 @@ pythonpath = "."
 addopts = [
   "--import-mode=importlib",
 ]
+markers = [
+
+  "unit: mark a test as a unit test.",
+  "integration: mark a test as an integration test.",
+]
 
 [tool.mypy]
 python_version = "3.12"
