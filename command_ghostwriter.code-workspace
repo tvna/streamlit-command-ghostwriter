@@ -68,5 +68,6 @@
 		"yaml.validate": false,
 		"yaml.schemas": {},
 		"yaml.keyOrdering": true,
+		"ruff.lineLength": 140,
 	}
 }

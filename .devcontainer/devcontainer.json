@@ -15,8 +15,6 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-python.mypy-type-checker",
-        "ms-python.flake8",
-        "ms-python.isort",
         "MS-CEINTL.vscode-language-pack-ja",
         "esbenp.prettier-vscode",
         "github.vscode-github-actions",
