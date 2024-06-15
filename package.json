@@ -40,8 +40,8 @@
       "desktop": {
         "files": ["app.py", "i11n.py", "features/*.py"],
         "nodeJsWorker": true,
-        "dependencies": ["streamlit", "pyyaml", "jinja2"],
-        "entrypoint": "app.py"
+        "entrypoint": "app.py",
+        "requirementsTxtFiles": ["requirements.txt"]
       }
     }
   }

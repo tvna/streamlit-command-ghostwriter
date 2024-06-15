@@ -39,7 +39,7 @@
 			"build": true,
 			"coverage.xml": true,
 			"node_modules": true,
-			"requirements.txt": true,
+			"requirements.txt": false,
 			"poetry.lock": true,
 			"package-lock.json": true
 		},

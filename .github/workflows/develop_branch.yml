@@ -216,6 +216,7 @@ jobs:
           poetry run bandit -c pyproject.toml -r .
   add_requirements:
     # https://python-poetry.org/docs/cli/#export
+    name: Add requirements.txt
     runs-on: ubuntu-latest
     needs:
       - test
@@ -321,8 +322,15 @@ jobs:
           npm run dist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload artifact
+      - name: Upload artifact (Windows)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-build-artifact
-          path: ./dist
+          path: ./dist/*.exe
+        if: ${{ runner.os }} == "windows-latest"
+      - name: Upload artifact (MacOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-build-artifact
+          path: ./dist/*.dmg
+        if: ${{ runner.os }} == "macos-latest"
