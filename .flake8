@@ -1,5 +1,0 @@
-[flake8]
-max-line-length = 140
-ignore = D100, D202, E402, E501, H601, W503
-count = true
-exclude = .git,.github,.venv,node_modules,.mypy_cache.pytest_cache,__pycache__,build,dist
