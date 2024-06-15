@@ -9,7 +9,7 @@ on:
       - README.md
       - .gitignore
       - .cz_config.js
-      - **.code-workspace
+      - "**.code-workspace"
   pull_request:
     branches:
       - develop
