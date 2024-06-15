@@ -35,7 +35,7 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - ${{ python-version }}
+          - ${{ env.python-version }}
     permissions:
       contents: read
     timeout-minutes: 5
@@ -94,10 +94,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ python-version }}
+      - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ python-version }}
+          python-version: ${{ env.python-version }}
       - name: Restore cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -105,7 +105,7 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             .venv
-          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Restore cache playwright browsers
         uses: actions/cache@v4
         with:
@@ -151,7 +151,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ python-version }}
+          python-version: ${{ env.python-version }}
       - name: Restore cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -159,7 +159,7 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             .venv
-          key: ${{ runner.os }}-python${{ python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
@@ -275,13 +275,13 @@ jobs:
       - name: Install Node.js, NPM and Yarn
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ node-version }}
+          node-version: ${{ env.node-version }}
       - name: Restore cache node-electron dependecies
         uses: actions/cache@v4
         with:
           path: |
             **/node_modules
-          key: ${{ runner.os }}-node${{ node-version }}-electron-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node${{ env.node-version }}-electron-${{ hashFiles('**/package-lock.json') }}
       - name: Install stlite
         run: |
           npm install
