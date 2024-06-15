@@ -55,9 +55,12 @@ jobs:
         shell: bash
         run: |
           poetry install
+      - name: Run ruff
+        run: |
+          poetry run ruff check .
       - name: Run mypy
         run: |
-          poetry run mypy . --exclude build
+          poetry run mypy .
       - name: Run pytest
         run: |
           poetry run pytest --cov . --cov-report=xml
