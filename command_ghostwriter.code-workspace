@@ -17,15 +17,20 @@
 			"${workspaceFolderBasename}/.venv/*/site-packages"
 		],
 		"cSpell.words": [
+			"breakline",
 			"charliermarsh",
+			"commitlint",
 			"devcontainer",
+			"EDITMSG",
 			"isort",
+			"maxfail",
 			"micropip",
 			"mypy",
 			"pycache",
 			"pyodide",
 			"pytest",
 			"rcfile",
+			"stlite",
 			"streamlit",
 			"venv"
 		],
@@ -61,5 +66,7 @@
 			"editor.defaultFormatter": "esbenp.prettier-vscode"
 		},
 		"yaml.validate": false,
+		"yaml.schemas": {},
+		"yaml.keyOrdering": true,
 	}
 }
