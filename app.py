@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import streamlit as st
 
@@ -48,29 +48,24 @@ class AppModel:
         is_strict_undefined: bool,
         is_clear_dup_lines: bool,
     ) -> bool:
-        # 呼び出しされるたびに、前回の結果をリセットする
         self.__formatted_text = None
 
         if not template_file:
             return False
 
-        # テンプレートの読み込みと検証
         render = GhostwriterRender(is_strict_undefined, is_clear_dup_lines)
         if not render.load_template_file(template_file).validate_template():
             self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
             return False
 
-        config_data = self.__config_dict
-        if config_data is None:
+        if self.__config_dict is None:
             return False
 
-        # 設定ファイルをテンプレートに反映して、テキスト生成を実行
-        if not render.apply_context(config_data) or isinstance(render.error_message, str):
+        if not render.apply_context(self.__config_dict):
             self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
             return False
 
         self.__formatted_text = render.render_content
-
         return True
 
     def get_download_filename(
@@ -117,71 +112,51 @@ class AppModel:
         return True
 
 
-def show_tab1(
-    is_submit_text: bool,
-    is_submit_markdown: bool,
-    texts: Dict[str, str],
-    result_text: Optional[str],
-    first_error_message: Optional[str],
-    second_error_message: Optional[str],
-) -> None:
-    if first_error_message or second_error_message:
-        show_tab1_error(first_error_message, second_error_message)
-    elif (is_submit_text or is_submit_markdown) and isinstance(result_text, str):
-        show_tab1_result(is_submit_text, is_submit_markdown, texts, result_text)
-    elif is_submit_text or is_submit_markdown:
-        st.warning(texts["tab1_error_both_files"])
+class TabViewModel:
+    def __init__(self: "TabViewModel", texts: Dict[str, str]) -> None:
+        self.__texts = texts
 
+    def show_tab1(
+        self: "TabViewModel",
+        is_submit_text: bool,
+        is_submit_markdown: bool,
+        result_text: Optional[str],
+        error_messages: Tuple[Optional[str], Optional[str]],
+    ) -> None:
+        first_error_message, second_error_message = error_messages
+        if first_error_message or second_error_message:
+            self.__show_tab1_error(first_error_message, second_error_message)
+        elif (is_submit_text or is_submit_markdown) and isinstance(result_text, str):
+            self.__show_tab1_result(is_submit_text, is_submit_markdown, result_text)
+        elif is_submit_text or is_submit_markdown:
+            st.warning(self.__texts["tab1_error_both_files"])
 
-def show_tab1_result(
-    is_submit_text: bool,
-    is_submit_markdown: bool,
-    texts: Dict[str, str],
-    result_text: Optional[str],
-) -> None:
-    # display raw text
-    if is_submit_text:
-        st.success(texts["tab1_success_formatted_text"])
-        st.container(border=True).text_area(texts["tab1_formatted_text"], result_text, height=500)
-        return
+    def __show_tab1_result(self: "TabViewModel", is_submit_text: bool, is_submit_markdown: bool, result_text: str) -> None:
+        if is_submit_text:
+            st.success(self.__texts["tab1_success_formatted_text"])
+            st.container(border=True).text_area(self.__texts["tab1_formatted_text"], result_text, height=500)
+        elif is_submit_markdown:
+            st.success(self.__texts["tab1_success_formatted_text"])
+            st.container(border=True).markdown(result_text)
 
-    # display markdown document
-    if is_submit_markdown:
-        st.success(texts["tab1_success_formatted_text"])
-        st.container(border=True).markdown(result_text)
-        return
+    def __show_tab1_error(self: "TabViewModel", first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
+        if first_error_message:
+            st.error(first_error_message)
+        if second_error_message:
+            st.error(second_error_message)
 
-
-def show_tab1_error(first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
-    if isinstance(first_error_message, str):
-        st.error(first_error_message)
-
-    if isinstance(second_error_message, str):
-        st.error(second_error_message)
-
-
-def show_tab2_result(
-    is_submit: bool,
-    texts: Dict[str, str],
-    parsed_config: Optional[str],
-    filename: Optional[str],
-    error_message: Optional[str],
-) -> None:
-    if not is_submit:
-        return
-
-    # エラー発生
-    if error_message:
-        st.error(error_message)
-        return
-
-    # エラーなしで、応答結果なし
-    if parsed_config is None:
-        st.warning(f"{texts['tab2_error_debug_not_found']}")
-        return
-
-    st.success(texts["tab2_success_debug_config"])
-    st.text_area(texts["tab2_debug_config_text"], parsed_config, height=500)
+    def show_tab2(
+        self: "TabViewModel", is_submit: bool, parsed_config: Optional[str], filename: Optional[str], error_message: Optional[str]
+    ) -> None:
+        if not is_submit:
+            return
+        if error_message:
+            st.error(error_message)
+        elif parsed_config is None:
+            st.warning(f"{self.__texts['tab2_error_debug_not_found']}")
+        else:
+            st.success(self.__texts["tab2_success_debug_config"])
+            st.text_area(self.__texts["tab2_debug_config_text"], parsed_config, height=500)
 
 
 def main() -> None:
@@ -270,13 +245,12 @@ def main() -> None:
             use_container_width=True,
         )
 
-        show_tab1(
+        tab_view_model = TabViewModel(texts)
+        tab_view_model.show_tab1(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
-            texts,
             st.session_state.get("tab1_result_content", None),
-            st.session_state.get("tab1_error_config", None),
-            st.session_state.get("tab1_error_template", None),
+            (st.session_state.get("tab1_error_config", None), st.session_state.get("tab1_error_template", None)),
         )
 
     with tab2:
@@ -293,11 +267,11 @@ def main() -> None:
 
         tab2_row2_col1, _, _ = st.columns(3)
         tab2_row2_col1.button(texts["tab2_generate_debug_config"], use_container_width=True, key="tab2_execute")
-        st.session_state.update({"tab2_error_config": tab1_model.config_error_message})
+        st.session_state.update({"tab2_error_config": tab2_model.config_error_message})
 
-        show_tab2_result(
+        tab_view_model = TabViewModel(texts)
+        tab_view_model.show_tab2(
             st.session_state.get("tab2_execute", False),
-            texts,
             st.session_state.get("tab2_result_content"),
             tab2_model.get_uploaded_filename(st.session_state.get("tab2_config_file")),
             st.session_state.get("tab2_error_config", None),
