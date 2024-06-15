@@ -4,9 +4,12 @@ on:
     branches:
       - develop
     paths-ignore:
-      - .devcontainer
+      - .devcontainer/**
+      - assets/**
       - README.md
-      - command_ghostwriter.code-workspace
+      - .gitignore
+      - .cz_config.js
+      - **.code-workspace
   pull_request:
     branches:
       - develop
