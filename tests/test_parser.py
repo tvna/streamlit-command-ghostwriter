@@ -7,11 +7,6 @@ import pytest
 from features.config_parser import GhostwriterParser
 
 
-@pytest.fixture()
-def parser() -> GhostwriterParser:
-    return GhostwriterParser()
-
-
 @pytest.mark.unit()
 @pytest.mark.parametrize(
     ("content", "filename", "is_successful", "expected_dict", "expected_str", "expected_error"),
@@ -129,7 +124,6 @@ def parser() -> GhostwriterParser:
     ],
 )
 def test_parse(
-    parser: "GhostwriterParser",
     content: bytes,
     filename: str,
     is_successful: bool,
@@ -137,8 +131,12 @@ def test_parse(
     expected_str: str,
     expected_error: Optional[str],
 ) -> None:
+    """Test parser."""
+
     config_file = BytesIO(content)
     config_file.name = filename
+
+    parser = GhostwriterParser()
     assert parser.load_config_file(config_file).parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str

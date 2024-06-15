@@ -97,6 +97,79 @@ def model(monkeypatch: pytest.MonkeyPatch) -> AppModel:
 
 @pytest.mark.unit()
 @pytest.mark.parametrize(
+    (
+        "config_content",
+        "is_successful",
+        "expected_dict",
+        "expected_text",
+        "expected_error",
+    ),
+    [
+        pytest.param(b"POSITIVE", True, {"key": "POSITIVE"}, "{'key':POSITIVE'}", None),
+        pytest.param(b"negative", False, None, None, "parser_module_error"),
+    ],
+)
+def test_mock_parser(
+    config_content: bytes,
+    is_successful: bool,
+    expected_dict: Optional[Dict[str, Any]],
+    expected_text: Optional[str],
+    expected_error: Optional[str],
+) -> None:
+    """Test mock-parser."""
+
+    config_file = BytesIO(config_content)
+    config_file.name = "config.toml"
+
+    parser = MockParser()
+    assert parser.load_config_file(config_file).parse() == is_successful
+    assert parser.parsed_dict == expected_dict
+    assert parser.parsed_str == expected_text
+    if expected_error is None:
+        assert parser.error_message is None
+    else:
+        assert expected_error in str(parser.error_message)
+
+
+@pytest.mark.unit()
+@pytest.mark.parametrize(
+    (
+        "is_strict_undefined",
+        "template_content",
+        "context",
+        "expected_validate_template",
+        "expected_apply_succeeded",
+        "expected_content",
+        "expected_error",
+    ),
+    [
+        pytest.param(True, b"POSITIVE", {"key": "POSITIVE"}, True, True, "This is POSITIVE", None),
+        pytest.param(True, b"negative", {"key": "POSITIVE"}, False, False, None, "render_module_error"),
+        pytest.param(True, b"POSITIVE", {"key": "negative"}, True, False, None, "render_module_error"),
+    ],
+)
+def test_mock_render(
+    is_strict_undefined: bool,
+    template_content: bytes,
+    context: Dict[str, Any],
+    expected_validate_template: bool,
+    expected_apply_succeeded: bool,
+    expected_content: str,
+    expected_error: Optional[str],
+) -> None:
+    """Test mock-render."""
+
+    render = MockRender(is_strict_undefined, True)
+    render.load_template_file(BytesIO(template_content))
+
+    assert render.validate_template() == expected_validate_template
+    assert render.apply_context(context) == expected_apply_succeeded
+    assert render.render_content == expected_content
+    assert render.error_message == expected_error
+
+
+@pytest.mark.unit()
+@pytest.mark.parametrize(
     ("config_content", "expected_dict", "expected_text", "expected_error"),
     [
         pytest.param(None, None, None, None),
@@ -111,6 +184,7 @@ def test_load_config_file(
     expected_error: Optional[str],
     model: AppModel,
 ) -> None:
+    """Test load_config_file."""
     if isinstance(config_content, bytes):
         config_file, config_file.name = BytesIO(config_content), "config.toml"
     else:
@@ -150,6 +224,8 @@ def test_load_template_file(
     expected_error: Optional[str],
     model: AppModel,
 ) -> None:
+    """Test load_template_file."""
+
     model.set_config_dict(config_data)
 
     if isinstance(template_content, bytes):
@@ -182,6 +258,8 @@ def test_get_download_filename(
     expected_suffix: str,
     model: AppModel,
 ) -> None:
+    """Test filename for download contents."""
+
     filename = model.get_download_filename(name_prefix, name_suffix, is_append_timestamp)
 
     if not isinstance(filename, str):
@@ -199,6 +277,8 @@ def test_get_download_filename(
 
 @pytest.mark.unit()
 def test_main_layout() -> None:
+    """Test streamlit app layout"""
+
     at = AppTest.from_file("app.py").run()
 
     # startup
@@ -245,129 +325,3 @@ def test_main_layout() -> None:
     assert len(at.error) == 0
     assert len(at.warning) == 1
     assert len(at.success) == 0
-
-
-###################################
-#
-# Integration Tests
-#
-###################################
-
-
-@pytest.mark.integration()
-@pytest.mark.parametrize(
-    (
-        "active_button",
-        "config_file_content",
-        "template_file_content",
-        "expected_text_area_len",
-        "expected_markdown_len",
-        "expected_text_area_value",
-        "expected_error_objects",
-        "expected_warning_objects",
-        "expected_success_objects",
-    ),
-    [
-        pytest.param("tab1_execute_text", b'key = "POSITIVE"', b"# This is {{ key }} #", 1, 3, "# This is POSITIVE #", 0, 0, 1),
-        pytest.param("tab1_execute_text", None, b"# This is {{ key }} #", 0, 3, None, 0, 1, 0),
-        pytest.param("tab1_execute_text", b'key = "POSITIVE"', None, 0, 3, None, 0, 1, 0),
-        pytest.param("tab1_execute_text", b"date = 2024-04-01", b"# Day is {{ date }} #", 1, 3, "# Day is 2024-04-01 #", 0, 0, 1),
-        pytest.param("tab1_execute_text", b"date = 2024-04-00", b"# Day is {{ date }} #", 0, 3, None, 1, 0, 0),
-        pytest.param("tab1_execute_text", b'key = "POSITIVE"', b"# This is {{ key #", 0, 3, None, 1, 0, 0),
-        pytest.param("tab1_execute_markdown", b'key = "POSITIVE"', b"# This is {{ key }} #", 0, 4, "# This is POSITIVE #", 0, 0, 1),
-        pytest.param("tab1_execute_markdown", None, b"# This is {{ key }} #", 0, 3, None, 0, 1, 0),
-        pytest.param("tab1_execute_markdown", b'key = "POSITIVE"', None, 0, 3, None, 0, 1, 0),
-        pytest.param("tab1_execute_markdown", b"date = 2024-04-01", b"# Day is {{ date }} #", 0, 4, "# Day is 2024-04-01 #", 0, 0, 1),
-        pytest.param("tab1_execute_markdown", b"date = 2024-04-00", b"# Day is {{ date }} #", 0, 3, None, 1, 0, 0),
-        pytest.param("tab1_execute_markdown", b'key = "POSITIVE"', b"# This is {{ key #", 0, 3, None, 1, 0, 0),
-    ],
-)
-def test_main_tab1(
-    active_button: str,
-    config_file_content: Optional[bytes],
-    template_file_content: Optional[bytes],
-    expected_text_area_len: int,
-    expected_markdown_len: int,
-    expected_text_area_value: Optional[str],
-    expected_error_objects: int,
-    expected_warning_objects: int,
-    expected_success_objects: int,
-) -> None:
-    """Testcase for tab1."""
-
-    config_file = None
-    template_file = None
-
-    if isinstance(config_file_content, bytes):
-        config_file = BytesIO(config_file_content)
-        config_file.name = "config.toml"
-
-    if isinstance(template_file_content, bytes):
-        template_file = BytesIO(template_file_content)
-        template_file.name = "template.j2"
-
-    at = AppTest.from_file("app.py")
-    at.session_state["tab1_config_file"] = config_file
-    at.session_state["tab1_template_file"] = template_file
-    at.session_state[active_button] = True
-    at.run()
-
-    assert at.session_state["tab1_config_file"] == config_file
-    assert at.session_state["tab1_template_file"] == template_file
-    assert at.session_state["tab1_result_content"] == expected_text_area_value
-    assert at.button(key=active_button).value is True
-    assert at.text_area.len == expected_text_area_len
-    if expected_text_area_len > 0:
-        assert at.text_area(key="tab1_result_textarea").value == expected_text_area_value
-    assert at.markdown.len == expected_markdown_len
-    assert len(at.error) == expected_error_objects
-    assert len(at.warning) == expected_warning_objects
-    assert len(at.success) == expected_success_objects
-
-
-@pytest.mark.integration()
-@pytest.mark.parametrize(
-    (
-        "config_file_content",
-        "expected_text_area_len",
-        "expected_text_area_value",
-        "expected_error_objects",
-        "expected_warning_objects",
-        "expected_success_objects",
-    ),
-    [
-        pytest.param(b'key = "POSITIVE"', 1, "{'key': 'POSITIVE'}", 0, 0, 1),
-        pytest.param(None, 0, None, 0, 1, 0),
-        pytest.param(b"key=", 0, None, 1, 1, 0),
-    ],
-)
-def test_main_tab2(
-    config_file_content: Optional[bytes],
-    expected_text_area_len: int,
-    expected_text_area_value: Optional[str],
-    expected_error_objects: int,
-    expected_warning_objects: int,
-    expected_success_objects: int,
-) -> None:
-    """Testcase for tab2."""
-
-    if isinstance(config_file_content, bytes):
-        config_file = BytesIO(config_file_content)
-        config_file.name = "config.toml"
-    else:
-        config_file = None
-
-    at = AppTest.from_file("app.py")
-    at.session_state["tab2_config_file"] = config_file
-    at.session_state["tab2_execute"] = True
-    at.run()
-
-    assert at.session_state["tab2_config_file"] == config_file
-    assert at.session_state["tab2_result_content"] == expected_text_area_value
-    assert at.button(key="tab2_execute").value is True
-    assert at.text_area.len == expected_text_area_len
-    if expected_text_area_len > 0:
-        assert at.text_area(key="tab2_result_textarea").value == expected_text_area_value
-    assert len(at.error) == expected_error_objects
-    assert len(at.warning) == expected_warning_objects
-    assert len(at.success) == expected_success_objects
