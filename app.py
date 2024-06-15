@@ -19,9 +19,13 @@ class AppModel:
         self.__template_error_message: Optional[str] = None
 
     def set_config_dict(self: "AppModel", config: Optional[Dict[str, Any]]) -> None:
+        """Set config dict for template args."""
+
         self.__config_dict = config
 
     def load_config_file(self: "AppModel", config_file: Optional[BytesIO], error_header: str) -> bool:
+        """Load config file for template args."""
+
         # 呼び出しされるたびに、前回の結果をリセットする
         self.__config_dict = None
         self.__config_str = None
@@ -42,12 +46,10 @@ class AppModel:
         return True
 
     def load_template_file(
-        self: "AppModel",
-        template_file: Optional[BytesIO],
-        error_header: str,
-        is_strict_undefined: bool,
-        is_clear_dup_lines: bool,
+        self: "AppModel", template_file: Optional[BytesIO], error_header: str, is_strict_undefined: bool, is_clear_dup_lines: bool
     ) -> bool:
+        """Load jinja template file."""
+
         self.__formatted_text = None
 
         if not template_file:
@@ -74,6 +76,8 @@ class AppModel:
         download_file_ext: Optional[str],
         is_append_timestamp: bool,
     ) -> Optional[str]:
+        """Get filename for download contents."""
+
         if download_filename is None or download_file_ext is None:
             return None
 
@@ -83,6 +87,8 @@ class AppModel:
         return filename
 
     def get_uploaded_filename(self: "AppModel", file: Optional[BytesIO]) -> Optional[str]:
+        """Get filename for uploaded contents."""
+
         return file.name if isinstance(file, BytesIO) else None
 
     @property
@@ -123,6 +129,8 @@ class TabViewModel:
         result_text: Optional[str],
         error_messages: Tuple[Optional[str], Optional[str]],
     ) -> None:
+        """Show tab1 response content."""
+
         first_error_message, second_error_message = error_messages
         if first_error_message or second_error_message:
             self.__show_tab1_error(first_error_message, second_error_message)
@@ -132,14 +140,18 @@ class TabViewModel:
             st.warning(self.__texts["tab1_error_both_files"])
 
     def __show_tab1_result(self: "TabViewModel", is_submit_text: bool, is_submit_markdown: bool, result_text: str) -> None:
+        """Show tab1 success content."""
+
         if is_submit_text:
             st.success(self.__texts["tab1_success_formatted_text"])
-            st.container(border=True).text_area(self.__texts["tab1_formatted_text"], result_text, height=500)
+            st.container(border=True).text_area(self.__texts["tab1_formatted_text"], result_text, key="tab1_result_textarea", height=500)
         elif is_submit_markdown:
             st.success(self.__texts["tab1_success_formatted_text"])
             st.container(border=True).markdown(result_text)
 
     def __show_tab1_error(self: "TabViewModel", first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
+        """Show tab1 error content."""
+
         if first_error_message:
             st.error(first_error_message)
         if second_error_message:
@@ -148,27 +160,26 @@ class TabViewModel:
     def show_tab2(
         self: "TabViewModel", is_submit: bool, parsed_config: Optional[str], filename: Optional[str], error_message: Optional[str]
     ) -> None:
-        if not is_submit:
-            return
+        """Show tab2 response content."""
+
         if error_message:
             st.error(error_message)
-        elif parsed_config is None:
+        if not is_submit:
+            return
+        elif not filename or not parsed_config:
             st.warning(f"{self.__texts['tab2_error_debug_not_found']}")
-        else:
-            st.success(self.__texts["tab2_success_debug_config"])
-            st.text_area(self.__texts["tab2_debug_config_text"], parsed_config, height=500)
+            return
+
+        st.success(self.__texts["tab2_success_debug_config"])
+        st.text_area(self.__texts["tab2_debug_config_text"], parsed_config, key="tab2_result_textarea", height=500)
 
 
 def main() -> None:
     """Generate Streamlit web screens."""
-
     texts: Dict[str, str] = LANGUAGES["日本語"]
-    st.session_state.update(
-        {
-            "tab1_result_content": st.session_state.get("tab1_result_content"),
-            "tab2_result_content": st.session_state.get("tab2_result_content"),
-        }
-    )
+
+    st.session_state.update({"tab1_result_content": st.session_state.get("tab1_result_content")})
+    st.session_state.update({"tab2_result_content": st.session_state.get("tab2_result_content")})
 
     st.set_page_config(
         page_title="Command ghostwriter",
@@ -262,17 +273,19 @@ def main() -> None:
                 type=["toml", "yaml", "yml"],
                 key="tab2_config_file",
             )
-            tab2_model.load_config_file(st.session_state.get("tab2_config_file"), texts["tab2_error_debug_config"])
-            st.session_state.update({"tab2_result_content": tab2_model.config_str})
+
+        tab2_model.load_config_file(st.session_state.get("tab2_config_file"), texts["tab2_error_debug_config"])
 
         tab2_row2_col1, _, _ = st.columns(3)
         tab2_row2_col1.button(texts["tab2_generate_debug_config"], use_container_width=True, key="tab2_execute")
+
+        st.session_state.update({"tab2_result_content": tab2_model.config_str})
         st.session_state.update({"tab2_error_config": tab2_model.config_error_message})
 
         tab_view_model = TabViewModel(texts)
         tab_view_model.show_tab2(
             st.session_state.get("tab2_execute", False),
-            st.session_state.get("tab2_result_content"),
+            st.session_state.get("tab2_result_content", ""),
             tab2_model.get_uploaded_filename(st.session_state.get("tab2_config_file")),
             st.session_state.get("tab2_error_config", None),
         )
