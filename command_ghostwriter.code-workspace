@@ -17,15 +17,20 @@
 			"${workspaceFolderBasename}/.venv/*/site-packages"
 		],
 		"cSpell.words": [
+			"breakline",
 			"charliermarsh",
+			"commitlint",
 			"devcontainer",
+			"EDITMSG",
 			"isort",
+			"maxfail",
 			"micropip",
 			"mypy",
 			"pycache",
 			"pyodide",
 			"pytest",
 			"rcfile",
+			"stlite",
 			"streamlit",
 			"venv"
 		],
@@ -39,7 +44,7 @@
 			"build": true,
 			"coverage.xml": true,
 			"node_modules": true,
-			"requirements.txt": true,
+			"requirements.txt": false,
 			"poetry.lock": true,
 			"package-lock.json": true
 		},
@@ -56,5 +61,13 @@
 			".vscode-insiders",
 			"**/.cursor/extensions/ms-python.vscode-pylance**"
 		],
+		"yaml.format.enable": true,
+		"[github-actions-workflow]": {
+			"editor.defaultFormatter": "esbenp.prettier-vscode"
+		},
+		"yaml.validate": false,
+		"yaml.schemas": {},
+		"yaml.keyOrdering": true,
+		"ruff.lineLength": 140,
 	}
 }

@@ -28,7 +28,7 @@ class GhostwriterRender:
             return False
 
         try:
-            env = Environment()
+            env = Environment(autoescape=True)
             env.parse(template)
             return True
 
@@ -48,7 +48,7 @@ class GhostwriterRender:
 
         try:
             if self.__is_strict_undefined:
-                env: Environment = Environment(loader=FileSystemLoader("."), undefined=StrictUndefined)
+                env: Environment = Environment(loader=FileSystemLoader("."), undefined=StrictUndefined, autoescape=True)
                 strict_template: Template = env.from_string(template_str)
                 render_content = strict_template.render(context)
             else:

@@ -1,6 +1,6 @@
 {
     "name": "command_ghostwriter",
-    "version": "0.1.0-alpha.0",
+    "version": "0.1.1",
     "main": "./build/electron/main.js",
     "description": "Electron application with streamlit",
     "license": "MIT",
@@ -9,39 +9,67 @@
         "email": "tsubasa.nagano@icloud.com"
     },
     "scripts": {
-      "dump": "dump-stlite-desktop-artifacts",
-      "serve": "cross-env NODE_ENV=production electron .",
-      "pack": "electron-builder --dir",
-      "dist": "electron-builder",
-      "postinstall": "electron-builder install-app-deps"
+        "dump": "dump-stlite-desktop-artifacts",
+        "serve": "cross-env NODE_ENV=production electron .",
+        "pack": "electron-builder --dir",
+        "dist": "electron-builder",
+        "postinstall": "electron-builder install-app-deps",
+        "commit": "pre-commit run && npx cz"
     },
     "build": {
-      "files": ["build/**/*"],
-      "productName": "CommandGhostwriter",
-      "directories": {
-        "buildResources": "assets"
-      },
-      "mac": {
-        "target": "dmg",
-        "icon": "assets/icon.png"
-      },
-      "win": {
-        "target": "portable",
-        "icon": "assets/icon.ico"
-      }
+        "files": [
+            "build/**/*"
+        ],
+        "productName": "CommandGhostwriter",
+        "artifactName": "${name}.${ext}",
+        "directories": {
+            "buildResources": "assets"
+        },
+        "mac": {
+            "target": "dmg",
+            "icon": "assets/icon.png"
+        },
+        "win": {
+            "target": "portable",
+            "icon": "assets/icon.ico"
+        }
     },
     "devDependencies": {
-      "@stlite/desktop": "^0.54.0",
-      "cross-env": "^7.0.3",
-      "electron": "^30.0.9",
-      "electron-builder": "^24.13.3"
+        "@commitlint/cli": "^19.3.0",
+        "@commitlint/config-conventional": "^19.2.2",
+        "@stlite/desktop": "^0.54.0",
+        "commitizen": "^4.3.0",
+        "cross-env": "^7.0.3",
+        "cz-conventional-changelog": "^3.3.0",
+        "cz-customizable": "^7.0.0",
+        "electron": "^30.1.0",
+        "electron-builder": "^24.13.3",
+        "husky": "^9.0.11",
+        "lint-staged": "^15.2.7"
     },
     "stlite": {
-      "desktop": {
-        "files": ["app.py", "i11n.py", "features/*.py"],
-        "nodeJsWorker": true,
-        "dependecies": ["streamlit", "pyyaml", "jinja2"],
-        "entrypoint": "app.py"
-      }
+        "desktop": {
+            "files": [
+                "app.py",
+                "i11n.py",
+                "features/*.py"
+            ],
+            "nodeJsWorker": true,
+            "entrypoint": "app.py",
+            "requirementsTxtFiles": [
+                "requirements.txt"
+            ]
+        }
+    },
+    "config": {
+        "commitizen": {
+            "path": "./node_modules/cz-customizable"
+        },
+        "cz-customizable": {
+          "config": "./.cz_config.js"
+        }
+    },
+    "hooks": {
+        "pre-commit": "lint-staged"
     }
-  }
+}
