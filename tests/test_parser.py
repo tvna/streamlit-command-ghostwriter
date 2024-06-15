@@ -7,7 +7,7 @@ import pytest
 from features.config_parser import GhostwriterParser
 
 
-@pytest.fixture
+@pytest.fixture()
 def parser() -> GhostwriterParser:
     return GhostwriterParser()
 

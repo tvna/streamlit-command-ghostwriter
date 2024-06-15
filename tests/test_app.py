@@ -88,7 +88,7 @@ class MockRender:
         return None
 
 
-@pytest.fixture
+@pytest.fixture()
 def model(monkeypatch: pytest.MonkeyPatch) -> AppModel:
     monkeypatch.setattr("app.GhostwriterParser", MockParser)
     monkeypatch.setattr("app.GhostwriterRender", MockRender)
@@ -185,7 +185,7 @@ def test_get_download_filename(
         assert filename is None
         assert expected_prefix == ""
         assert expected_suffix == ""
-        return None
+        return
 
     if is_append_timestamp:
         assert filename.startswith(expected_prefix)

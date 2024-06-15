@@ -143,13 +143,13 @@ def show_tab1_result(
     if is_submit_text:
         st.success(texts["tab1_success_formatted_text"])
         st.container(border=True).text_area(texts["tab1_formatted_text"], result_text, height=500)
-        return None
+        return
 
     # display markdown document
     if is_submit_markdown:
         st.success(texts["tab1_success_formatted_text"])
         st.container(border=True).markdown(result_text)
-        return None
+        return
 
 
 def show_tab1_error(first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
@@ -168,17 +168,17 @@ def show_tab2_result(
     error_message: Optional[str],
 ) -> None:
     if not is_submit:
-        return None
+        return
 
     # エラー発生
     if error_message:
         st.error(error_message)
-        return None
+        return
 
     # エラーなしで、応答結果なし
     if parsed_config is None:
         st.warning(f"{texts['tab2_error_debug_not_found']}")
-        return None
+        return
 
     st.success(texts["tab2_success_debug_config"])
     st.text_area(texts["tab2_debug_config_text"], parsed_config, height=500)
