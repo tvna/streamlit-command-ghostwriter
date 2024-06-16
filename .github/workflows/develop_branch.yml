@@ -331,14 +331,23 @@ jobs:
           path: |
             **/build
           key: ${{ runner.os }}-node${{ env.node-version }}-electron-prebuild-${{ hashFiles('**/package-lock.json') }}
-      - name: Restore cache electron-builder
+      - name: Restore cache electron-builder (Windows)
+        description: https://github.com/electron/get#usage
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/electron/
-            ~/Library/Caches/electron/
+            %LOCALAPPDATA%/electron/Cache
             ~/AppData/Local/electron/Cache/
           key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+        if: ${{ runner.os == 'Windows' }}
+      - name: Restore cache electron-builder (MacOS)
+        description: https://github.com/electron/get#usage
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron/
+          key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+        if: ${{ runner.os == 'MacOS' }}
       - name: Build
         run: |
           npm run dist
