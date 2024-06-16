@@ -35,7 +35,8 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - 3.12
+          - ${{ env.python-version }} # latest
+          - 3.11
     permissions:
       contents: read
     timeout-minutes: 5
@@ -284,18 +285,9 @@ jobs:
           path: |
             **/node_modules
           key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
-      - name: Restore cache node-electron prebuild
-        uses: actions/cache@v4
-        with:
-          path: |
-            **/build
-          key: ${{ runner.os }}-node${{ env.node-version }}-electron-prebuild-${{ hashFiles('**/package-lock.json') }}
       - name: Install stlite
         run: |
           npm install
-      - name: Dump package
-        run: |
-          npm run dump
 
   build:
     name: Build desktop-app
@@ -325,12 +317,6 @@ jobs:
           path: |
             **/node_modules
           key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
-      - name: Restore cache node-electron prebuild
-        uses: actions/cache@v4
-        with:
-          path: |
-            **/build
-          key: ${{ runner.os }}-node${{ env.node-version }}-electron-prebuild-${{ hashFiles('**/package-lock.json') }}
       - name: Restore cache electron-builder (Windows)
         # https://github.com/electron/get#usage
         uses: actions/cache@v4
@@ -348,6 +334,9 @@ jobs:
             ~/Library/Caches/electron/
           key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
         if: ${{ runner.os == 'MacOS' }}
+      - name: Dump package
+        run: |
+          npm run dump
       - name: Build
         run: |
           npm run dist
