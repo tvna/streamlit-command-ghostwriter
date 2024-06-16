@@ -84,6 +84,7 @@ jobs:
             coverage.xml
             .coverage
             htmlcov
+
   e2e_test:
     name: Run E2E-test web-app
     runs-on: ubuntu-latest
@@ -135,6 +136,7 @@ jobs:
       - name: Check if Streamlit app is running
         run: |
           curl -f http://localhost:8501 || exit 1
+
   analyze:
     # https://github.com/terryyin/lizard
     name: Analyze CCN number, AST
@@ -186,6 +188,7 @@ jobs:
       - name: Show AST (config_parser.py)
         run: |
           python -c 'import ast; print(ast.dump(ast.parse(open("features/config_parser.py").read()), indent=2))'
+
   add_requirements:
     # https://python-poetry.org/docs/cli/#export
     name: Add requirements.txt
@@ -228,6 +231,7 @@ jobs:
           name: requirements-txt
           path: |
             ${REQUIREMENTS_TXT}
+
   coverage:
     name: Upload coverage
     runs-on: ubuntu-latest
@@ -255,12 +259,10 @@ jobs:
           cc-test-reporter before-build
           # insert your test command here
           cc-test-reporter after-build --exit-code $?
-  build:
-    name: Build desktop-app
+
+  prebuild:
+    name: Prebuild desktop-app
     runs-on: ${{ matrix.os }}
-    needs:
-      - e2e_test
-      - analyze
     strategy:
       matrix:
         os:
@@ -281,13 +283,54 @@ jobs:
         with:
           path: |
             **/node_modules
-          key: ${{ runner.os }}-node-electron-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node${{ env.node-version }}-electron-${{ hashFiles('**/package-lock.json') }}
+      - name: Restore cache node-electron prebuild
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/build
+          key: ${{ runner.os }}-node${{ env.node-version }}-electron-prebuild-${{ hashFiles('**/package-lock.json') }}
       - name: Install stlite
         run: |
           npm install
       - name: Dump package
         run: |
           npm run dump
+
+  build:
+    name: Build desktop-app
+    runs-on: ${{ matrix.os }}
+    needs:
+      - e2e_test
+      - analyze
+      - prebuild
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+      - name: Install Node.js, NPM and Yarn
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.node-version }}
+      - name: Restore cache node-electron dependecies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-node${{ env.node-version }}-electron-${{ hashFiles('**/package-lock.json') }}
+      - name: Restore cache node-electron prebuild
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/build
+          key: ${{ runner.os }}-node${{ env.node-version }}-electron-prebuild-${{ hashFiles('**/package-lock.json') }}
       - name: Build
         run: |
           npm run dist
