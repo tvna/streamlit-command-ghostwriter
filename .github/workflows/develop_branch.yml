@@ -332,7 +332,7 @@ jobs:
             **/build
           key: ${{ runner.os }}-node${{ env.node-version }}-electron-prebuild-${{ hashFiles('**/package-lock.json') }}
       - name: Restore cache electron-builder (Windows)
-        description: https://github.com/electron/get#usage
+        # https://github.com/electron/get#usage
         uses: actions/cache@v4
         with:
           path: |
@@ -341,7 +341,7 @@ jobs:
           key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
         if: ${{ runner.os == 'Windows' }}
       - name: Restore cache electron-builder (MacOS)
-        description: https://github.com/electron/get#usage
+        # https://github.com/electron/get#usage
         uses: actions/cache@v4
         with:
           path: |
