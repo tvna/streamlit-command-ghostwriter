@@ -184,7 +184,7 @@ jobs:
 
   call-coverage-workflow:
     needs: test
-    uses: ./.github/workflows/actions/upload-coverage.yml@develop
+    uses: ./.github/workflows/actions/upload-coverage.yml
     with:
       python-version: 3.11
 
