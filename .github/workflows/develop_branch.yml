@@ -26,7 +26,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   test:
@@ -185,10 +185,9 @@ jobs:
   call-coverage-workflow:
     needs: test
     uses: ./.github/workflows/upload-coverage.yml
+    secrets: inherit
     with:
       python-version: 3.11
-      codecov-token: ${{ secrets.CODECOV_TOKEN }}
-      codeclimate-token: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
 
   prebuild:
     name: Prebuild desktop-app
