@@ -6,6 +6,16 @@ on:
       python-version:
         required: true
         type: string
+      codecov-token:
+        required: true
+        type: string
+      codeclimate-token:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-coverage
+  cancel-in-progress: true
 
 jobs:
   coverage:
@@ -46,7 +56,7 @@ jobs:
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.4.1
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ inputs.codecov-token }}
       - name: Setup Code Climate
         uses: remarkablemark/setup-codeclimate@v2
       - name: Run Test and Upload Coverage
@@ -55,4 +65,4 @@ jobs:
 
           cc-test-reporter after-build --exit-code $?
         env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
+          CC_TEST_REPORTER_ID: ${{ inputs.codeclimate-token }}

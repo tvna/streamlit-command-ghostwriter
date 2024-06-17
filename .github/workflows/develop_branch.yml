@@ -187,6 +187,8 @@ jobs:
     uses: ./.github/workflows/upload-coverage.yml
     with:
       python-version: 3.11
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+      codeclimate-token: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
 
   prebuild:
     name: Prebuild desktop-app
