@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import streamlit as st
 
@@ -121,31 +121,47 @@ class AppModel:
 class TabViewModel:
     def __init__(self: "TabViewModel", texts: Dict[str, str]) -> None:
         self.__texts = texts
+        self.__execute_mode: int = 0
+
+    def set_execute_mode(self: "TabViewModel", is_text: bool, is_markdown: bool, is_debug: bool) -> "TabViewModel":
+        """Set execute mode."""
+
+        self.__execute_mode = 0
+
+        if is_text:
+            self.__execute_mode = 1
+            return self
+
+        if is_markdown:
+            self.__execute_mode = 2
+            return self
+
+        if is_debug:
+            self.__execute_mode = 3
+            return self
+
+        return self
 
     def show_tab1(
-        self: "TabViewModel",
-        is_submit_text: bool,
-        is_submit_markdown: bool,
-        result_text: Optional[str],
-        error_messages: Tuple[Optional[str], Optional[str]],
+        self: "TabViewModel", result_text: Optional[str], first_error_message: Optional[str], second_error_message: Optional[str]
     ) -> None:
         """Show tab1 response content."""
 
-        first_error_message, second_error_message = error_messages
+        print(self.__execute_mode)
         if first_error_message or second_error_message:
             self.__show_tab1_error(first_error_message, second_error_message)
-        elif (is_submit_text or is_submit_markdown) and isinstance(result_text, str):
-            self.__show_tab1_result(is_submit_text, is_submit_markdown, result_text)
-        elif is_submit_text or is_submit_markdown:
+        elif (3 > self.__execute_mode > 0) and isinstance(result_text, str):
+            self.__show_tab1_result(result_text)
+        elif 3 > self.__execute_mode > 0:
             st.warning(self.__texts["tab1_error_both_files"])
 
-    def __show_tab1_result(self: "TabViewModel", is_submit_text: bool, is_submit_markdown: bool, result_text: str) -> None:
+    def __show_tab1_result(self: "TabViewModel", result_text: str) -> None:
         """Show tab1 success content."""
 
-        if is_submit_text:
+        if self.__execute_mode == 1:
             st.success(self.__texts["tab1_success_formatted_text"])
             st.container(border=True).text_area(self.__texts["tab1_formatted_text"], result_text, key="tab1_result_textarea", height=500)
-        elif is_submit_markdown:
+        elif self.__execute_mode == 2:
             st.success(self.__texts["tab1_success_formatted_text"])
             st.container(border=True).markdown(result_text)
 
@@ -157,14 +173,12 @@ class TabViewModel:
         if second_error_message:
             st.error(second_error_message)
 
-    def show_tab2(
-        self: "TabViewModel", is_submit: bool, parsed_config: Optional[str], filename: Optional[str], error_message: Optional[str]
-    ) -> None:
+    def show_tab2(self: "TabViewModel", parsed_config: Optional[str], filename: Optional[str], error_message: Optional[str]) -> None:
         """Show tab2 response content."""
 
         if error_message:
             st.error(error_message)
-        if not is_submit:
+        if self.__execute_mode < 3:
             return
         elif not filename or not parsed_config:
             st.warning(f"{self.__texts['tab2_error_debug_not_found']}")
@@ -256,12 +270,15 @@ def main() -> None:
             use_container_width=True,
         )
 
-        tab_view_model = TabViewModel(texts)
-        tab_view_model.show_tab1(
+        tab1_view_model = TabViewModel(texts)
+        tab1_view_model.set_execute_mode(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
+            st.session_state.get("tab2_execute", False),
+        ).show_tab1(
             st.session_state.get("tab1_result_content", None),
-            (st.session_state.get("tab1_error_config", None), st.session_state.get("tab1_error_template", None)),
+            st.session_state.get("tab1_error_config", None),
+            st.session_state.get("tab1_error_template", None),
         )
 
     with tab2:
@@ -282,9 +299,12 @@ def main() -> None:
         st.session_state.update({"tab2_result_content": tab2_model.config_str})
         st.session_state.update({"tab2_error_config": tab2_model.config_error_message})
 
-        tab_view_model = TabViewModel(texts)
-        tab_view_model.show_tab2(
+        tab2_view_model = TabViewModel(texts)
+        tab2_view_model.set_execute_mode(
+            st.session_state.get("tab1_execute_text", False),
+            st.session_state.get("tab1_execute_markdown", False),
             st.session_state.get("tab2_execute", False),
+        ).show_tab2(
             st.session_state.get("tab2_result_content", ""),
             tab2_model.get_uploaded_filename(st.session_state.get("tab2_config_file")),
             st.session_state.get("tab2_error_config", None),
