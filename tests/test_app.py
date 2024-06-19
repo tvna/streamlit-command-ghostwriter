@@ -92,7 +92,7 @@ class MockRender:
 def model(monkeypatch: pytest.MonkeyPatch) -> AppModel:
     monkeypatch.setattr("app.GhostwriterParser", MockParser)
     monkeypatch.setattr("app.GhostwriterRender", MockRender)
-    return AppModel()
+    return AppModel("[CONFIG_ERROR]", "[TEMPLATE_ERROR]")
 
 
 @pytest.mark.unit()
@@ -174,7 +174,7 @@ def test_mock_render(
     [
         pytest.param(None, None, None, None),
         pytest.param(b"POSITIVE", {"key": "POSITIVE"}, "{'key':POSITIVE'}", None),
-        pytest.param(b"negative", None, None, "[ERROR_HEADER]: parser_module_error in 'config.toml'"),
+        pytest.param(b"negative", None, None, "[CONFIG_ERROR]: parser_module_error in 'config.toml'"),
     ],
 )
 def test_load_config_file(
@@ -190,7 +190,7 @@ def test_load_config_file(
     else:
         config_file = None
 
-    model.load_config_file(config_file, "[ERROR_HEADER]")
+    model.load_config_file(config_file)
     assert model.config_dict == expected_dict
     assert model.config_str == expected_text
     assert model.config_error_message == expected_error
@@ -204,16 +204,16 @@ def test_load_config_file(
         pytest.param(True, None, {"key": "POSITIVE"}, None, None),
         pytest.param(True, b"POSITIVE", None, None, None),
         pytest.param(True, b"POSITIVE", {"key": "POSITIVE"}, "This is POSITIVE", None),
-        pytest.param(True, b"negative", {"key": "POSITIVE"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
-        pytest.param(True, b"POSITIVE", {"key": "negative"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
-        pytest.param(True, b"negative", {"key": "negative"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
+        pytest.param(True, b"negative", {"key": "POSITIVE"}, None, "[TEMPLATE_ERROR]: render_module_error in 'template.j2'"),
+        pytest.param(True, b"POSITIVE", {"key": "negative"}, None, "[TEMPLATE_ERROR]: render_module_error in 'template.j2'"),
+        pytest.param(True, b"negative", {"key": "negative"}, None, "[TEMPLATE_ERROR]: render_module_error in 'template.j2'"),
         pytest.param(False, None, None, None, None),
         pytest.param(False, None, {"key": "POSITIVE"}, None, None),
         pytest.param(False, b"POSITIVE", None, None, None),
         pytest.param(False, b"POSITIVE", {"key": "POSITIVE"}, "This is POSITIVE", None),
         pytest.param(False, b"POSITIVE", {"key": "negative"}, "This is POSITIVE", None),
-        pytest.param(False, b"negative", {"key": "POSITIVE"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
-        pytest.param(False, b"negative", {"key": "negative"}, None, "[ERROR_HEADER]: render_module_error in 'template.j2'"),
+        pytest.param(False, b"negative", {"key": "POSITIVE"}, None, "[TEMPLATE_ERROR]: render_module_error in 'template.j2'"),
+        pytest.param(False, b"negative", {"key": "negative"}, None, "[TEMPLATE_ERROR]: render_module_error in 'template.j2'"),
     ],
 )
 def test_load_template_file(
@@ -233,7 +233,7 @@ def test_load_template_file(
     else:
         template_file = None
 
-    model.load_template_file(template_file, "[ERROR_HEADER]", is_strict_undefined, True)
+    model.load_template_file(template_file, is_strict_undefined, True).apply_context()
     assert model.formatted_text == expected_result
     assert model.template_error_message == expected_error
 

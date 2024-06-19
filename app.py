@@ -11,19 +11,23 @@ from i11n import LANGUAGES
 
 
 class AppModel:
-    def __init__(self: "AppModel") -> None:
+    def __init__(self: "AppModel", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
         self.__config_dict: Optional[Dict[str, Any]] = None
         self.__config_str: Optional[str] = None
+        self.__render: Optional[GhostwriterRender] = None
         self.__formatted_text: Optional[str] = None
         self.__config_error_message: Optional[str] = None
         self.__template_error_message: Optional[str] = None
+
+        self.__config_error_header = config_error_header
+        self.__template_error_header = template_error_header
 
     def set_config_dict(self: "AppModel", config: Optional[Dict[str, Any]]) -> None:
         """Set config dict for template args."""
 
         self.__config_dict = config
 
-    def load_config_file(self: "AppModel", config_file: Optional[BytesIO], error_header: str) -> bool:
+    def load_config_file(self: "AppModel", config_file: Optional[BytesIO]) -> bool:
         """Load config file for template args."""
 
         # 呼び出しされるたびに、前回の結果をリセットする
@@ -37,6 +41,7 @@ class AppModel:
         parser.load_config_file(config_file).parse()
 
         if isinstance(parser.error_message, str):
+            error_header = self.__config_error_header
             self.__config_error_message = f"{error_header}: {parser.error_message} in '{config_file.name}'"
             return False
 
@@ -46,29 +51,40 @@ class AppModel:
         return True
 
     def load_template_file(
-        self: "AppModel", template_file: Optional[BytesIO], error_header: str, is_strict_undefined: bool, is_clear_dup_lines: bool
-    ) -> bool:
+        self: "AppModel", template_file: Optional[BytesIO], is_strict_undefined: bool, is_clear_dup_lines: bool
+    ) -> "AppModel":
         """Load jinja template file."""
 
         self.__formatted_text = None
 
         if not template_file:
-            return False
+            return self
 
         render = GhostwriterRender(is_strict_undefined, is_clear_dup_lines)
         if not render.load_template_file(template_file).validate_template():
+            error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
-            return False
 
-        if self.__config_dict is None:
-            return False
+        self.__template_filename = template_file.name
+        self.__render = render
+
+        return self
+
+    def apply_context(self: "AppModel") -> "AppModel":
+        """Apply context-dict for loaded template."""
+
+        if self.__config_dict is None or self.__render is None:
+            return self
+
+        render = self.__render
 
         if not render.apply_context(self.__config_dict):
-            self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
-            return False
+            error_header = self.__template_error_header
+            self.__template_error_message = f"{error_header}: {render.error_message} in '{self.__template_filename}'"
+            return self
 
         self.__formatted_text = render.render_content
-        return True
+        return self
 
     def get_download_filename(
         self: "AppModel",
@@ -147,7 +163,6 @@ class TabViewModel:
     ) -> None:
         """Show tab1 response content."""
 
-        print(self.__execute_mode)
         if first_error_message or second_error_message:
             self.__show_tab1_error(first_error_message, second_error_message)
         elif (3 > self.__execute_mode > 0) and isinstance(result_text, str):
@@ -218,7 +233,6 @@ def main() -> None:
     tab1, tab2, tab3 = st.tabs([texts["tab1_menu_convert_text"], texts["tab2_menu_debug_config"], texts["tab3_menu_advanced_option"]])
 
     with tab1:
-        tab1_model = AppModel()
         tab1_row1_col1, tab1_row1_col2 = st.columns(2)
         with tab1_row1_col1.container(border=True):
             st.file_uploader(
@@ -246,13 +260,13 @@ def main() -> None:
             key="tab1_execute_markdown",
         )
 
-        tab1_model.load_config_file(st.session_state.get("tab1_config_file"), texts["tab1_error_toml_parse"])
+        tab1_model = AppModel(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
+        tab1_model.load_config_file(st.session_state.get("tab1_config_file"))
         tab1_model.load_template_file(
             st.session_state.get("tab1_template_file"),
-            texts["tab1_error_template_generate"],
             st.session_state.get("is_strict_undefined", True),
             st.session_state.get("is_remove_multiple_newline", True),
-        )
+        ).apply_context()
 
         st.session_state.update({"tab1_result_content": tab1_model.formatted_text})
         st.session_state.update({"tab1_error_config": tab1_model.config_error_message})
@@ -282,7 +296,7 @@ def main() -> None:
         )
 
     with tab2:
-        tab2_model = AppModel()
+        tab2_model = AppModel(texts["tab2_error_debug_config"])
         tab2_row1_col1, _ = st.columns(2)
         with tab2_row1_col1.container(border=True):
             st.file_uploader(
@@ -291,7 +305,7 @@ def main() -> None:
                 key="tab2_config_file",
             )
 
-        tab2_model.load_config_file(st.session_state.get("tab2_config_file"), texts["tab2_error_debug_config"])
+        tab2_model.load_config_file(st.session_state.get("tab2_config_file"))
 
         tab2_row2_col1, _, _ = st.columns(3)
         tab2_row2_col1.button(texts["tab2_generate_debug_config"], use_container_width=True, key="tab2_execute")
