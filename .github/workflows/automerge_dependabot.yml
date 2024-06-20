@@ -26,11 +26,11 @@ jobs:
         run: |
           gh pr review ${ GTIHUB_HEAD_REF } -approve
           gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
-      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm' && steps.meta.outputs.update-type == 'version-update:semver-patch' }}
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm_and_yarn' && steps.meta.outputs.update-type == 'version-update:semver-patch' }}
         run: |
           gh pr review ${ GTIHUB_HEAD_REF } -approve
           gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
-      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm' && steps.meta.outputs.update-type == 'version-update:semver-minor' }}
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm_and_yarn' && steps.meta.outputs.update-type == 'version-update:semver-minor' }}
         run: |
           gh pr review ${ GTIHUB_HEAD_REF } -approve
           gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
