@@ -21,7 +21,6 @@
             "build/**/*"
         ],
         "productName": "CommandGhostwriter",
-        "artifactName": "${name}.${ext}",
         "directories": {
             "buildResources": "assets"
         },
@@ -58,7 +57,7 @@
             "nodeJsWorker": false,
             "entrypoint": "app.py",
             "embed": true,
-            "dependencies": ["streamlit", "pyyaml", "jinja2"]
+            "dependencies": ["pyyaml", "jinja2"]
         }
     },
     "config": {
