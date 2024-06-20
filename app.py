@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import streamlit as st
 
@@ -11,19 +11,23 @@ from i11n import LANGUAGES
 
 
 class AppModel:
-    def __init__(self: "AppModel") -> None:
+    def __init__(self: "AppModel", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
         self.__config_dict: Optional[Dict[str, Any]] = None
         self.__config_str: Optional[str] = None
+        self.__render: Optional[GhostwriterRender] = None
         self.__formatted_text: Optional[str] = None
         self.__config_error_message: Optional[str] = None
         self.__template_error_message: Optional[str] = None
+
+        self.__config_error_header = config_error_header
+        self.__template_error_header = template_error_header
 
     def set_config_dict(self: "AppModel", config: Optional[Dict[str, Any]]) -> None:
         """Set config dict for template args."""
 
         self.__config_dict = config
 
-    def load_config_file(self: "AppModel", config_file: Optional[BytesIO], error_header: str) -> bool:
+    def load_config_file(self: "AppModel", config_file: Optional[BytesIO]) -> bool:
         """Load config file for template args."""
 
         # 呼び出しされるたびに、前回の結果をリセットする
@@ -37,6 +41,7 @@ class AppModel:
         parser.load_config_file(config_file).parse()
 
         if isinstance(parser.error_message, str):
+            error_header = self.__config_error_header
             self.__config_error_message = f"{error_header}: {parser.error_message} in '{config_file.name}'"
             return False
 
@@ -46,29 +51,40 @@ class AppModel:
         return True
 
     def load_template_file(
-        self: "AppModel", template_file: Optional[BytesIO], error_header: str, is_strict_undefined: bool, is_clear_dup_lines: bool
-    ) -> bool:
+        self: "AppModel", template_file: Optional[BytesIO], is_strict_undefined: bool, is_clear_dup_lines: bool
+    ) -> "AppModel":
         """Load jinja template file."""
 
         self.__formatted_text = None
 
         if not template_file:
-            return False
+            return self
 
         render = GhostwriterRender(is_strict_undefined, is_clear_dup_lines)
         if not render.load_template_file(template_file).validate_template():
+            error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
-            return False
 
-        if self.__config_dict is None:
-            return False
+        self.__template_filename = template_file.name
+        self.__render = render
+
+        return self
+
+    def apply_context(self: "AppModel") -> "AppModel":
+        """Apply context-dict for loaded template."""
+
+        if self.__config_dict is None or self.__render is None:
+            return self
+
+        render = self.__render
 
         if not render.apply_context(self.__config_dict):
-            self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
-            return False
+            error_header = self.__template_error_header
+            self.__template_error_message = f"{error_header}: {render.error_message} in '{self.__template_filename}'"
+            return self
 
         self.__formatted_text = render.render_content
-        return True
+        return self
 
     def get_download_filename(
         self: "AppModel",
@@ -121,31 +137,46 @@ class AppModel:
 class TabViewModel:
     def __init__(self: "TabViewModel", texts: Dict[str, str]) -> None:
         self.__texts = texts
+        self.__execute_mode: int = 0
+
+    def set_execute_mode(self: "TabViewModel", is_text: bool, is_markdown: bool, is_debug: bool) -> "TabViewModel":
+        """Set execute mode."""
+
+        self.__execute_mode = 0
+
+        if is_text:
+            self.__execute_mode = 1
+            return self
+
+        if is_markdown:
+            self.__execute_mode = 2
+            return self
+
+        if is_debug:
+            self.__execute_mode = 3
+            return self
+
+        return self
 
     def show_tab1(
-        self: "TabViewModel",
-        is_submit_text: bool,
-        is_submit_markdown: bool,
-        result_text: Optional[str],
-        error_messages: Tuple[Optional[str], Optional[str]],
+        self: "TabViewModel", result_text: Optional[str], first_error_message: Optional[str], second_error_message: Optional[str]
     ) -> None:
         """Show tab1 response content."""
 
-        first_error_message, second_error_message = error_messages
         if first_error_message or second_error_message:
             self.__show_tab1_error(first_error_message, second_error_message)
-        elif (is_submit_text or is_submit_markdown) and isinstance(result_text, str):
-            self.__show_tab1_result(is_submit_text, is_submit_markdown, result_text)
-        elif is_submit_text or is_submit_markdown:
+        elif (3 > self.__execute_mode > 0) and isinstance(result_text, str):
+            self.__show_tab1_result(result_text)
+        elif 3 > self.__execute_mode > 0:
             st.warning(self.__texts["tab1_error_both_files"])
 
-    def __show_tab1_result(self: "TabViewModel", is_submit_text: bool, is_submit_markdown: bool, result_text: str) -> None:
+    def __show_tab1_result(self: "TabViewModel", result_text: str) -> None:
         """Show tab1 success content."""
 
-        if is_submit_text:
+        if self.__execute_mode == 1:
             st.success(self.__texts["tab1_success_formatted_text"])
             st.container(border=True).text_area(self.__texts["tab1_formatted_text"], result_text, key="tab1_result_textarea", height=500)
-        elif is_submit_markdown:
+        elif self.__execute_mode == 2:
             st.success(self.__texts["tab1_success_formatted_text"])
             st.container(border=True).markdown(result_text)
 
@@ -157,14 +188,12 @@ class TabViewModel:
         if second_error_message:
             st.error(second_error_message)
 
-    def show_tab2(
-        self: "TabViewModel", is_submit: bool, parsed_config: Optional[str], filename: Optional[str], error_message: Optional[str]
-    ) -> None:
+    def show_tab2(self: "TabViewModel", parsed_config: Optional[str], filename: Optional[str], error_message: Optional[str]) -> None:
         """Show tab2 response content."""
 
         if error_message:
             st.error(error_message)
-        if not is_submit:
+        if self.__execute_mode < 3:
             return
         elif not filename or not parsed_config:
             st.warning(f"{self.__texts['tab2_error_debug_not_found']}")
@@ -204,7 +233,6 @@ def main() -> None:
     tab1, tab2, tab3 = st.tabs([texts["tab1_menu_convert_text"], texts["tab2_menu_debug_config"], texts["tab3_menu_advanced_option"]])
 
     with tab1:
-        tab1_model = AppModel()
         tab1_row1_col1, tab1_row1_col2 = st.columns(2)
         with tab1_row1_col1.container(border=True):
             st.file_uploader(
@@ -232,13 +260,13 @@ def main() -> None:
             key="tab1_execute_markdown",
         )
 
-        tab1_model.load_config_file(st.session_state.get("tab1_config_file"), texts["tab1_error_toml_parse"])
+        tab1_model = AppModel(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
+        tab1_model.load_config_file(st.session_state.get("tab1_config_file"))
         tab1_model.load_template_file(
             st.session_state.get("tab1_template_file"),
-            texts["tab1_error_template_generate"],
             st.session_state.get("is_strict_undefined", True),
             st.session_state.get("is_remove_multiple_newline", True),
-        )
+        ).apply_context()
 
         st.session_state.update({"tab1_result_content": tab1_model.formatted_text})
         st.session_state.update({"tab1_error_config": tab1_model.config_error_message})
@@ -256,16 +284,19 @@ def main() -> None:
             use_container_width=True,
         )
 
-        tab_view_model = TabViewModel(texts)
-        tab_view_model.show_tab1(
+        tab1_view_model = TabViewModel(texts)
+        tab1_view_model.set_execute_mode(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
+            st.session_state.get("tab2_execute", False),
+        ).show_tab1(
             st.session_state.get("tab1_result_content", None),
-            (st.session_state.get("tab1_error_config", None), st.session_state.get("tab1_error_template", None)),
+            st.session_state.get("tab1_error_config", None),
+            st.session_state.get("tab1_error_template", None),
         )
 
     with tab2:
-        tab2_model = AppModel()
+        tab2_model = AppModel(texts["tab2_error_debug_config"])
         tab2_row1_col1, _ = st.columns(2)
         with tab2_row1_col1.container(border=True):
             st.file_uploader(
@@ -274,7 +305,7 @@ def main() -> None:
                 key="tab2_config_file",
             )
 
-        tab2_model.load_config_file(st.session_state.get("tab2_config_file"), texts["tab2_error_debug_config"])
+        tab2_model.load_config_file(st.session_state.get("tab2_config_file"))
 
         tab2_row2_col1, _, _ = st.columns(3)
         tab2_row2_col1.button(texts["tab2_generate_debug_config"], use_container_width=True, key="tab2_execute")
@@ -282,9 +313,12 @@ def main() -> None:
         st.session_state.update({"tab2_result_content": tab2_model.config_str})
         st.session_state.update({"tab2_error_config": tab2_model.config_error_message})
 
-        tab_view_model = TabViewModel(texts)
-        tab_view_model.show_tab2(
+        tab2_view_model = TabViewModel(texts)
+        tab2_view_model.set_execute_mode(
+            st.session_state.get("tab1_execute_text", False),
+            st.session_state.get("tab1_execute_markdown", False),
             st.session_state.get("tab2_execute", False),
+        ).show_tab2(
             st.session_state.get("tab2_result_content", ""),
             tab2_model.get_uploaded_filename(st.session_state.get("tab2_config_file")),
             st.session_state.get("tab2_error_config", None),

@@ -1,21 +1,33 @@
 name: Test & Build
+
 on:
   push:
     branches:
       - develop
     paths-ignore:
-      - .devcontainer
+      - .devcontainer/**
+      - assets/**
       - README.md
-      - command_ghostwriter.code-workspace
+      - .gitignore
+      - .cz_config.js
+      - .pre-commit-config.yaml
+      - "**.code-workspace"
   pull_request:
     branches:
       - develop
+
 defaults:
   run:
     shell: bash
+
+env:
+  python-version: 3.12.3
+  node-version: 22
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+
 jobs:
   test:
     name: Run unittest web-app
@@ -23,7 +35,8 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - 3.12
+          - 3.12.3
+          - 3.11
     permissions:
       contents: read
     timeout-minutes: 5
@@ -63,33 +76,22 @@ jobs:
           poetry run mypy .
       - name: Run pytest
         run: |
-          poetry run pytest --cov . --cov-report=xml
-      - name: Archive code coverage results
-        uses: actions/upload-artifact@v4
-        with:
-          name: code-coverage-report
-          path: |
-            coverage.xml
-            .coverage
-            htmlcov
+          poetry run pytest --cov .
+
   e2e_test:
     name: Run E2E-test web-app
     runs-on: ubuntu-latest
     needs:
       - test
-    strategy:
-      matrix:
-        python-version:
-          - 3.12
     permissions:
       contents: read
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.python-version }}
       - name: Restore cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -127,16 +129,13 @@ jobs:
       - name: Check if Streamlit app is running
         run: |
           curl -f http://localhost:8501 || exit 1
+
   analyze:
     # https://github.com/terryyin/lizard
-    name: Analyze CCN number
+    name: Analyze CCN number, AST
     runs-on: ubuntu-latest
     needs:
       - test
-    strategy:
-      matrix:
-        python-version:
-          - 3.12
     permissions:
       contents: read
     env:
@@ -144,10 +143,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.python-version }}
       - name: Restore cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -155,7 +154,7 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             .venv
-          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
@@ -182,81 +181,17 @@ jobs:
       - name: Show AST (config_parser.py)
         run: |
           python -c 'import ast; print(ast.dump(ast.parse(open("features/config_parser.py").read()), indent=2))'
-  add_requirements:
-    # https://python-poetry.org/docs/cli/#export
-    name: Add requirements.txt
-    runs-on: ubuntu-latest
-    needs:
-      - test
-    if: 0 != 0
-    permissions:
-      contents: write
-    env:
-      REQUIREMENTS_TXT: $GITHUB_WORKSPACE/requirements.txt
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Bootstrap poetry
-        run: |
-          curl -sL https://install.python-poetry.org | python - -y
-        shell: bash
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Create a new file
-        run: |
-          poetry export -f requirements.txt -o "${REQUIREMENTS_TXT}" --without-hashes -v
-          echo "# dummy change" >> ${REQUIREMENTS_TXT}
-          cat ${REQUIREMENTS_TXT}
-      - name: Configure Git
-        run: |
-          git config --global user.name "${{ secrets.GIT_CONFIG_USERNAME }}"
-          git config --global user.email "${{ secrets.GIT_CONFIG_EMAIL }}"
-      - name: Commit and push changes
-        run: |
-          git add ${REQUIREMENTS_TXT}
-          git commit -m "Add requirements.txt"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Archive requirements.txt
-        uses: actions/upload-artifact@v4
-        with:
-          name: requirements-txt
-          path: |
-            ${REQUIREMENTS_TXT}
-  coverage:
-    name: Upload coverage
-    runs-on: ubuntu-latest
-    needs:
-      - test
-    permissions:
-      contents: read
-    env:
-      CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download code coverage results
-        uses: actions/download-artifact@v4
-        with:
-          name: code-coverage-report
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.4.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-      - name: Setup Code Climate
-        uses: remarkablemark/setup-codeclimate@v2
-      - name: Run Test and Upload Coverage
-        run: |
-          cc-test-reporter before-build
-          # insert your test command here
-          cc-test-reporter after-build --exit-code $?
-  build:
-    name: Build desktop-app
+
+  call-coverage-workflow:
+    needs: test
+    uses: ./.github/workflows/upload-coverage.yml
+    secrets: inherit
+    with:
+      python-version: 3.11
+
+  prebuild:
+    name: Prebuild desktop-app
     runs-on: ${{ matrix.os }}
-    needs:
-      - e2e_test
-      - analyze
     strategy:
       matrix:
         os:
@@ -271,16 +206,62 @@ jobs:
       - name: Install Node.js, NPM and Yarn
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ env.node-version }}
       - name: Restore cache node-electron dependecies
         uses: actions/cache@v4
         with:
           path: |
             **/node_modules
-          key: ${{ runner.os }}-node-electron-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
       - name: Install stlite
         run: |
           npm install
+
+  build:
+    name: Build desktop-app
+    runs-on: ${{ matrix.os }}
+    needs:
+      - e2e_test
+      - analyze
+      - prebuild
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+      - name: Install Node.js, NPM and Yarn
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.node-version }}
+      - name: Restore cache node-electron dependecies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
+      - name: Restore cache electron-builder (Windows)
+        # https://github.com/electron/get#usage
+        uses: actions/cache@v4
+        with:
+          path: |
+            %LOCALAPPDATA%/electron/Cache
+            ~/AppData/Local/electron/Cache/
+          key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+        if: ${{ runner.os == 'Windows' }}
+      - name: Restore cache electron-builder (MacOS)
+        # https://github.com/electron/get#usage
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron/
+          key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+        if: ${{ runner.os == 'MacOS' }}
       - name: Dump package
         run: |
           npm run dump

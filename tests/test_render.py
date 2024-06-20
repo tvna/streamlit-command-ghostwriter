@@ -37,7 +37,7 @@ from features.command_render import GhostwriterRender
         pytest.param(True, True, b"Hello {{ name }!", {"name": "World"}, False, False, None, "unexpected '}'"),
     ],
 )
-def test_apply(
+def test_render(
     is_strict_undefined: bool,
     is_remove_multiple_newline: bool,
     template_content: bytes,
@@ -47,6 +47,8 @@ def test_apply(
     expected_content: str,
     expected_error: Optional[str],
 ) -> None:
+    """Test render."""
+
     render = GhostwriterRender(is_strict_undefined, is_remove_multiple_newline)
     render.load_template_file(BytesIO(template_content))
 

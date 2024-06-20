@@ -1,0 +1,78 @@
+name: Coverage Workflow
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-coverage
+  cancel-in-progress: false
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Restore cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+      - name: Bootstrap poetry
+        run: |
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Configure poetry
+        run: poetry config virtualenvs.in-project false
+        shell: bash
+      - name: Install dependencies
+        shell: bash
+        run: |
+          poetry install
+      - name: Run pytest
+        run: |
+          poetry run pytest --cov . --cov-report=xml
+      - name: Check for codecov secret
+        id: check_codecov_secret
+        run: |
+          if [ -z "${{ secrets.CODECOV_TOKEN }}" ]; then
+            echo "CODECOV_TOKEN is not set"
+            exit 1
+          fi
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.4.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+        if: success()
+      - name: Setup Code Climate
+        uses: remarkablemark/setup-codeclimate@v2
+      - name: Check for code climate secret
+        id: check_code_climate_secret
+        run: |
+          if [ -z "${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}" ]; then
+            echo "CODE_CLIMATE_TEST_REPORTER_ID is not set"
+            exit 1
+          fi
+      - name: Upload coverage reports to code climate
+        run: |
+          cc-test-reporter before-build
+
+          cc-test-reporter after-build --exit-code $?
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
+        if: success()
