@@ -55,7 +55,7 @@
                 "i11n.py",
                 "features/*.py"
             ],
-            "nodeJsWorker": true,
+            "nodeJsWorker": false,
             "entrypoint": "app.py",
             "embed": true,
             "dependencies": ["streamlit", "pyyaml", "jinja2"]
