@@ -27,7 +27,7 @@ class AppModel:
 
         self.__config_dict = config
 
-    def load_config_file(self: "AppModel", config_file: Optional[BytesIO]) -> bool:
+    def load_config_file(self: "AppModel", config_file: Optional[BytesIO]) -> "AppModel":
         """Load config file for template args."""
 
         # 呼び出しされるたびに、前回の結果をリセットする
@@ -35,7 +35,7 @@ class AppModel:
         self.__config_str = None
 
         if not (config_file and hasattr(config_file, "name")):
-            return False
+            return self
 
         parser = GhostwriterParser()
         parser.load_config_file(config_file).parse()
@@ -43,12 +43,12 @@ class AppModel:
         if isinstance(parser.error_message, str):
             error_header = self.__config_error_header
             self.__config_error_message = f"{error_header}: {parser.error_message} in '{config_file.name}'"
-            return False
+            return self
 
         self.__config_dict = parser.parsed_dict
         self.__config_str = parser.parsed_str
 
-        return True
+        return self
 
     def load_template_file(
         self: "AppModel", template_file: Optional[BytesIO], is_strict_undefined: bool, is_clear_dup_lines: bool
@@ -87,18 +87,15 @@ class AppModel:
         return self
 
     def get_download_filename(
-        self: "AppModel",
-        download_filename: Optional[str],
-        download_file_ext: Optional[str],
-        is_append_timestamp: bool,
+        self: "AppModel", filename: Optional[str], file_ext: Optional[str], is_append_timestamp: bool
     ) -> Optional[str]:
         """Get filename for download contents."""
 
-        if download_filename is None or download_file_ext is None:
+        if filename is None or file_ext is None:
             return None
 
         suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
-        filename = f"{download_filename}{suffix}.{str(download_file_ext)}"
+        filename = f"{filename}{suffix}.{str(file_ext)}"
 
         return filename
 
@@ -210,12 +207,7 @@ def main() -> None:
     st.session_state.update({"tab1_result_content": st.session_state.get("tab1_result_content")})
     st.session_state.update({"tab2_result_content": st.session_state.get("tab2_result_content")})
 
-    st.set_page_config(
-        page_title="Command ghostwriter",
-        page_icon=":ghost:",
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
+    st.set_page_config(page_title="Command ghostwriter", page_icon=":ghost:", layout="wide", initial_sidebar_state="expanded")
     st.title("Command ghostwriter :ghost:")
 
     with st.sidebar:
@@ -235,34 +227,17 @@ def main() -> None:
     with tab1:
         tab1_row1_col1, tab1_row1_col2 = st.columns(2)
         with tab1_row1_col1.container(border=True):
-            st.file_uploader(
-                texts["tab1_upload_config"],
-                type=["toml", "yaml", "yml"],
-                key="tab1_config_file",
-            )
+            st.file_uploader(texts["tab1_upload_config"], type=["toml", "yaml", "yml"], key="tab1_config_file")
 
         with tab1_row1_col2.container(border=True):
-            st.file_uploader(
-                texts["tab1_upload_template"],
-                type=["jinja2", "j2"],
-                key="tab1_template_file",
-            )
+            st.file_uploader(texts["tab1_upload_template"], type=["jinja2", "j2"], key="tab1_template_file")
 
         tab1_row2_col1, tab1_row2_col2, tab1_row2_col3 = st.columns(3)
-        tab1_row2_col1.button(
-            texts["tab1_generate_text_button"],
-            use_container_width=True,
-            key="tab1_execute_text",
-        )
-        tab1_row2_col2.button(
-            texts["tab1_generate_markdown_button"],
-            use_container_width=True,
-            key="tab1_execute_markdown",
-        )
+        tab1_row2_col1.button(texts["tab1_generate_text_button"], use_container_width=True, key="tab1_execute_text")
+        tab1_row2_col2.button(texts["tab1_generate_markdown_button"], use_container_width=True, key="tab1_execute_markdown")
 
         tab1_model = AppModel(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
-        tab1_model.load_config_file(st.session_state.get("tab1_config_file"))
-        tab1_model.load_template_file(
+        tab1_model.load_config_file(st.session_state.get("tab1_config_file")).load_template_file(
             st.session_state.get("tab1_template_file"),
             st.session_state.get("is_strict_undefined", True),
             st.session_state.get("is_remove_multiple_newline", True),
@@ -299,11 +274,7 @@ def main() -> None:
         tab2_model = AppModel(texts["tab2_error_debug_config"])
         tab2_row1_col1, _ = st.columns(2)
         with tab2_row1_col1.container(border=True):
-            st.file_uploader(
-                texts["tab2_upload_debug_config"],
-                type=["toml", "yaml", "yml"],
-                key="tab2_config_file",
-            )
+            st.file_uploader(texts["tab2_upload_debug_config"], type=["toml", "yaml", "yml"], key="tab2_config_file")
 
         tab2_model.load_config_file(st.session_state.get("tab2_config_file"))
 
