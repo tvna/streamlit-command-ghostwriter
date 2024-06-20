@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from app import AppModel
+from features.core import GhostwriterCore
 
 
 class MockParser:
@@ -89,10 +89,10 @@ class MockRender:
 
 
 @pytest.fixture()
-def model(monkeypatch: pytest.MonkeyPatch) -> AppModel:
-    monkeypatch.setattr("app.GhostwriterParser", MockParser)
-    monkeypatch.setattr("app.GhostwriterRender", MockRender)
-    return AppModel("[CONFIG_ERROR]", "[TEMPLATE_ERROR]")
+def model(monkeypatch: pytest.MonkeyPatch) -> GhostwriterCore:
+    monkeypatch.setattr("features.core.GhostwriterParser", MockParser)
+    monkeypatch.setattr("features.core.GhostwriterRender", MockRender)
+    return GhostwriterCore("[CONFIG_ERROR]", "[TEMPLATE_ERROR]")
 
 
 @pytest.mark.unit()
@@ -182,7 +182,7 @@ def test_load_config_file(
     expected_dict: Optional[Dict[str, Any]],
     expected_text: Optional[str],
     expected_error: Optional[str],
-    model: AppModel,
+    model: GhostwriterCore,
 ) -> None:
     """Test load_config_file."""
     if isinstance(config_content, bytes):
@@ -222,7 +222,7 @@ def test_load_template_file(
     config_data: Optional[Dict[str, Any]],
     expected_result: Optional[str],
     expected_error: Optional[str],
-    model: AppModel,
+    model: GhostwriterCore,
 ) -> None:
     """Test load_template_file."""
 
@@ -256,7 +256,7 @@ def test_get_download_filename(
     name_suffix: Optional[str],
     expected_prefix: str,
     expected_suffix: str,
-    model: AppModel,
+    model: GhostwriterCore,
 ) -> None:
     """Test filename for download contents."""
 

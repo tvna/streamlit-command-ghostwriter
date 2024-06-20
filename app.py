@@ -1,134 +1,9 @@
-#! /usr/bin/env python
-from datetime import datetime
-from io import BytesIO
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 import streamlit as st
 
-from features.command_render import GhostwriterRender
-from features.config_parser import GhostwriterParser
+from features.core import GhostwriterCore
 from i11n import LANGUAGES
-
-
-class AppModel:
-    def __init__(self: "AppModel", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
-        self.__config_dict: Optional[Dict[str, Any]] = None
-        self.__config_str: Optional[str] = None
-        self.__render: Optional[GhostwriterRender] = None
-        self.__formatted_text: Optional[str] = None
-        self.__config_error_message: Optional[str] = None
-        self.__template_error_message: Optional[str] = None
-
-        self.__config_error_header = config_error_header
-        self.__template_error_header = template_error_header
-
-    def set_config_dict(self: "AppModel", config: Optional[Dict[str, Any]]) -> None:
-        """Set config dict for template args."""
-
-        self.__config_dict = config
-
-    def load_config_file(self: "AppModel", config_file: Optional[BytesIO]) -> "AppModel":
-        """Load config file for template args."""
-
-        # 呼び出しされるたびに、前回の結果をリセットする
-        self.__config_dict = None
-        self.__config_str = None
-
-        if not (config_file and hasattr(config_file, "name")):
-            return self
-
-        parser = GhostwriterParser()
-        parser.load_config_file(config_file).parse()
-
-        if isinstance(parser.error_message, str):
-            error_header = self.__config_error_header
-            self.__config_error_message = f"{error_header}: {parser.error_message} in '{config_file.name}'"
-            return self
-
-        self.__config_dict = parser.parsed_dict
-        self.__config_str = parser.parsed_str
-
-        return self
-
-    def load_template_file(
-        self: "AppModel", template_file: Optional[BytesIO], is_strict_undefined: bool, is_clear_dup_lines: bool
-    ) -> "AppModel":
-        """Load jinja template file."""
-
-        self.__formatted_text = None
-
-        if not template_file:
-            return self
-
-        render = GhostwriterRender(is_strict_undefined, is_clear_dup_lines)
-        if not render.load_template_file(template_file).validate_template():
-            error_header = self.__template_error_header
-            self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
-
-        self.__template_filename = template_file.name
-        self.__render = render
-
-        return self
-
-    def apply_context(self: "AppModel") -> "AppModel":
-        """Apply context-dict for loaded template."""
-
-        if self.__config_dict is None or self.__render is None:
-            return self
-
-        render = self.__render
-
-        if not render.apply_context(self.__config_dict):
-            error_header = self.__template_error_header
-            self.__template_error_message = f"{error_header}: {render.error_message} in '{self.__template_filename}'"
-            return self
-
-        self.__formatted_text = render.render_content
-        return self
-
-    def get_download_filename(
-        self: "AppModel", filename: Optional[str], file_ext: Optional[str], is_append_timestamp: bool
-    ) -> Optional[str]:
-        """Get filename for download contents."""
-
-        if filename is None or file_ext is None:
-            return None
-
-        suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
-        filename = f"{filename}{suffix}.{str(file_ext)}"
-
-        return filename
-
-    def get_uploaded_filename(self: "AppModel", file: Optional[BytesIO]) -> Optional[str]:
-        """Get filename for uploaded contents."""
-
-        return file.name if isinstance(file, BytesIO) else None
-
-    @property
-    def config_dict(self: "AppModel") -> Optional[Dict[str, Any]]:
-        return self.__config_dict
-
-    @property
-    def config_str(self: "AppModel") -> Optional[str]:
-        return self.__config_str
-
-    @property
-    def formatted_text(self: "AppModel") -> Optional[str]:
-        return self.__formatted_text
-
-    @property
-    def config_error_message(self: "AppModel") -> Optional[str]:
-        return self.__config_error_message
-
-    @property
-    def template_error_message(self: "AppModel") -> Optional[str]:
-        return self.__template_error_message
-
-    @property
-    def is_ready_formatted(self: "AppModel") -> bool:
-        if self.__formatted_text is None:
-            return False
-        return True
 
 
 class TabViewModel:
@@ -236,7 +111,7 @@ def main() -> None:
         tab1_row2_col1.button(texts["tab1_generate_text_button"], use_container_width=True, key="tab1_execute_text")
         tab1_row2_col2.button(texts["tab1_generate_markdown_button"], use_container_width=True, key="tab1_execute_markdown")
 
-        tab1_model = AppModel(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
+        tab1_model = GhostwriterCore(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
         tab1_model.load_config_file(st.session_state.get("tab1_config_file")).load_template_file(
             st.session_state.get("tab1_template_file"),
             st.session_state.get("is_strict_undefined", True),
@@ -271,7 +146,7 @@ def main() -> None:
         )
 
     with tab2:
-        tab2_model = AppModel(texts["tab2_error_debug_config"])
+        tab2_model = GhostwriterCore(texts["tab2_error_debug_config"])
         tab2_row1_col1, _ = st.columns(2)
         with tab2_row1_col1.container(border=True):
             st.file_uploader(texts["tab2_upload_debug_config"], type=["toml", "yaml", "yml"], key="tab2_config_file")
