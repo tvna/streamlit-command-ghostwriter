@@ -48,7 +48,7 @@ jobs:
         run: |
           poetry run pytest --cov . --cov-report=xml
       - name: Check for codecov secret
-        id: check_secret
+        id: check_codecov_secret
         run: |
           if [ -z "${{ secrets.CODECOV_TOKEN }}" ]; then
             echo "CODECOV_TOKEN is not set"
@@ -62,7 +62,7 @@ jobs:
       - name: Setup Code Climate
         uses: remarkablemark/setup-codeclimate@v2
       - name: Check for code climate secret
-        id: check_secret
+        id: check_code_climate_secret
         run: |
           if [ -z "${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}" ]; then
             echo "CODE_CLIMATE_TEST_REPORTER_ID is not set"
