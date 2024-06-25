@@ -1,6 +1,6 @@
 import pytest
 
-from i11n import LANGUAGES
+from i18n import LANGUAGES
 
 
 @pytest.mark.unit()

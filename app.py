@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import streamlit as st
 
 from features.core import GhostwriterCore
-from i11n import LANGUAGES
+from i18n import LANGUAGES
 
 
 class TabViewModel:
@@ -102,7 +102,7 @@ def main() -> None:
     with tab1:
         tab1_row1_col1, tab1_row1_col2 = st.columns(2)
         with tab1_row1_col1.container(border=True):
-            st.file_uploader(texts["tab1_upload_config"], type=["toml", "yaml", "yml"], key="tab1_config_file")
+            st.file_uploader(texts["tab1_upload_config"], type=["toml", "yaml", "yml", "csv"], key="tab1_config_file")
 
         with tab1_row1_col2.container(border=True):
             st.file_uploader(texts["tab1_upload_template"], type=["jinja2", "j2"], key="tab1_template_file")
