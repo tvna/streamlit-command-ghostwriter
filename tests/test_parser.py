@@ -57,6 +57,15 @@ from features.config_parser import GhostwriterParser
             "{'date': datetime.date(2024, 4, 1)}",
             None,
         ),
+        # Test case for pandas.read_csv module on success
+        pytest.param(
+            b"name,age\nAlice,30\nBob,25",
+            "config.csv",
+            True,
+            {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]},
+            "{'csv_rows': [{'age': 30, 'name': 'Alice'}, {'age': 25, 'name': 'Bob'}]}",
+            None,
+        ),
         # Test cases for load_config_file function on failed
         pytest.param(b"unsupported content", "config.txt", False, None, "None", "Unsupported file type"),
         pytest.param(b"unsupported content", "config", False, None, "None", "Unsupported file type"),
@@ -121,6 +130,34 @@ from features.config_parser import GhostwriterParser
         ),
         pytest.param(b"!!invalidTag key1: value1", "config.yaml", False, None, "None", "could not determine a constructor for the tag"),
         pytest.param(b"title: [", "config.yaml", False, None, "None", "while parsing a flow node\nexpected the node content"),
+        # Test case for pandas.read_csv module on failed
+        # pd.errors.DtypeWarning
+        pytest.param(
+            b"name,age\nAlice,30\nBob,30,Japan",
+            "config.csv",
+            False,
+            None,
+            "None",
+            "Error tokenizing data. C error: Expected 2 fields in line 3, saw 3",
+        ),
+        # pd.errors.EmptyDataError
+        pytest.param(
+            b"",
+            "config.csv",
+            False,
+            None,
+            "None",
+            "No columns to parse from file",
+        ),
+        # pd.errors.ParserError
+        pytest.param(
+            b"""a,b,c\ncat,foo,bar\ndog,foo,"baz""",
+            "config.csv",
+            False,
+            None,
+            "None",
+            "Error tokenizing data. C error: EOF inside string starting at row 2",
+        ),
     ],
 )
 def test_parse(
@@ -137,10 +174,47 @@ def test_parse(
     config_file.name = filename
 
     parser = GhostwriterParser()
-    assert parser.load_config_file(config_file).parse() == is_successful
+    assert type(parser.load_config_file(config_file)) == parser.__class__
+    assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str
+
     if expected_error is None:
         assert parser.error_message is None
     else:
         assert expected_error in str(parser.error_message)
+
+
+@pytest.mark.unit()
+@pytest.mark.parametrize(
+    ("content", "filename", "csv_rows_name", "is_successful", "expected_dict", "expected_str"),
+    [
+        pytest.param(
+            b"name,age\nAlice,30\nBob,25",
+            "config.csv",
+            "people",
+            True,
+            {"people": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]},
+            "{'people': [{'age': 30, 'name': 'Alice'}, {'age': 25, 'name': 'Bob'}]}",
+        )
+    ],
+)
+def test_changed_rows_name(
+    content: bytes,
+    filename: str,
+    csv_rows_name: str,
+    is_successful: bool,
+    expected_dict: Optional[Dict[str, Any]],
+    expected_str: str,
+) -> None:
+    """Test parser."""
+
+    config_file = BytesIO(content)
+    config_file.name = filename
+
+    parser = GhostwriterParser()
+    assert type(parser.set_csv_rows_name(csv_rows_name)) == parser.__class__
+    assert type(parser.load_config_file(config_file)) == parser.__class__
+    assert parser.parse() == is_successful
+    assert parser.parsed_dict == expected_dict
+    assert parser.parsed_str == expected_str
