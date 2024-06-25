@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   coverage:
+    if: ${{ github.actor != 'tvna' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,7 +52,6 @@ jobs:
         uses: codecov/codecov-action@v4.4.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-        if: secrets.CODECOV_TOKEN != null
       - name: Setup Code Climate
         uses: remarkablemark/setup-codeclimate@v2
       - name: Upload coverage reports to code climate
@@ -61,4 +61,3 @@ jobs:
           cc-test-reporter after-build --exit-code $?
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
-        if: secrets.CODE_CLIMATE_TEST_REPORTER_ID != null
