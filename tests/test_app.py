@@ -17,6 +17,9 @@ class MockParser:
 
         return self
 
+    def set_csv_rows_name(self: "MockParser", _: str) -> "MockParser":
+        return self
+
     def parse(self: "MockParser") -> bool:
         if self.__content != "POSITIVE":
             return False
@@ -190,7 +193,7 @@ def test_load_config_file(
     else:
         config_file = None
 
-    model.load_config_file(config_file)
+    model.load_config_file(config_file, "csv_rows")
     assert model.config_dict == expected_dict
     assert model.config_str == expected_text
     assert model.config_error_message == expected_error
@@ -296,7 +299,7 @@ def test_main_layout() -> None:
     assert len(at.success) == 0
     assert at.radio.len == 1
     assert at.toggle.len == 3
-    assert at.text_input.len == 1
+    assert at.text_input.len == 2
     assert at.text_area.len == 0
 
     # click "generate_text_button" without uploaded files

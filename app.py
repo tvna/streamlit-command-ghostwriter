@@ -112,7 +112,9 @@ def main() -> None:
         tab1_row2_col2.button(texts["tab1_generate_markdown_button"], use_container_width=True, key="tab1_execute_markdown")
 
         tab1_model = GhostwriterCore(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
-        tab1_model.load_config_file(st.session_state.get("tab1_config_file")).load_template_file(
+        tab1_model.load_config_file(
+            st.session_state.get("tab1_config_file"), st.session_state.get("csv_rows_name", "csv_rows")
+        ).load_template_file(
             st.session_state.get("tab1_template_file"),
             st.session_state.get("is_strict_undefined", True),
             st.session_state.get("is_remove_multiple_newline", True),
@@ -149,9 +151,9 @@ def main() -> None:
         tab2_model = GhostwriterCore(texts["tab2_error_debug_config"])
         tab2_row1_col1, _ = st.columns(2)
         with tab2_row1_col1.container(border=True):
-            st.file_uploader(texts["tab2_upload_debug_config"], type=["toml", "yaml", "yml"], key="tab2_config_file")
+            st.file_uploader(texts["tab2_upload_debug_config"], type=["toml", "yaml", "yml", "csv"], key="tab2_config_file")
 
-        tab2_model.load_config_file(st.session_state.get("tab2_config_file"))
+        tab2_model.load_config_file(st.session_state.get("tab2_config_file"), st.session_state.get("csv_rows_name", "csv_rows"))
 
         tab2_row2_col1, _, _ = st.columns(3)
         tab2_row2_col1.button(texts["tab2_generate_debug_config"], use_container_width=True, key="tab2_execute")
@@ -179,6 +181,7 @@ def main() -> None:
             st.session_state.download_file_ext = st.radio(texts["tab3_download_file_extension"], ["txt", "md"])
             st.session_state.is_strict_undefined = st.toggle(texts["tab3_strict_undefined"], value=True)
             st.session_state.is_remove_multiple_newline = st.toggle(texts["tab3_remove_multiple_newline"], value=True)
+            st.session_state.csv_rows_name = st.text_input(texts["tab3_csv_rows_name"], "csv_rows")
 
 
 if __name__ == "__main__":

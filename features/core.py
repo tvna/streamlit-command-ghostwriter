@@ -9,6 +9,7 @@ from features.config_parser import GhostwriterParser
 
 class GhostwriterCore:
     def __init__(self: "GhostwriterCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
+        self.__csv_rows_name = "csv_rows"
         self.__config_dict: Optional[Dict[str, Any]] = None
         self.__config_str: Optional[str] = None
         self.__render: Optional[GhostwriterRender] = None
@@ -19,12 +20,14 @@ class GhostwriterCore:
         self.__config_error_header = config_error_header
         self.__template_error_header = template_error_header
 
-    def set_config_dict(self: "GhostwriterCore", config: Optional[Dict[str, Any]]) -> None:
+    def set_config_dict(self: "GhostwriterCore", config: Optional[Dict[str, Any]]) -> "GhostwriterCore":
         """Set config dict for template args."""
 
         self.__config_dict = config
 
-    def load_config_file(self: "GhostwriterCore", config_file: Optional[BytesIO]) -> "GhostwriterCore":
+        return self
+
+    def load_config_file(self: "GhostwriterCore", config_file: Optional[BytesIO], csv_rows_name: str) -> "GhostwriterCore":
         """Load config file for template args."""
 
         # 呼び出しされるたびに、前回の結果をリセットする
@@ -35,6 +38,7 @@ class GhostwriterCore:
             return self
 
         parser = GhostwriterParser()
+        parser.set_csv_rows_name(csv_rows_name)
         parser.load_config_file(config_file).parse()
 
         if isinstance(parser.error_message, str):

@@ -37,5 +37,6 @@ LANGUAGES = {
         "tab3_strict_undefined": "テンプレートの変数チェック厳格化",
         "tab3_remove_multiple_newline": "整形後の余分な改行を削除",
         "tab3_header_generate_text": "### テキスト整形",
+        "tab3_csv_rows_name": "CSV設定ファイル上のforループ対象の変数名",
     },
 }
