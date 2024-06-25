@@ -28,7 +28,6 @@ class GhostwriterParser:
                 return self
 
             self.__config_data = config_file.read().decode("utf-8")
-            self.__config_file = config_file
 
         except UnicodeDecodeError as e:
             self.__error_message = str(e)
@@ -47,28 +46,27 @@ class GhostwriterParser:
             return False
 
         try:
-            if self.__file_extension == "toml":
-                self.__parsed_dict = tomllib.loads(self.__config_data)
+            match self.__file_extension:
+                case "toml":
+                    self.__parsed_dict = tomllib.loads(self.__config_data)
+                case "yaml" | "yml":
+                    self.__parsed_dict = yaml.safe_load(self.__config_data)
+                case "csv":
+                    csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
+                    mapped_list = [row._asdict() for row in csv_data.itertuples(index=False)]  # type: ignore
 
-            if self.__file_extension in {"yaml", "yml"}:
-                self.__parsed_dict = yaml.safe_load(self.__config_data)
+                    self.__parsed_dict = {self.__csv_rows_name: mapped_list}
 
-            if self.__file_extension == "csv":
-                csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
-                mapped_list = [row._asdict() for row in csv_data.itertuples(index=False)]  # type: ignore
-
-                self.__parsed_dict = {self.__csv_rows_name: mapped_list}
-
-        except tomllib.TOMLDecodeError as e:
-            self.__error_message = str(e)
-
-        except (yaml.MarkedYAMLError, yaml.reader.ReaderError) as e:
-            self.__error_message = str(e)
-
-        except (pd.errors.DtypeWarning, pd.errors.EmptyDataError, pd.errors.ParserError) as e:
-            self.__error_message = str(e)
-
-        except (TypeError, ValueError) as e:
+        except (
+            tomllib.TOMLDecodeError,
+            yaml.MarkedYAMLError,
+            yaml.reader.ReaderError,
+            pd.errors.DtypeWarning,
+            pd.errors.EmptyDataError,
+            pd.errors.ParserError,
+            TypeError,
+            ValueError,
+        ) as e:
             self.__error_message = str(e)
 
         if self.__parsed_dict is None:
