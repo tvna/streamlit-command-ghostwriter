@@ -8,7 +8,7 @@ from i18n import LANGUAGES
 
 class TabViewModel:
     def __init__(self: "TabViewModel", texts: Dict[str, str]) -> None:
-        self.__texts = texts
+        self.__texts: Final[Dict[str, str]] = texts
         self.__execute_mode: int = 0
 
     def set_execute_mode(self: "TabViewModel", is_text: bool, is_markdown: bool, is_debug: bool) -> "TabViewModel":
@@ -77,7 +77,7 @@ class TabViewModel:
 
 def main() -> None:
     """Generate Streamlit web screens."""
-    texts: Dict[str, str] = LANGUAGES["日本語"]
+    texts: Final[Dict[str, str]] = LANGUAGES["日本語"]
     default_format_type: Final[int] = 3
 
     st.session_state.update({"tab1_result_content": st.session_state.get("tab1_result_content")})

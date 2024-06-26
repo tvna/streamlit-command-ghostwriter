@@ -2,7 +2,7 @@
 import re
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Final, Optional
 
 from features.command_render import GhostwriterRender
 from features.config_parser import GhostwriterParser
@@ -98,10 +98,9 @@ class GhostwriterCore:
         if filename is None or file_ext is None:
             return None
 
-        suffix = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
-        filename = f"{filename}{suffix}.{str(file_ext)}"
+        suffix: Final[str] = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
 
-        return filename
+        return f"{filename}{suffix}.{str(file_ext)}"
 
     def get_uploaded_filename(self: "GhostwriterCore", file: Optional[BytesIO]) -> Optional[str]:
         """Get filename for uploaded contents."""
