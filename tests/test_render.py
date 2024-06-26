@@ -9,9 +9,9 @@ from features.command_render import GhostwriterRender
 @pytest.mark.unit()
 @pytest.mark.parametrize(
     (
-        "is_strict_undefined",
-        "is_remove_multiple_newline",
         "template_content",
+        "format_type",
+        "is_strict_undefined",
         "context",
         "expected_validate_template",
         "expected_apply_succeeded",
@@ -20,27 +20,77 @@ from features.command_render import GhostwriterRender
     ),
     [
         # Test case on success
-        pytest.param(True, True, b"Hello {{ name }}!", {"name": "World"}, True, True, "Hello World!", None),
-        pytest.param(False, True, b"Hello {{ name }}!", {}, True, True, "Hello !", None),
-        # Test case on failed
-        pytest.param(True, True, b"Hello {{ user }}!", {"name": "World"}, True, False, None, "'user' is undefined"),
+        pytest.param(b"Hello {{ name }}!", 3, True, {"name": "World"}, True, True, "Hello World!", None),
         pytest.param(
+            b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
+            4,
+            True,
+            {"name": "World"},
             True,
             True,
+            "Hello World!\nGood bye World!",
+            None,
+        ),
+        pytest.param(
+            b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
+            3,
+            True,
+            {"name": "World"},
+            True,
+            True,
+            "Hello World!\n\nGood bye World!",
+            None,
+        ),
+        pytest.param(
+            b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
+            2,
+            True,
+            {"name": "World"},
+            True,
+            True,
+            "Hello World!\n\n  \nGood bye World!",
+            None,
+        ),
+        pytest.param(
+            b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
+            1,
+            True,
+            {"name": "World"},
+            True,
+            True,
+            "Hello World!\n\nGood bye World!",
+            None,
+        ),
+        pytest.param(
+            b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
+            0,
+            True,
+            {"name": "World"},
+            True,
+            True,
+            "Hello World!\n\n\n  \nGood bye World!",
+            None,
+        ),
+        pytest.param(b"Hello {{ name }}!", 3, False, {}, True, True, "Hello !", None),
+        # Test case on failed
+        pytest.param(b"Hello {{ user }}!", 3, True, {"name": "World"}, True, False, None, "'user' is undefined"),
+        pytest.param(
             b"\x80\x81\x82\x83",
+            3,
+            True,
             {"name": "World"},
             False,
             False,
             None,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
         ),
-        pytest.param(True, True, b"Hello {{ name }!", {"name": "World"}, False, False, None, "unexpected '}'"),
+        pytest.param(b"Hello {{ name }!", 3, True, {"name": "World"}, False, False, None, "unexpected '}'"),
     ],
 )
 def test_render(
-    is_strict_undefined: bool,
-    is_remove_multiple_newline: bool,
     template_content: bytes,
+    format_type: int,
+    is_strict_undefined: bool,
     context: Dict[str, Any],
     expected_validate_template: bool,
     expected_apply_succeeded: bool,
@@ -49,10 +99,10 @@ def test_render(
 ) -> None:
     """Test render."""
 
-    render = GhostwriterRender(is_strict_undefined, is_remove_multiple_newline)
+    render = GhostwriterRender()
     render.load_template_file(BytesIO(template_content))
 
     assert render.validate_template() == expected_validate_template
-    assert render.apply_context(context) == expected_apply_succeeded
+    assert render.apply_context(context, format_type, is_strict_undefined) == expected_apply_succeeded
     assert render.render_content == expected_content
     assert render.error_message == expected_error
