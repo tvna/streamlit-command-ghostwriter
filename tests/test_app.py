@@ -162,7 +162,7 @@ def test_mock_render(
     """Test mock-render."""
 
     render = MockRender()
-    render.load_template_file(BytesIO(template_content))
+    assert type(render.load_template_file(BytesIO(template_content))) == render.__class__
 
     assert render.validate_template() == expected_validate_template
     assert render.apply_context(context, 3, is_strict_undefined) == expected_apply_succeeded
@@ -192,7 +192,7 @@ def test_load_config_file(
     else:
         config_file = None
 
-    model.load_config_file(config_file, "csv_rows")
+    assert type(model.load_config_file(config_file, "csv_rows")) == model.__class__
     assert model.config_dict == expected_dict
     assert model.config_str == expected_text
     assert model.config_error_message == expected_error
@@ -228,14 +228,15 @@ def test_load_template_file(
 ) -> None:
     """Test load_template_file."""
 
-    model.set_config_dict(config_data)
+    assert type(model.set_config_dict(config_data)) == model.__class__
 
     if isinstance(template_content, bytes):
         template_file, template_file.name = BytesIO(template_content), "template.j2"
     else:
         template_file = None
 
-    model.load_template_file(template_file).apply_context("3", is_strict_undefined)
+    assert type(model.load_template_file(template_file)) == model.__class__
+    assert type(model.apply_context("3", is_strict_undefined)) == model.__class__
     assert model.formatted_text == expected_result
     assert model.template_error_message == expected_error
 

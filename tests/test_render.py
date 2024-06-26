@@ -100,7 +100,7 @@ def test_render(
     """Test render."""
 
     render = GhostwriterRender()
-    render.load_template_file(BytesIO(template_content))
+    assert type(render.load_template_file(BytesIO(template_content))) == render.__class__
 
     assert render.validate_template() == expected_validate_template
     assert render.apply_context(context, format_type, is_strict_undefined) == expected_apply_succeeded
