@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Final, Optional
 
 import streamlit as st
 
@@ -78,6 +78,7 @@ class TabViewModel:
 def main() -> None:
     """Generate Streamlit web screens."""
     texts: Dict[str, str] = LANGUAGES["日本語"]
+    default_format_type: Final[int] = 3
 
     st.session_state.update({"tab1_result_content": st.session_state.get("tab1_result_content")})
     st.session_state.update({"tab2_result_content": st.session_state.get("tab2_result_content")})
@@ -114,11 +115,10 @@ def main() -> None:
         tab1_model = GhostwriterCore(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
         tab1_model.load_config_file(
             st.session_state.get("tab1_config_file"), st.session_state.get("csv_rows_name", "csv_rows")
-        ).load_template_file(
-            st.session_state.get("tab1_template_file"),
+        ).load_template_file(st.session_state.get("tab1_template_file")).apply_context(
+            st.session_state.get("result_format_type", f"{default_format_type}: default"),
             st.session_state.get("is_strict_undefined", True),
-            st.session_state.get("is_remove_multiple_newline", True),
-        ).apply_context()
+        )
 
         st.session_state.update({"tab1_result_content": tab1_model.formatted_text})
         st.session_state.update({"tab1_error_config": tab1_model.config_error_message})
@@ -176,12 +176,24 @@ def main() -> None:
         tab3_row1_col1, _ = st.columns(2)
         with tab3_row1_col1.container(border=True):
             st.markdown(texts["tab3_header_generate_text"])
-            st.session_state.download_filename = st.text_input(texts["tab3_download_filename"], "command")
+            st.session_state.download_filename = st.container(border=True).text_input(texts["tab3_download_filename"], "command")
             st.session_state.is_append_timestamp = st.toggle(texts["tab3_append_timestamp_filename"], value=True)
-            st.session_state.download_file_ext = st.radio(texts["tab3_download_file_extension"], ["txt", "md"])
+            st.session_state.download_file_ext = st.container(border=True).radio(
+                texts["tab3_download_file_extension"], ["txt", "md"], horizontal=True
+            )
             st.session_state.is_strict_undefined = st.toggle(texts["tab3_strict_undefined"], value=True)
-            st.session_state.is_remove_multiple_newline = st.toggle(texts["tab3_remove_multiple_newline"], value=True)
-            st.session_state.csv_rows_name = st.text_input(texts["tab3_csv_rows_name"], "csv_rows")
+            st.session_state.result_format_type = st.container(border=True).selectbox(
+                texts["tab3_format_type"],
+                (
+                    texts["tab3_format_type_item0"],
+                    texts["tab3_format_type_item1"],
+                    texts["tab3_format_type_item2"],
+                    texts["tab3_format_type_item3"],
+                    texts["tab3_format_type_item4"],
+                ),
+                index=default_format_type,
+            )
+            st.session_state.csv_rows_name = st.container(border=True).text_input(texts["tab3_csv_rows_name"], "csv_rows")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+import re
 from datetime import datetime
 from io import BytesIO
 from typing import Any, Dict, Optional
@@ -9,7 +10,6 @@ from features.config_parser import GhostwriterParser
 
 class GhostwriterCore:
     def __init__(self: "GhostwriterCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
-        self.__csv_rows_name = "csv_rows"
         self.__config_dict: Optional[Dict[str, Any]] = None
         self.__config_str: Optional[str] = None
         self.__render: Optional[GhostwriterRender] = None
@@ -51,9 +51,7 @@ class GhostwriterCore:
 
         return self
 
-    def load_template_file(
-        self: "GhostwriterCore", template_file: Optional[BytesIO], is_strict_undefined: bool, is_clear_dup_lines: bool
-    ) -> "GhostwriterCore":
+    def load_template_file(self: "GhostwriterCore", template_file: Optional[BytesIO]) -> "GhostwriterCore":
         """Load jinja template file."""
 
         self.__formatted_text = None
@@ -61,7 +59,7 @@ class GhostwriterCore:
         if not template_file:
             return self
 
-        render = GhostwriterRender(is_strict_undefined, is_clear_dup_lines)
+        render = GhostwriterRender()
         if not render.load_template_file(template_file).validate_template():
             error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
@@ -71,15 +69,20 @@ class GhostwriterCore:
 
         return self
 
-    def apply_context(self: "GhostwriterCore") -> "GhostwriterCore":
+    def apply_context(self: "GhostwriterCore", format_type_str: str, is_strict_undefined: bool) -> "GhostwriterCore":
         """Apply context-dict for loaded template."""
 
-        if self.__config_dict is None or self.__render is None:
+        render = self.__render
+        config_dict = self.__config_dict
+
+        if config_dict is None or render is None:
             return self
 
-        render = self.__render
+        format_type_buffer = re.findall("^[0-9]+", format_type_str)
+        if len(format_type_buffer) != 1:
+            return self
 
-        if not render.apply_context(self.__config_dict):
+        if not render.apply_context(config_dict, int(format_type_buffer[0]), is_strict_undefined):
             error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{self.__template_filename}'"
             return self

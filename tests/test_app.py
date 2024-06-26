@@ -50,9 +50,8 @@ class MockParser:
 
 
 class MockRender:
-    def __init__(self: "MockRender", is_strict_undefined: bool = True, is_remove_multiple_newline: bool = True) -> None:
+    def __init__(self: "MockRender") -> None:
         self.__is_successful: bool = False
-        self.__is_strict_undefined: bool = is_strict_undefined
         self.__render_content: str = "This is POSITIVE"
 
     def load_template_file(self: "MockRender", file: BytesIO) -> "MockRender":
@@ -66,11 +65,11 @@ class MockRender:
     def validate_template(self: "MockRender") -> bool:
         return self.__is_successful
 
-    def apply_context(self: "MockRender", content: Dict[str, Any]) -> bool:
+    def apply_context(self: "MockRender", content: Dict[str, Any], format_type: int = 3, is_strict_undefined: bool = True) -> bool:
         if not self.__is_successful:
             return False
 
-        if self.__is_strict_undefined and content != {"key": "POSITIVE"}:
+        if is_strict_undefined and content != {"key": "POSITIVE"}:
             self.__is_successful = False
             return False
 
@@ -162,11 +161,11 @@ def test_mock_render(
 ) -> None:
     """Test mock-render."""
 
-    render = MockRender(is_strict_undefined, True)
+    render = MockRender()
     render.load_template_file(BytesIO(template_content))
 
     assert render.validate_template() == expected_validate_template
-    assert render.apply_context(context) == expected_apply_succeeded
+    assert render.apply_context(context, 3, is_strict_undefined) == expected_apply_succeeded
     assert render.render_content == expected_content
     assert render.error_message == expected_error
 
@@ -236,7 +235,7 @@ def test_load_template_file(
     else:
         template_file = None
 
-    model.load_template_file(template_file, is_strict_undefined, True).apply_context()
+    model.load_template_file(template_file).apply_context("3", is_strict_undefined)
     assert model.formatted_text == expected_result
     assert model.template_error_message == expected_error
 
@@ -298,7 +297,8 @@ def test_main_layout() -> None:
     assert len(at.warning) == 0
     assert len(at.success) == 0
     assert at.radio.len == 1
-    assert at.toggle.len == 3
+    assert at.toggle.len == 2
+    assert at.selectbox.len == 1
     assert at.text_input.len == 2
     assert at.text_area.len == 0
 

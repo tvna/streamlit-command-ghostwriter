@@ -6,7 +6,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, Template, Tem
 
 
 class GhostwriterRender:
-    def __init__(self: "GhostwriterRender", is_strict_undefined: bool = True, is_remove_multiple_newline: bool = True) -> None:
+    def __init__(self: "GhostwriterRender") -> None:
         self.__template_content: Optional[str] = None
         self.__render_content: Optional[str] = None
         self.__error_message: Optional[str] = None
