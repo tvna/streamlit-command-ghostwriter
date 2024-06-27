@@ -41,7 +41,8 @@ LANGUAGES = {
         "tab3_format_type_item2": "2: 余分な改行を一部削除",
         "tab3_format_type_item3": "3: 半角スペースと余分な改行を一部削除",
         "tab3_format_type_item4": "4: 半角スペースの一部と余分な改行を全て削除",
-        "tab3_header_generate_text": "### テキスト整形",
+        "tab3_header_input_file": "### 入力ファイルの設定",
+        "tab3_header_output_file": "### 出力ファイルの設定",
         "tab3_csv_rows_name": "CSV設定ファイル上のforループ対象の変数名",
     },
 }

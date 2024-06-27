@@ -173,15 +173,18 @@ def main() -> None:
         )
 
     with tab3:
-        tab3_row1_col1, _ = st.columns(2)
-        with tab3_row1_col1.container(border=True):
-            st.markdown(texts["tab3_header_generate_text"])
+        tab3_row1_cols = st.columns(2)
+        with tab3_row1_cols[0].container(border=True):
+            st.markdown(texts["tab3_header_input_file"])
+            st.session_state.csv_rows_name = st.container(border=True).text_input(texts["tab3_csv_rows_name"], "csv_rows")
+            st.session_state.is_strict_undefined = st.container(border=True).toggle(texts["tab3_strict_undefined"], value=True)
+        with tab3_row1_cols[1].container(border=True):
+            st.markdown(texts["tab3_header_output_file"])
             st.session_state.download_filename = st.container(border=True).text_input(texts["tab3_download_filename"], "command")
-            st.session_state.is_append_timestamp = st.toggle(texts["tab3_append_timestamp_filename"], value=True)
+            st.session_state.is_append_timestamp = st.container(border=True).toggle(texts["tab3_append_timestamp_filename"], value=True)
             st.session_state.download_file_ext = st.container(border=True).radio(
                 texts["tab3_download_file_extension"], ["txt", "md"], horizontal=True
             )
-            st.session_state.is_strict_undefined = st.toggle(texts["tab3_strict_undefined"], value=True)
             st.session_state.result_format_type = st.container(border=True).selectbox(
                 texts["tab3_format_type"],
                 (
@@ -193,7 +196,6 @@ def main() -> None:
                 ),
                 index=default_format_type,
             )
-            st.session_state.csv_rows_name = st.container(border=True).text_input(texts["tab3_csv_rows_name"], "csv_rows")
 
 
 if __name__ == "__main__":
