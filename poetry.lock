@@ -1117,6 +1117,16 @@ files = [
 ]
 
 [[package]]
+name = "nkf"
+version = "1.0.4"
+description = "Python Interface to NKF"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "nkf-1.0.4.tar.gz", hash = "sha256:7eda1424883d351ae8f28ada4ca6cf423ec47c63745d83d4c0c6b8817192b601"},
+]
+
+[[package]]
 name = "nodeenv"
 version = "1.9.1"
 description = "Node.js virtual environment builder"
@@ -2609,4 +2619,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <4.0"
-content-hash = "09cccb9c4c3baf595cc3350312cde85c43b7316cfe2af6173c4d5db928d32c44"
+content-hash = "cf63dfda842b1a8b8204a68adcfa6cd70f6c33cf29fd6e2adf5728f541039b26"
