@@ -174,13 +174,25 @@ jobs:
           poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN ${LIZARD_CCN_COUNT}
       - name: Show AST (app.py)
         run: |
-          python -c 'import ast; print(ast.dump(ast.parse(open("app.py").read()), indent=2))'
-      - name: Show AST (command_render.py)
+          python <<EOF
+          import ast
+          print(ast.dump(ast.parse(open("app.py").read()), indent=2))
+          EOF
+      - name: Show AST (features/*.py)
         run: |
-          python -c 'import ast; print(ast.dump(ast.parse(open("features/command_render.py").read()), indent=2))'
-      - name: Show AST (config_parser.py)
-        run: |
-          python -c 'import ast; print(ast.dump(ast.parse(open("features/config_parser.py").read()), indent=2))'
+          python <<EOF
+          import ast
+          import os
+          import pprint
+
+          target_dir = "./features"
+          ast_trees = {}
+          for file in os.listdir(target_dir):
+              if file.endswith(".py"):
+                  ast_trees[file] = ast.dump(ast.parse(open(os.path.join(target_dir, file)).read()), indent=2)
+
+          pprint.pprint(ast_trees, width=100, compact=False)
+          EOF
 
   call-coverage-workflow:
     needs: test
