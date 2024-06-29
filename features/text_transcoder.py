@@ -1,7 +1,7 @@
 from io import BytesIO
 from typing import Final, Optional
 
-import nkf
+import nkf  # type: ignore
 
 
 class TextTranscoder:
@@ -23,9 +23,8 @@ class TextTranscoder:
 
         input_data.seek(0)
         raw_data = input_data.getvalue()
-        result = nkf.guess(raw_data)  # type: ignore
 
-        return result
+        return nkf.guess(raw_data)  # type: ignore
 
     def to_utf8(self: "TextTranscoder") -> Optional[BytesIO]:
         encoding = self.detect_encoding(self.__input_data)

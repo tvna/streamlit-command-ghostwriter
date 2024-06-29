@@ -65,12 +65,5 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
 
     trans = TextTranscoder(input_data)
     assert trans.detect_encoding(input_data) == expected_encoding
-
-    output_data = trans.to_utf8()
-    if isinstance(output_data, BytesIO):
-        assert output_data.getvalue() == expected_result
-        assert trans.challenge_to_utf8().getvalue() == expected_result
-        assert output_data.name == input_data.name
-    else:
-        assert output_data == None
-        assert trans.challenge_to_utf8().getvalue() == expected_result
+    assert trans.to_utf8() == None
+    assert trans.challenge_to_utf8().getvalue() == expected_result
