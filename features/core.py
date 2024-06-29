@@ -6,6 +6,7 @@ from typing import Any, Dict, Final, Optional
 
 from features.command_render import GhostwriterRender
 from features.config_parser import GhostwriterParser
+from features.text_transcoder import TextTranscoder
 
 
 class GhostwriterCore:
@@ -27,7 +28,9 @@ class GhostwriterCore:
 
         return self
 
-    def load_config_file(self: "GhostwriterCore", config_file: Optional[BytesIO], csv_rows_name: str) -> "GhostwriterCore":
+    def load_config_file(
+        self: "GhostwriterCore", config_file: Optional[BytesIO], csv_rows_name: str, is_auto_encoding: bool
+    ) -> "GhostwriterCore":
         """Load config file for template args."""
 
         # 呼び出しされるたびに、前回の結果をリセットする
@@ -36,6 +39,10 @@ class GhostwriterCore:
 
         if not (config_file and hasattr(config_file, "name")):
             return self
+
+        if is_auto_encoding:
+            trans = TextTranscoder(config_file)
+            config_file = trans.challenge_to_utf8()
 
         parser = GhostwriterParser()
         parser.set_csv_rows_name(csv_rows_name)
@@ -51,13 +58,17 @@ class GhostwriterCore:
 
         return self
 
-    def load_template_file(self: "GhostwriterCore", template_file: Optional[BytesIO]) -> "GhostwriterCore":
+    def load_template_file(self: "GhostwriterCore", template_file: Optional[BytesIO], is_auto_encoding: bool) -> "GhostwriterCore":
         """Load jinja template file."""
 
         self.__formatted_text = None
 
         if not template_file:
             return self
+
+        if is_auto_encoding:
+            trans = TextTranscoder(template_file)
+            template_file = trans.challenge_to_utf8()
 
         render = GhostwriterRender()
         if not render.load_template_file(template_file).validate_template():

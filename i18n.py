@@ -35,6 +35,7 @@ LANGUAGES = {
         "tab3_download_file_extension": "ダウンロード時のファイル拡張子",
         "tab3_append_timestamp_filename": "ファイル名の末尾にタイプスタンプを付与",
         "tab3_strict_undefined": "テンプレートの変数チェック厳格化",
+        "tab3_auto_encoding": "UTF-8以外の文字コードを自動判定して読み込む",
         "tab3_format_type": "整形時のフォーマット型",
         "tab3_format_type_item0": "0: フォーマット無し",
         "tab3_format_type_item1": "1: 半角スペースを一部削除",

@@ -114,10 +114,14 @@ def main() -> None:
 
         tab1_model = GhostwriterCore(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
         tab1_model.load_config_file(
-            st.session_state.get("tab1_config_file"), st.session_state.get("csv_rows_name", "csv_rows")
-        ).load_template_file(st.session_state.get("tab1_template_file")).apply_context(
-            st.session_state.get("result_format_type", f"{default_format_type}: default"),
-            st.session_state.get("is_strict_undefined", True),
+            st.session_state.get("tab1_config_file"),
+            st.session_state.get("csv_rows_name", "csv_rows"),
+            st.session_state.get("is_auto_transcoding", True),
+        ).load_template_file(
+            st.session_state.get("tab1_template_file"),
+            st.session_state.get("is_auto_transcoding", True),
+        ).apply_context(
+            st.session_state.get("result_format_type", f"{default_format_type}: default"), st.session_state.get("is_strict_undefined", True)
         )
 
         st.session_state.update({"tab1_result_content": tab1_model.formatted_text})
@@ -153,7 +157,11 @@ def main() -> None:
         with tab2_row1_col1.container(border=True):
             st.file_uploader(texts["tab2_upload_debug_config"], type=["toml", "yaml", "yml", "csv"], key="tab2_config_file")
 
-        tab2_model.load_config_file(st.session_state.get("tab2_config_file"), st.session_state.get("csv_rows_name", "csv_rows"))
+        tab2_model.load_config_file(
+            st.session_state.get("tab2_config_file"),
+            st.session_state.get("csv_rows_name", "csv_rows"),
+            st.session_state.get("is_auto_transcoding", True),
+        )
 
         tab2_row2_col1, _, _ = st.columns(3)
         tab2_row2_col1.button(texts["tab2_generate_debug_config"], use_container_width=True, key="tab2_execute")
@@ -178,6 +186,7 @@ def main() -> None:
             st.markdown(texts["tab3_header_input_file"])
             st.session_state.csv_rows_name = st.container(border=True).text_input(texts["tab3_csv_rows_name"], "csv_rows")
             st.session_state.is_strict_undefined = st.container(border=True).toggle(texts["tab3_strict_undefined"], value=True)
+            st.session_state.is_auto_transcoding = st.container(border=True).toggle(texts["tab3_auto_encoding"], value=True)
         with tab3_row1_cols[1].container(border=True):
             st.markdown(texts["tab3_header_output_file"])
             st.session_state.download_filename = st.container(border=True).text_input(texts["tab3_download_filename"], "command")
