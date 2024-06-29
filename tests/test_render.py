@@ -85,6 +85,26 @@ from features.command_render import GhostwriterRender
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
         ),
         pytest.param(b"Hello {{ name }!", 3, True, {"name": "World"}, False, False, None, "unexpected '}'"),
+        pytest.param(
+            b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
+            -1,
+            True,
+            {"name": "World"},
+            True,
+            False,
+            None,
+            "Unsupported format type",
+        ),
+        pytest.param(
+            b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
+            99,
+            True,
+            {"name": "World"},
+            True,
+            False,
+            None,
+            "Unsupported format type",
+        ),
     ],
 )
 def test_render(
@@ -105,4 +125,5 @@ def test_render(
     assert render.validate_template() == expected_validate_template
     assert render.apply_context(context, format_type, is_strict_undefined) == expected_apply_succeeded
     assert render.render_content == expected_content
+    print(render.error_message)
     assert render.error_message == expected_error

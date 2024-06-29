@@ -80,7 +80,11 @@ class GhostwriterRender:
             self.__error_message = str(e)
             return False
 
-        self.__render_content = self.__format_context(render_content, format_type)
+        try:
+            self.__render_content = self.__format_context(render_content, format_type)
+        except ValueError:
+            self.__error_message = "Unsupported format type"
+            return False
 
         return True
 
