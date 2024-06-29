@@ -6,7 +6,7 @@ from typing import Any, Dict, Final, Optional
 
 from features.command_render import GhostwriterRender
 from features.config_parser import GhostwriterParser
-from features.text_transcoder import TextTranscoder
+from features.transcoder import TextTranscoder
 
 
 class GhostwriterCore:

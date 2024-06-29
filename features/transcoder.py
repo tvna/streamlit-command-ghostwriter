@@ -1,7 +1,7 @@
 from io import BytesIO
 from typing import Final, Optional
 
-import nkf  # type: ignore
+import chardet
 
 
 class TextTranscoder:
@@ -23,8 +23,22 @@ class TextTranscoder:
 
         input_data.seek(0)
         raw_data = input_data.getvalue()
+        result = chardet.detect(raw_data)
+        encoding = result["encoding"]
+        known_encode = ["ASCII", "Shift_JIS", "EUC-JP", "ISO-2022-JP", "utf-8"]
 
-        return nkf.guess(raw_data)  # type: ignore
+        # 日本語に関連するエンコーディングを優先する
+        if encoding in known_encode:
+            return encoding
+        else:
+            # 他のエンコーディングを試す
+            for enc in known_encode:
+                try:
+                    raw_data.decode(enc)
+                    return enc
+                except (UnicodeDecodeError, LookupError):
+                    continue
+            return encoding
 
     def to_utf8(self: "TextTranscoder") -> Optional[BytesIO]:
         encoding = self.detect_encoding(self.__input_data)

@@ -50,7 +50,7 @@
         "desktop": {
             "files": [
                 "app.py",
-                "i11n.py",
+                "i18n.py",
                 "features/*.py"
             ],
             "nodeJsWorker": false,
@@ -58,7 +58,8 @@
             "embed": true,
             "dependencies": [
                 "pyyaml",
-                "jinja2"
+                "jinja2",
+                "chardet"
             ]
         }
     },
