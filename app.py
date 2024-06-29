@@ -120,7 +120,7 @@ def main() -> None:
         ).load_template_file(
             st.session_state.get("tab1_template_file"),
             st.session_state.get("is_auto_transcoding", True),
-        ).apply_context(
+        ).apply(
             st.session_state.get("result_format_type", f"{default_format_type}: default"), st.session_state.get("is_strict_undefined", True)
         )
 

@@ -61,8 +61,6 @@ class GhostwriterCore:
     def load_template_file(self: "GhostwriterCore", template_file: Optional[BytesIO], is_auto_encoding: bool) -> "GhostwriterCore":
         """Load jinja template file."""
 
-        self.__formatted_text = None
-
         if not template_file:
             return self
 
@@ -80,8 +78,10 @@ class GhostwriterCore:
 
         return self
 
-    def apply_context(self: "GhostwriterCore", format_type_str: str, is_strict_undefined: bool) -> "GhostwriterCore":
+    def apply(self: "GhostwriterCore", format_type_str: str, is_strict_undefined: bool) -> "GhostwriterCore":
         """Apply context-dict for loaded template."""
+
+        self.__formatted_text = None
 
         render = self.__render
         config_dict = self.__config_dict
@@ -99,6 +99,8 @@ class GhostwriterCore:
             return self
 
         self.__formatted_text = render.render_content
+        self.__template_error_message = None
+
         return self
 
     def get_download_filename(

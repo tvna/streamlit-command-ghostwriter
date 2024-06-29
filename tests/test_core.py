@@ -235,8 +235,11 @@ def test_load_template_file(
         template_file = None
 
     assert type(model.load_template_file(template_file, False)) == model.__class__
-    assert type(model.apply_context("3", is_strict_undefined)) == model.__class__
+    assert type(model.apply("3", is_strict_undefined)) == model.__class__
     assert model.formatted_text == expected_result
+    assert model.template_error_message == expected_error
+    assert type(model.apply("三", is_strict_undefined)) == model.__class__
+    assert model.formatted_text == None
     assert model.template_error_message == expected_error
 
 
