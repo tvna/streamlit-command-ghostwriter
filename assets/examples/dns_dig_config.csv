@@ -1,0 +1,8 @@
+resolver,fqdn,type
+1.1.1.1,www.yahoo.co.jp,a
+1.1.1.1,yahoo.co.jp,mx
+1.1.1.1,yahoo.co.jp,txt
+8.8.8.8,gmail.com,mx
+8.8.8.8,gmail.com,txt
+8.8.8.8,_dmarc.gmail.com,txt
+8.8.8.8,selector1._domainkey.live.com,txt

@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   coverage:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,27 +48,12 @@ jobs:
       - name: Run pytest
         run: |
           poetry run pytest --cov . --cov-report=xml
-      - name: Check for codecov secret
-        id: check_codecov_secret
-        run: |
-          if [ -z "${{ secrets.CODECOV_TOKEN }}" ]; then
-            echo "CODECOV_TOKEN is not set"
-            exit 1
-          fi
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.4.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-        if: success()
       - name: Setup Code Climate
         uses: remarkablemark/setup-codeclimate@v2
-      - name: Check for code climate secret
-        id: check_code_climate_secret
-        run: |
-          if [ -z "${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}" ]; then
-            echo "CODE_CLIMATE_TEST_REPORTER_ID is not set"
-            exit 1
-          fi
       - name: Upload coverage reports to code climate
         run: |
           cc-test-reporter before-build
@@ -75,4 +61,3 @@ jobs:
           cc-test-reporter after-build --exit-code $?
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
-        if: success()

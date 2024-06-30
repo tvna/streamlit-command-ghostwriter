@@ -1,6 +1,6 @@
 {
     "name": "command_ghostwriter",
-    "version": "0.1.2",
+    "version": "0.2.0",
     "main": "./build/electron/main.js",
     "description": "Electron application with streamlit",
     "license": "MIT",
@@ -21,7 +21,6 @@
             "build/**/*"
         ],
         "productName": "CommandGhostwriter",
-        "artifactName": "${name}.${ext}",
         "directories": {
             "buildResources": "assets"
         },
@@ -37,12 +36,11 @@
     "devDependencies": {
         "@commitlint/cli": "^19.3.0",
         "@commitlint/config-conventional": "^19.2.2",
+        "@commitlint/cz-commitlint": "^19.2.0",
         "@stlite/desktop": "^0.58.6",
         "commitizen": "^4.3.0",
         "cross-env": "^7.0.3",
-        "cz-conventional-changelog": "^3.3.0",
-        "cz-customizable": "^7.0.0",
-        "electron": "^30.1.1",
+        "electron": "^31.1.0",
         "electron-builder": "^24.13.3",
         "husky": "^9.0.11",
         "lint-staged": "^15.2.7",
@@ -52,21 +50,25 @@
         "desktop": {
             "files": [
                 "app.py",
-                "i11n.py",
+                "i18n.py",
+                ".streamlit/*",
                 "features/*.py"
             ],
-            "nodeJsWorker": true,
+            "nodeJsWorker": false,
             "entrypoint": "app.py",
             "embed": true,
-            "dependencies": ["streamlit", "pyyaml", "jinja2"]
+            "dependencies": [
+                "pyyaml",
+                "jinja2",
+                "chardet",
+                "toml",
+                "python-box"
+            ]
         }
     },
     "config": {
         "commitizen": {
-            "path": "./node_modules/cz-customizable"
-        },
-        "cz-customizable": {
-          "config": "./.cz_config.js"
+          "path": "@commitlint/cz-commitlint"
         }
     },
     "hooks": {
