@@ -1,4 +1,6 @@
-name: Lint GitHub Actions workflows
+---
+name: Lint github actions workflows
+
 on:
   push:
     branches:
@@ -18,21 +20,23 @@ on:
       - ".github/actions/*.yaml"
       - ".github/workflows/*.yml"
       - ".github/workflows/*.yaml"
+
 defaults:
   run:
     shell: bash
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   lint:
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out Git repository
+        uses: actions/checkout@v4
       - name: Check workflow files
-        uses: reviewdog/action-actionlint@v1
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color
