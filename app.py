@@ -85,11 +85,8 @@ class TabViewModel:
                 continue
 
             with open(os.path.join(samples_dir, filename), mode="rb") as file:
-                text_file = TextTranscoder(BytesIO(file.read())).convert()
-                if text_file is None:
-                    continue
-
-                st.text_area(label=filename, value=text_file.getvalue().decode("utf-8"), height=250)
+                content = TextTranscoder(BytesIO(file.read())).convert().getvalue().decode("utf-8")  # type: ignore
+                st.text_area(label=filename, value=content, height=250)
 
 
 def main() -> None:

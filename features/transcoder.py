@@ -49,11 +49,8 @@ class TextTranscoder:
         if not encoding:
             return None
 
-        try:
-            self.__input_data.seek(0)
-            content = self.__input_data.read().decode(encoding)
-        except UnicodeDecodeError:
-            return None
+        self.__input_data.seek(0)
+        content = self.__input_data.read().decode(encoding)
 
         try:
             output_data = BytesIO(content.encode(encode))
