@@ -15,7 +15,9 @@ class TabViewModel:
         self.__texts: Final[Box] = texts
         self.__execute_mode: int = 0
 
-    def set_execute_mode(self: "TabViewModel", is_text: bool, is_markdown: bool, is_debug: bool) -> "TabViewModel":
+    def set_execute_mode(
+        self: "TabViewModel", is_text: bool, is_markdown: bool, is_debug_dict: bool, is_debug_json: bool
+    ) -> "TabViewModel":
         """Set execute mode."""
 
         self.__execute_mode = 0
@@ -28,8 +30,12 @@ class TabViewModel:
             self.__execute_mode = 2
             return self
 
-        if is_debug:
+        if is_debug_dict:
             self.__execute_mode = 3
+            return self
+
+        if is_debug_json:
+            self.__execute_mode = 4
             return self
 
         return self
@@ -69,9 +75,9 @@ class TabViewModel:
 
         if error_message:
             st.error(error_message)
-        if self.__execute_mode < 3:
+        if self.__execute_mode < 3 or self.__execute_mode > 4:
             return
-        elif not parsed_config:
+        elif not parsed_config or parsed_config == "null":
             st.warning(f"{self.__texts.tab2.error_debug_not_found}")
             return
 
@@ -177,7 +183,8 @@ def main() -> None:
         tab1_view_model.set_execute_mode(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
-            st.session_state.get("tab2_execute", False),
+            st.session_state.get("tab2_execute_dict", False),
+            st.session_state.get("tab2_execute_json", False),
         ).show_tab1(
             st.session_state.get("tab1_result_content"),
             st.session_state.get("tab1_error_config"),
@@ -198,11 +205,14 @@ def main() -> None:
             st.session_state.get("is_auto_transcoding", True),
         )
 
-        tab2_row2[0].button(texts.tab2.generate_debug_config, use_container_width=True, key="tab2_execute")
+        tab2_row2[0].button(texts.tab2.generate_dict_button, use_container_width=True, key="tab2_execute_dict")
+        tab2_row2[1].button(texts.tab2.generate_json_button, use_container_width=True, key="tab2_execute_json")
 
         st.session_state.update(
             {
-                "tab2_result_content": tab2_model.config_str,
+                "tab2_result_content": tab2_model.config_str
+                if st.session_state.get("tab2_execute_dict", False)
+                else tab2_model.config_json,
                 "tab2_error_config": tab2_model.config_error_message,
             }
         )
@@ -211,7 +221,8 @@ def main() -> None:
         tab2_view_model.set_execute_mode(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
-            st.session_state.get("tab2_execute", False),
+            st.session_state.get("tab2_execute_dict", False),
+            st.session_state.get("tab2_execute_json", False),
         ).show_tab2(
             st.session_state.get("tab2_result_content"),
             st.session_state.get("tab2_error_config"),

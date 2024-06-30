@@ -15,7 +15,7 @@ def test_main_layout() -> None:
     assert at.subheader.len == 6
     assert len(at.sidebar) == 2
     assert at.markdown.len == 2
-    assert at.button.len == 3
+    assert at.button.len == 4
     assert at.button[0].value is False
     assert at.button[1].value is False
     assert at.button[2].value is False
@@ -33,6 +33,7 @@ def test_main_layout() -> None:
     assert at.button[0].value is True
     assert at.button[1].value is False
     assert at.button[2].value is False
+    assert at.button[3].value is False
     assert at.error.len == 0
     assert at.warning.len == 1
     assert at.success.len == 0
@@ -42,6 +43,7 @@ def test_main_layout() -> None:
     assert at.button[0].value is False
     assert at.button[1].value is True
     assert at.button[2].value is False
+    assert at.button[3].value is False
     assert at.error.len == 0
     assert at.warning.len == 1
     assert at.success.len == 0
@@ -51,6 +53,17 @@ def test_main_layout() -> None:
     assert at.button[0].value is False
     assert at.button[1].value is False
     assert at.button[2].value is True
+    assert at.button[3].value is False
+    assert at.error.len == 0
+    assert at.warning.len == 1
+    assert at.success.len == 0
+
+    # click "generate_debug_config" without uploaded file
+    at.button[3].click().run()
+    assert at.button[0].value is False
+    assert at.button[1].value is False
+    assert at.button[2].value is False
+    assert at.button[3].value is True
     assert at.error.len == 0
     assert at.warning.len == 1
     assert at.success.len == 0

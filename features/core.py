@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+import json
 import re
 from datetime import datetime
 from io import BytesIO
@@ -127,6 +128,10 @@ class GhostwriterCore:
     @property
     def config_dict(self: "GhostwriterCore") -> Optional[Dict[str, Any]]:
         return self.__config_dict
+
+    @property
+    def config_json(self: "GhostwriterCore") -> str:
+        return json.dumps(self.__config_dict, ensure_ascii=False, indent=4)
 
     @property
     def config_str(self: "GhostwriterCore") -> Optional[str]:

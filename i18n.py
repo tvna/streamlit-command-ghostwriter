@@ -36,7 +36,8 @@ LANGUAGES = {
             "success_debug_config": "設定ファイル解析に成功",
             "error_debug_config": "設定ファイルの読み込みに失敗",
             "error_debug_not_found": "設定ファイルが読み込まれていません",
-            "generate_debug_config": "設定ファイル解析の表示",
+            "generate_dict_button": "設定ファイル解析の表示 (dict)",
+            "generate_json_button": "設定ファイル解析の表示 (json)",
         },
         "tab3": {
             "menu_title": "詳細オプション",

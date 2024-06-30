@@ -81,6 +81,7 @@ def test_main_tab1(
 @pytest.mark.integration()
 @pytest.mark.parametrize(
     (
+        "active_button",
         "config_file_content",
         "expected_text_area_len",
         "expected_text_area_value",
@@ -89,12 +90,13 @@ def test_main_tab1(
         "expected_success_objects",
     ),
     [
-        pytest.param(b'key = "POSITIVE"', 1, "{'key': 'POSITIVE'}", 0, 0, 1),
-        pytest.param(None, 0, None, 0, 1, 0),
-        pytest.param(b"key=", 0, None, 1, 1, 0),
+        pytest.param("tab2_execute_dict", b'key = "POSITIVE"', 1, "{'key': 'POSITIVE'}", 0, 0, 1),
+        pytest.param("tab2_execute_dict", None, 0, None, 0, 1, 0),
+        pytest.param("tab2_execute_dict", b"key=", 0, None, 1, 1, 0),
     ],
 )
 def test_main_tab2(
+    active_button: str,
     config_file_content: Optional[bytes],
     expected_text_area_len: int,
     expected_text_area_value: Optional[str],
@@ -114,12 +116,12 @@ def test_main_tab2(
 
     at = AppTest.from_file("app.py")
     at.session_state["tab2_config_file"] = config_file
-    at.session_state["tab2_execute"] = True
+    at.session_state[active_button] = True
     at.run()
 
     assert at.session_state["tab2_config_file"] == config_file
     assert at.session_state["tab2_result_content"] == expected_text_area_value
-    assert at.button(key="tab2_execute").value is True
+    assert at.button(key=active_button).value is True
     assert at.text_area.len == base_text_area_len + expected_text_area_len
     if expected_text_area_len > 0:
         assert at.text_area(key="tab2_result_textarea").value == expected_text_area_value
