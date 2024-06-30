@@ -113,7 +113,7 @@ jobs:
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
       - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
