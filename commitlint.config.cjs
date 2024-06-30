@@ -69,7 +69,7 @@ module.exports = {
           description: "変更内容を簡潔に記載する",
         },
         body: {
-          description: "変更内容を詳述する(body:最大100文字)",
+          description: "変更内容を詳述する(body:最大200文字)",
         },
         isBreaking: {
           description: "破壊的変更はあるか?",
