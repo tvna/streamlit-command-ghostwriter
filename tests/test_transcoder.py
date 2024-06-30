@@ -44,7 +44,7 @@ def test_transcoder(input_str: str, input_encoding: str, expected_encoding: str,
     print(trans.detect_encoding(input_data))
     assert trans.detect_encoding(input_data) == expected_encoding
 
-    output_data = trans.to_utf8()
+    output_data = trans.convert()
     assert output_data.read().decode("utf-8") == expected_result  # type: ignore
     assert trans.challenge_to_utf8().getvalue().decode("utf-8") == expected_result
     assert output_data.name == input_data.name  # type: ignore
@@ -65,5 +65,15 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
 
     trans = TextTranscoder(input_data)
     assert trans.detect_encoding(input_data) == expected_encoding
-    assert trans.to_utf8() == None
+    assert trans.convert() == None
     assert trans.challenge_to_utf8().getvalue() == expected_result
+
+
+@pytest.mark.unit()
+def test_transcoder_missing_encode() -> None:
+    input_data = BytesIO(b"ABCDEF")
+
+    trans = TextTranscoder(input_data)
+    assert trans.detect_encoding(input_data) == "ASCII"
+    assert trans.convert("utf-9") == None
+    assert trans.challenge_to_utf8().getvalue() == b"ABCDEF"

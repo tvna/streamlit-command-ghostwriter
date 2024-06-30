@@ -42,8 +42,9 @@ class TextTranscoder:
                     continue
             return encoding
 
-    def to_utf8(self: "TextTranscoder") -> Optional[BytesIO]:
+    def convert(self: "TextTranscoder", encode: str = "utf-8") -> Optional[BytesIO]:
         encoding = self.detect_encoding(self.__input_data)
+        output_data = None
 
         if not encoding:
             return None
@@ -54,16 +55,15 @@ class TextTranscoder:
         except UnicodeDecodeError:
             return None
 
-        output_data = BytesIO(content.encode("utf-8"))
-
         try:
+            output_data = BytesIO(content.encode(encode))
             output_data.name = self.__filename
-        except AttributeError:
+        except (AttributeError, LookupError):
             pass
 
         return output_data
 
     def challenge_to_utf8(self: "TextTranscoder") -> BytesIO:
-        result = self.to_utf8()
+        result = self.convert()
 
         return result if isinstance(result, BytesIO) else self.__input_data
