@@ -1,11 +1,16 @@
+---
 name: Coverage Workflow
 
 on:
-  workflow_call:
-    inputs:
-      python-version:
-        required: true
-        type: string
+  push:
+    branches:
+      - develop
+    paths:
+      - "**.py"
+  pull_request:
+    branches:
+      - develop
+      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-coverage
@@ -13,16 +18,17 @@ concurrency:
 
 jobs:
   coverage:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      python-version: 3.12
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ inputs.python-version }}
+      - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ inputs.python-version }}
+          python-version: ${{ env.python-version }}
       - name: Restore cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -30,7 +36,7 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             .venv
-          key: ${{ runner.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y

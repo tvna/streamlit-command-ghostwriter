@@ -2,7 +2,15 @@
 name: CodeQL Workflow
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - develop
+    paths:
+      - "**.py"
+  pull_request:
+    branches:
+      - develop
+      - main
   schedule:
     - cron: "00 20 * * 1"
 

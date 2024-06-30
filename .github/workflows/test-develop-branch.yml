@@ -195,21 +195,6 @@ jobs:
           pprint.pprint(ast_trees, width=100, compact=False)
           EOF
 
-  call-coverage-workflow:
-    needs: test
-    uses: ./.github/workflows/upload-coverage.yml
-    secrets: inherit
-    with:
-      python-version: 3.11
-
-  call-codeql-workflow:
-    needs: test
-    uses: ./.github/workflows/test-codeql.yml
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
   prebuild:
     name: Prebuild desktop-app
     runs-on: ${{ matrix.os }}
