@@ -25,9 +25,11 @@
 			"commitlint",
 			"conventionalcommits",
 			"devcontainer",
+			"Dtype",
 			"EDITMSG",
 			"IHDR",
 			"isort",
+			"itertuples",
 			"maxfail",
 			"micropip",
 			"mypy",
@@ -81,5 +83,9 @@
 		"yaml.schemas": {},
 		"yaml.keyOrdering": true,
 		"ruff.lineLength": 140,
+		"ruff.lint.args": [
+			"--config=./pyproject.toml"
+		],
+		"ruff.format.preview": true,
 	}
 }
