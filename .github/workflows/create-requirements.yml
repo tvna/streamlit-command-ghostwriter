@@ -31,19 +31,20 @@ jobs:
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
       - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Create a new file
         run: |
-          poetry export -f requirements.txt -o "${REQUIREMENTS_TXT}" --without-hashes -v
-          echo "# dummy change" >> ${REQUIREMENTS_TXT}
-          cat ${REQUIREMENTS_TXT}
+          poetry export -f requirements.txt -o "$REQUIREMENTS_TXT" --without-hashes -v
+          echo "# dummy change" >> "$REQUIREMENTS_TXT"
+          cat "$REQUIREMENTS_TXT"
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Commit and push changes
         run: |
-          git add ${REQUIREMENTS_TXT}
+          git add "$REQUIREMENTS_TXT"
           git commit -m "Add requirements.txt"
           git push
         env:

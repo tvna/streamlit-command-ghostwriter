@@ -60,10 +60,12 @@ jobs:
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
       - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
       - name: Configure poetry
-        run: poetry config virtualenvs.in-project false
+        run: |
+          poetry config virtualenvs.in-project false
         shell: bash
       - name: Install dependencies
         shell: bash
@@ -161,7 +163,7 @@ jobs:
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
       - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
@@ -172,7 +174,7 @@ jobs:
           poetry install
       - name: Run lizard (analyze CCN)
         run: |
-          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN ${LIZARD_CCN_COUNT}
+          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN "$LIZARD_CCN_COUNT"
       - name: Show AST (app.py)
         run: |
           python <<EOF
