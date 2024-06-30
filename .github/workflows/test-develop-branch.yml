@@ -205,6 +205,10 @@ jobs:
   call-codeql-workflow:
     needs: test
     uses: ./.github/workflows/test-codeql.yml
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
 
   prebuild:
     name: Prebuild desktop-app
