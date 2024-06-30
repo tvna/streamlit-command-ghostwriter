@@ -61,7 +61,8 @@
                 "pyyaml",
                 "jinja2",
                 "chardet",
-                "toml"
+                "toml",
+                "python-box"
             ]
         }
     },
