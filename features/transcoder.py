@@ -7,7 +7,9 @@ import chardet
 class TextTranscoder:
     def __init__(self: "TextTranscoder", input_data: BytesIO) -> None:
         self.__input_data: Final[BytesIO] = input_data
-        self.__filename: Final[str] = input_data.name
+
+        if hasattr(input_data, "name"):
+            self.__filename: Final[str] = input_data.name
 
     def detect_binary(self: "TextTranscoder", input_data: BytesIO) -> bool:
         current_position = input_data.tell()
@@ -53,7 +55,11 @@ class TextTranscoder:
             return None
 
         output_data = BytesIO(content.encode("utf-8"))
-        output_data.name = self.__filename
+
+        try:
+            output_data.name = self.__filename
+        except AttributeError:
+            pass
 
         return output_data
 

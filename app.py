@@ -1,9 +1,12 @@
+import os
+from io import BytesIO
 from typing import Final, Optional
 
 import streamlit as st
 from box import Box
 
 from features.core import GhostwriterCore
+from features.transcoder import TextTranscoder
 from i18n import LANGUAGES
 
 
@@ -75,6 +78,20 @@ class TabViewModel:
         st.success(self.__texts.tab2.success_debug_config)
         st.text_area(self.__texts.tab2.debug_config_text, parsed_config, key="tab2_result_textarea", height=500)
 
+    def show_tab4(self: "TabViewModel") -> None:
+        samples_dir = "./assets/examples"
+        for filename in sorted(os.listdir(samples_dir)):
+            if not filename.endswith((".toml", ".yml", ".yaml", ".csv", ".j2", ".jinja2")):
+                continue
+
+            with open(os.path.join(samples_dir, filename), mode="rb") as file:
+                content = BytesIO(file.read())
+                text_file = TextTranscoder(content).to_utf8()
+                if text_file is None:
+                    continue
+
+                st.text_area(label=filename, value=text_file.getvalue().decode("utf-8"), height=250)
+
 
 def main() -> None:
     """Generate Streamlit web screens."""
@@ -107,7 +124,14 @@ def main() -> None:
             """
         )
 
-    tabs = st.tabs([texts.tab1.menu_title, texts.tab2.menu_title, texts.tab3.menu_title])
+    tabs = st.tabs(
+        [
+            ":memo: " + texts.tab1.menu_title,
+            ":scroll: " + texts.tab2.menu_title,
+            ":hammer_and_wrench: " + texts.tab3.menu_title,
+            ":briefcase: " + texts.tab4.menu_title,
+        ]
+    )
 
     with tabs[0]:
         st.subheader(texts.tab1.subheader, divider="rainbow")
@@ -165,7 +189,7 @@ def main() -> None:
         )
 
     with tabs[1]:
-        st.subheader(texts.tab2.subheader, divider="rainbow")
+        st.subheader(":scroll: " + texts.tab2.subheader, divider="rainbow")
         tab2_row1 = st.columns(2)
         tab2_row2 = st.columns(3)
 
@@ -199,6 +223,7 @@ def main() -> None:
         )
 
     with tabs[2]:
+        st.subheader(":hammer_and_wrench: " + texts.tab3.subheader, divider="rainbow")
         tab3_row1 = st.columns(2)
 
         with tab3_row1[0].container(border=True):
@@ -212,11 +237,11 @@ def main() -> None:
             st.container(border=True).selectbox(
                 texts.tab3.format_type,
                 (
-                    texts.tab3.format_type_item0,
-                    texts.tab3.format_type_item1,
-                    texts.tab3.format_type_item2,
-                    texts.tab3.format_type_item3,
-                    texts.tab3.format_type_item4,
+                    "0: " + texts.tab3.format_type_item0,
+                    "1: " + texts.tab3.format_type_item1,
+                    "2: " + texts.tab3.format_type_item2,
+                    "3: " + texts.tab3.format_type_item3,
+                    "4: " + texts.tab3.format_type_item4,
                 ),
                 index=default_format_type,
                 key="result_format_type",
@@ -224,6 +249,11 @@ def main() -> None:
             st.container(border=True).text_input(texts.tab3.download_filename, "command", key="download_filename")
             st.container(border=True).toggle(texts.tab3.append_timestamp_filename, value=True, key="is_append_timestamp")
             st.container(border=True).radio(texts.tab3.download_file_extension, ["txt", "md"], horizontal=True, key="download_file_ext")
+
+    with tabs[3]:
+        st.subheader(":briefcase: " + texts.tab4.subheader, divider="rainbow")
+        tab4_view_model = TabViewModel(texts)
+        tab4_view_model.show_tab4()
 
 
 if __name__ == "__main__":
