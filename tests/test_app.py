@@ -24,7 +24,7 @@ def test_main_layout() -> None:
     assert at.success.len == 0
     assert at.radio.len == 1
     assert at.toggle.len == 3
-    assert at.selectbox.len == 1
+    assert at.selectbox.len == 2
     assert at.text_input.len == 2
     assert at.text_area.len == 6
 

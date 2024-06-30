@@ -115,6 +115,15 @@ class GhostwriterCore:
 
         return f"{filename}{suffix}.{str(file_ext)}"
 
+    def get_download_content(self: "GhostwriterCore", encode: str) -> Optional[bytes]:
+        if self.__formatted_text is None:
+            return None
+
+        try:
+            return self.__formatted_text.encode(encode)
+        except LookupError:
+            return None
+
     @property
     def config_dict(self: "GhostwriterCore") -> Optional[Dict[str, Any]]:
         return self.__config_dict

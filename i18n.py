@@ -42,6 +42,7 @@ LANGUAGES = {
             "menu_title": "詳細オプション",
             "subheader": "詳細オプションの設定",
             "download_filename": "ダウンロード時のファイル名",
+            "download_encoding": "ダウンロードファイルの文字コードを指定",
             "download_file_extension": "ダウンロード時のファイル拡張子",
             "append_timestamp_filename": "ファイル名の末尾にタイプスタンプを付与",
             "strict_undefined": "テンプレートの変数チェック厳格化",

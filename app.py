@@ -166,7 +166,7 @@ def main() -> None:
 
         tab1_row2[2].download_button(
             label=texts.tab1.download_button,
-            data=st.session_state.get("tab1_result_content", "") or "No data available",
+            data=tab1_model.get_download_content(st.session_state.get("download_encoding", "Shift_JIS")) or "No data available",
             file_name=tab1_model.get_download_filename(
                 st.session_state.get("download_filename", "command"),
                 st.session_state.get("download_file_ext", "txt"),
@@ -245,9 +245,9 @@ def main() -> None:
                 key="result_format_type",
             )
             st.container(border=True).text_input(texts.tab3.download_filename, "command", key="download_filename")
+            st.container(border=True).selectbox(texts.tab3.download_encoding, ["Shift_JIS", "utf-8"], key="download_encoding")
             st.container(border=True).toggle(texts.tab3.append_timestamp_filename, value=True, key="is_append_timestamp")
             st.container(border=True).radio(texts.tab3.download_file_extension, ["txt", "md"], horizontal=True, key="download_file_ext")
-            # st.container(border=True).selectbox("Select Encoding", ["utf-8", "Shift_JIS"], key="download_encoding")
 
     with tabs[3]:
         st.subheader(":briefcase: " + texts.tab4.subheader, divider="rainbow")
