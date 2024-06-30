@@ -76,7 +76,7 @@ class GhostwriterRender:
                 template: Template = Template(template_str)
                 render_content = template.render(context)
 
-        except (FileNotFoundError, TypeError, UndefinedError, TemplateSyntaxError) as e:
+        except (FileNotFoundError, TypeError, UndefinedError, TemplateSyntaxError, ValueError) as e:
             self.__error_message = str(e)
             return False
 
