@@ -133,7 +133,7 @@ def main() -> None:
     )
 
     with tabs[0]:
-        st.subheader(texts.tab1.subheader, divider="rainbow")
+        st.subheader(":memo: " + texts.tab1.subheader, divider="rainbow")
         tab1_row1 = st.columns(2)
         tab1_row2 = st.columns(3)
 
