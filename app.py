@@ -78,13 +78,21 @@ class TabViewModel:
 def main() -> None:
     """Generate Streamlit web screens."""
     texts: Final[Dict[str, str]] = LANGUAGES["日本語"]
+
+    app_title: Final[str] = "Command ghostwriter"
+    app_icon: Final[str] = ":ghost:"
     default_format_type: Final[int] = 3
+    config_file_exts: Final[list] = ["toml", "yaml", "yml", "csv"]
 
-    st.session_state.update({"tab1_result_content": st.session_state.get("tab1_result_content")})
-    st.session_state.update({"tab2_result_content": st.session_state.get("tab2_result_content")})
+    st.session_state.update(
+        {
+            "tab1_result_content": st.session_state.get("tab1_result_content"),
+            "tab2_result_content": st.session_state.get("tab2_result_content"),
+        }
+    )
 
-    st.set_page_config(page_title="Command ghostwriter", page_icon=":ghost:", layout="wide", initial_sidebar_state="expanded")
-    st.title("Command ghostwriter :ghost:")
+    st.set_page_config(page_title=app_title, page_icon=app_icon, layout="wide", initial_sidebar_state="expanded")
+    st.title(f"{app_title} {app_icon}")
 
     with st.sidebar:
         st.write(texts["sidebar_welcome"])
@@ -98,19 +106,18 @@ def main() -> None:
             """
             )
 
-    tab1, tab2, tab3 = st.tabs([texts["tab1_menu_convert_text"], texts["tab2_menu_debug_config"], texts["tab3_menu_advanced_option"]])
+    tabs = st.tabs([texts["tab1_menu_convert_text"], texts["tab2_menu_debug_config"], texts["tab3_menu_advanced_option"]])
 
-    with tab1:
-        tab1_row1_col1, tab1_row1_col2 = st.columns(2)
-        with tab1_row1_col1.container(border=True):
-            st.file_uploader(texts["tab1_upload_config"], type=["toml", "yaml", "yml", "csv"], key="tab1_config_file")
+    with tabs[0]:
+        st.subheader(texts["tab1_subheader"], divider="rainbow")
+        tab1_row1 = st.columns(2)
+        tab1_row2 = st.columns(3)
 
-        with tab1_row1_col2.container(border=True):
-            st.file_uploader(texts["tab1_upload_template"], type=["jinja2", "j2"], key="tab1_template_file")
+        tab1_row1[0].container(border=True).file_uploader(texts["tab1_upload_config"], type=config_file_exts, key="tab1_config_file")
+        tab1_row1[1].container(border=True).file_uploader(texts["tab1_upload_template"], type=["jinja2", "j2"], key="tab1_template_file")
 
-        tab1_row2_col1, tab1_row2_col2, tab1_row2_col3 = st.columns(3)
-        tab1_row2_col1.button(texts["tab1_generate_text_button"], use_container_width=True, key="tab1_execute_text")
-        tab1_row2_col2.button(texts["tab1_generate_markdown_button"], use_container_width=True, key="tab1_execute_markdown")
+        tab1_row2[0].button(texts["tab1_generate_text_button"], use_container_width=True, key="tab1_execute_text")
+        tab1_row2[1].button(texts["tab1_generate_markdown_button"], use_container_width=True, key="tab1_execute_markdown")
 
         tab1_model = GhostwriterCore(texts["tab1_error_toml_parse"], texts["tab1_error_template_generate"])
         tab1_model.load_config_file(
@@ -121,14 +128,19 @@ def main() -> None:
             st.session_state.get("tab1_template_file"),
             st.session_state.get("is_auto_transcoding", True),
         ).apply(
-            st.session_state.get("result_format_type", f"{default_format_type}: default"), st.session_state.get("is_strict_undefined", True)
+            st.session_state.get("result_format_type", f"{default_format_type}: default"),
+            st.session_state.get("is_strict_undefined", True),
         )
 
-        st.session_state.update({"tab1_result_content": tab1_model.formatted_text})
-        st.session_state.update({"tab1_error_config": tab1_model.config_error_message})
-        st.session_state.update({"tab1_error_template": tab1_model.template_error_message})
+        st.session_state.update(
+            {
+                "tab1_result_content": tab1_model.formatted_text,
+                "tab1_error_config": tab1_model.config_error_message,
+                "tab1_error_template": tab1_model.template_error_message,
+            }
+        )
 
-        tab1_row2_col3.download_button(
+        tab1_row2[2].download_button(
             label=texts["tab1_download_button"],
             data=st.session_state.get("tab1_result_content", None) or "No data available",
             file_name=tab1_model.get_download_filename(
@@ -151,23 +163,28 @@ def main() -> None:
             st.session_state.get("tab1_error_template", None),
         )
 
-    with tab2:
-        tab2_model = GhostwriterCore(texts["tab2_error_debug_config"])
-        tab2_row1_col1, _ = st.columns(2)
-        with tab2_row1_col1.container(border=True):
-            st.file_uploader(texts["tab2_upload_debug_config"], type=["toml", "yaml", "yml", "csv"], key="tab2_config_file")
+    with tabs[1]:
+        st.subheader(texts["tab2_subheader"], divider="rainbow")
+        tab2_row1 = st.columns(2)
+        tab2_row2 = st.columns(3)
 
+        tab2_row1[0].container(border=True).file_uploader(texts["tab2_upload_debug_config"], type=config_file_exts, key="tab2_config_file")
+
+        tab2_model = GhostwriterCore(texts["tab2_error_debug_config"])
         tab2_model.load_config_file(
             st.session_state.get("tab2_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),
             st.session_state.get("is_auto_transcoding", True),
         )
 
-        tab2_row2_col1, _, _ = st.columns(3)
-        tab2_row2_col1.button(texts["tab2_generate_debug_config"], use_container_width=True, key="tab2_execute")
+        tab2_row2[0].button(texts["tab2_generate_debug_config"], use_container_width=True, key="tab2_execute")
 
-        st.session_state.update({"tab2_result_content": tab2_model.config_str})
-        st.session_state.update({"tab2_error_config": tab2_model.config_error_message})
+        st.session_state.update(
+            {
+                "tab2_result_content": tab2_model.config_str,
+                "tab2_error_config": tab2_model.config_error_message,
+            }
+        )
 
         tab2_view_model = TabViewModel(texts)
         tab2_view_model.set_execute_mode(
@@ -180,15 +197,16 @@ def main() -> None:
             st.session_state.get("tab2_error_config", None),
         )
 
-    with tab3:
-        tab3_row1_cols = st.columns(2)
-        with tab3_row1_cols[0].container(border=True):
-            st.markdown(texts["tab3_header_input_file"])
+    with tabs[2]:
+        tab3_row1 = st.columns(2)
+
+        with tab3_row1[0].container(border=True):
+            st.subheader(texts["tab3_subheader_input_file"])
             st.session_state.csv_rows_name = st.container(border=True).text_input(texts["tab3_csv_rows_name"], "csv_rows")
             st.session_state.is_strict_undefined = st.container(border=True).toggle(texts["tab3_strict_undefined"], value=True)
             st.session_state.is_auto_transcoding = st.container(border=True).toggle(texts["tab3_auto_encoding"], value=True)
-        with tab3_row1_cols[1].container(border=True):
-            st.markdown(texts["tab3_header_output_file"])
+        with tab3_row1[1].container(border=True):
+            st.subheader(texts["tab3_subheader_output_file"])
             st.session_state.result_format_type = st.container(border=True).selectbox(
                 texts["tab3_format_type"],
                 (

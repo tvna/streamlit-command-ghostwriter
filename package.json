@@ -51,6 +51,7 @@
             "files": [
                 "app.py",
                 "i18n.py",
+                ".streamlit/*",
                 "features/*.py"
             ],
             "nodeJsWorker": false,
@@ -59,7 +60,8 @@
             "dependencies": [
                 "pyyaml",
                 "jinja2",
-                "chardet"
+                "chardet",
+                "toml"
             ]
         }
     },

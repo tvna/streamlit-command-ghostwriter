@@ -12,8 +12,9 @@ def test_main_layout() -> None:
     assert at.title.len == 1
     assert len(at.tabs) == 3
     assert len(at.columns) == 12
+    assert len(at.subheader) == 4
     assert len(at.sidebar) == 2
-    assert len(at.markdown) == 4
+    assert len(at.markdown) == 2
     assert at.button.len == 3
     assert at.button[0].value is False
     assert at.button[1].value is False
