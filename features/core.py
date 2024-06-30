@@ -115,11 +115,6 @@ class GhostwriterCore:
 
         return f"{filename}{suffix}.{str(file_ext)}"
 
-    def get_uploaded_filename(self: "GhostwriterCore", file: Optional[BytesIO]) -> Optional[str]:
-        """Get filename for uploaded contents."""
-
-        return file.name if isinstance(file, BytesIO) else None
-
     @property
     def config_dict(self: "GhostwriterCore") -> Optional[Dict[str, Any]]:
         return self.__config_dict

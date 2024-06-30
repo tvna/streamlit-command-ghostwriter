@@ -64,14 +64,14 @@ class TabViewModel:
         if second_error_message:
             st.error(second_error_message)
 
-    def show_tab2(self: "TabViewModel", parsed_config: Optional[str], filename: Optional[str], error_message: Optional[str]) -> None:
+    def show_tab2(self: "TabViewModel", parsed_config: Optional[str], error_message: Optional[str]) -> None:
         """Show tab2 response content."""
 
         if error_message:
             st.error(error_message)
         if self.__execute_mode < 3:
             return
-        elif not filename or not parsed_config:
+        elif not parsed_config:
             st.warning(f"{self.__texts.tab2.error_debug_not_found}")
             return
 
@@ -217,7 +217,6 @@ def main() -> None:
             st.session_state.get("tab2_execute", False),
         ).show_tab2(
             st.session_state.get("tab2_result_content"),
-            tab2_model.get_uploaded_filename(st.session_state.get("tab2_config_file")),
             st.session_state.get("tab2_error_config"),
         )
 
