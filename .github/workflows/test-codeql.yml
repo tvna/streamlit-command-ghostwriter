@@ -7,6 +7,8 @@ on:
       - develop
     paths:
       - "**.py"
+      - poetry.lock
+      - package-lock.json
   pull_request:
     branches:
       - develop
@@ -17,6 +19,7 @@ on:
 jobs:
   codeql:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       actions: read
       contents: read
