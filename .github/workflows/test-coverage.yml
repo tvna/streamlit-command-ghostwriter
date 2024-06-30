@@ -11,6 +11,8 @@ on:
     branches:
       - develop
       - main
+  schedule:
+    - cron: "00 19 * * 1"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-coverage

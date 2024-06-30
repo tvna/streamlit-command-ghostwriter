@@ -14,7 +14,7 @@ on:
       - develop
       - main
   schedule:
-    - cron: "00 20 * * 1"
+    - cron: "00 19 * * 1"
 
 jobs:
   codeql:
