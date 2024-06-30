@@ -32,15 +32,15 @@ class TextTranscoder:
         # 日本語に関連するエンコーディングを優先する
         if encoding in known_encode:
             return encoding
-        else:
-            # 他のエンコーディングを試す
-            for enc in known_encode:
-                try:
-                    raw_data.decode(enc)
-                    return enc
-                except (UnicodeDecodeError, LookupError):
-                    continue
-            return encoding
+
+        # 他のエンコーディングを試す
+        for enc in known_encode:
+            try:
+                raw_data.decode(enc)
+                return enc
+            except (UnicodeDecodeError, LookupError):
+                continue
+        return encoding
 
     def convert(self: "TextTranscoder", encode: str = "utf-8") -> Optional[BytesIO]:
         encoding = self.detect_encoding(self.__input_data)
