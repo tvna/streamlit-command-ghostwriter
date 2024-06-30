@@ -278,3 +278,19 @@ def test_get_download_filename(
         assert filename.endswith(expected_suffix)
     else:
         assert filename == f"{expected_prefix}{expected_suffix}"
+
+
+@pytest.mark.unit()
+def test_get_download_content(model: GhostwriterCore) -> None:
+    expected_result = "This is POSITIVE"
+
+    model.set_config_dict({"key": "POSITIVE"})
+    template_file, template_file.name = BytesIO(b"POSITIVE"), "template.j2"
+    model.load_template_file(template_file, False)
+    model.apply("3", True)
+    assert model.formatted_text == expected_result
+    assert model.template_error_message == None
+    assert model.get_download_content("Shift_JIS").decode("Shift_JIS") == expected_result  # type: ignore
+    assert model.get_download_content("EUC-JP").decode("EUC-JP") == expected_result  # type: ignore
+    assert model.get_download_content("utf-8").decode("utf-8") == expected_result  # type: ignore
+    assert model.get_download_content("utf-9") == None
