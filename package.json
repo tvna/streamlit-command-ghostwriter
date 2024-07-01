@@ -1,6 +1,6 @@
 {
     "name": "command_ghostwriter",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "main": "./build/electron/main.js",
     "description": "Electron application with streamlit",
     "license": "MIT",
@@ -52,7 +52,8 @@
                 "app.py",
                 "i18n.py",
                 ".streamlit/*",
-                "features/*.py"
+                "features/*.py",
+                "assets/examples"
             ],
             "nodeJsWorker": false,
             "entrypoint": "app.py",
@@ -62,13 +63,14 @@
                 "jinja2",
                 "chardet",
                 "toml",
-                "python-box"
+                "python-box",
+                "pydantic"
             ]
         }
     },
     "config": {
         "commitizen": {
-          "path": "@commitlint/cz-commitlint"
+            "path": "@commitlint/cz-commitlint"
         }
     },
     "hooks": {

@@ -2,14 +2,14 @@ import re
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, Template, TemplateSyntaxError, UndefinedError
+import jinja2 as j2
+from pydantic import BaseModel, PrivateAttr
 
 
-class GhostwriterRender:
-    def __init__(self: "GhostwriterRender") -> None:
-        self.__template_content: Optional[str] = None
-        self.__render_content: Optional[str] = None
-        self.__error_message: Optional[str] = None
+class GhostwriterRender(BaseModel):
+    __template_content: Optional[str] = PrivateAttr(default=None)
+    __render_content: Optional[str] = PrivateAttr(default=None)
+    __error_message: Optional[str] = PrivateAttr(default=None)
 
     def load_template_file(self: "GhostwriterRender", template_file: BytesIO) -> "GhostwriterRender":
         try:
@@ -26,11 +26,11 @@ class GhostwriterRender:
             return False
 
         try:
-            env = Environment(autoescape=True)
+            env = j2.Environment(autoescape=True)
             env.parse(template)
             return True
 
-        except TemplateSyntaxError as e:
+        except j2.TemplateSyntaxError as e:
             self.__error_message = str(e)
             return False
 
@@ -69,19 +69,19 @@ class GhostwriterRender:
 
         try:
             if is_strict_undefined:
-                env: Environment = Environment(loader=FileSystemLoader("."), undefined=StrictUndefined, autoescape=True)
-                strict_template: Template = env.from_string(template_str)
-                render_content = strict_template.render(context)
+                env: j2.Environment = j2.Environment(loader=j2.FileSystemLoader("."), undefined=j2.StrictUndefined, autoescape=True)
+                strict_template: j2.Template = env.from_string(template_str)
+                raw_render_content = strict_template.render(context)
             else:
-                template: Template = Template(template_str)
-                render_content = template.render(context)
+                template: j2.Template = j2.Template(template_str)
+                raw_render_content = template.render(context)
 
-        except (FileNotFoundError, TypeError, UndefinedError, TemplateSyntaxError, ValueError) as e:
+        except (FileNotFoundError, TypeError, j2.UndefinedError, j2.TemplateSyntaxError, ValueError) as e:
             self.__error_message = str(e)
             return False
 
         try:
-            self.__render_content = self.__format_context(render_content, format_type)
+            self.__render_content = self.__format_context(raw_render_content, format_type)
         except ValueError:
             self.__error_message = "Unsupported format type"
             return False

@@ -6,19 +6,15 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 import yaml
+from pydantic import BaseModel, PrivateAttr
 
 
-class GhostwriterParser:
-    def __init__(self: "GhostwriterParser") -> None:
-        """
-        TOMLファイルをパースするためのクラスを初期化する。
-        """
-
-        self.__file_extension: Optional[str] = None
-        self.__config_data: Optional[str] = None
-        self.__parsed_dict: Optional[Dict[str, Any]] = None
-        self.__error_message: Optional[str] = None
-        self.__csv_rows_name: str = "csv_rows"
+class GhostwriterParser(BaseModel):
+    __file_extension: str = PrivateAttr()
+    __config_data: Optional[str] = PrivateAttr(default=None)
+    __parsed_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
+    __error_message: Optional[str] = PrivateAttr(default=None)
+    __csv_rows_name: str = PrivateAttr(default="csv_rows")
 
     def load_config_file(self: "GhostwriterParser", config_file: BytesIO) -> "GhostwriterParser":
         try:

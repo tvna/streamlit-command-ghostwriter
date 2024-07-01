@@ -35,6 +35,7 @@
 			"mypy",
 			"noreply",
 			"pycache",
+			"pydantic",
 			"pyodide",
 			"pypoetry",
 			"pytest",
