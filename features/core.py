@@ -42,7 +42,8 @@ class GhostwriterCore:
             return self
 
         if is_auto_encoding:
-            trans = TextTranscoder(config_file)
+            trans = TextTranscoder()
+            trans.source_data = config_file
             config_file = trans.challenge_to_utf8()
 
         parser = GhostwriterParser()
@@ -66,7 +67,8 @@ class GhostwriterCore:
             return self
 
         if is_auto_encoding:
-            trans = TextTranscoder(template_file)
+            trans = TextTranscoder()
+            trans.source_data = template_file
             template_file = trans.challenge_to_utf8()
 
         render = GhostwriterRender()

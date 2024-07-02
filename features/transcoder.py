@@ -1,17 +1,27 @@
 from io import BytesIO
-from typing import Final, Optional
+from typing import Optional
 
 import chardet
+from pydantic import BaseModel, PrivateAttr
 
 
-class TextTranscoder:
-    def __init__(self: "TextTranscoder", input_data: BytesIO) -> None:
-        self.__input_data: Final[BytesIO] = input_data
+class TextTranscoder(BaseModel):
+    __source_data: BytesIO = PrivateAttr()
+    __filename: str = PrivateAttr()
 
-        if hasattr(input_data, "name"):
-            self.__filename: Final[str] = input_data.name
+    @property
+    def source_data(self: "TextTranscoder") -> BytesIO:
+        return self.__source_data
 
-    def detect_binary(self: "TextTranscoder", input_data: BytesIO) -> bool:
+    @source_data.setter
+    def source_data(self: "TextTranscoder", val: BytesIO) -> None:
+        self.__source_data = val
+
+        if hasattr(val, "name"):
+            self.__filename = val.name
+
+    def detect_binary(self: "TextTranscoder") -> bool:
+        input_data = self.__source_data
         current_position = input_data.tell()
         input_data.seek(0)
         chunk = input_data.read(1024)
@@ -19,12 +29,13 @@ class TextTranscoder:
 
         return b"\0" in chunk
 
-    def detect_encoding(self: "TextTranscoder", input_data: BytesIO) -> Optional[str]:
-        if self.detect_binary(input_data):
+    def detect_encoding(self: "TextTranscoder") -> Optional[str]:
+        if self.detect_binary():
             return None
 
-        input_data.seek(0)
-        raw_data = input_data.getvalue()
+        source_data = self.__source_data
+        source_data.seek(0)
+        raw_data = source_data.getvalue()
         result = chardet.detect(raw_data)
         encoding = result["encoding"]
         known_encode = ["ASCII", "Shift_JIS", "EUC-JP", "ISO-2022-JP", "utf-8"]
@@ -42,18 +53,19 @@ class TextTranscoder:
                 continue
         return encoding
 
-    def convert(self: "TextTranscoder", encode: str = "utf-8") -> Optional[BytesIO]:
-        encoding = self.detect_encoding(self.__input_data)
+    def convert(self: "TextTranscoder", new_encode: str = "utf-8") -> Optional[BytesIO]:
+        current_encode = self.detect_encoding()
         output_data = None
 
-        if not encoding:
+        if not current_encode:
             return None
 
-        self.__input_data.seek(0)
-        content = self.__input_data.read().decode(encoding)
+        source_data = self.__source_data
+        source_data.seek(0)
+        content = source_data.read().decode(current_encode)
 
         try:
-            output_data = BytesIO(content.encode(encode))
+            output_data = BytesIO(content.encode(new_encode))
             output_data.name = self.__filename
         except (AttributeError, LookupError):
             pass
@@ -63,4 +75,4 @@ class TextTranscoder:
     def challenge_to_utf8(self: "TextTranscoder") -> BytesIO:
         result = self.convert()
 
-        return result if isinstance(result, BytesIO) else self.__input_data
+        return result if isinstance(result, BytesIO) else self.__source_data

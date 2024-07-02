@@ -40,9 +40,9 @@ def test_transcoder(input_str: str, input_encoding: str, expected_encoding: str,
     input_data = BytesIO(input_str.encode(input_encoding))
     input_data.name = "example.csv"
 
-    trans = TextTranscoder(input_data)
-    print(trans.detect_encoding(input_data))
-    assert trans.detect_encoding(input_data) == expected_encoding
+    trans = TextTranscoder()
+    trans.source_data = input_data
+    assert trans.detect_encoding() == expected_encoding
 
     output_data = trans.convert()
     assert output_data.read().decode("utf-8") == expected_result  # type: ignore
@@ -63,8 +63,9 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
     input_data = BytesIO(input_bytes)
     input_data.name = "example.csv"
 
-    trans = TextTranscoder(input_data)
-    assert trans.detect_encoding(input_data) == expected_encoding
+    trans = TextTranscoder()
+    trans.source_data = input_data
+    assert trans.detect_encoding() == expected_encoding
     assert trans.convert() == None
     assert trans.challenge_to_utf8().getvalue() == expected_result
 
@@ -73,7 +74,8 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
 def test_transcoder_missing_encode() -> None:
     input_data = BytesIO(b"ABCDEF")
 
-    trans = TextTranscoder(input_data)
-    assert trans.detect_encoding(input_data) == "ASCII"
+    trans = TextTranscoder()
+    trans.source_data = input_data
+    assert trans.detect_encoding() == "ASCII"
     assert trans.convert("utf-9") == None
     assert trans.challenge_to_utf8().getvalue() == b"ABCDEF"
