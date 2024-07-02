@@ -227,7 +227,7 @@ def test_load_template_file(
 ) -> None:
     """Test load_template_file."""
 
-    assert type(model.set_config_dict(config_data)) == model.__class__
+    model.config_dict = config_data
 
     if isinstance(template_content, bytes):
         template_file, template_file.name = BytesIO(template_content), "template.j2"
@@ -284,7 +284,7 @@ def test_get_download_filename(
 def test_get_download_content(model: GhostwriterCore) -> None:
     expected_result = "This is POSITIVE"
 
-    model.set_config_dict({"key": "POSITIVE"})
+    model.config_dict = {"key": "POSITIVE"}
     template_file, template_file.name = BytesIO(b"POSITIVE"), "template.j2"
     model.load_template_file(template_file, False)
     model.apply("3", True)

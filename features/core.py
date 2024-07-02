@@ -5,29 +5,29 @@ from datetime import datetime
 from io import BytesIO
 from typing import Any, Dict, Final, Optional
 
+from pydantic import BaseModel, PrivateAttr
+
 from features.command_render import GhostwriterRender
 from features.config_parser import GhostwriterParser
 from features.transcoder import TextTranscoder
 
 
-class GhostwriterCore:
+class GhostwriterCore(BaseModel):
+    __config_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
+    __config_str: Optional[str] = PrivateAttr(default=None)
+    __render: Optional[GhostwriterRender] = PrivateAttr(default=None)
+    __formatted_text: Optional[str] = PrivateAttr(default=None)
+    __config_error_message: Optional[str] = PrivateAttr(default=None)
+    __template_error_message: Optional[str] = PrivateAttr(default=None)
+
+    __config_error_header = PrivateAttr()
+    __template_error_header = PrivateAttr()
+
     def __init__(self: "GhostwriterCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
-        self.__config_dict: Optional[Dict[str, Any]] = None
-        self.__config_str: Optional[str] = None
-        self.__render: Optional[GhostwriterRender] = None
-        self.__formatted_text: Optional[str] = None
-        self.__config_error_message: Optional[str] = None
-        self.__template_error_message: Optional[str] = None
+        super().__init__()
 
         self.__config_error_header = config_error_header
         self.__template_error_header = template_error_header
-
-    def set_config_dict(self: "GhostwriterCore", config: Optional[Dict[str, Any]]) -> "GhostwriterCore":
-        """Set config dict for template args."""
-
-        self.__config_dict = config
-
-        return self
 
     def load_config_file(
         self: "GhostwriterCore", config_file: Optional[BytesIO], csv_rows_name: str, is_auto_encoding: bool
@@ -130,6 +130,11 @@ class GhostwriterCore:
     @property
     def config_dict(self: "GhostwriterCore") -> Optional[Dict[str, Any]]:
         return self.__config_dict
+
+    @config_dict.setter
+    def config_dict(self: "GhostwriterCore", config: Optional[Dict[str, Any]]) -> None:
+        """Set config dict for template args."""
+        self.__config_dict = config
 
     @property
     def config_json(self: "GhostwriterCore") -> str:
