@@ -6,26 +6,31 @@ from pydantic import BaseModel, PrivateAttr
 
 
 class TextTranscoder(BaseModel):
-    __source_data: BytesIO = PrivateAttr()
-    __filename: str = PrivateAttr()
+    __import_file: BytesIO = PrivateAttr(default=None)
+    __export_file: Optional[BytesIO] = PrivateAttr(default=None)
+    __filename: Optional[str] = PrivateAttr(default=None)
 
     @property
-    def source_data(self: "TextTranscoder") -> BytesIO:
-        return self.__source_data
+    def import_file(self: "TextTranscoder") -> BytesIO:
+        return self.__import_file
 
-    @source_data.setter
-    def source_data(self: "TextTranscoder", val: BytesIO) -> None:
-        self.__source_data = val
+    @import_file.setter
+    def import_file(self: "TextTranscoder", val: BytesIO) -> None:
+        self.__import_file = val
 
         if hasattr(val, "name"):
             self.__filename = val.name
 
+    @property
+    def export_file(self: "TextTranscoder") -> Optional[BytesIO]:
+        return self.__export_file
+
     def detect_binary(self: "TextTranscoder") -> bool:
-        input_data = self.__source_data
-        current_position = input_data.tell()
-        input_data.seek(0)
-        chunk = input_data.read(1024)
-        input_data.seek(current_position)
+        import_file = self.__import_file
+        current_position = import_file.tell()
+        import_file.seek(0)
+        chunk = import_file.read(1024)
+        import_file.seek(current_position)
 
         return b"\0" in chunk
 
@@ -33,9 +38,9 @@ class TextTranscoder(BaseModel):
         if self.detect_binary():
             return None
 
-        source_data = self.__source_data
-        source_data.seek(0)
-        raw_data = source_data.getvalue()
+        import_file = self.__import_file
+        import_file.seek(0)
+        raw_data = import_file.getvalue()
         result = chardet.detect(raw_data)
         encoding = result["encoding"]
         known_encode = ["ASCII", "Shift_JIS", "EUC-JP", "ISO-2022-JP", "utf-8"]
@@ -53,26 +58,33 @@ class TextTranscoder(BaseModel):
                 continue
         return encoding
 
-    def convert(self: "TextTranscoder", new_encode: str = "utf-8") -> Optional[BytesIO]:
+    def __convert_to_new_encode(self: "TextTranscoder", new_encode: str) -> Optional[BytesIO]:
         current_encode = self.detect_encoding()
-        output_data = None
+        export_file = None
 
         if not current_encode:
             return None
 
-        source_data = self.__source_data
-        source_data.seek(0)
-        content = source_data.read().decode(current_encode)
+        import_file = self.__import_file
+        import_file.seek(0)
+        content = import_file.read().decode(current_encode)
 
         try:
-            output_data = BytesIO(content.encode(new_encode))
-            output_data.name = self.__filename
-        except (AttributeError, LookupError):
-            pass
+            export_file = BytesIO(content.encode(new_encode))
+        except LookupError:
+            return None
 
-        return output_data
+        if isinstance(self.__filename, str):
+            export_file.name = self.__filename
 
-    def challenge_to_utf8(self: "TextTranscoder") -> BytesIO:
-        result = self.convert()
+        return export_file
 
-        return result if isinstance(result, BytesIO) else self.__source_data
+    def convert(self: "TextTranscoder", new_encode: str = "utf-8", is_allow_fallback: bool = True) -> "TextTranscoder":
+        result = self.__convert_to_new_encode(new_encode)
+
+        if is_allow_fallback:
+            self.__export_file = result if isinstance(result, BytesIO) else self.__import_file
+        else:
+            self.__export_file = result
+
+        return self

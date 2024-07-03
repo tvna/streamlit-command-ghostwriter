@@ -113,9 +113,11 @@ class TabViewModel(BaseModel):
 
             with open(os.path.join(samples_dir, filename), mode="rb") as file:
                 trans = TextTranscoder()
-                trans.source_data = BytesIO(file.read())
-                content = trans.challenge_to_utf8().getvalue().decode("utf-8")
-                st.text_area(label=filename, value=content, height=250)
+                trans.import_file = BytesIO(file.read())
+                trans.convert()
+                if isinstance(trans.export_file, BytesIO):
+                    content = trans.export_file.getvalue().decode("utf-8")
+                    st.text_area(label=filename, value=content, height=250)
 
 
 def main() -> None:

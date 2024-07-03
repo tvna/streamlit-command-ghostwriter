@@ -43,8 +43,11 @@ class GhostwriterCore(BaseModel):
 
         if is_auto_encoding:
             trans = TextTranscoder()
-            trans.source_data = config_file
-            config_file = trans.challenge_to_utf8()
+            trans.import_file = config_file
+            config_file = trans.convert().export_file
+
+        if config_file is None:
+            return self
 
         parser = GhostwriterParser()
         parser.set_csv_rows_name(csv_rows_name)
@@ -68,8 +71,11 @@ class GhostwriterCore(BaseModel):
 
         if is_auto_encoding:
             trans = TextTranscoder()
-            trans.source_data = template_file
-            template_file = trans.challenge_to_utf8()
+            trans.import_file = template_file
+            template_file = trans.convert().export_file
+
+        if template_file is None:
+            return self
 
         render = GhostwriterRender()
         if not render.load_template_file(template_file).validate_template():
