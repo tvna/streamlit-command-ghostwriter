@@ -1,66 +1,85 @@
 import os
+from enum import Enum
 from io import BytesIO
 from typing import Final, Optional
 
 import streamlit as st
 from box import Box
+from pydantic import BaseModel, PrivateAttr
 
 from features.core import GhostwriterCore
 from features.transcoder import TextTranscoder
 from i18n import LANGUAGES
 
 
-class TabViewModel:
+class ExecuteMode(Enum):
+    nothing = 0
+    parsed_text = 1
+    parsed_markdown = 2
+    debug_dict = 3
+    debug_json = 4
+
+
+class TabViewModel(BaseModel):
+    __texts_dict: Box = PrivateAttr()
+    __execute_mode: ExecuteMode = PrivateAttr(default=ExecuteMode.nothing)
+
     def __init__(self: "TabViewModel", texts: Box) -> None:
-        self.__texts: Final[Box] = texts
-        self.__execute_mode: int = 0
+        super().__init__()
+        self.__texts_dict = texts
+
+    @property
+    def __texts(self: "TabViewModel") -> Box:
+        return self.__texts_dict
 
     def set_execute_mode(
-        self: "TabViewModel", is_text: bool, is_markdown: bool, is_debug_dict: bool, is_debug_json: bool
+        self: "TabViewModel", is_parsed_text: bool, is_parsed_markdown: bool, is_debug_dict: bool, is_debug_json: bool
     ) -> "TabViewModel":
         """Set execute mode."""
 
-        self.__execute_mode = 0
+        mode_mapping = {
+            is_parsed_text: ExecuteMode.parsed_text,
+            is_parsed_markdown: ExecuteMode.parsed_markdown,
+            is_debug_dict: ExecuteMode.debug_dict,
+            is_debug_json: ExecuteMode.debug_json,
+        }
 
-        if is_text:
-            self.__execute_mode = 1
-            return self
+        for condition, mode in mode_mapping.items():
+            if condition:
+                self.__execute_mode = mode
+                return self
 
-        if is_markdown:
-            self.__execute_mode = 2
-            return self
-
-        if is_debug_dict:
-            self.__execute_mode = 3
-            return self
-
-        if is_debug_json:
-            self.__execute_mode = 4
-            return self
-
+        self.__execute_mode = ExecuteMode.nothing
         return self
 
     def show_tab1(
-        self: "TabViewModel", result_text: Optional[str], first_error_message: Optional[str], second_error_message: Optional[str]
+        self: "TabViewModel", result: Optional[str], first_error_message: Optional[str], second_error_message: Optional[str]
     ) -> None:
         """Show tab1 response content."""
 
         if first_error_message or second_error_message:
             self.__show_tab1_error(first_error_message, second_error_message)
-        elif (3 > self.__execute_mode > 0) and isinstance(result_text, str):
-            self.__show_tab1_result(result_text)
-        elif 3 > self.__execute_mode > 0:
+            return
+
+        if not self.__execute_mode in (ExecuteMode.parsed_text, ExecuteMode.parsed_markdown):
+            return
+
+        if isinstance(result, str):
+            self.__show_tab1_result(result)
+        else:
             st.warning(self.__texts.tab1.error_both_files)
 
     def __show_tab1_result(self: "TabViewModel", result_text: str) -> None:
         """Show tab1 success content."""
 
-        if self.__execute_mode == 1:
-            st.success(self.__texts.tab1.success_formatted_text)
-            st.container(border=True).text_area(self.__texts.tab1.formatted_text, result_text, key="tab1_result_textarea", height=500)
-        elif self.__execute_mode == 2:
-            st.success(self.__texts.tab1.success_formatted_text)
-            st.container(border=True).markdown(result_text)
+        match self.__execute_mode:
+            case ExecuteMode.parsed_text:
+                st.success(self.__texts.tab1.success_formatted_text)
+                st.container(border=True).text_area(self.__texts.tab1.formatted_text, result_text, key="tab1_result_textarea", height=500)
+
+            case ExecuteMode.parsed_markdown:
+                st.success(self.__texts.tab1.success_formatted_text)
+                st.container(border=True).markdown(result_text)
 
     def __show_tab1_error(self: "TabViewModel", first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
         """Show tab1 error content."""
@@ -75,9 +94,11 @@ class TabViewModel:
 
         if error_message:
             st.error(error_message)
-        if self.__execute_mode < 3 or self.__execute_mode > 4:
+
+        if not self.__execute_mode in (ExecuteMode.debug_dict, ExecuteMode.debug_json):
             return
-        elif not parsed_config or parsed_config == "null":
+
+        if not parsed_config or parsed_config == "null":
             st.warning(f"{self.__texts.tab2.error_debug_not_found}")
             return
 
