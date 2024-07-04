@@ -173,8 +173,7 @@ def test_parse(
     config_file = BytesIO(content)
     config_file.name = filename
 
-    parser = GhostwriterParser()
-    assert type(parser.load_config_file(config_file)) == parser.__class__
+    parser = GhostwriterParser(config_file)
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str
@@ -212,9 +211,8 @@ def test_changed_rows_name(
     config_file = BytesIO(content)
     config_file.name = filename
 
-    parser = GhostwriterParser()
-    assert type(parser.set_csv_rows_name(csv_rows_name)) == parser.__class__
-    assert type(parser.load_config_file(config_file)) == parser.__class__
+    parser = GhostwriterParser(config_file)
+    parser.csv_rows_name = csv_rows_name
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str

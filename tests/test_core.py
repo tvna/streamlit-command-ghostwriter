@@ -7,17 +7,11 @@ from features.core import GhostwriterCore
 
 
 class MockParser:
-    def __init__(self: "MockParser") -> None:
-        self.__is_successful: bool = False
-        self.__content: Optional[str] = None
+    __is_successful: bool = False
+    __content: Optional[str] = None
 
-    def load_config_file(self: "MockParser", file: BytesIO) -> "MockParser":
+    def __init__(self: "MockParser", file: BytesIO) -> None:
         self.__content = file.read().decode()
-
-        return self
-
-    def set_csv_rows_name(self: "MockParser", _: str) -> "MockParser":
-        return self
 
     def parse(self: "MockParser") -> bool:
         if self.__content != "POSITIVE":
@@ -122,8 +116,8 @@ def test_mock_parser(
     config_file = BytesIO(config_content)
     config_file.name = "config.toml"
 
-    parser = MockParser()
-    assert parser.load_config_file(config_file).parse() == is_successful
+    parser = MockParser(config_file)
+    assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_text
     if expected_error is None:

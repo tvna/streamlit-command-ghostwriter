@@ -16,26 +16,29 @@ class GhostwriterParser(BaseModel):
     __error_message: Optional[str] = PrivateAttr(default=None)
     __csv_rows_name: str = PrivateAttr(default="csv_rows")
 
-    def load_config_file(self: "GhostwriterParser", config_file: BytesIO) -> "GhostwriterParser":
-        try:
-            self.__file_extension = config_file.name.split(".")[-1]
-            if self.__file_extension not in ["toml", "yaml", "yml", "csv"]:
-                self.__error_message = "Unsupported file type"
-                return self
+    def __init__(self: "GhostwriterParser", config_file: BytesIO) -> None:
+        super().__init__()
 
+        self.__file_extension = config_file.name.split(".")[-1]
+        if self.__file_extension not in ["toml", "yaml", "yml", "csv"]:
+            self.__error_message = "Unsupported file type"
+            return
+
+        try:
             self.__config_data = config_file.read().decode("utf-8")
 
         except UnicodeDecodeError as e:
             self.__error_message = str(e)
 
-        return self
+    @property
+    def csv_rows_name(self: "GhostwriterParser") -> str:
+        return self.__csv_rows_name
 
-    def set_csv_rows_name(self: "GhostwriterParser", rows_name: str) -> "GhostwriterParser":
+    @csv_rows_name.setter
+    def csv_rows_name(self: "GhostwriterParser", rows_name: str) -> None:
         """Set list variable name when CSV rows are converted to arrays."""
 
         self.__csv_rows_name = rows_name
-
-        return self
 
     def parse(self: "GhostwriterParser") -> bool:
         if self.__config_data is None:
@@ -64,9 +67,9 @@ class GhostwriterParser(BaseModel):
             ValueError,
         ) as e:
             self.__error_message = str(e)
+            return False
 
         if self.__parsed_dict is None:
-            print(self.__error_message)
             return False
 
         if self.__file_extension in {"yaml", "yml"} and not isinstance(self.__parsed_dict, dict):
@@ -78,16 +81,12 @@ class GhostwriterParser(BaseModel):
 
     @property
     def parsed_dict(self: "GhostwriterParser") -> Optional[Dict[str, Any]]:
-        """
-        コンフィグファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。
-        """
+        """コンフィグファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
         return self.__parsed_dict
 
     @property
     def parsed_str(self: "GhostwriterParser") -> str:
-        """
-        コンフィグファイルをパースして文字列を返す。エラーが発生した場合は"None"を返す。
-        """
+        """コンフィグファイルをパースして文字列を返す。エラーが発生した場合は"None"を返す。"""
         return pprint.pformat(self.__parsed_dict)
 
     @property

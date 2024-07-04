@@ -47,9 +47,9 @@ class GhostwriterCore(BaseModel):
         if config_file is None:
             return self
 
-        parser = GhostwriterParser()
-        parser.set_csv_rows_name(csv_rows_name)
-        parser.load_config_file(config_file).parse()
+        parser = GhostwriterParser(config_file)
+        parser.csv_rows_name = csv_rows_name
+        parser.parse()
 
         if isinstance(parser.error_message, str):
             error_header = self.__config_error_header
