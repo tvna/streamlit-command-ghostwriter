@@ -40,17 +40,14 @@ def test_transcoder(input_str: str, input_encoding: str, expected_encoding: str,
     import_file = BytesIO(input_str.encode(input_encoding))
     import_file.name = "example.csv"
 
-    trans = TextTranscoder()
-    trans.import_file = import_file
+    trans = TextTranscoder(import_file)
     assert trans.detect_encoding() == expected_encoding
 
-    assert type(trans.convert(is_allow_fallback=False)) == trans.__class__
-    export_file_deny_fallback = trans.export_file
+    export_file_deny_fallback = trans.convert(is_allow_fallback=False)
     assert export_file_deny_fallback.read().decode("utf-8") == expected_result  # type: ignore
     assert export_file_deny_fallback.name == import_file.name  # type: ignore
 
-    assert type(trans.convert(is_allow_fallback=True)) == trans.__class__
-    export_file_allow_fallback = trans.export_file
+    export_file_allow_fallback = trans.convert(is_allow_fallback=True)
     assert export_file_allow_fallback.getvalue().decode("utf-8") == expected_result  # type: ignore
     assert export_file_allow_fallback.name == import_file.name  # type: ignore
 
@@ -68,28 +65,20 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
     import_file = BytesIO(input_bytes)
     import_file.name = "example.csv"
 
-    trans = TextTranscoder()
-    trans.import_file = import_file
+    trans = TextTranscoder(import_file)
     assert trans.detect_encoding() == expected_encoding
 
-    assert type(trans.convert(is_allow_fallback=False)) == trans.__class__
-    export_file_deny_fallback = trans.export_file
+    export_file_deny_fallback = trans.convert(is_allow_fallback=False)
     assert export_file_deny_fallback == None  # type: ignore
 
-    assert type(trans.convert(is_allow_fallback=True)) == trans.__class__
-    export_file_allow_fallback = trans.export_file
+    export_file_allow_fallback = trans.convert(is_allow_fallback=True)
     assert export_file_allow_fallback.getvalue() == expected_result  # type: ignore
     assert export_file_allow_fallback.name == import_file.name  # type: ignore
 
 
 @pytest.mark.unit()
 def test_transcoder_missing_encode() -> None:
-    input_data = BytesIO(b"ABCDEF")
-
-    trans = TextTranscoder()
-    trans.import_file = input_data
+    trans = TextTranscoder(BytesIO(b"ABCDEF"))
     assert trans.detect_encoding() == "ASCII"
-    assert type(trans.convert("utf-9", False)) == trans.__class__
-    assert trans.export_file == None
-    assert type(trans.convert("utf-9", True)) == trans.__class__
-    assert trans.export_file.getvalue() == b"ABCDEF"  # type: ignore
+    assert trans.convert("utf-9", False) == None
+    assert trans.convert("utf-9", True).getvalue() == b"ABCDEF"  # type: ignore

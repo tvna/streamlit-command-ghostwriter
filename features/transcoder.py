@@ -7,23 +7,15 @@ from pydantic import BaseModel, PrivateAttr
 
 class TextTranscoder(BaseModel):
     __import_file: BytesIO = PrivateAttr(default=None)
-    __export_file: Optional[BytesIO] = PrivateAttr(default=None)
     __filename: Optional[str] = PrivateAttr(default=None)
 
-    @property
-    def import_file(self: "TextTranscoder") -> BytesIO:
-        return self.__import_file
+    def __init__(self: "TextTranscoder", import_file: BytesIO) -> None:
+        super().__init__()
 
-    @import_file.setter
-    def import_file(self: "TextTranscoder", val: BytesIO) -> None:
-        self.__import_file = val
+        self.__import_file = import_file
 
-        if hasattr(val, "name"):
-            self.__filename = val.name
-
-    @property
-    def export_file(self: "TextTranscoder") -> Optional[BytesIO]:
-        return self.__export_file
+        if hasattr(import_file, "name"):
+            self.__filename = import_file.name
 
     def detect_binary(self: "TextTranscoder") -> bool:
         import_file = self.__import_file
@@ -79,12 +71,10 @@ class TextTranscoder(BaseModel):
 
         return export_file
 
-    def convert(self: "TextTranscoder", new_encode: str = "utf-8", is_allow_fallback: bool = True) -> "TextTranscoder":
+    def convert(self: "TextTranscoder", new_encode: str = "utf-8", is_allow_fallback: bool = True) -> Optional[BytesIO]:
         result = self.__convert_to_new_encode(new_encode)
 
         if is_allow_fallback:
-            self.__export_file = result if isinstance(result, BytesIO) else self.__import_file
+            return result if isinstance(result, BytesIO) else self.__import_file
         else:
-            self.__export_file = result
-
-        return self
+            return result

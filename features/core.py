@@ -42,9 +42,7 @@ class GhostwriterCore(BaseModel):
             return self
 
         if is_auto_encoding:
-            trans = TextTranscoder()
-            trans.import_file = config_file
-            config_file = trans.convert().export_file
+            config_file = TextTranscoder(config_file).convert()
 
         if config_file is None:
             return self
@@ -70,9 +68,7 @@ class GhostwriterCore(BaseModel):
             return self
 
         if is_auto_encoding:
-            trans = TextTranscoder()
-            trans.import_file = template_file
-            template_file = trans.convert().export_file
+            template_file = TextTranscoder(template_file).convert()
 
         if template_file is None:
             return self
