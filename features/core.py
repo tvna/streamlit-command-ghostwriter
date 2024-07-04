@@ -73,8 +73,8 @@ class GhostwriterCore(BaseModel):
         if template_file is None:
             return self
 
-        render = GhostwriterRender()
-        if not render.load_template_file(template_file).validate_template():
+        render = GhostwriterRender(template_file)
+        if not render.is_valid_template:
             error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
 

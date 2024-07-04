@@ -8,31 +8,31 @@ from pydantic import BaseModel, PrivateAttr
 
 class GhostwriterRender(BaseModel):
     __template_content: Optional[str] = PrivateAttr(default=None)
+    __is_valid_template: bool = PrivateAttr(default=False)
     __render_content: Optional[str] = PrivateAttr(default=None)
     __error_message: Optional[str] = PrivateAttr(default=None)
 
-    def load_template_file(self: "GhostwriterRender", template_file: BytesIO) -> "GhostwriterRender":
+    def __init__(self: "GhostwriterRender", template_file: BytesIO) -> None:
+        super().__init__()
+
         try:
-            self.__template_content = template_file.read().decode("utf-8")
+            template = template_file.read().decode("utf-8")
         except (AttributeError, UnicodeDecodeError) as e:
             self.__error_message = str(e)
-
-        return self
-
-    def validate_template(self: "GhostwriterRender") -> bool:
-        template = self.__template_content
-
-        if template is None:
-            return False
+            return
 
         try:
             env = j2.Environment(autoescape=True)
             env.parse(template)
-            return True
+            self.__template_content = template
+            self.__is_valid_template = True
 
         except j2.TemplateSyntaxError as e:
             self.__error_message = str(e)
-            return False
+
+    @property
+    def is_valid_template(self: "GhostwriterRender") -> bool:
+        return self.__is_valid_template
 
     def __remove_whitespaces(self: "GhostwriterRender", source_text: str) -> str:
         return re.sub(r"^\s+$\n", "\n", source_text, flags=re.MULTILINE)
@@ -82,11 +82,10 @@ class GhostwriterRender(BaseModel):
 
         try:
             self.__render_content = self.__format_context(raw_render_content, format_type)
+            return True
         except ValueError:
             self.__error_message = "Unsupported format type"
             return False
-
-        return True
 
     @property
     def render_content(self: "GhostwriterRender") -> Optional[str]:

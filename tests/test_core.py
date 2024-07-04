@@ -43,19 +43,17 @@ class MockParser:
 
 
 class MockRender:
-    def __init__(self: "MockRender") -> None:
-        self.__is_successful: bool = False
-        self.__render_content: str = "This is POSITIVE"
+    __is_successful: bool = False
+    __render_content: str = "This is POSITIVE"
 
-    def load_template_file(self: "MockRender", file: BytesIO) -> "MockRender":
+    def __init__(self: "MockRender", file: BytesIO) -> None:
         content = file.read().decode()
 
         if content == "POSITIVE":
             self.__is_successful = True
 
-        return self
-
-    def validate_template(self: "MockRender") -> bool:
+    @property
+    def is_valid_template(self: "MockRender") -> bool:
         return self.__is_successful
 
     def apply_context(self: "MockRender", content: Dict[str, Any], format_type: int = 3, is_strict_undefined: bool = True) -> bool:
@@ -154,10 +152,9 @@ def test_mock_render(
 ) -> None:
     """Test mock-render."""
 
-    render = MockRender()
-    assert type(render.load_template_file(BytesIO(template_content))) == render.__class__
+    render = MockRender(BytesIO(template_content))
 
-    assert render.validate_template() == expected_validate_template
+    assert render.is_valid_template == expected_validate_template
     assert render.apply_context(context, 3, is_strict_undefined) == expected_apply_succeeded
     assert render.render_content == expected_content
     assert render.error_message == expected_error
