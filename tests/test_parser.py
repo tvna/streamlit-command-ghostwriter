@@ -195,7 +195,15 @@ def test_parse(
             True,
             {"people": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]},
             "{'people': [{'age': 30, 'name': 'Alice'}, {'age': 25, 'name': 'Bob'}]}",
-        )
+        ),
+        pytest.param(
+            b"name,age\nAlice,30\nBob,25",
+            "config.csv",
+            "",
+            False,
+            None,
+            "None",
+        ),
     ],
 )
 def test_changed_rows_name(

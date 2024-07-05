@@ -51,6 +51,9 @@ class GhostwriterParser(BaseModel):
                 case "yaml" | "yml":
                     self.__parsed_dict = yaml.safe_load(self.__config_data)
                 case "csv":
+                    if len(self.__csv_rows_name) < 1:
+                        self.__error_message = "ensure this value has at least 1 characters."
+                        raise ValueError
                     csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
                     mapped_list = [row._asdict() for row in csv_data.itertuples(index=False)]  # type: ignore
 
