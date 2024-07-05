@@ -38,10 +38,10 @@ class GhostwriterCore(BaseModel):
         self.__config_dict = None
         self.__config_str = None
 
-        if not (config_file and hasattr(config_file, "name")):
+        if not (isinstance(config_file, BytesIO) and hasattr(config_file, "name")):
             return self
 
-        if is_auto_encoding:
+        if is_auto_encoding is True:
             config_file = TextTranscoder(config_file).convert()
 
         if config_file is None:
@@ -64,17 +64,17 @@ class GhostwriterCore(BaseModel):
     def load_template_file(self: "GhostwriterCore", template_file: Optional[BytesIO], is_auto_encoding: bool) -> "GhostwriterCore":
         """Load jinja template file."""
 
-        if not template_file:
+        if template_file is None:
             return self
 
-        if is_auto_encoding:
+        if is_auto_encoding is True:
             template_file = TextTranscoder(template_file).convert()
 
         if template_file is None:
             return self
 
         render = GhostwriterRender(template_file)
-        if not render.is_valid_template:
+        if render.is_valid_template is False:
             error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
 
@@ -98,7 +98,7 @@ class GhostwriterCore(BaseModel):
         if len(format_type_buffer) != 1:
             return self
 
-        if not render.apply_context(config_dict, int(format_type_buffer[0]), is_strict_undefined):
+        if render.apply_context(config_dict, int(format_type_buffer[0]), is_strict_undefined) is False:
             error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{self.__template_filename}'"
             return self
@@ -116,7 +116,7 @@ class GhostwriterCore(BaseModel):
         if filename is None or file_ext is None:
             return None
 
-        suffix: Final[str] = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp else ""
+        suffix: Final[str] = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp is True else ""
 
         return f"{filename}{suffix}.{str(file_ext)}"
 

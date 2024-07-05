@@ -68,7 +68,7 @@ class GhostwriterRender(BaseModel):
             return False
 
         try:
-            if is_strict_undefined:
+            if is_strict_undefined is True:
                 env: j2.Environment = j2.Environment(loader=j2.FileSystemLoader("."), undefined=j2.StrictUndefined, autoescape=True)
                 strict_template: j2.Template = env.from_string(template_str)
                 raw_render_content = strict_template.render(context)

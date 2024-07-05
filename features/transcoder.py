@@ -27,7 +27,7 @@ class TextTranscoder(BaseModel):
         return b"\0" in chunk
 
     def detect_encoding(self: "TextTranscoder") -> Optional[str]:
-        if self.detect_binary():
+        if self.detect_binary() is True:
             return None
 
         import_file = self.__import_file
@@ -54,7 +54,7 @@ class TextTranscoder(BaseModel):
         current_encode = self.detect_encoding()
         export_file = None
 
-        if not current_encode:
+        if current_encode is None:
             return None
 
         import_file = self.__import_file
@@ -74,7 +74,7 @@ class TextTranscoder(BaseModel):
     def convert(self: "TextTranscoder", new_encode: str = "utf-8", is_allow_fallback: bool = True) -> Optional[BytesIO]:
         result = self.__convert_to_new_encode(new_encode)
 
-        if is_allow_fallback:
+        if is_allow_fallback is True:
             return result if isinstance(result, BytesIO) else self.__import_file
         else:
             return result
