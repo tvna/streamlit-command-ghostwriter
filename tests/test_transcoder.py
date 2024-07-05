@@ -69,7 +69,7 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
     assert trans.detect_encoding() == expected_encoding
 
     export_file_deny_fallback = trans.convert(is_allow_fallback=False)
-    assert export_file_deny_fallback == None  # type: ignore
+    assert export_file_deny_fallback is None  # type: ignore
 
     export_file_allow_fallback = trans.convert(is_allow_fallback=True)
     assert export_file_allow_fallback.getvalue() == expected_result  # type: ignore
@@ -80,5 +80,5 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
 def test_transcoder_missing_encode() -> None:
     trans = TextTranscoder(BytesIO(b"ABCDEF"))
     assert trans.detect_encoding() == "ASCII"
-    assert trans.convert("utf-9", False) == None
+    assert trans.convert("utf-9", False) is None
     assert trans.convert("utf-9", True).getvalue() == b"ABCDEF"  # type: ignore

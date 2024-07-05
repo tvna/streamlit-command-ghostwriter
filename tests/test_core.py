@@ -284,4 +284,4 @@ def test_get_download_content(model: GhostwriterCore) -> None:
     assert model.get_download_content("Shift_JIS").decode("Shift_JIS") == expected_result  # type: ignore
     assert model.get_download_content("EUC-JP").decode("EUC-JP") == expected_result  # type: ignore
     assert model.get_download_content("utf-8").decode("utf-8") == expected_result  # type: ignore
-    assert model.get_download_content("utf-9") == None
+    assert model.get_download_content("utf-9") is None
