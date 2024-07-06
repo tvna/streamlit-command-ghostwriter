@@ -13,7 +13,8 @@ on:
       - develop
       - main
   schedule:
-    - cron: "30 4 * * 0"
+    # UTC 20:00 -> JST 05:00
+    - cron: "00 20 * * 0,2,4"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-coverage
