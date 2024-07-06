@@ -1,0 +1,8 @@
+engines:
+  duplication:
+    enabled: true
+    config:
+      languages:
+        python:
+          python_version: 3
+        javascript:
