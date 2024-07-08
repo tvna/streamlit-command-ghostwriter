@@ -162,17 +162,16 @@ def test_mock_render(
 
 @pytest.mark.unit()
 @pytest.mark.parametrize(
-    ("config_content", "expected_dict", "expected_text", "expected_error"),
+    ("config_content", "expected_dict", "expected_error"),
     [
-        pytest.param(None, None, None, None),
-        pytest.param(b"POSITIVE", {"key": "POSITIVE"}, "{'key':POSITIVE'}", None),
-        pytest.param(b"negative", None, None, "[CONFIG_ERROR]: parser_module_error in 'config.toml'"),
+        pytest.param(None, None, None),
+        pytest.param(b"POSITIVE", {"key": "POSITIVE"}, None),
+        pytest.param(b"negative", None, "[CONFIG_ERROR]: parser_module_error in 'config.toml'"),
     ],
 )
 def test_load_config_file(
     config_content: Optional[bytes],
     expected_dict: Optional[Dict[str, Any]],
-    expected_text: Optional[str],
     expected_error: Optional[str],
     model: GhostwriterCore,
 ) -> None:
@@ -184,7 +183,6 @@ def test_load_config_file(
 
     assert type(model.load_config_file(config_file, "csv_rows", False)) == model.__class__
     assert model.config_dict == expected_dict
-    assert model.config_str == expected_text
     assert model.config_error_message == expected_error
 
 

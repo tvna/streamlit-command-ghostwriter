@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-import json
 import re
 from datetime import datetime
 from io import BytesIO
@@ -14,7 +13,6 @@ from features.transcoder import TextTranscoder
 
 class GhostwriterCore(BaseModel):
     __config_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    __config_str: Optional[str] = PrivateAttr(default=None)
     __render: Optional[GhostwriterRender] = PrivateAttr(default=None)
     __formatted_text: Optional[str] = PrivateAttr(default=None)
     __config_error_message: Optional[str] = PrivateAttr(default=None)
@@ -36,7 +34,6 @@ class GhostwriterCore(BaseModel):
 
         # 呼び出しされるたびに、前回の結果をリセットする
         self.__config_dict = None
-        self.__config_str = None
 
         if not (isinstance(config_file, BytesIO) and hasattr(config_file, "name")):
             return self
@@ -57,7 +54,6 @@ class GhostwriterCore(BaseModel):
             return self
 
         self.__config_dict = parser.parsed_dict
-        self.__config_str = parser.parsed_str
 
         return self
 
@@ -137,14 +133,6 @@ class GhostwriterCore(BaseModel):
     def config_dict(self: "GhostwriterCore", config: Optional[Dict[str, Any]]) -> None:
         """Set config dict for template args."""
         self.__config_dict = config
-
-    @property
-    def config_json(self: "GhostwriterCore") -> str:
-        return json.dumps(self.__config_dict, ensure_ascii=False, indent=4)
-
-    @property
-    def config_str(self: "GhostwriterCore") -> Optional[str]:
-        return self.__config_str
 
     @property
     def formatted_text(self: "GhostwriterCore") -> Optional[str]:

@@ -1,7 +1,9 @@
+import json
 from io import BytesIO
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import pytest
+import yaml
 from streamlit.testing.v1 import AppTest
 
 
@@ -83,23 +85,27 @@ def test_main_tab1(
     (
         "active_button",
         "config_file_content",
-        "expected_text_area_len",
         "expected_text_area_value",
         "expected_error_objects",
         "expected_warning_objects",
         "expected_success_objects",
     ),
     [
-        pytest.param("tab2_execute_dict", b'key = "POSITIVE"', 1, "{'key': 'POSITIVE'}", 0, 0, 1),
-        pytest.param("tab2_execute_dict", None, 0, None, 0, 1, 0),
-        pytest.param("tab2_execute_dict", b"key=", 0, None, 1, 1, 0),
+        pytest.param("tab2_execute_visual", b'key = "POSITIVE"', {"key": "POSITIVE"}, 0, 0, 1),
+        pytest.param("tab2_execute_visual", None, None, 0, 1, 0),
+        pytest.param("tab2_execute_visual", b"key=", None, 1, 1, 0),
+        pytest.param("tab2_execute_json", b'key = "POSITIVE"', {"key": "POSITIVE"}, 0, 0, 1),
+        pytest.param("tab2_execute_json", None, None, 0, 1, 0),
+        pytest.param("tab2_execute_json", b"key=", None, 1, 1, 0),
+        pytest.param("tab2_execute_yaml", b'key = "POSITIVE"', {"key": "POSITIVE"}, 0, 0, 1),
+        pytest.param("tab2_execute_yaml", None, None, 0, 1, 0),
+        pytest.param("tab2_execute_yaml", b"key=", None, 1, 1, 0),
     ],
 )
 def test_main_tab2(
     active_button: str,
     config_file_content: Optional[bytes],
-    expected_text_area_len: int,
-    expected_text_area_value: Optional[str],
+    expected_text_area_value: Optional[Dict[str, Any]],
     expected_error_objects: int,
     expected_warning_objects: int,
     expected_success_objects: int,
@@ -120,11 +126,40 @@ def test_main_tab2(
     at.run()
 
     assert at.session_state["tab2_config_file"] == config_file
-    assert at.session_state["tab2_result_content"] == expected_text_area_value
     assert at.button(key=active_button).value is True
-    assert at.text_area.len == base_text_area_len + expected_text_area_len
-    if expected_text_area_len > 0:
-        assert at.text_area(key="tab2_result_textarea").value == expected_text_area_value
+
+    if expected_text_area_value is None:
+        assert at.session_state["tab2_result_content"] == None
+    else:
+        assert type(at.session_state["tab2_result_content"]) == dict
+        assert at.session_state["tab2_result_content"] == expected_text_area_value
+
+    if active_button == "tab2_execute_visual":
+        if expected_text_area_value is None:
+            assert at.json.len == 0
+        else:
+            assert at.json.len == 1
+            assert at.json[0].value == json.dumps(expected_text_area_value, ensure_ascii=False)
+        assert at.text_area.len == base_text_area_len
+
+    if active_button == "tab2_execute_json":
+        assert at.json.len == 0
+        if expected_text_area_value is None:
+            assert at.text_area.len == base_text_area_len
+        else:
+            assert at.text_area.len == base_text_area_len + 1
+            assert at.text_area(key="tab2_result_textarea").value == json.dumps(expected_text_area_value, ensure_ascii=False, indent=4)
+
+    if active_button == "tab2_execute_yaml":
+        assert at.json.len == 0
+        if expected_text_area_value is None:
+            assert at.text_area.len == base_text_area_len
+        else:
+            assert at.text_area.len == base_text_area_len + 1
+            assert at.text_area(key="tab2_result_textarea").value == yaml.dump(
+                expected_text_area_value, default_flow_style=False, allow_unicode=True, indent=8
+            )
+
     assert at.error.len == expected_error_objects
     assert at.warning.len == expected_warning_objects
     assert at.success.len == expected_success_objects

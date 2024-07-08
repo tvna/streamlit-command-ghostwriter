@@ -1,9 +1,12 @@
+#! /usr/bin/env python
+import json
 import os
 from enum import Enum
 from io import BytesIO
-from typing import Final, Optional
+from typing import Any, Dict, Final, Optional
 
 import streamlit as st
+import yaml
 from box import Box
 from pydantic import BaseModel, PrivateAttr
 
@@ -16,8 +19,9 @@ class ExecuteMode(Enum):
     nothing = 0
     parsed_text = 1
     parsed_markdown = 2
-    debug_dict = 3
+    debug_visual = 3
     debug_json = 4
+    debug_yaml = 5
 
 
 class TabViewModel(BaseModel):
@@ -33,15 +37,21 @@ class TabViewModel(BaseModel):
         return self.__texts_dict
 
     def set_execute_mode(
-        self: "TabViewModel", is_parsed_text: bool, is_parsed_markdown: bool, is_debug_dict: bool, is_debug_json: bool
+        self: "TabViewModel",
+        is_parsed_text: bool,
+        is_parsed_markdown: bool,
+        is_debug_visual: bool,
+        is_debug_json: bool,
+        is_debug_yaml: bool,
     ) -> "TabViewModel":
         """Set execute mode."""
 
         mode_mapping = {
             is_parsed_text: ExecuteMode.parsed_text,
             is_parsed_markdown: ExecuteMode.parsed_markdown,
-            is_debug_dict: ExecuteMode.debug_dict,
+            is_debug_visual: ExecuteMode.debug_visual,
             is_debug_json: ExecuteMode.debug_json,
+            is_debug_yaml: ExecuteMode.debug_yaml,
         }
 
         for condition, mode in mode_mapping.items():
@@ -64,22 +74,18 @@ class TabViewModel(BaseModel):
         if not self.__execute_mode in (ExecuteMode.parsed_text, ExecuteMode.parsed_markdown):
             return
 
-        if isinstance(result, str):
-            self.__show_tab1_result(result)
-        else:
+        if not isinstance(result, str):
             st.warning(self.__texts.tab1.error_both_files)
-
-    def __show_tab1_result(self: "TabViewModel", result_text: str) -> None:
-        """Show tab1 success content."""
+            return
 
         match self.__execute_mode:
             case ExecuteMode.parsed_text:
                 st.success(self.__texts.tab1.success_formatted_text)
-                st.container(border=True).text_area(self.__texts.tab1.formatted_text, result_text, key="tab1_result_textarea", height=500)
+                st.container(border=True).text_area(self.__texts.tab1.formatted_text, result, key="tab1_result_textarea", height=500)
 
             case ExecuteMode.parsed_markdown:
                 st.success(self.__texts.tab1.success_formatted_text)
-                st.container(border=True).markdown(result_text)
+                st.container(border=True).markdown(result)
 
     def __show_tab1_error(self: "TabViewModel", first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
         """Show tab1 error content."""
@@ -89,13 +95,13 @@ class TabViewModel(BaseModel):
         if second_error_message:
             st.error(second_error_message)
 
-    def show_tab2(self: "TabViewModel", parsed_config: Optional[str], error_message: Optional[str]) -> None:
+    def show_tab2(self: "TabViewModel", parsed_config: Optional[Dict[str, Any]], error_message: Optional[str]) -> None:
         """Show tab2 response content."""
 
         if error_message:
             st.error(error_message)
 
-        if not self.__execute_mode in (ExecuteMode.debug_dict, ExecuteMode.debug_json):
+        if not self.__execute_mode in (ExecuteMode.debug_visual, ExecuteMode.debug_json, ExecuteMode.debug_yaml):
             return
 
         if not parsed_config or parsed_config == "null":
@@ -103,7 +109,18 @@ class TabViewModel(BaseModel):
             return
 
         st.success(self.__texts.tab2.success_debug_config)
-        st.text_area(self.__texts.tab2.debug_config_text, parsed_config, key="tab2_result_textarea", height=500)
+
+        match self.__execute_mode:
+            case ExecuteMode.debug_visual:
+                st.container(border=True).json(parsed_config)
+
+            case ExecuteMode.debug_json:
+                json_config = json.dumps(parsed_config, ensure_ascii=False, indent=4)
+                st.text_area(self.__texts.tab2.debug_config_text, json_config, key="tab2_result_textarea", height=500)
+
+            case ExecuteMode.debug_yaml:
+                yaml_config = yaml.dump(parsed_config, default_flow_style=False, allow_unicode=True, indent=8)
+                st.text_area(self.__texts.tab2.debug_config_text, yaml_config, key="tab2_result_textarea", height=500)
 
     def show_tab4(self: "TabViewModel") -> None:
         samples_dir = "./assets/examples"
@@ -206,8 +223,9 @@ def main() -> None:
         tab1_view_model.set_execute_mode(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
-            st.session_state.get("tab2_execute_dict", False),
+            st.session_state.get("tab2_execute_visual", False),
             st.session_state.get("tab2_execute_json", False),
+            st.session_state.get("tab2_execute_yaml", False),
         ).show_tab1(
             st.session_state.get("tab1_result_content"),
             st.session_state.get("tab1_error_config"),
@@ -228,14 +246,13 @@ def main() -> None:
             st.session_state.get("is_auto_transcoding", True),
         )
 
-        tab2_row2[0].button(texts.tab2.generate_dict_button, use_container_width=True, key="tab2_execute_dict")
+        tab2_row2[0].button(texts.tab2.generate_visual_button, use_container_width=True, key="tab2_execute_visual")
         tab2_row2[1].button(texts.tab2.generate_json_button, use_container_width=True, key="tab2_execute_json")
+        tab2_row2[2].button(texts.tab2.generate_yaml_button, use_container_width=True, key="tab2_execute_yaml")
 
         st.session_state.update(
             {
-                "tab2_result_content": tab2_model.config_str
-                if st.session_state.get("tab2_execute_dict", False)
-                else tab2_model.config_json,
+                "tab2_result_content": tab2_model.config_dict,
                 "tab2_error_config": tab2_model.config_error_message,
             }
         )
@@ -244,8 +261,9 @@ def main() -> None:
         tab2_view_model.set_execute_mode(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
-            st.session_state.get("tab2_execute_dict", False),
+            st.session_state.get("tab2_execute_visual", False),
             st.session_state.get("tab2_execute_json", False),
+            st.session_state.get("tab2_execute_yaml", False),
         ).show_tab2(
             st.session_state.get("tab2_result_content"),
             st.session_state.get("tab2_error_config"),
