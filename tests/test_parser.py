@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from features.config_parser import GhostwriterParser
+from features.config_parser import ConfigParser
 
 
 @pytest.mark.unit()
@@ -173,7 +173,7 @@ def test_parse(
     config_file = BytesIO(content)
     config_file.name = filename
 
-    parser = GhostwriterParser(config_file)
+    parser = ConfigParser(config_file)
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str
@@ -219,7 +219,7 @@ def test_changed_rows_name(
     config_file = BytesIO(content)
     config_file.name = filename
 
-    parser = GhostwriterParser(config_file)
+    parser = ConfigParser(config_file)
     parser.csv_rows_name = csv_rows_name
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict

@@ -6,13 +6,13 @@ import jinja2 as j2
 from pydantic import BaseModel, PrivateAttr
 
 
-class GhostwriterRender(BaseModel):
+class DocumentRender(BaseModel):
     __template_content: Optional[str] = PrivateAttr(default=None)
     __is_valid_template: bool = PrivateAttr(default=False)
     __render_content: Optional[str] = PrivateAttr(default=None)
     __error_message: Optional[str] = PrivateAttr(default=None)
 
-    def __init__(self: "GhostwriterRender", template_file: BytesIO) -> None:
+    def __init__(self: "DocumentRender", template_file: BytesIO) -> None:
         super().__init__()
 
         try:
@@ -31,13 +31,13 @@ class GhostwriterRender(BaseModel):
             self.__error_message = str(e)
 
     @property
-    def is_valid_template(self: "GhostwriterRender") -> bool:
+    def is_valid_template(self: "DocumentRender") -> bool:
         return self.__is_valid_template
 
-    def __remove_whitespaces(self: "GhostwriterRender", source_text: str) -> str:
+    def __remove_whitespaces(self: "DocumentRender", source_text: str) -> str:
         return re.sub(r"^\s+$\n", "\n", source_text, flags=re.MULTILINE)
 
-    def __format_context(self: "GhostwriterRender", source_text: str, format_type: int) -> str:
+    def __format_context(self: "DocumentRender", source_text: str, format_type: int) -> str:
         """Format the context according to the formatting level."""
 
         match format_type:
@@ -61,7 +61,7 @@ class GhostwriterRender(BaseModel):
 
         raise ValueError
 
-    def apply_context(self: "GhostwriterRender", context: Dict[str, Any], format_type: int = 3, is_strict_undefined: bool = True) -> bool:
+    def apply_context(self: "DocumentRender", context: Dict[str, Any], format_type: int = 3, is_strict_undefined: bool = True) -> bool:
         template_str = self.__template_content
 
         if template_str is None:
@@ -88,10 +88,10 @@ class GhostwriterRender(BaseModel):
             return False
 
     @property
-    def render_content(self: "GhostwriterRender") -> Optional[str]:
+    def render_content(self: "DocumentRender") -> Optional[str]:
         """Jinja2テンプレートをレンダリングして文字列を返す。エラーが発生した場合はNoneを返す。"""
         return self.__render_content
 
     @property
-    def error_message(self: "GhostwriterRender") -> Optional[str]:
+    def error_message(self: "DocumentRender") -> Optional[str]:
         return self.__error_message

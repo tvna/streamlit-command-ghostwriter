@@ -10,7 +10,7 @@ import yaml
 from box import Box
 from pydantic import BaseModel, PrivateAttr
 
-from features.core import GhostwriterCore
+from features.core import AppCore
 from features.transcoder import TextTranscoder
 from i18n import LANGUAGES
 
@@ -186,7 +186,7 @@ def main() -> None:
         tab1_row2[0].button(texts.tab1.generate_text_button, use_container_width=True, key="tab1_execute_text")
         tab1_row2[1].button(texts.tab1.generate_markdown_button, use_container_width=True, key="tab1_execute_markdown")
 
-        tab1_model = GhostwriterCore(texts.tab1.error_toml_parse, texts.tab1.error_template_generate)
+        tab1_model = AppCore(texts.tab1.error_toml_parse, texts.tab1.error_template_generate)
         tab1_model.load_config_file(
             st.session_state.get("tab1_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),
@@ -239,7 +239,7 @@ def main() -> None:
 
         tab2_row1[0].container(border=True).file_uploader(texts.tab2.upload_debug_config, type=config_file_exts, key="tab2_config_file")
 
-        tab2_model = GhostwriterCore(texts.tab2.error_debug_config)
+        tab2_model = AppCore(texts.tab2.error_debug_config)
         tab2_model.load_config_file(
             st.session_state.get("tab2_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),

@@ -9,14 +9,14 @@ import yaml
 from pydantic import BaseModel, PrivateAttr
 
 
-class GhostwriterParser(BaseModel):
+class ConfigParser(BaseModel):
     __file_extension: str = PrivateAttr()
     __config_data: Optional[str] = PrivateAttr(default=None)
     __parsed_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
     __error_message: Optional[str] = PrivateAttr(default=None)
     __csv_rows_name: str = PrivateAttr(default="csv_rows")
 
-    def __init__(self: "GhostwriterParser", config_file: BytesIO) -> None:
+    def __init__(self: "ConfigParser", config_file: BytesIO) -> None:
         super().__init__()
 
         self.__file_extension = config_file.name.split(".")[-1]
@@ -31,16 +31,16 @@ class GhostwriterParser(BaseModel):
             self.__error_message = str(e)
 
     @property
-    def csv_rows_name(self: "GhostwriterParser") -> str:
+    def csv_rows_name(self: "ConfigParser") -> str:
         return self.__csv_rows_name
 
     @csv_rows_name.setter
-    def csv_rows_name(self: "GhostwriterParser", rows_name: str) -> None:
+    def csv_rows_name(self: "ConfigParser", rows_name: str) -> None:
         """Set list variable name when CSV rows are converted to arrays."""
 
         self.__csv_rows_name = rows_name
 
-    def parse(self: "GhostwriterParser") -> bool:
+    def parse(self: "ConfigParser") -> bool:
         if self.__config_data is None:
             return False
 
@@ -83,16 +83,16 @@ class GhostwriterParser(BaseModel):
         return True
 
     @property
-    def parsed_dict(self: "GhostwriterParser") -> Optional[Dict[str, Any]]:
+    def parsed_dict(self: "ConfigParser") -> Optional[Dict[str, Any]]:
         """コンフィグファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
         return self.__parsed_dict
 
     @property
-    def parsed_str(self: "GhostwriterParser") -> str:
+    def parsed_str(self: "ConfigParser") -> str:
         """コンフィグファイルをパースして文字列を返す。エラーが発生した場合は"None"を返す。"""
         return pprint.pformat(self.__parsed_dict)
 
     @property
-    def error_message(self: "GhostwriterParser") -> Optional[str]:
+    def error_message(self: "ConfigParser") -> Optional[str]:
         """エラーメッセージを返す。"""
         return self.__error_message

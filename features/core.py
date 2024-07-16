@@ -5,14 +5,14 @@ from typing import Any, Dict, Final, Optional
 
 from pydantic import BaseModel, PrivateAttr
 
-from features.command_render import GhostwriterRender
-from features.config_parser import GhostwriterParser
+from features.config_parser import ConfigParser
+from features.document_render import DocumentRender
 from features.transcoder import TextTranscoder
 
 
-class GhostwriterCore(BaseModel):
+class AppCore(BaseModel):
     __config_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    __render: Optional[GhostwriterRender] = PrivateAttr(default=None)
+    __render: Optional[DocumentRender] = PrivateAttr(default=None)
     __formatted_text: Optional[str] = PrivateAttr(default=None)
     __config_error_message: Optional[str] = PrivateAttr(default=None)
     __template_error_message: Optional[str] = PrivateAttr(default=None)
@@ -20,15 +20,13 @@ class GhostwriterCore(BaseModel):
     __config_error_header = PrivateAttr()
     __template_error_header = PrivateAttr()
 
-    def __init__(self: "GhostwriterCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
+    def __init__(self: "AppCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
         super().__init__()
 
         self.__config_error_header = config_error_header
         self.__template_error_header = template_error_header
 
-    def load_config_file(
-        self: "GhostwriterCore", config_file: Optional[BytesIO], csv_rows_name: str, is_auto_encoding: bool
-    ) -> "GhostwriterCore":
+    def load_config_file(self: "AppCore", config_file: Optional[BytesIO], csv_rows_name: str, is_auto_encoding: bool) -> "AppCore":
         """Load config file for template args."""
 
         # 呼び出しされるたびに、前回の結果をリセットする
@@ -43,7 +41,7 @@ class GhostwriterCore(BaseModel):
         if config_file is None:
             return self
 
-        parser = GhostwriterParser(config_file)
+        parser = ConfigParser(config_file)
         parser.csv_rows_name = csv_rows_name
         parser.parse()
 
@@ -56,7 +54,7 @@ class GhostwriterCore(BaseModel):
 
         return self
 
-    def load_template_file(self: "GhostwriterCore", template_file: Optional[BytesIO], is_auto_encoding: bool) -> "GhostwriterCore":
+    def load_template_file(self: "AppCore", template_file: Optional[BytesIO], is_auto_encoding: bool) -> "AppCore":
         """Load jinja template file."""
 
         if template_file is None:
@@ -68,7 +66,7 @@ class GhostwriterCore(BaseModel):
         if template_file is None:
             return self
 
-        render = GhostwriterRender(template_file)
+        render = DocumentRender(template_file)
         if render.is_valid_template is False:
             error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
@@ -78,7 +76,7 @@ class GhostwriterCore(BaseModel):
 
         return self
 
-    def apply(self: "GhostwriterCore", format_type: int, is_strict_undefined: bool) -> "GhostwriterCore":
+    def apply(self: "AppCore", format_type: int, is_strict_undefined: bool) -> "AppCore":
         """Apply context-dict for loaded template."""
 
         self.__formatted_text = None
@@ -100,7 +98,7 @@ class GhostwriterCore(BaseModel):
         return self
 
     def get_download_filename(
-        self: "GhostwriterCore", filename: Optional[str], file_ext: Optional[str], is_append_timestamp: bool
+        self: "AppCore", filename: Optional[str], file_ext: Optional[str], is_append_timestamp: bool
     ) -> Optional[str]:
         """Get filename for download contents."""
 
@@ -111,7 +109,7 @@ class GhostwriterCore(BaseModel):
 
         return f"{filename}{suffix}.{str(file_ext)}"
 
-    def get_download_content(self: "GhostwriterCore", encode: str) -> Optional[bytes]:
+    def get_download_content(self: "AppCore", encode: str) -> Optional[bytes]:
         if self.__formatted_text is None:
             return None
 
@@ -121,28 +119,28 @@ class GhostwriterCore(BaseModel):
             return None
 
     @property
-    def config_dict(self: "GhostwriterCore") -> Optional[Dict[str, Any]]:
+    def config_dict(self: "AppCore") -> Optional[Dict[str, Any]]:
         return self.__config_dict
 
     @config_dict.setter
-    def config_dict(self: "GhostwriterCore", config: Optional[Dict[str, Any]]) -> None:
+    def config_dict(self: "AppCore", config: Optional[Dict[str, Any]]) -> None:
         """Set config dict for template args."""
         self.__config_dict = config
 
     @property
-    def formatted_text(self: "GhostwriterCore") -> Optional[str]:
+    def formatted_text(self: "AppCore") -> Optional[str]:
         return self.__formatted_text
 
     @property
-    def config_error_message(self: "GhostwriterCore") -> Optional[str]:
+    def config_error_message(self: "AppCore") -> Optional[str]:
         return self.__config_error_message
 
     @property
-    def template_error_message(self: "GhostwriterCore") -> Optional[str]:
+    def template_error_message(self: "AppCore") -> Optional[str]:
         return self.__template_error_message
 
     @property
-    def is_ready_formatted(self: "GhostwriterCore") -> bool:
+    def is_ready_formatted(self: "AppCore") -> bool:
         if self.__formatted_text is None:
             return False
         return True

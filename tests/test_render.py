@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from features.command_render import GhostwriterRender
+from features.document_render import DocumentRender
 
 
 @pytest.mark.unit()
@@ -119,7 +119,7 @@ def test_render(
 ) -> None:
     """Test render."""
 
-    render = GhostwriterRender(BytesIO(template_content))
+    render = DocumentRender(BytesIO(template_content))
 
     assert render.is_valid_template == expected_validate_template
     assert render.apply_context(context, format_type, is_strict_undefined) == expected_apply_succeeded
