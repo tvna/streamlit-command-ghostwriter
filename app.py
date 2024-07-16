@@ -283,14 +283,9 @@ def main() -> None:
             st.subheader(texts.tab3.subheader_output_file)
             st.container(border=True).selectbox(
                 texts.tab3.format_type,
-                (
-                    "0: " + texts.tab3.format_type_item0,
-                    "1: " + texts.tab3.format_type_item1,
-                    "2: " + texts.tab3.format_type_item2,
-                    "3: " + texts.tab3.format_type_item3,
-                    "4: " + texts.tab3.format_type_item4,
-                ),
+                (x for x in texts["tab3"]["format_type_items"]),
                 index=default_format_type,
+                format_func=lambda x: f"{str(x)}: {texts['tab3']['format_type_items'][x]}",
                 key="result_format_type",
             )
             st.container(border=True).text_input(texts.tab3.download_filename, "command", key="download_filename")

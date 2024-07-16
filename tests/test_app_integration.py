@@ -63,7 +63,7 @@ def test_main_tab1(
     at = AppTest.from_file("app.py")
     at.session_state["tab1_config_file"] = config_file
     at.session_state["tab1_template_file"] = template_file
-    at.session_state["result_format_type"] = "3: testing type"
+    at.session_state["result_format_type"] = 3
     at.session_state[active_button] = True
     at.run()
 

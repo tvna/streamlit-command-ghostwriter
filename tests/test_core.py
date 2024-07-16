@@ -224,11 +224,8 @@ def test_load_template_file(
         template_file = None
 
     assert type(model.load_template_file(template_file, False)) == model.__class__
-    assert type(model.apply("3", is_strict_undefined)) == model.__class__
+    assert type(model.apply(3, is_strict_undefined)) == model.__class__
     assert model.formatted_text == expected_result
-    assert model.template_error_message == expected_error
-    assert type(model.apply("三", is_strict_undefined)) == model.__class__
-    assert model.formatted_text == None
     assert model.template_error_message == expected_error
 
 
@@ -276,7 +273,7 @@ def test_get_download_content(model: GhostwriterCore) -> None:
     model.config_dict = {"key": "POSITIVE"}
     template_file, template_file.name = BytesIO(b"POSITIVE"), "template.j2"
     model.load_template_file(template_file, False)
-    model.apply("3", True)
+    model.apply(3, True)
     assert model.formatted_text == expected_result
     assert model.template_error_message == None
     assert model.get_download_content("Shift_JIS").decode("Shift_JIS") == expected_result  # type: ignore

@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-import re
 from datetime import datetime
 from io import BytesIO
 from typing import Any, Dict, Final, Optional
@@ -79,7 +78,7 @@ class GhostwriterCore(BaseModel):
 
         return self
 
-    def apply(self: "GhostwriterCore", format_type_str: str, is_strict_undefined: bool) -> "GhostwriterCore":
+    def apply(self: "GhostwriterCore", format_type: int, is_strict_undefined: bool) -> "GhostwriterCore":
         """Apply context-dict for loaded template."""
 
         self.__formatted_text = None
@@ -90,11 +89,7 @@ class GhostwriterCore(BaseModel):
         if config_dict is None or render is None:
             return self
 
-        format_type_buffer = re.findall("^[0-9]+", format_type_str)
-        if len(format_type_buffer) != 1:
-            return self
-
-        if render.apply_context(config_dict, int(format_type_buffer[0]), is_strict_undefined) is False:
+        if render.apply_context(config_dict, format_type, is_strict_undefined) is False:
             error_header = self.__template_error_header
             self.__template_error_message = f"{error_header}: {render.error_message} in '{self.__template_filename}'"
             return self

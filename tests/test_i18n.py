@@ -13,4 +13,8 @@ def test_i11n_japanese() -> None:
         assert isinstance(nest1_val, dict)
         for nest2_key, nest2_val in nest1_val.items():
             assert isinstance(nest2_key, str)
-            assert isinstance(nest2_val, str)
+            assert isinstance(nest2_val, (str, dict))
+            if isinstance(nest2_val, dict):
+                for nest3_key, nest3_val in nest2_val.items():
+                    assert isinstance(nest3_key, int)
+                    assert isinstance(nest3_val, str)
