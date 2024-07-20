@@ -2,15 +2,19 @@ from io import BytesIO
 from typing import Any, Dict, Optional
 
 import pytest
+from pydantic import BaseModel, PrivateAttr
 
 from features.core import AppCore
 
 
-class MockParser:
+class MockParser(BaseModel):
     __is_successful: bool = False
+    __csv_rows_name: str = PrivateAttr(default="csv_rows")
     __content: Optional[str] = None
 
     def __init__(self: "MockParser", file: BytesIO) -> None:
+        super().__init__()
+
         self.__content = file.read().decode()
 
     def parse(self: "MockParser") -> bool:
@@ -19,6 +23,14 @@ class MockParser:
 
         self.__is_successful = True
         return True
+
+    @property
+    def csv_rows_name(self: "MockParser") -> str:
+        return self.__csv_rows_name
+
+    @csv_rows_name.setter
+    def csv_rows_name(self: "MockParser", rows_name: str) -> None:
+        self.__csv_rows_name = rows_name
 
     @property
     def parsed_dict(self: "MockParser") -> Optional[Dict[str, Any]]:
@@ -42,11 +54,13 @@ class MockParser:
         return None
 
 
-class MockRender:
+class MockRender(BaseModel):
     __is_successful: bool = False
     __render_content: str = "This is POSITIVE"
 
     def __init__(self: "MockRender", file: BytesIO) -> None:
+        super().__init__()
+
         content = file.read().decode()
 
         if content == "POSITIVE":
@@ -115,6 +129,7 @@ def test_mock_parser(
     config_file.name = "config.toml"
 
     parser = MockParser(config_file)
+    assert parser.csv_rows_name == "csv_rows"
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_text
