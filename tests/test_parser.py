@@ -220,7 +220,9 @@ def test_changed_rows_name(
     config_file.name = filename
 
     parser = ConfigParser(config_file)
+    assert parser.csv_rows_name == "csv_rows"
     parser.csv_rows_name = csv_rows_name
+    assert parser.csv_rows_name == csv_rows_name
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str
