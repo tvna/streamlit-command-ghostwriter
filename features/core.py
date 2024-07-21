@@ -26,7 +26,7 @@ class AppCore(BaseModel):
         self.__config_error_header = config_error_header
         self.__template_error_header = template_error_header
 
-    def load_config_file(self: "AppCore", config_file: Optional[BytesIO], csv_rows_name: str, is_auto_encoding: bool) -> "AppCore":
+    def load_config_file(self: "AppCore", config_file: Optional[BytesIO], csv_rows_name: str, enable_auto_transcoding: bool) -> "AppCore":
         """Load config file for template args."""
 
         # 呼び出しされるたびに、前回の結果をリセットする
@@ -35,10 +35,13 @@ class AppCore(BaseModel):
         if not (isinstance(config_file, BytesIO) and hasattr(config_file, "name")):
             return self
 
-        if is_auto_encoding is True:
-            config_file = TextTranscoder(config_file).convert()
+        config_filename = config_file.name
+        if enable_auto_transcoding is True:
+            config_file = TextTranscoder(config_file).convert(is_allow_fallback=False)
 
         if config_file is None:
+            error_header = self.__template_error_header
+            self.__config_error_message = f"{error_header}: Failed auto decoding in '{config_filename}'"
             return self
 
         parser = ConfigParser(config_file)
@@ -47,31 +50,34 @@ class AppCore(BaseModel):
 
         if isinstance(parser.error_message, str):
             error_header = self.__config_error_header
-            self.__config_error_message = f"{error_header}: {parser.error_message} in '{config_file.name}'"
+            self.__config_error_message = f"{error_header}: {parser.error_message} in '{config_filename}'"
             return self
 
         self.__config_dict = parser.parsed_dict
 
         return self
 
-    def load_template_file(self: "AppCore", template_file: Optional[BytesIO], is_auto_encoding: bool) -> "AppCore":
+    def load_template_file(self: "AppCore", template_file: Optional[BytesIO], enable_auto_transcoding: bool) -> "AppCore":
         """Load jinja template file."""
 
         if template_file is None:
             return self
 
-        if is_auto_encoding is True:
-            template_file = TextTranscoder(template_file).convert()
+        template_filename = template_file.name
+        if enable_auto_transcoding is True:
+            template_file = TextTranscoder(template_file).convert(is_allow_fallback=False)
 
         if template_file is None:
+            error_header = self.__template_error_header
+            self.__template_error_message = f"{error_header}: Failed auto decoding in '{template_filename}'"
             return self
 
         render = DocumentRender(template_file)
         if render.is_valid_template is False:
             error_header = self.__template_error_header
-            self.__template_error_message = f"{error_header}: {render.error_message} in '{template_file.name}'"
+            self.__template_error_message = f"{error_header}: {render.error_message} in '{template_filename}'"
 
-        self.__template_filename = template_file.name
+        self.__template_filename = template_filename
         self.__render = render
 
         return self

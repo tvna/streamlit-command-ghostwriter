@@ -190,13 +190,13 @@ def main() -> None:
         tab1_model.load_config_file(
             st.session_state.get("tab1_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),
-            st.session_state.get("is_auto_transcoding", True),
+            st.session_state.get("enable_auto_transcoding", True),
         ).load_template_file(
             st.session_state.get("tab1_template_file"),
-            st.session_state.get("is_auto_transcoding", True),
+            st.session_state.get("enable_auto_transcoding", True),
         ).apply(
             st.session_state.get("result_format_type", f"{default_format_type}: default"),
-            st.session_state.get("is_strict_undefined", True),
+            st.session_state.get("strict_undefined", True),
         )
 
         st.session_state.update(
@@ -243,7 +243,7 @@ def main() -> None:
         tab2_model.load_config_file(
             st.session_state.get("tab2_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),
-            st.session_state.get("is_auto_transcoding", True),
+            st.session_state.get("enable_auto_transcoding", True),
         )
 
         tab2_row2[0].button(texts.tab2.generate_visual_button, use_container_width=True, key="tab2_execute_visual")
@@ -276,8 +276,8 @@ def main() -> None:
         with tab3_row1[0].container(border=True):
             st.subheader(texts.tab3.subheader_input_file)
             st.container(border=True).text_input(texts.tab3.csv_rows_name, value="csv_rows", key="csv_rows_name")
-            st.container(border=True).toggle(texts.tab3.strict_undefined, value=True, key="is_strict_undefined")
-            st.container(border=True).toggle(texts.tab3.auto_encoding, value=True, key="is_auto_transcoding")
+            st.container(border=True).toggle(texts.tab3.strict_undefined, value=True, key="strict_undefined")
+            st.container(border=True).toggle(texts.tab3.auto_transcoding, value=True, key="enable_auto_transcoding")
 
         with tab3_row1[1].container(border=True):
             st.subheader(texts.tab3.subheader_output_file)

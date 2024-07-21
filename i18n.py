@@ -48,7 +48,7 @@ LANGUAGES = {
             "download_file_extension": "ダウンロード時のファイル拡張子",
             "append_timestamp_filename": "ファイル名の末尾にタイプスタンプを付与",
             "strict_undefined": "テンプレートの変数チェック厳格化",
-            "auto_encoding": "UTF-8以外の文字コードを自動判定して読み込む",
+            "auto_transcoding": "UTF-8以外の文字コードを自動判定して読み込む",
             "format_type": "整形時のフォーマット型",
             "format_type_items": {
                 0: "フォーマット無し",
