@@ -2460,13 +2460,13 @@ test = ["coverage[toml]", "pytest", "pytest-cov"]
 
 [[package]]
 name = "streamlit"
-version = "1.36.0"
+version = "1.37.1"
 description = "A faster way to build and share data apps"
 optional = false
 python-versions = "!=3.9.7,>=3.8"
 files = [
-    {file = "streamlit-1.36.0-py2.py3-none-any.whl", hash = "sha256:3399a33ea5faa26c05dd433d142eefe68ade67e9189a9e1d47a1731ae30a1c42"},
-    {file = "streamlit-1.36.0.tar.gz", hash = "sha256:a12af9f0eb61ab5832f438336257b1ec20eb29d8e0e0c6b40a79116ba939bc9c"},
+    {file = "streamlit-1.37.1-py2.py3-none-any.whl", hash = "sha256:0651240fccc569900cc9450390b0a67473fda55be65f317e46285f99e2bddf04"},
+    {file = "streamlit-1.37.1.tar.gz", hash = "sha256:bc7e3813d94a39dda56f15678437eb37830973c601e8e574f2225a7bf188ea5a"},
 ]
 
 [package.dependencies]
@@ -2810,4 +2810,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <4.0"
-content-hash = "c7dc7bcf64745cbe9013b574de469f831820cd8a25d80505cb9530e91ffffcf8"
+content-hash = "b8b96c2c907f2eaa8a340c32a967eabfc59426e6e9191d6c462f875f32f84737"
