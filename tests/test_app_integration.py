@@ -137,9 +137,9 @@ def test_main_tab2(
     assert at.button(key=active_button).value is True
 
     if expected_text_area_value is None:
-        assert at.session_state["tab2_result_content"] == None
+        assert at.session_state["tab2_result_content"] is None
     else:
-        assert type(at.session_state["tab2_result_content"]) == dict
+        assert isinstance(at.session_state["tab2_result_content"], dict) is True
         assert at.session_state["tab2_result_content"] == expected_text_area_value
 
     if active_button == "tab2_execute_visual":

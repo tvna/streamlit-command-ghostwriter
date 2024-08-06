@@ -71,7 +71,7 @@ class TabViewModel(BaseModel):
             self.__show_tab1_error(first_error_message, second_error_message)
             return
 
-        if not self.__execute_mode in (ExecuteMode.parsed_text, ExecuteMode.parsed_markdown):
+        if self.__execute_mode not in (ExecuteMode.parsed_text, ExecuteMode.parsed_markdown):
             return
 
         if not isinstance(result, str):
@@ -101,7 +101,7 @@ class TabViewModel(BaseModel):
         if error_message:
             st.error(error_message)
 
-        if not self.__execute_mode in (ExecuteMode.debug_visual, ExecuteMode.debug_json, ExecuteMode.debug_yaml):
+        if self.__execute_mode not in (ExecuteMode.debug_visual, ExecuteMode.debug_json, ExecuteMode.debug_yaml):
             return
 
         if not parsed_config or parsed_config == "null":

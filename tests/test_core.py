@@ -196,7 +196,7 @@ def test_load_config_file(
     else:
         config_file = None
 
-    assert type(model.load_config_file(config_file, "csv_rows", False)) == model.__class__
+    assert type(model.load_config_file(config_file, "csv_rows", False)) is model.__class__
     assert model.config_dict == expected_dict
     assert model.config_error_message == expected_error
 
@@ -238,8 +238,8 @@ def test_load_template_file(
     else:
         template_file = None
 
-    assert type(model.load_template_file(template_file, False)) == model.__class__
-    assert type(model.apply(3, is_strict_undefined)) == model.__class__
+    assert type(model.load_template_file(template_file, False)) is model.__class__
+    assert type(model.apply(3, is_strict_undefined)) is model.__class__
     assert model.formatted_text == expected_result
     assert model.template_error_message == expected_error
 
@@ -290,7 +290,7 @@ def test_get_download_content(model: AppCore) -> None:
     model.load_template_file(template_file, False)
     model.apply(3, True)
     assert model.formatted_text == expected_result
-    assert model.template_error_message == None
+    assert model.template_error_message is None
     assert model.get_download_content("Shift_JIS").decode("Shift_JIS") == expected_result  # type: ignore
     assert model.get_download_content("EUC-JP").decode("EUC-JP") == expected_result  # type: ignore
     assert model.get_download_content("utf-8").decode("utf-8") == expected_result  # type: ignore

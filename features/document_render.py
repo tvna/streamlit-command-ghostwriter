@@ -73,7 +73,7 @@ class DocumentRender(BaseModel):
                 strict_template: j2.Template = env.from_string(template_str)
                 raw_render_content = strict_template.render(context)
             else:
-                template: j2.Template = j2.Template(template_str)
+                template: j2.Template = j2.Template(template_str, autoescape=True)
                 raw_render_content = template.render(context)
 
         except (FileNotFoundError, TypeError, j2.UndefinedError, j2.TemplateSyntaxError, ValueError) as e:
