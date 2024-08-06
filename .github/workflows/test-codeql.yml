@@ -1,0 +1,36 @@
+---
+name: CodeQL Workflow
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - "**.py"
+      - poetry.lock
+      - package-lock.json
+  pull_request:
+    branches:
+      - develop
+      - main
+  schedule:
+    - cron: "00 19 * * 1"
+
+jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python, javascript
+          config-file: ./.github/codeql/codeql-config.yml
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

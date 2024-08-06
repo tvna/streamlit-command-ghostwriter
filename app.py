@@ -1,60 +1,91 @@
+#! /usr/bin/env python
+import json
 import os
+from enum import Enum
 from io import BytesIO
-from typing import Final, Optional
+from typing import Any, Dict, Final, Optional
 
 import streamlit as st
+import yaml
 from box import Box
+from pydantic import BaseModel, PrivateAttr
 
-from features.core import GhostwriterCore
+from features.core import AppCore
 from features.transcoder import TextTranscoder
 from i18n import LANGUAGES
 
 
-class TabViewModel:
-    def __init__(self: "TabViewModel", texts: Box) -> None:
-        self.__texts: Final[Box] = texts
-        self.__execute_mode: int = 0
+class ExecuteMode(Enum):
+    nothing = 0
+    parsed_text = 1
+    parsed_markdown = 2
+    debug_visual = 3
+    debug_json = 4
+    debug_yaml = 5
 
-    def set_execute_mode(self: "TabViewModel", is_text: bool, is_markdown: bool, is_debug: bool) -> "TabViewModel":
+
+class TabViewModel(BaseModel):
+    __texts_dict: Box = PrivateAttr()
+    __execute_mode: ExecuteMode = PrivateAttr(default=ExecuteMode.nothing)
+
+    def __init__(self: "TabViewModel", texts: Box) -> None:
+        super().__init__()
+        self.__texts_dict = texts
+
+    @property
+    def __texts(self: "TabViewModel") -> Box:
+        return self.__texts_dict
+
+    def set_execute_mode(
+        self: "TabViewModel",
+        is_parsed_text: bool,
+        is_parsed_markdown: bool,
+        is_debug_visual: bool,
+        is_debug_json: bool,
+        is_debug_yaml: bool,
+    ) -> "TabViewModel":
         """Set execute mode."""
 
-        self.__execute_mode = 0
+        mode_mapping = {
+            is_parsed_text: ExecuteMode.parsed_text,
+            is_parsed_markdown: ExecuteMode.parsed_markdown,
+            is_debug_visual: ExecuteMode.debug_visual,
+            is_debug_json: ExecuteMode.debug_json,
+            is_debug_yaml: ExecuteMode.debug_yaml,
+        }
 
-        if is_text:
-            self.__execute_mode = 1
-            return self
+        for condition, mode in mode_mapping.items():
+            if condition:
+                self.__execute_mode = mode
+                return self
 
-        if is_markdown:
-            self.__execute_mode = 2
-            return self
-
-        if is_debug:
-            self.__execute_mode = 3
-            return self
-
+        self.__execute_mode = ExecuteMode.nothing
         return self
 
     def show_tab1(
-        self: "TabViewModel", result_text: Optional[str], first_error_message: Optional[str], second_error_message: Optional[str]
+        self: "TabViewModel", result: Optional[str], first_error_message: Optional[str], second_error_message: Optional[str]
     ) -> None:
         """Show tab1 response content."""
 
         if first_error_message or second_error_message:
             self.__show_tab1_error(first_error_message, second_error_message)
-        elif (3 > self.__execute_mode > 0) and isinstance(result_text, str):
-            self.__show_tab1_result(result_text)
-        elif 3 > self.__execute_mode > 0:
+            return
+
+        if self.__execute_mode not in (ExecuteMode.parsed_text, ExecuteMode.parsed_markdown):
+            return
+
+        if result is None:
             st.warning(self.__texts.tab1.error_both_files)
+            return
 
-    def __show_tab1_result(self: "TabViewModel", result_text: str) -> None:
-        """Show tab1 success content."""
+        match self.__execute_mode:
+            case ExecuteMode.parsed_text:
+                st.success(self.__texts.tab1.success_formatted_text)
+                st.container(border=True).text_area(self.__texts.tab1.formatted_text, result, key="tab1_result_textarea", height=500)
 
-        if self.__execute_mode == 1:
-            st.success(self.__texts.tab1.success_formatted_text)
-            st.container(border=True).text_area(self.__texts.tab1.formatted_text, result_text, key="tab1_result_textarea", height=500)
-        elif self.__execute_mode == 2:
-            st.success(self.__texts.tab1.success_formatted_text)
-            st.container(border=True).markdown(result_text)
+            case ExecuteMode.parsed_markdown:
+                st.success(self.__texts.tab1.success_formatted_text)
+                st.container(border=True).markdown(result)
 
     def __show_tab1_error(self: "TabViewModel", first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
         """Show tab1 error content."""
@@ -64,19 +95,32 @@ class TabViewModel:
         if second_error_message:
             st.error(second_error_message)
 
-    def show_tab2(self: "TabViewModel", parsed_config: Optional[str], error_message: Optional[str]) -> None:
+    def show_tab2(self: "TabViewModel", parsed_config: Optional[Dict[str, Any]], error_message: Optional[str]) -> None:
         """Show tab2 response content."""
 
         if error_message:
             st.error(error_message)
-        if self.__execute_mode < 3:
+
+        if self.__execute_mode not in (ExecuteMode.debug_visual, ExecuteMode.debug_json, ExecuteMode.debug_yaml):
             return
-        elif not parsed_config:
+
+        if not parsed_config or parsed_config == "null":
             st.warning(f"{self.__texts.tab2.error_debug_not_found}")
             return
 
         st.success(self.__texts.tab2.success_debug_config)
-        st.text_area(self.__texts.tab2.debug_config_text, parsed_config, key="tab2_result_textarea", height=500)
+
+        match self.__execute_mode:
+            case ExecuteMode.debug_visual:
+                st.container(border=True).json(parsed_config)
+
+            case ExecuteMode.debug_json:
+                json_config = json.dumps(parsed_config, ensure_ascii=False, indent=4)
+                st.text_area(self.__texts.tab2.debug_config_text, json_config, key="tab2_result_textarea", height=500)
+
+            case ExecuteMode.debug_yaml:
+                yaml_config = yaml.dump(parsed_config, default_flow_style=False, allow_unicode=True, indent=8)
+                st.text_area(self.__texts.tab2.debug_config_text, yaml_config, key="tab2_result_textarea", height=500)
 
     def show_tab4(self: "TabViewModel") -> None:
         samples_dir = "./assets/examples"
@@ -85,11 +129,10 @@ class TabViewModel:
                 continue
 
             with open(os.path.join(samples_dir, filename), mode="rb") as file:
-                text_file = TextTranscoder(BytesIO(file.read())).convert()
-                if text_file is None:
-                    continue
-
-                st.text_area(label=filename, value=text_file.getvalue().decode("utf-8"), height=250)
+                bytes_data = TextTranscoder(BytesIO(file.read())).convert()
+                if isinstance(bytes_data, BytesIO):
+                    content = bytes_data.getvalue().decode("utf-8")
+                    st.text_area(label=filename, value=content, height=250)
 
 
 def main() -> None:
@@ -133,7 +176,7 @@ def main() -> None:
     )
 
     with tabs[0]:
-        st.subheader(texts.tab1.subheader, divider="rainbow")
+        st.subheader(":memo: " + texts.tab1.subheader, divider="rainbow")
         tab1_row1 = st.columns(2)
         tab1_row2 = st.columns(3)
 
@@ -143,17 +186,17 @@ def main() -> None:
         tab1_row2[0].button(texts.tab1.generate_text_button, use_container_width=True, key="tab1_execute_text")
         tab1_row2[1].button(texts.tab1.generate_markdown_button, use_container_width=True, key="tab1_execute_markdown")
 
-        tab1_model = GhostwriterCore(texts.tab1.error_toml_parse, texts.tab1.error_template_generate)
+        tab1_model = AppCore(texts.tab1.error_toml_parse, texts.tab1.error_template_generate)
         tab1_model.load_config_file(
             st.session_state.get("tab1_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),
-            st.session_state.get("is_auto_transcoding", True),
+            st.session_state.get("enable_auto_transcoding", True),
         ).load_template_file(
             st.session_state.get("tab1_template_file"),
-            st.session_state.get("is_auto_transcoding", True),
+            st.session_state.get("enable_auto_transcoding", True),
         ).apply(
             st.session_state.get("result_format_type", f"{default_format_type}: default"),
-            st.session_state.get("is_strict_undefined", True),
+            st.session_state.get("strict_undefined", True),
         )
 
         st.session_state.update(
@@ -180,7 +223,9 @@ def main() -> None:
         tab1_view_model.set_execute_mode(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
-            st.session_state.get("tab2_execute", False),
+            st.session_state.get("tab2_execute_visual", False),
+            st.session_state.get("tab2_execute_json", False),
+            st.session_state.get("tab2_execute_yaml", False),
         ).show_tab1(
             st.session_state.get("tab1_result_content"),
             st.session_state.get("tab1_error_config"),
@@ -194,18 +239,20 @@ def main() -> None:
 
         tab2_row1[0].container(border=True).file_uploader(texts.tab2.upload_debug_config, type=config_file_exts, key="tab2_config_file")
 
-        tab2_model = GhostwriterCore(texts.tab2.error_debug_config)
+        tab2_model = AppCore(texts.tab2.error_debug_config)
         tab2_model.load_config_file(
             st.session_state.get("tab2_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),
-            st.session_state.get("is_auto_transcoding", True),
+            st.session_state.get("enable_auto_transcoding", True),
         )
 
-        tab2_row2[0].button(texts.tab2.generate_debug_config, use_container_width=True, key="tab2_execute")
+        tab2_row2[0].button(texts.tab2.generate_visual_button, use_container_width=True, key="tab2_execute_visual")
+        tab2_row2[1].button(texts.tab2.generate_json_button, use_container_width=True, key="tab2_execute_json")
+        tab2_row2[2].button(texts.tab2.generate_yaml_button, use_container_width=True, key="tab2_execute_yaml")
 
         st.session_state.update(
             {
-                "tab2_result_content": tab2_model.config_str,
+                "tab2_result_content": tab2_model.config_dict,
                 "tab2_error_config": tab2_model.config_error_message,
             }
         )
@@ -214,7 +261,9 @@ def main() -> None:
         tab2_view_model.set_execute_mode(
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
-            st.session_state.get("tab2_execute", False),
+            st.session_state.get("tab2_execute_visual", False),
+            st.session_state.get("tab2_execute_json", False),
+            st.session_state.get("tab2_execute_yaml", False),
         ).show_tab2(
             st.session_state.get("tab2_result_content"),
             st.session_state.get("tab2_error_config"),
@@ -227,21 +276,16 @@ def main() -> None:
         with tab3_row1[0].container(border=True):
             st.subheader(texts.tab3.subheader_input_file)
             st.container(border=True).text_input(texts.tab3.csv_rows_name, value="csv_rows", key="csv_rows_name")
-            st.container(border=True).toggle(texts.tab3.strict_undefined, value=True, key="is_strict_undefined")
-            st.container(border=True).toggle(texts.tab3.auto_encoding, value=True, key="is_auto_transcoding")
+            st.container(border=True).toggle(texts.tab3.strict_undefined, value=True, key="strict_undefined")
+            st.container(border=True).toggle(texts.tab3.auto_transcoding, value=True, key="enable_auto_transcoding")
 
         with tab3_row1[1].container(border=True):
             st.subheader(texts.tab3.subheader_output_file)
             st.container(border=True).selectbox(
                 texts.tab3.format_type,
-                (
-                    "0: " + texts.tab3.format_type_item0,
-                    "1: " + texts.tab3.format_type_item1,
-                    "2: " + texts.tab3.format_type_item2,
-                    "3: " + texts.tab3.format_type_item3,
-                    "4: " + texts.tab3.format_type_item4,
-                ),
+                (x for x in texts["tab3"]["format_type_items"]),
                 index=default_format_type,
+                format_func=lambda x: f"{str(x)}: {texts['tab3']['format_type_items'][x]}",
                 key="result_format_type",
             )
             st.container(border=True).text_input(texts.tab3.download_filename, "command", key="download_filename")

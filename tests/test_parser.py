@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from features.config_parser import GhostwriterParser
+from features.config_parser import ConfigParser
 
 
 @pytest.mark.unit()
@@ -173,8 +173,7 @@ def test_parse(
     config_file = BytesIO(content)
     config_file.name = filename
 
-    parser = GhostwriterParser()
-    assert type(parser.load_config_file(config_file)) == parser.__class__
+    parser = ConfigParser(config_file)
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str
@@ -196,7 +195,15 @@ def test_parse(
             True,
             {"people": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]},
             "{'people': [{'age': 30, 'name': 'Alice'}, {'age': 25, 'name': 'Bob'}]}",
-        )
+        ),
+        pytest.param(
+            b"name,age\nAlice,30\nBob,25",
+            "config.csv",
+            "",
+            False,
+            None,
+            "None",
+        ),
     ],
 )
 def test_changed_rows_name(
@@ -212,9 +219,10 @@ def test_changed_rows_name(
     config_file = BytesIO(content)
     config_file.name = filename
 
-    parser = GhostwriterParser()
-    assert type(parser.set_csv_rows_name(csv_rows_name)) == parser.__class__
-    assert type(parser.load_config_file(config_file)) == parser.__class__
+    parser = ConfigParser(config_file)
+    assert parser.csv_rows_name == "csv_rows"
+    parser.csv_rows_name = csv_rows_name
+    assert parser.csv_rows_name == csv_rows_name
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str

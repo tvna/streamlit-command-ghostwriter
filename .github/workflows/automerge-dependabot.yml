@@ -1,14 +1,19 @@
+---
 name: Auto-merge for dependabot
+
 on:
   pull_request:
     branches:
       - develop
+
 defaults:
   run:
     shell: bash
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   merge:
     if: ${{ github.actor == 'dependabot[bot]' }}
@@ -24,21 +29,21 @@ jobs:
         uses: dependabot/fetch-metadata@v2
       - if: ${{ steps.meta.outputs.package-ecosystem == 'github-actions' }}
         run: |
-          gh pr review ${ GTIHUB_HEAD_REF } -approve
-          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+          gh pr review "$GTIHUB_HEAD_REF" -approve
+          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
       - if: ${{ steps.meta.outputs.package-ecosystem == 'npm_and_yarn' && steps.meta.outputs.update-type == 'version-update:semver-patch' }}
         run: |
-          gh pr review ${ GTIHUB_HEAD_REF } -approve
-          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+          gh pr review "$GTIHUB_HEAD_REF" -approve
+          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
       - if: ${{ steps.meta.outputs.package-ecosystem == 'npm_and_yarn' && steps.meta.outputs.update-type == 'version-update:semver-minor' }}
         run: |
-          gh pr review ${ GTIHUB_HEAD_REF } -approve
-          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+          gh pr review "$GTIHUB_HEAD_REF" -approve
+          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
       - if: ${{ steps.meta.outputs.package-ecosystem == 'pip' && steps.meta.outputs.update-type == 'version-update:semver-patch' }}
         run: |
-          gh pr review ${ GTIHUB_HEAD_REF } -approve
-          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+          gh pr review "$GTIHUB_HEAD_REF" -approve
+          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
       - if: ${{ steps.meta.outputs.package-ecosystem == 'pip' && steps.meta.outputs.update-type != 'version-update:semver-minor' }}
         run: |
-          gh pr review ${ GTIHUB_HEAD_REF } -approve
-          gh pr merge ${ GTIHUB_HEAD_REF } -merge -auto
+          gh pr review "$GTIHUB_HEAD_REF" -approve
+          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto

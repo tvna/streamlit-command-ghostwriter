@@ -2,22 +2,20 @@ from io import BytesIO
 from typing import Any, Dict, Optional
 
 import pytest
+from pydantic import BaseModel, PrivateAttr
 
-from features.core import GhostwriterCore
+from features.core import AppCore
 
 
-class MockParser:
-    def __init__(self: "MockParser") -> None:
-        self.__is_successful: bool = False
-        self.__content: Optional[str] = None
+class MockParser(BaseModel):
+    __is_successful: bool = False
+    __csv_rows_name: str = PrivateAttr(default="csv_rows")
+    __content: Optional[str] = None
 
-    def load_config_file(self: "MockParser", file: BytesIO) -> "MockParser":
+    def __init__(self: "MockParser", file: BytesIO) -> None:
+        super().__init__()
+
         self.__content = file.read().decode()
-
-        return self
-
-    def set_csv_rows_name(self: "MockParser", _: str) -> "MockParser":
-        return self
 
     def parse(self: "MockParser") -> bool:
         if self.__content != "POSITIVE":
@@ -25,6 +23,14 @@ class MockParser:
 
         self.__is_successful = True
         return True
+
+    @property
+    def csv_rows_name(self: "MockParser") -> str:
+        return self.__csv_rows_name
+
+    @csv_rows_name.setter
+    def csv_rows_name(self: "MockParser", rows_name: str) -> None:
+        self.__csv_rows_name = rows_name
 
     @property
     def parsed_dict(self: "MockParser") -> Optional[Dict[str, Any]]:
@@ -48,20 +54,20 @@ class MockParser:
         return None
 
 
-class MockRender:
-    def __init__(self: "MockRender") -> None:
-        self.__is_successful: bool = False
-        self.__render_content: str = "This is POSITIVE"
+class MockRender(BaseModel):
+    __is_successful: bool = False
+    __render_content: str = "This is POSITIVE"
 
-    def load_template_file(self: "MockRender", file: BytesIO) -> "MockRender":
+    def __init__(self: "MockRender", file: BytesIO) -> None:
+        super().__init__()
+
         content = file.read().decode()
 
         if content == "POSITIVE":
             self.__is_successful = True
 
-        return self
-
-    def validate_template(self: "MockRender") -> bool:
+    @property
+    def is_valid_template(self: "MockRender") -> bool:
         return self.__is_successful
 
     def apply_context(self: "MockRender", content: Dict[str, Any], format_type: int = 3, is_strict_undefined: bool = True) -> bool:
@@ -90,10 +96,10 @@ class MockRender:
 
 
 @pytest.fixture()
-def model(monkeypatch: pytest.MonkeyPatch) -> GhostwriterCore:
-    monkeypatch.setattr("features.core.GhostwriterParser", MockParser)
-    monkeypatch.setattr("features.core.GhostwriterRender", MockRender)
-    return GhostwriterCore("[CONFIG_ERROR]", "[TEMPLATE_ERROR]")
+def model(monkeypatch: pytest.MonkeyPatch) -> AppCore:
+    monkeypatch.setattr("features.core.ConfigParser", MockParser)
+    monkeypatch.setattr("features.core.DocumentRender", MockRender)
+    return AppCore("[CONFIG_ERROR]", "[TEMPLATE_ERROR]")
 
 
 @pytest.mark.unit()
@@ -122,8 +128,9 @@ def test_mock_parser(
     config_file = BytesIO(config_content)
     config_file.name = "config.toml"
 
-    parser = MockParser()
-    assert parser.load_config_file(config_file).parse() == is_successful
+    parser = MockParser(config_file)
+    assert parser.csv_rows_name == "csv_rows"
+    assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_text
     if expected_error is None:
@@ -160,10 +167,9 @@ def test_mock_render(
 ) -> None:
     """Test mock-render."""
 
-    render = MockRender()
-    assert type(render.load_template_file(BytesIO(template_content))) == render.__class__
+    render = MockRender(BytesIO(template_content))
 
-    assert render.validate_template() == expected_validate_template
+    assert render.is_valid_template == expected_validate_template
     assert render.apply_context(context, 3, is_strict_undefined) == expected_apply_succeeded
     assert render.render_content == expected_content
     assert render.error_message == expected_error
@@ -171,29 +177,27 @@ def test_mock_render(
 
 @pytest.mark.unit()
 @pytest.mark.parametrize(
-    ("config_content", "expected_dict", "expected_text", "expected_error"),
+    ("config_content", "expected_dict", "expected_error"),
     [
-        pytest.param(None, None, None, None),
-        pytest.param(b"POSITIVE", {"key": "POSITIVE"}, "{'key':POSITIVE'}", None),
-        pytest.param(b"negative", None, None, "[CONFIG_ERROR]: parser_module_error in 'config.toml'"),
+        pytest.param(None, None, None),
+        pytest.param(b"POSITIVE", {"key": "POSITIVE"}, None),
+        pytest.param(b"negative", None, "[CONFIG_ERROR]: parser_module_error in 'config.toml'"),
     ],
 )
 def test_load_config_file(
     config_content: Optional[bytes],
     expected_dict: Optional[Dict[str, Any]],
-    expected_text: Optional[str],
     expected_error: Optional[str],
-    model: GhostwriterCore,
+    model: AppCore,
 ) -> None:
     """Test load_config_file."""
-    if isinstance(config_content, bytes):
-        config_file, config_file.name = BytesIO(config_content), "config.toml"
-    else:
+    if config_content is None:
         config_file = None
+    else:
+        config_file, config_file.name = BytesIO(config_content), "config.toml"
 
-    assert type(model.load_config_file(config_file, "csv_rows", False)) == model.__class__
+    assert type(model.load_config_file(config_file, "csv_rows", False)) is model.__class__
     assert model.config_dict == expected_dict
-    assert model.config_str == expected_text
     assert model.config_error_message == expected_error
 
 
@@ -223,23 +227,20 @@ def test_load_template_file(
     config_data: Optional[Dict[str, Any]],
     expected_result: Optional[str],
     expected_error: Optional[str],
-    model: GhostwriterCore,
+    model: AppCore,
 ) -> None:
     """Test load_template_file."""
 
-    assert type(model.set_config_dict(config_data)) == model.__class__
+    model.config_dict = config_data
 
-    if isinstance(template_content, bytes):
-        template_file, template_file.name = BytesIO(template_content), "template.j2"
-    else:
+    if template_content is None:
         template_file = None
+    else:
+        template_file, template_file.name = BytesIO(template_content), "template.j2"
 
-    assert type(model.load_template_file(template_file, False)) == model.__class__
-    assert type(model.apply("3", is_strict_undefined)) == model.__class__
+    assert type(model.load_template_file(template_file, False)) is model.__class__
+    assert type(model.apply(3, is_strict_undefined)) is model.__class__
     assert model.formatted_text == expected_result
-    assert model.template_error_message == expected_error
-    assert type(model.apply("三", is_strict_undefined)) == model.__class__
-    assert model.formatted_text == None
     assert model.template_error_message == expected_error
 
 
@@ -261,14 +262,13 @@ def test_get_download_filename(
     name_suffix: Optional[str],
     expected_prefix: str,
     expected_suffix: str,
-    model: GhostwriterCore,
+    model: AppCore,
 ) -> None:
     """Test filename for download contents."""
 
     filename = model.get_download_filename(name_prefix, name_suffix, is_append_timestamp)
 
-    if not isinstance(filename, str):
-        assert filename is None
+    if filename is None:
         assert expected_prefix == ""
         assert expected_suffix == ""
         return
@@ -278,3 +278,19 @@ def test_get_download_filename(
         assert filename.endswith(expected_suffix)
     else:
         assert filename == f"{expected_prefix}{expected_suffix}"
+
+
+@pytest.mark.unit()
+def test_get_download_content(model: AppCore) -> None:
+    expected_result = "This is POSITIVE"
+
+    model.config_dict = {"key": "POSITIVE"}
+    template_file, template_file.name = BytesIO(b"POSITIVE"), "template.j2"
+    model.load_template_file(template_file, False)
+    model.apply(3, True)
+    assert model.formatted_text == expected_result
+    assert model.template_error_message is None
+    assert model.get_download_content("Shift_JIS").decode("Shift_JIS") == expected_result  # type: ignore
+    assert model.get_download_content("EUC-JP").decode("EUC-JP") == expected_result  # type: ignore
+    assert model.get_download_content("utf-8").decode("utf-8") == expected_result  # type: ignore
+    assert model.get_download_content("utf-9") is None

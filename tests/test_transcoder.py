@@ -37,17 +37,19 @@ from features.transcoder import TextTranscoder
     ],
 )
 def test_transcoder(input_str: str, input_encoding: str, expected_encoding: str, expected_result: str) -> None:
-    input_data = BytesIO(input_str.encode(input_encoding))
-    input_data.name = "example.csv"
+    import_file = BytesIO(input_str.encode(input_encoding))
+    import_file.name = "example.csv"
 
-    trans = TextTranscoder(input_data)
-    print(trans.detect_encoding(input_data))
-    assert trans.detect_encoding(input_data) == expected_encoding
+    trans = TextTranscoder(import_file)
+    assert trans.detect_encoding() == expected_encoding
 
-    output_data = trans.convert()
-    assert output_data.read().decode("utf-8") == expected_result  # type: ignore
-    assert trans.challenge_to_utf8().getvalue().decode("utf-8") == expected_result
-    assert output_data.name == input_data.name  # type: ignore
+    export_file_deny_fallback = trans.convert(is_allow_fallback=False)
+    assert export_file_deny_fallback.read().decode("utf-8") == expected_result  # type: ignore
+    assert export_file_deny_fallback.name == import_file.name  # type: ignore
+
+    export_file_allow_fallback = trans.convert(is_allow_fallback=True)
+    assert export_file_allow_fallback.getvalue().decode("utf-8") == expected_result  # type: ignore
+    assert export_file_allow_fallback.name == import_file.name  # type: ignore
 
 
 @pytest.mark.unit()
@@ -60,20 +62,23 @@ def test_transcoder(input_str: str, input_encoding: str, expected_encoding: str,
     ],
 )
 def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[str], expected_result: Optional[bytes]) -> None:
-    input_data = BytesIO(input_bytes)
-    input_data.name = "example.csv"
+    import_file = BytesIO(input_bytes)
+    import_file.name = "example.csv"
 
-    trans = TextTranscoder(input_data)
-    assert trans.detect_encoding(input_data) == expected_encoding
-    assert trans.convert() == None
-    assert trans.challenge_to_utf8().getvalue() == expected_result
+    trans = TextTranscoder(import_file)
+    assert trans.detect_encoding() == expected_encoding
+
+    export_file_deny_fallback = trans.convert(is_allow_fallback=False)
+    assert export_file_deny_fallback is None  # type: ignore
+
+    export_file_allow_fallback = trans.convert(is_allow_fallback=True)
+    assert export_file_allow_fallback.getvalue() == expected_result  # type: ignore
+    assert export_file_allow_fallback.name == import_file.name  # type: ignore
 
 
 @pytest.mark.unit()
 def test_transcoder_missing_encode() -> None:
-    input_data = BytesIO(b"ABCDEF")
-
-    trans = TextTranscoder(input_data)
-    assert trans.detect_encoding(input_data) == "ASCII"
-    assert trans.convert("utf-9") == None
-    assert trans.challenge_to_utf8().getvalue() == b"ABCDEF"
+    trans = TextTranscoder(BytesIO(b"ABCDEF"))
+    assert trans.detect_encoding() == "ASCII"
+    assert trans.convert("utf-9", False) is None
+    assert trans.convert("utf-9", True).getvalue() == b"ABCDEF"  # type: ignore
