@@ -48,13 +48,12 @@ class AppCore(BaseModel):
         parser.csv_rows_name = csv_rows_name
         parser.parse()
 
-        if isinstance(parser.error_message, str):
-            error_header = self.__config_error_header
-            self.__config_error_message = f"{error_header}: {parser.error_message} in '{config_filename}'"
+        if parser.error_message is None:
+            self.__config_dict = parser.parsed_dict
             return self
 
-        self.__config_dict = parser.parsed_dict
-
+        error_header = self.__config_error_header
+        self.__config_error_message = f"{error_header}: {parser.error_message} in '{config_filename}'"
         return self
 
     def load_template_file(self: "AppCore", template_file: Optional[BytesIO], enable_auto_transcoding: bool) -> "AppCore":

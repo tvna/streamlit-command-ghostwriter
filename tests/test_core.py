@@ -191,10 +191,10 @@ def test_load_config_file(
     model: AppCore,
 ) -> None:
     """Test load_config_file."""
-    if isinstance(config_content, bytes):
-        config_file, config_file.name = BytesIO(config_content), "config.toml"
-    else:
+    if config_content is None:
         config_file = None
+    else:
+        config_file, config_file.name = BytesIO(config_content), "config.toml"
 
     assert type(model.load_config_file(config_file, "csv_rows", False)) is model.__class__
     assert model.config_dict == expected_dict
@@ -233,10 +233,10 @@ def test_load_template_file(
 
     model.config_dict = config_data
 
-    if isinstance(template_content, bytes):
-        template_file, template_file.name = BytesIO(template_content), "template.j2"
-    else:
+    if template_content is None:
         template_file = None
+    else:
+        template_file, template_file.name = BytesIO(template_content), "template.j2"
 
     assert type(model.load_template_file(template_file, False)) is model.__class__
     assert type(model.apply(3, is_strict_undefined)) is model.__class__
@@ -268,8 +268,7 @@ def test_get_download_filename(
 
     filename = model.get_download_filename(name_prefix, name_suffix, is_append_timestamp)
 
-    if not isinstance(filename, str):
-        assert filename is None
+    if filename is None:
         assert expected_prefix == ""
         assert expected_suffix == ""
         return

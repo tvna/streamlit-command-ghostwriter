@@ -122,11 +122,11 @@ def test_main_tab2(
 
     base_text_area_len = 6
 
-    if isinstance(config_file_content, bytes):
+    if config_file_content is None:
+        config_file = None
+    else:
         config_file = BytesIO(config_file_content)
         config_file.name = "config.toml"
-    else:
-        config_file = None
 
     at = AppTest.from_file("app.py")
     at.session_state["tab2_config_file"] = config_file

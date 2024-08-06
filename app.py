@@ -74,7 +74,7 @@ class TabViewModel(BaseModel):
         if self.__execute_mode not in (ExecuteMode.parsed_text, ExecuteMode.parsed_markdown):
             return
 
-        if not isinstance(result, str):
+        if result is None:
             st.warning(self.__texts.tab1.error_both_files)
             return
 

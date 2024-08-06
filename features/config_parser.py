@@ -50,10 +50,12 @@ class ConfigParser(BaseModel):
                     self.__parsed_dict = tomllib.loads(self.__config_data)
                 case "yaml" | "yml":
                     self.__parsed_dict = yaml.safe_load(self.__config_data)
+
+                    if not isinstance(self.__parsed_dict, dict):
+                        raise SyntaxError("Invalid YAML file loaded.")
                 case "csv":
                     if len(self.__csv_rows_name) < 1:
-                        self.__error_message = "ensure this value has at least 1 characters."
-                        raise ValueError
+                        raise ValueError("ensure this value has at least 1 characters.")
                     csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
                     mapped_list = [row._asdict() for row in csv_data.itertuples(index=False)]  # type: ignore
 
@@ -66,17 +68,11 @@ class ConfigParser(BaseModel):
             pd.errors.DtypeWarning,
             pd.errors.EmptyDataError,
             pd.errors.ParserError,
+            SyntaxError,
             TypeError,
             ValueError,
         ) as e:
             self.__error_message = str(e)
-            return False
-
-        if self.__parsed_dict is None:
-            return False
-
-        if self.__file_extension in {"yaml", "yml"} and not isinstance(self.__parsed_dict, dict):
-            self.__error_message = "Invalid YAML file loaded."
             self.__parsed_dict = None
             return False
 
