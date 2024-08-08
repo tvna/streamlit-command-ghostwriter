@@ -56,10 +56,11 @@ class ConfigParser(BaseModel):
                 case "csv":
                     if len(self.__csv_rows_name) < 1:
                         raise ValueError("ensure this value has at least 1 characters.")
-                    csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
-                    mapped_list = [row._asdict() for row in csv_data.itertuples(index=False)]  # type: ignore
 
-                    self.__parsed_dict = {self.__csv_rows_name: mapped_list}
+                    csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
+                    if isinstance(csv_data, pd.DataFrame):
+                        mapped_list = [row.to_dict() for _, row in csv_data.iterrows()]
+                        self.__parsed_dict = {self.__csv_rows_name: mapped_list}
 
         except (
             tomllib.TOMLDecodeError,

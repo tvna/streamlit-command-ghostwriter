@@ -108,18 +108,28 @@ addopts = [
   "--import-mode=importlib",
 ]
 markers = [
-
   "unit: mark a test as a unit test.",
   "integration: mark a test as an integration test.",
 ]
 
 [tool.mypy]
-python_version = "3.12"
-no_strict_optional = true
-ignore_missing_imports = false
 check_untyped_defs = true
 exclude = [
   ".venv",
   "build",
   "dist",
 ]
+disallow_any_decorated = false
+disallow_any_explicit = false
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_incomplete_defs = true
+ignore_errors = true
+ignore_missing_imports = true
+pretty = true
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+warn_unreachable = true

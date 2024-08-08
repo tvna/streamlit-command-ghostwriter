@@ -3,7 +3,7 @@ import json
 import os
 from enum import Enum
 from io import BytesIO
-from typing import Any, Dict, Final, Optional
+from typing import Any, Dict, Final, List, Optional
 
 import streamlit as st
 import yaml
@@ -104,7 +104,7 @@ class TabViewModel(BaseModel):
         if self.__execute_mode not in (ExecuteMode.debug_visual, ExecuteMode.debug_json, ExecuteMode.debug_yaml):
             return
 
-        if not parsed_config or parsed_config == "null":
+        if parsed_config is None:
             st.warning(f"{self.__texts.tab2.error_debug_not_found}")
             return
 
@@ -141,7 +141,7 @@ def main() -> None:
     app_title: Final[str] = "Command ghostwriter"
     app_icon: Final[str] = ":ghost:"
     default_format_type: Final[int] = 3
-    config_file_exts: Final[list] = ["toml", "yaml", "yml", "csv"]
+    config_file_exts: Final[List[str]] = ["toml", "yaml", "yml", "csv"]
     default_language = "日本語"
 
     texts: Final[Box] = Box(LANGUAGES[default_language])

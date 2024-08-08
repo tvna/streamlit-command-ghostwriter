@@ -29,6 +29,7 @@
 			"EDITMSG",
 			"IHDR",
 			"isort",
+			"iterrows",
 			"itertuples",
 			"maxfail",
 			"micropip",
