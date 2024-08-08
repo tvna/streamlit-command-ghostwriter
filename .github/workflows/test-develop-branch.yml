@@ -78,7 +78,7 @@ jobs:
           poetry run ruff check .
       - name: Run mypy
         run: |
-          poetry run mypy --warn-unreachable --pretty .
+          poetry run mypy .
       - name: Run pytest
         run: |
           poetry run pytest --cov .

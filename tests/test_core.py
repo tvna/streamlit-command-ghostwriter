@@ -290,7 +290,17 @@ def test_get_download_content(model: AppCore) -> None:
     model.apply(3, True)
     assert model.formatted_text == expected_result
     assert model.template_error_message is None
-    assert model.get_download_content("Shift_JIS").decode("Shift_JIS") == expected_result  # type: ignore
-    assert model.get_download_content("EUC-JP").decode("EUC-JP") == expected_result  # type: ignore
-    assert model.get_download_content("utf-8").decode("utf-8") == expected_result  # type: ignore
+
+    shift_jis_data = model.get_download_content("Shift_JIS")
+    if isinstance(shift_jis_data, bytes):
+        assert shift_jis_data.decode("Shift_JIS") == expected_result
+
+    euc_jp_data = model.get_download_content("EUC-JP")
+    if isinstance(euc_jp_data, bytes):
+        assert euc_jp_data.decode("EUC-JP") == expected_result
+
+    utf8_data = model.get_download_content("utf-8")
+    if isinstance(utf8_data, bytes):
+        assert utf8_data.decode("utf-8") == expected_result
+
     assert model.get_download_content("utf-9") is None

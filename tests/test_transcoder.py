@@ -44,12 +44,16 @@ def test_transcoder(input_str: str, input_encoding: str, expected_encoding: str,
     assert trans.detect_encoding() == expected_encoding
 
     export_file_deny_fallback = trans.convert(is_allow_fallback=False)
-    assert export_file_deny_fallback.read().decode("utf-8") == expected_result  # type: ignore
-    assert export_file_deny_fallback.name == import_file.name  # type: ignore
+    assert type(export_file_deny_fallback) is BytesIO
+    if isinstance(export_file_deny_fallback, BytesIO):
+        assert export_file_deny_fallback.read().decode("utf-8") == expected_result
+        assert export_file_deny_fallback.name == import_file.name
 
     export_file_allow_fallback = trans.convert(is_allow_fallback=True)
-    assert export_file_allow_fallback.getvalue().decode("utf-8") == expected_result  # type: ignore
-    assert export_file_allow_fallback.name == import_file.name  # type: ignore
+    assert type(export_file_allow_fallback) is BytesIO
+    if isinstance(export_file_allow_fallback, BytesIO):
+        assert export_file_allow_fallback.getvalue().decode("utf-8") == expected_result
+        assert export_file_allow_fallback.name == import_file.name
 
 
 @pytest.mark.unit()
@@ -69,11 +73,13 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
     assert trans.detect_encoding() == expected_encoding
 
     export_file_deny_fallback = trans.convert(is_allow_fallback=False)
-    assert export_file_deny_fallback is None  # type: ignore
+    assert export_file_deny_fallback is None
 
     export_file_allow_fallback = trans.convert(is_allow_fallback=True)
-    assert export_file_allow_fallback.getvalue() == expected_result  # type: ignore
-    assert export_file_allow_fallback.name == import_file.name  # type: ignore
+    assert type(export_file_allow_fallback) is BytesIO
+    if isinstance(export_file_allow_fallback, BytesIO):
+        assert export_file_allow_fallback.getvalue() == expected_result
+        assert export_file_allow_fallback.name == import_file.name
 
 
 @pytest.mark.unit()
@@ -81,4 +87,8 @@ def test_transcoder_missing_encode() -> None:
     trans = TextTranscoder(BytesIO(b"ABCDEF"))
     assert trans.detect_encoding() == "ASCII"
     assert trans.convert("utf-9", False) is None
-    assert trans.convert("utf-9", True).getvalue() == b"ABCDEF"  # type: ignore
+
+    bytes_data = trans.convert("utf-9", True)
+    assert type(bytes_data) is BytesIO
+    if isinstance(bytes_data, BytesIO):
+        assert bytes_data.getvalue() == b"ABCDEF"
