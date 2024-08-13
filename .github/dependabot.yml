@@ -23,7 +23,7 @@ updates:
       time: "11:00"
       timezone: "Japan"
     target-branch: develop
-  - package-ecosystem: pip
+  - package-ecosystem: poetry
     directory: /
     schedule:
       interval: daily
