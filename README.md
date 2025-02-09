@@ -12,7 +12,7 @@
 ファイルをアップロードして、「テキスト整形の実行」をクリックして結果を確認してください。
 
 # Platform
-- [Streamlit Cloud][streamlit-cloud-link]
+- ~~Streamlit Cloud~~
 - Desktop App (build by Electron)
 
 # Quick start
