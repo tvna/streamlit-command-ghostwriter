@@ -68,6 +68,11 @@
 		"python.analysis.ignore": [
 			"/opt/homebrew/Cellar/python**"
 		],
+		"python.testing.pytestArgs": [
+			"tests"
+		],
+		"python.testing.unittestEnabled": false,
+		"python.testing.pytestEnabled": true,
 		"cSpell.ignorePaths": [
 			"package-lock.json",
 			"node_modules",
@@ -85,9 +90,6 @@
 		"yaml.schemas": {},
 		"yaml.keyOrdering": true,
 		"ruff.lineLength": 140,
-		"ruff.lint.args": [
-			"--config=./pyproject.toml"
-		],
 		"ruff.format.preview": true,
 	}
 }
