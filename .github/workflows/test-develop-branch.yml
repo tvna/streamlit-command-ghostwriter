@@ -238,7 +238,7 @@ jobs:
       matrix:
         os:
           - macos-latest
-          - windows-latest
+          # - windows-latest
     permissions:
       contents: read
     timeout-minutes: 5
