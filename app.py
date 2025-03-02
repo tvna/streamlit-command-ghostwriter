@@ -283,9 +283,9 @@ def main() -> None:
             st.subheader(texts.tab3.subheader_output_file)
             st.container(border=True).selectbox(
                 texts.tab3.format_type,
-                (x for x in texts["tab3"]["format_type_items"]),
+                (x for x in texts.tab3.format_type_items),
                 index=default_format_type,
-                format_func=lambda x: f"{str(x)}: {texts["tab3"]["format_type_items"][x]}",
+                format_func=lambda x: f"{str(x)}: {texts.tab3.format_type_items[x]}",
                 key="result_format_type",
             )
             st.container(border=True).text_input(texts.tab3.download_filename, "command", key="download_filename")
