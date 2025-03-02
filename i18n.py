@@ -37,7 +37,7 @@ LANGUAGES = {
             "error_debug_config": "設定定義ファイルの読み込みに失敗",
             "error_debug_not_found": "設定定義ファイルが読み込まれていません",
             "generate_visual_button": "解析結果の表示 (visual)",
-            "generate_json_button": "解析結果の表示 (json)",
+            "generate_toml_button": "解析結果の表示 (toml)",
             "generate_yaml_button": "解析結果の表示 (yaml)",
         },
         "tab3": {

@@ -1,11 +1,11 @@
 #! /usr/bin/env python
-import json
 import os
 from enum import Enum
 from io import BytesIO
 from typing import Any, Dict, Final, List, Optional
 
 import streamlit as st
+import toml
 import yaml
 from box import Box
 from pydantic import BaseModel, PrivateAttr
@@ -20,7 +20,7 @@ class ExecuteMode(Enum):
     parsed_text = 1
     parsed_markdown = 2
     debug_visual = 3
-    debug_json = 4
+    debug_toml = 4
     debug_yaml = 5
 
 
@@ -41,7 +41,7 @@ class TabViewModel(BaseModel):
         is_parsed_text: bool,
         is_parsed_markdown: bool,
         is_debug_visual: bool,
-        is_debug_json: bool,
+        is_debug_toml: bool,
         is_debug_yaml: bool,
     ) -> "TabViewModel":
         """Set execute mode."""
@@ -50,7 +50,7 @@ class TabViewModel(BaseModel):
             is_parsed_text: ExecuteMode.parsed_text,
             is_parsed_markdown: ExecuteMode.parsed_markdown,
             is_debug_visual: ExecuteMode.debug_visual,
-            is_debug_json: ExecuteMode.debug_json,
+            is_debug_toml: ExecuteMode.debug_toml,
             is_debug_yaml: ExecuteMode.debug_yaml,
         }
 
@@ -101,7 +101,7 @@ class TabViewModel(BaseModel):
         if error_message:
             st.error(error_message)
 
-        if self.__execute_mode not in (ExecuteMode.debug_visual, ExecuteMode.debug_json, ExecuteMode.debug_yaml):
+        if self.__execute_mode not in (ExecuteMode.debug_visual, ExecuteMode.debug_toml, ExecuteMode.debug_yaml):
             return
 
         if parsed_config is None:
@@ -114,9 +114,9 @@ class TabViewModel(BaseModel):
             case ExecuteMode.debug_visual:
                 st.container(border=True).json(parsed_config)
 
-            case ExecuteMode.debug_json:
-                json_config = json.dumps(parsed_config, ensure_ascii=False, indent=4)
-                st.text_area(self.__texts.tab2.debug_config_text, json_config, key="tab2_result_textarea", height=500)
+            case ExecuteMode.debug_toml:
+                toml_config = toml.dumps(parsed_config)
+                st.text_area(self.__texts.tab2.debug_config_text, toml_config, key="tab2_result_textarea", height=500)
 
             case ExecuteMode.debug_yaml:
                 yaml_config = yaml.dump(parsed_config, default_flow_style=False, allow_unicode=True, indent=8)
@@ -224,7 +224,7 @@ def main() -> None:
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
             st.session_state.get("tab2_execute_visual", False),
-            st.session_state.get("tab2_execute_json", False),
+            st.session_state.get("tab2_execute_toml", False),
             st.session_state.get("tab2_execute_yaml", False),
         ).show_tab1(
             st.session_state.get("tab1_result_content"),
@@ -247,7 +247,7 @@ def main() -> None:
         )
 
         tab2_row2[0].button(texts.tab2.generate_visual_button, use_container_width=True, key="tab2_execute_visual")
-        tab2_row2[1].button(texts.tab2.generate_json_button, use_container_width=True, key="tab2_execute_json")
+        tab2_row2[1].button(texts.tab2.generate_toml_button, use_container_width=True, key="tab2_execute_toml")
         tab2_row2[2].button(texts.tab2.generate_yaml_button, use_container_width=True, key="tab2_execute_yaml")
 
         st.session_state.update(
@@ -262,7 +262,7 @@ def main() -> None:
             st.session_state.get("tab1_execute_text", False),
             st.session_state.get("tab1_execute_markdown", False),
             st.session_state.get("tab2_execute_visual", False),
-            st.session_state.get("tab2_execute_json", False),
+            st.session_state.get("tab2_execute_toml", False),
             st.session_state.get("tab2_execute_yaml", False),
         ).show_tab2(
             st.session_state.get("tab2_result_content"),
@@ -285,7 +285,7 @@ def main() -> None:
                 texts.tab3.format_type,
                 (x for x in texts["tab3"]["format_type_items"]),
                 index=default_format_type,
-                format_func=lambda x: f"{str(x)}: {texts['tab3']['format_type_items'][x]}",
+                format_func=lambda x: f"{str(x)}: {texts["tab3"]["format_type_items"][x]}",
                 key="result_format_type",
             )
             st.container(border=True).text_input(texts.tab3.download_filename, "command", key="download_filename")

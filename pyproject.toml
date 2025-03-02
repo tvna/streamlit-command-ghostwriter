@@ -16,6 +16,7 @@ pyyaml = "^6.0.1"
 chardet = "^5.2.0"
 python-box = "^7.2.0"
 pydantic = "^2.8.0"
+toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"

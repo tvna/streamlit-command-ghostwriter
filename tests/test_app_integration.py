@@ -3,6 +3,7 @@ from io import BytesIO
 from typing import Any, Dict, Optional
 
 import pytest
+import toml
 import yaml
 from streamlit.testing.v1 import AppTest
 
@@ -102,9 +103,9 @@ def test_main_tab1(
         pytest.param("tab2_execute_visual", b'key = "POSITIVE"', {"key": "POSITIVE"}, 0, 0, 1),
         pytest.param("tab2_execute_visual", None, None, 0, 1, 0),
         pytest.param("tab2_execute_visual", b"key=", None, 1, 1, 0),
-        pytest.param("tab2_execute_json", b'key = "POSITIVE"', {"key": "POSITIVE"}, 0, 0, 1),
-        pytest.param("tab2_execute_json", None, None, 0, 1, 0),
-        pytest.param("tab2_execute_json", b"key=", None, 1, 1, 0),
+        pytest.param("tab2_execute_toml", b'key = "POSITIVE"', {"key": "POSITIVE"}, 0, 0, 1),
+        pytest.param("tab2_execute_toml", None, None, 0, 1, 0),
+        pytest.param("tab2_execute_toml", b"key=", None, 1, 1, 0),
         pytest.param("tab2_execute_yaml", b'key = "POSITIVE"', {"key": "POSITIVE"}, 0, 0, 1),
         pytest.param("tab2_execute_yaml", None, None, 0, 1, 0),
         pytest.param("tab2_execute_yaml", b"key=", None, 1, 1, 0),
@@ -150,13 +151,13 @@ def test_main_tab2(
             assert at.json[0].value == json.dumps(expected_text_area_value, ensure_ascii=False)
         assert at.text_area.len == base_text_area_len
 
-    if active_button == "tab2_execute_json":
+    if active_button == "tab2_execute_toml":
         assert at.json.len == 0
         if expected_text_area_value is None:
             assert at.text_area.len == base_text_area_len
         else:
             assert at.text_area.len == base_text_area_len + 1
-            assert at.text_area(key="tab2_result_textarea").value == json.dumps(expected_text_area_value, ensure_ascii=False, indent=4)
+            assert at.text_area(key="tab2_result_textarea").value == toml.dumps(expected_text_area_value)
 
     if active_button == "tab2_execute_yaml":
         assert at.json.len == 0
