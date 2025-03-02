@@ -20,6 +20,7 @@
 			"breakline",
 			"chardet",
 			"charliermarsh",
+			"choco",
 			"codeclimate",
 			"Codecov",
 			"commitlint",
@@ -27,6 +28,7 @@
 			"devcontainer",
 			"Dtype",
 			"EDITMSG",
+			"endfor",
 			"IHDR",
 			"isort",
 			"iterrows",
@@ -46,6 +48,7 @@
 			"selectbox",
 			"stlite",
 			"streamlit",
+			"USERPROFILE",
 			"venv",
 			"virtualenvs"
 		],
