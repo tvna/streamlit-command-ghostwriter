@@ -8,15 +8,43 @@
 </div>
 
 # Welcome to Command ghostwriter
-このアプリケーションでは、設定ファイル(toml/yaml)とJinjaテンプレートファイルをアップロードして、インフラ構築コマンドなどのテキスト整形ができます。
-ファイルをアップロードして、「テキスト整形の実行」をクリックして結果を確認してください。
+このアプリケーションは、IaCをはじめ自動化ツール導入が困難なインフラ運用現場において、CLIによる形式的な運用作業を効率化するソリューションです。
 
-# Platform
-- ~~Streamlit Cloud~~
-- Desktop App (build by Electron)
+繰り返しが多くなりがちなCLI実行コマンドを、設定定義ファイル(csv/yaml/toml)とJinjaテンプレートファイルの2つに分けて記述することで、設定定義ファイルの変更のみでCLIコマンドが生成できます。また、コマンドに留まらず、Markdownによる作業手順書の生成にも対応しています。
+
+まずはサンプルファイルをアップロードして、「CLIコマンド生成」をクリックした結果を確認してみてください。
+
+## 主な利用ケース
+- PowerShellコマンド
+- Linuxコマンド
+- ネットワーク機器の操作コマンド
+- Markdown由来の手順書やマニュアル
 
 # Quick start
-TBA
+
+## Windows client (amd64)
+1. 実行環境のインストール (Python, Git)
+
+```ps1
+# chocolateyを使う場合
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+choco install python312
+choco install git
+```
+
+2. PowerShellにて、以下のコマンドを実行する
+```ps1
+cd $env:USERPROFILE\Downloads
+git clone https://github.com/tvna/streamlit-command-ghostwriter.git
+cd streamlit-command-ghostwriter
+
+(Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+
+[System.Environment]::SetEnvironmentVariable('path', $env:APPDATA + "\Python\Scripts;" + [System.Environment]::GetEnvironmentVariable('path', "User"),"User")
+
+poetry install
+poetry run streamlit run app.py
+```
 
 [streamlit-img]: https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white
 [streamlit-cloud-img]: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
@@ -27,3 +55,5 @@ TBA
 [codecov-img]: https://codecov.io/gh/tvna/streamlit-command-ghostwriter/graph/badge.svg?token=I2LDXQHXB5
 [license-link]: https://github.com/tvna/streamlit-command-ghostwriter/blob/main/LICENSE
 [license-img]: https://img.shields.io/badge/license-MIT-blue
+
+
