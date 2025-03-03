@@ -499,7 +499,11 @@ nox = ["nox (>=2024.4.15)", "nox[uv] (>=2024.3.2)"]
 pep8test = ["check-sdist", "click (>=8.0.1)", "mypy (>=1.4)", "ruff (>=0.3.6)"]
 sdist = ["build (>=1.0.0)"]
 ssh = ["bcrypt (>=3.1.5)"]
+<<<<<<< HEAD
 test = ["certifi (>=2024)", "cryptography-vectors (==44.0.0)", "pretend (>=0.7)", "pytest (>=7.4.0)", "pytest-benchmark (>=4.0)", "pytest-cov (>=2.10.1)", "pytest-xdist (>=3.5.0)"]
+=======
+test = ["certifi", "cryptography-vectors (==43.0.1)", "pretend", "pytest (>=6.2.0)", "pytest-benchmark", "pytest-cov", "pytest-xdist"]
+>>>>>>> 9a66bfa58661b1cd8627df11111e1ae7c02ee1f9
 test-randomorder = ["pytest-randomly"]
 
 [[package]]
@@ -2769,13 +2773,22 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtualenv"
+<<<<<<< HEAD
 version = "20.29.1"
+=======
+version = "20.26.6"
+>>>>>>> 9a66bfa58661b1cd8627df11111e1ae7c02ee1f9
 description = "Virtual Python Environment builder"
 optional = false
 python-versions = ">=3.8"
 files = [
+<<<<<<< HEAD
     {file = "virtualenv-20.29.1-py3-none-any.whl", hash = "sha256:4e4cb403c0b0da39e13b46b1b2476e505cb0046b25f242bee80f62bf990b2779"},
     {file = "virtualenv-20.29.1.tar.gz", hash = "sha256:b8b8970138d32fb606192cb97f6cd4bb644fa486be9308fb9b63f81091b5dc35"},
+=======
+    {file = "virtualenv-20.26.6-py3-none-any.whl", hash = "sha256:7345cc5b25405607a624d8418154577459c3e0277f5466dd79c49d5e492995f2"},
+    {file = "virtualenv-20.26.6.tar.gz", hash = "sha256:280aede09a2a5c317e409a00102e7077c6432c5a38f0ef938e643805a7ad2c48"},
+>>>>>>> 9a66bfa58661b1cd8627df11111e1ae7c02ee1f9
 ]
 
 [package.dependencies]
@@ -2936,4 +2949,8 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <4.0"
+<<<<<<< HEAD
 content-hash = "40106096a641c9613d74983a9ae9106ed38bb6d3bb22f8eaeaef6fa4ffd852cb"
+=======
+content-hash = "fbb856eaf847514164f393b671636ea689be198d5f0841d28d3b631f86ea5d8d"
+>>>>>>> 9a66bfa58661b1cd8627df11111e1ae7c02ee1f9
