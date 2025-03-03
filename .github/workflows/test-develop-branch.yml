@@ -199,8 +199,8 @@ jobs:
           pprint.pprint(ast_trees, width=100, compact=False)
           EOF
 
-  prebuild:
-    name: Prebuild desktop-app
+  prepare-build:
+    name: Prepare build environment
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -217,7 +217,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.node-version }}
-      - name: Restore cache node-electron dependecies
+      - name: Restore cache node-electron dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -233,12 +233,14 @@ jobs:
     needs:
       - e2e_test
       - analyze
-      - prebuild
+      - prepare-build
     strategy:
       matrix:
         os:
           - macos-latest
-          # - windows-latest
+          - windows-latest
+      fail-fast: false
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     permissions:
       contents: read
     timeout-minutes: 5
@@ -249,7 +251,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.node-version }}
-      - name: Restore cache node-electron dependecies
+      - name: Restore cache node-electron dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -275,11 +277,15 @@ jobs:
       - name: Dump package
         run: |
           npm run dump
+        # TODO: stliteのWindows環境のビルド失敗が解消したら削除
+        if: ${{ runner.os == 'MacOS' }}
       - name: Build
         run: |
           npm run dist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # TODO: stliteのWindows環境のビルド失敗が解消したら削除
+        if: ${{ runner.os == 'MacOS' }}
       - name: Upload artifact (Windows)
         uses: actions/upload-artifact@v4
         with:
