@@ -2583,13 +2583,13 @@ test = ["coverage[toml]", "pytest", "pytest-cov"]
 
 [[package]]
 name = "streamlit"
-version = "1.42.0"
+version = "1.42.2"
 description = "A faster way to build and share data apps"
 optional = false
 python-versions = "!=3.9.7,>=3.9"
 files = [
-    {file = "streamlit-1.42.0-py2.py3-none-any.whl", hash = "sha256:edf333fd3525b7c64b19e1156b483a1a93cbdb09a3a06f26478388d68f971090"},
-    {file = "streamlit-1.42.0.tar.gz", hash = "sha256:8c48494ccfad33e7d0bc5873151800b203cb71203bfd42bc7418940710ca4970"},
+    {file = "streamlit-1.42.2-py2.py3-none-any.whl", hash = "sha256:e2516c7fcd17a11a85cc1999fae58ace0a6458e2b4c1a411ed3d75b1aee2eb93"},
+    {file = "streamlit-1.42.2.tar.gz", hash = "sha256:62026dbdcb482790933f658b096d7dd58fa70da89c1f06fbc3658b91dcd4dab2"},
 ]
 
 [package.dependencies]
@@ -2936,4 +2936,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <4.0"
-content-hash = "40106096a641c9613d74983a9ae9106ed38bb6d3bb22f8eaeaef6fa4ffd852cb"
+content-hash = "dac5b4715ec321bd95c2ee2a32a4e8b923da77ab8baebbf90670a92a52601830"
