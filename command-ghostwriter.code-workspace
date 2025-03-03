@@ -20,6 +20,7 @@
 			"breakline",
 			"chardet",
 			"charliermarsh",
+			"choco",
 			"codeclimate",
 			"Codecov",
 			"commitlint",
@@ -27,14 +28,21 @@
 			"devcontainer",
 			"Dtype",
 			"EDITMSG",
+			"endfor",
+			"endswith",
+			"htmlcov",
 			"IHDR",
 			"isort",
 			"iterrows",
 			"itertuples",
+			"listdir",
+			"LOCALAPPDATA",
 			"maxfail",
 			"micropip",
 			"mypy",
+			"nohup",
 			"noreply",
+			"pprint",
 			"pycache",
 			"pydantic",
 			"pyodide",
@@ -46,6 +54,7 @@
 			"selectbox",
 			"stlite",
 			"streamlit",
+			"USERPROFILE",
 			"venv",
 			"virtualenvs"
 		],
@@ -68,6 +77,11 @@
 		"python.analysis.ignore": [
 			"/opt/homebrew/Cellar/python**"
 		],
+		"python.testing.pytestArgs": [
+			"tests"
+		],
+		"python.testing.unittestEnabled": false,
+		"python.testing.pytestEnabled": true,
 		"cSpell.ignorePaths": [
 			"package-lock.json",
 			"node_modules",
@@ -85,9 +99,6 @@
 		"yaml.schemas": {},
 		"yaml.keyOrdering": true,
 		"ruff.lineLength": 140,
-		"ruff.lint.args": [
-			"--config=./pyproject.toml"
-		],
 		"ruff.format.preview": true,
 	}
 }

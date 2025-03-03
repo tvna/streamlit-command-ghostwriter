@@ -19,7 +19,7 @@ def test_main_layout() -> None:
     assert at.button(key="tab1_execute_text").value is False
     assert at.button(key="tab1_execute_markdown").value is False
     assert at.button(key="tab2_execute_visual").value is False
-    assert at.button(key="tab2_execute_json").value is False
+    assert at.button(key="tab2_execute_toml").value is False
     assert at.button(key="tab2_execute_yaml").value is False
     assert at.error.len == 0
     assert at.warning.len == 0
@@ -34,7 +34,7 @@ def test_main_layout() -> None:
     assert at.button(key="tab1_execute_text").value is True
     assert at.button(key="tab1_execute_markdown").value is False
     assert at.button(key="tab2_execute_visual").value is False
-    assert at.button(key="tab2_execute_json").value is False
+    assert at.button(key="tab2_execute_toml").value is False
     assert at.button(key="tab2_execute_yaml").value is False
     assert at.error.len == 0
     assert at.warning.len == 1
@@ -44,7 +44,7 @@ def test_main_layout() -> None:
     assert at.button(key="tab1_execute_text").value is False
     assert at.button(key="tab1_execute_markdown").value is True
     assert at.button(key="tab2_execute_visual").value is False
-    assert at.button(key="tab2_execute_json").value is False
+    assert at.button(key="tab2_execute_toml").value is False
     assert at.button(key="tab2_execute_yaml").value is False
     assert at.error.len == 0
     assert at.warning.len == 1
@@ -54,17 +54,17 @@ def test_main_layout() -> None:
     assert at.button(key="tab1_execute_text").value is False
     assert at.button(key="tab1_execute_markdown").value is False
     assert at.button(key="tab2_execute_visual").value is True
-    assert at.button(key="tab2_execute_json").value is False
+    assert at.button(key="tab2_execute_toml").value is False
     assert at.button(key="tab2_execute_yaml").value is False
     assert at.error.len == 0
     assert at.warning.len == 1
     assert at.success.len == 0
 
-    at.button(key="tab2_execute_json").click().run()
+    at.button(key="tab2_execute_toml").click().run()
     assert at.button(key="tab1_execute_text").value is False
     assert at.button(key="tab1_execute_markdown").value is False
     assert at.button(key="tab2_execute_visual").value is False
-    assert at.button(key="tab2_execute_json").value is True
+    assert at.button(key="tab2_execute_toml").value is True
     assert at.button(key="tab2_execute_yaml").value is False
     assert at.error.len == 0
     assert at.warning.len == 1
@@ -74,7 +74,7 @@ def test_main_layout() -> None:
     assert at.button(key="tab1_execute_text").value is False
     assert at.button(key="tab1_execute_markdown").value is False
     assert at.button(key="tab2_execute_visual").value is False
-    assert at.button(key="tab2_execute_json").value is False
+    assert at.button(key="tab2_execute_toml").value is False
     assert at.button(key="tab2_execute_yaml").value is True
     assert at.error.len == 0
     assert at.warning.len == 1

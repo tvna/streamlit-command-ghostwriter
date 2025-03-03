@@ -6,7 +6,7 @@ from pydantic import BaseModel, PrivateAttr
 
 
 class TextTranscoder(BaseModel):
-    __import_file: BytesIO = PrivateAttr(default=None)
+    __import_file: BytesIO = PrivateAttr()
     __filename: Optional[str] = PrivateAttr(default=None)
 
     def __init__(self: "TextTranscoder", import_file: BytesIO) -> None:

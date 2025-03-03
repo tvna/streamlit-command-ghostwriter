@@ -154,7 +154,7 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Node dependecies
+# Node dependencies
 node_modules/
 
 # PyCharm

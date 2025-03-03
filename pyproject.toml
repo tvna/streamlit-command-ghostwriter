@@ -10,12 +10,13 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.11, <4.0"
-streamlit = "^1.35.0"
+streamlit = "^1.41.1"
 jinja2 = "^3.1.5"
 pyyaml = "^6.0.1"
 chardet = "^5.2.0"
 python-box = "^7.2.0"
 pydantic = "^2.8.0"
+toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
@@ -27,7 +28,7 @@ lizard = "^1.17.10"
 poetry-types = "^0.5.1"
 types-pyyaml = "^6.0.12.20240311"
 pydeps = "^1.12.20"
-pytest-playwright = "^0.5.0"
+pytest-playwright = "^0.5.2"
 ruff = "^0.5.7"
 pandas-stubs = "^2.2.2.240603"
 
