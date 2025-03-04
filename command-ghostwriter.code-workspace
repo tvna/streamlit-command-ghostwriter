@@ -70,8 +70,8 @@
 			"coverage.xml": true,
 			"node_modules": true,
 			"requirements.txt": false,
-			"poetry.lock": true,
-			"package-lock.json": true
+			"poetry.lock": false,
+			"package-lock.json": false
 		},
 		"explorer.excludeGitIgnore": false,
 		"python.analysis.ignore": [
