@@ -26,7 +26,14 @@ class AppCore(BaseModel):
         self.__config_error_header = config_error_header
         self.__template_error_header = template_error_header
 
-    def load_config_file(self: "AppCore", config_file: Optional[BytesIO], csv_rows_name: str, enable_auto_transcoding: bool) -> "AppCore":
+    def load_config_file(
+        self: "AppCore",
+        config_file: Optional[BytesIO],
+        csv_rows_name: str,
+        enable_auto_transcoding: bool,
+        enable_fill_nan: bool = False,
+        fill_nan_with: str = "#",
+    ) -> "AppCore":
         """Load config file for template args."""
 
         # 呼び出しされるたびに、前回の結果をリセットする
@@ -46,6 +53,8 @@ class AppCore(BaseModel):
 
         parser = ConfigParser(config_file)
         parser.csv_rows_name = csv_rows_name
+        parser.fill_nan_with = fill_nan_with
+        parser.enable_fill_nan = enable_fill_nan
         parser.parse()
 
         if parser.error_message is None:
@@ -110,7 +119,7 @@ class AppCore(BaseModel):
         if filename is None or file_ext is None:
             return None
 
-        suffix: Final[str] = f"_{datetime.today().strftime(r'%Y-%m-%d_%H%M%S')}" if is_append_timestamp is True else ""
+        suffix: Final[str] = f"_{datetime.today().strftime(r"%Y-%m-%d_%H%M%S")}" if is_append_timestamp is True else ""
 
         return f"{filename}{suffix}.{str(file_ext)}"
 

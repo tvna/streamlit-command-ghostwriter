@@ -6,3 +6,4 @@ resolver,fqdn,type
 8.8.8.8,gmail.com,txt
 8.8.8.8,_dmarc.gmail.com,txt
 8.8.8.8,selector1._domainkey.live.com,txt
+,selector2._domainkey.live.com,txt

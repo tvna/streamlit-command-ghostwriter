@@ -15,6 +15,8 @@ class ConfigParser(BaseModel):
     __parsed_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
     __error_message: Optional[str] = PrivateAttr(default=None)
     __csv_rows_name: str = PrivateAttr(default="csv_rows")
+    __is_enable_fill_nan: bool = PrivateAttr(default=False)
+    __fill_nan_with: Optional[str] = PrivateAttr(default=None)
 
     def __init__(self: "ConfigParser", config_file: BytesIO) -> None:
         super().__init__()
@@ -40,6 +42,22 @@ class ConfigParser(BaseModel):
 
         self.__csv_rows_name = rows_name
 
+    @property
+    def enable_fill_nan(self: "ConfigParser") -> bool:
+        return self.__is_enable_fill_nan
+
+    @enable_fill_nan.setter
+    def enable_fill_nan(self: "ConfigParser", is_fillna: bool) -> None:
+        self.__is_enable_fill_nan = is_fillna
+
+    @property
+    def fill_nan_with(self: "ConfigParser") -> Optional[str]:
+        return self.__fill_nan_with
+
+    @fill_nan_with.setter
+    def fill_nan_with(self: "ConfigParser", fillna_value: str) -> None:
+        self.__fill_nan_with = fillna_value
+
     def parse(self: "ConfigParser") -> bool:
         if self.__config_data is None:
             return False
@@ -58,6 +76,10 @@ class ConfigParser(BaseModel):
                         raise ValueError("ensure this value has at least 1 characters.")
 
                     csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
+
+                    if self.__is_enable_fill_nan is True:
+                        csv_data.fillna(value=self.__fill_nan_with, inplace=True)
+
                     if isinstance(csv_data, pd.DataFrame):
                         mapped_list = [row.to_dict() for _, row in csv_data.iterrows()]
                         self.__parsed_dict = {self.__csv_rows_name: mapped_list}
