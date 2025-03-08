@@ -60,6 +60,8 @@ LANGUAGES = {
             "subheader_input_file": "入力ファイルの設定",
             "subheader_output_file": "出力ファイルの設定",
             "csv_rows_name": "CSV設定定義ファイル上のforループ対象の変数名",
+            "enable_fill_nan": "CSVの欠損値(NaN)を指定文字として扱う",
+            "fill_nan_with": "欠損値(NaN)の変換後の文字",
         },
         "tab4": {
             "menu_title": "サンプル集",

@@ -25,9 +25,9 @@ def test_main_layout() -> None:
     assert at.warning.len == 0
     assert at.success.len == 0
     assert at.radio.len == 1
-    assert at.toggle.len == 3
+    assert at.toggle.len == 4
     assert at.selectbox.len == 2
-    assert at.text_input.len == 2
+    assert at.text_input.len == 3
     assert at.text_area.len == 6
 
     at.button(key="tab1_execute_text").click().run()

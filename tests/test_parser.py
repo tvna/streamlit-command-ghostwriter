@@ -226,3 +226,54 @@ def test_changed_rows_name(
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_str
+
+
+@pytest.mark.unit()
+@pytest.mark.parametrize(
+    ("content", "filename", "enable_fill_nan", "fill_nan_with", "is_successful", "expected_dict", "expected_str"),
+    [
+        pytest.param(
+            b"name,age\nAlice,30\nBob,25",
+            "config.csv",
+            False,
+            None,
+            True,
+            {"people": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]},
+            "{'people': [{'age': 30, 'name': 'Alice'}, {'age': 25, 'name': 'Bob'}]}",
+        ),
+        pytest.param(
+            b"name,age\n,30\nBob,25",
+            "config.csv",
+            True,
+            "test",
+            True,
+            {"people": [{"name": "test", "age": 30}, {"name": "Bob", "age": 25}]},
+            "{'people': [{'age': 30, 'name': 'test'}, {'age': 25, 'name': 'Bob'}]}",
+        ),
+    ],
+)
+def test_fill_nan(
+    content: bytes,
+    filename: str,
+    enable_fill_nan: bool,
+    fill_nan_with: str,
+    is_successful: bool,
+    expected_dict: Optional[Dict[str, Any]],
+    expected_str: str,
+) -> None:
+    """Test fill nan."""
+
+    config_file = BytesIO(content)
+    config_file.name = filename
+
+    parser = ConfigParser(config_file)
+    parser.csv_rows_name = "people"
+    parser.enable_fill_nan = enable_fill_nan
+    if isinstance(fill_nan_with, str):
+        parser.fill_nan_with = fill_nan_with
+
+    assert parser.enable_fill_nan == enable_fill_nan
+    assert parser.fill_nan_with == fill_nan_with
+    assert parser.parse() == is_successful
+    assert parser.parsed_dict == expected_dict
+    assert parser.parsed_str == expected_str

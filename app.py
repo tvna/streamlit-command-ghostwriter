@@ -191,6 +191,8 @@ def main() -> None:
             st.session_state.get("tab1_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),
             st.session_state.get("enable_auto_transcoding", True),
+            st.session_state.get("enable_fill_nan", True),
+            st.session_state.get("fill_nan_with", "#"),
         ).load_template_file(
             st.session_state.get("tab1_template_file"),
             st.session_state.get("enable_auto_transcoding", True),
@@ -244,6 +246,8 @@ def main() -> None:
             st.session_state.get("tab2_config_file"),
             st.session_state.get("csv_rows_name", "csv_rows"),
             st.session_state.get("enable_auto_transcoding", True),
+            st.session_state.get("enable_fill_nan", True),
+            st.session_state.get("fill_nan_with", "#"),
         )
 
         tab2_row2[0].button(texts.tab2.generate_visual_button, use_container_width=True, key="tab2_execute_visual")
@@ -276,22 +280,27 @@ def main() -> None:
         with tab3_row1[0].container(border=True):
             st.subheader(texts.tab3.subheader_input_file)
             st.container(border=True).text_input(texts.tab3.csv_rows_name, value="csv_rows", key="csv_rows_name")
+            with st.container(border=True):
+                st.toggle(texts.tab3.enable_fill_nan, value=True, key="enable_fill_nan")
+                st.text_input(texts.tab3.fill_nan_with, value="#", key="fill_nan_with")
             st.container(border=True).toggle(texts.tab3.strict_undefined, value=True, key="strict_undefined")
             st.container(border=True).toggle(texts.tab3.auto_transcoding, value=True, key="enable_auto_transcoding")
 
         with tab3_row1[1].container(border=True):
             st.subheader(texts.tab3.subheader_output_file)
-            st.container(border=True).selectbox(
-                texts.tab3.format_type,
-                (x for x in texts.tab3.format_type_items),
-                index=default_format_type,
-                format_func=lambda x: f"{str(x)}: {texts.tab3.format_type_items[x]}",
-                key="result_format_type",
-            )
-            st.container(border=True).text_input(texts.tab3.download_filename, "command", key="download_filename")
-            st.container(border=True).selectbox(texts.tab3.download_encoding, ["Shift_JIS", "utf-8"], key="download_encoding")
-            st.container(border=True).toggle(texts.tab3.append_timestamp_filename, value=True, key="is_append_timestamp")
-            st.container(border=True).radio(texts.tab3.download_file_extension, ["txt", "md"], horizontal=True, key="download_file_ext")
+            with st.container(border=True):
+                st.selectbox(
+                    texts.tab3.format_type,
+                    (x for x in texts.tab3.format_type_items),
+                    index=default_format_type,
+                    format_func=lambda x: f"{str(x)}: {texts.tab3.format_type_items[x]}",
+                    key="result_format_type",
+                )
+                st.selectbox(texts.tab3.download_encoding, ["Shift_JIS", "utf-8"], key="download_encoding")
+            with st.container(border=True):
+                st.text_input(texts.tab3.download_filename, "command", key="download_filename")
+                st.toggle(texts.tab3.append_timestamp_filename, value=True, key="is_append_timestamp")
+                st.radio(texts.tab3.download_file_extension, ["txt", "md"], horizontal=True, key="download_file_ext")
 
     with tabs[3]:
         st.subheader(":briefcase: " + texts.tab4.subheader, divider="rainbow")

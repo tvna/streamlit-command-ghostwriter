@@ -27,23 +27,27 @@ jobs:
       - name: Dependabot metadata
         id: meta
         uses: dependabot/fetch-metadata@v2
+
+      # GitHub Actions updates - always auto-merge
       - if: ${{ steps.meta.outputs.package-ecosystem == 'github-actions' }}
         run: |
-          gh pr review "$GTIHUB_HEAD_REF" -approve
-          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
-      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm_and_yarn' && steps.meta.outputs.update-type == 'version-update:semver-patch' }}
+          gh pr review "$PR_URL" --approve
+          gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
+      # NPM patch and minor updates - auto-merge
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm_and_yarn' && (steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor') }}
         run: |
-          gh pr review "$GTIHUB_HEAD_REF" -approve
-          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
-      - if: ${{ steps.meta.outputs.package-ecosystem == 'npm_and_yarn' && steps.meta.outputs.update-type == 'version-update:semver-minor' }}
+          gh pr review "$PR_URL" --approve
+          gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
+      # Pip patch and minor updates - auto-merge
+      - if: ${{ steps.meta.outputs.package-ecosystem == 'pip' && (steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor') }}
         run: |
-          gh pr review "$GTIHUB_HEAD_REF" -approve
-          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
-      - if: ${{ steps.meta.outputs.package-ecosystem == 'pip' && steps.meta.outputs.update-type == 'version-update:semver-patch' }}
-        run: |
-          gh pr review "$GTIHUB_HEAD_REF" -approve
-          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
-      - if: ${{ steps.meta.outputs.package-ecosystem == 'pip' && steps.meta.outputs.update-type != 'version-update:semver-minor' }}
-        run: |
-          gh pr review "$GTIHUB_HEAD_REF" -approve
-          gh pr merge "$GTIHUB_HEAD_REF" -merge -auto
+          gh pr review "$PR_URL" --approve
+          gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}

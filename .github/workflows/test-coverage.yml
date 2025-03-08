@@ -2,19 +2,19 @@
 name: Coverage Workflow
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Test & Build"]
+    types:
+      - completed
     branches:
       - develop
-      - main
-    paths:
-      - "**.py"
   pull_request:
     branches:
       - develop
       - main
   schedule:
-    # UTC 20:00 -> JST 05:00
-    - cron: "00 20 * * 3,6"
+    # UTC 21:00 -> JST 06:00
+    - cron: "00 21 * * 6"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-coverage
@@ -62,7 +62,7 @@ jobs:
         run: |
           poetry run pytest --cov . --cov-report=xml
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.3.1
+        uses: codecov/codecov-action@v5.4.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -107,7 +107,7 @@ jobs:
         run: |
           poetry run pytest --cov . --cov-report=xml
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.3.1
+        uses: codecov/codecov-action@v5.4.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Setup Code Climate
