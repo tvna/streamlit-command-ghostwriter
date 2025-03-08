@@ -119,7 +119,8 @@ class AppCore(BaseModel):
         if filename is None or file_ext is None:
             return None
 
-        suffix: Final[str] = f"_{datetime.today().strftime(r"%Y-%m-%d_%H%M%S")}" if is_append_timestamp is True else ""
+        datetime_format = r"%Y-%m-%d_%H%M%S"
+        suffix: Final[str] = f"_{datetime.today().strftime(datetime_format)}" if is_append_timestamp is True else ""
 
         return f"{filename}{suffix}.{str(file_ext)}"
 
