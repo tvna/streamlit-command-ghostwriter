@@ -26,27 +26,27 @@ jobs:
       - name: Check version change
         id: check-version
         run: |
-          # Get the latest commit hash that modified package.json
+          # package.json を変更した最新のコミットハッシュを取得
           latest_commit=$(git log -1 --pretty=format:"%H" -- package.json)
 
           if [ -z "$latest_commit" ]; then
-            echo "No changes to package.json found"
+            echo "package.json の変更が見つかりません"
             echo "version_changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Get the version before the change
+          # 変更前のバージョンを取得
           old_version=$(git show "$latest_commit^:package.json" | jq -r '.version')
 
-          # Get the current version
+          # 現在のバージョンを取得
           current_version=$(jq -r '.version' package.json)
 
           if [ "$old_version" != "$current_version" ]; then
-            echo "Version changed from $old_version to $current_version"
+            echo "バージョンが $old_version から $current_version に変更されました"
             echo "version_changed=true" >> "$GITHUB_OUTPUT"
             echo "new_version=$current_version" >> "$GITHUB_OUTPUT"
           else
-            echo "Version unchanged"
+            echo "バージョンに変更はありません"
             echo "version_changed=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -64,6 +64,29 @@ jobs:
             --jq length)
           echo "exists=$pr_exists" >> "$GITHUB_OUTPUT"
 
+      # ラベルの存在確認と作成
+      - name: Ensure labels exist
+        if: |
+          steps.check-version.outputs.version_changed == 'true' &&
+          steps.check-pr.outputs.exists == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # リポジトリの既存ラベルを取得
+          labels=$(gh label list --json name --jq '.[].name')
+
+          # automated-pr ラベルがなければ作成
+          if ! echo "$labels" | grep -q "automated-pr"; then
+            echo "ラベル 'automated-pr' を作成します"
+            gh label create "automated-pr" --description "自動生成されたPR" --color "0E8A16"
+          fi
+
+          # release ラベルがなければ作成
+          if ! echo "$labels" | grep -q "release"; then
+            echo "ラベル 'release' を作成します"
+            gh label create "release" --description "自動リリース用PR" --color "1D76DB"
+          fi
+
       - name: Create Pull Request
         if: |
           steps.check-version.outputs.version_changed == 'true' &&
@@ -71,35 +94,43 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get the latest commit message from develop
+          # develop ブランチから最新のコミットメッセージを取得
           commit_msg=$(git log -1 --pretty=%B)
           new_version="${{ steps.check-version.outputs.new_version }}"
 
-          # Create PR title
+          # PR タイトルを作成
           pr_title="Release v$new_version"
 
-          # Create PR body
-          pr_body="Automated PR from develop to main for version $new_version
+          # main ブランチにまだ取り込まれていないコミットの件名を取得
+          # main ブランチをフェッチ
+          git fetch origin main:main
 
-          This PR was automatically created because:
-          1. All tests passed on the develop branch
-          2. Package version was updated to v$new_version
+          # コミット件名のリストを作成
+          commit_titles=$(git log main..develop --pretty=format:"- %s")
 
-          Commit Message:
+          # PR 本文を作成
+          pr_body="develop から main へのバージョン $new_version の自動 PR
+
+          このPRは以下の理由で自動的に作成されました:
+          1. develop ブランチ上ですべてのテストが合格
+          2. パッケージバージョンが v$new_version に更新された
+
+          コミットメッセージ:
           \`\`\`
           $commit_msg
           \`\`\`
 
-          ## Changes Overview
-          This PR includes all changes that have been tested and verified in the develop branch.
+          ## 変更概要
+          このPRには、以下のコミットが含まれています:
 
-          ## Checks
-          - All tests passed
-          - Code quality checks passed
-          - E2E tests passed
-          - Version updated to v$new_version"
+          $commit_titles
 
-          # Create the PR
+          ## チェック項目
+          - すべてのテストが合格
+          - コード品質チェックが合格
+          - バージョンが v$new_version に更新されました"
+
+          # PRを作成
           gh pr create \
             --base main \
             --head develop \
