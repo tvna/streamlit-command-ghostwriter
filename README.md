@@ -34,7 +34,7 @@ choco install git
 
 2. Webアプリ本体のセットアップ
 ```ps1
-cd $env:USERPROFILE\Downloads
+cd $env:PROGRAMDATA
 git clone https://github.com/tvna/streamlit-command-ghostwriter.git
 cd streamlit-command-ghostwriter
 
@@ -47,7 +47,7 @@ poetry install
 
 3. 下記のコマンドでWebアプリを起動
 ```ps1
-cd $env:USERPROFILE\Downloads\streamlit-command-ghostwriter
+cd $env:PROGRAMDATA\streamlit-command-ghostwriter
 poetry run streamlit app.py
 ```
 
@@ -200,6 +200,10 @@ tar -czf {{ file.name }}.tar.gz {{ file.path }}
 ### 既知の制限事項
 - 一部の特殊文字はエスケープが必要
 - テンプレートにおけるネストされたループは非推奨
+
+## 開発者向けドキュメント
+
+開発に必要なコマンド集は[こちら](docs/COMMANDS.md)を参照してください。
 
 [streamlit-img]: https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white
 [streamlit-cloud-img]: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
