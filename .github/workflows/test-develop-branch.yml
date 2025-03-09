@@ -32,9 +32,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  actionlint:
+    name: Lint github actions workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+      - name: Check workflow files
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color
+
   test:
     name: Run unittest web-app
     runs-on: ubuntu-latest
+    needs:
+      - actionlint
     strategy:
       matrix:
         python-version:
@@ -202,6 +216,8 @@ jobs:
   prepare-build:
     name: Prepare build environment
     runs-on: ${{ matrix.os }}
+    needs:
+      - actionlint
     strategy:
       matrix:
         os:
