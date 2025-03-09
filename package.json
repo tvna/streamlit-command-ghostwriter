@@ -1,1 +1,79 @@
-{"version": "0.9.0"}
+{
+    "name": "command_ghostwriter",
+    "version": "0.3.1",
+    "main": "./build/electron/main.js",
+    "description": "Electron application with streamlit",
+    "license": "MIT",
+    "author": {
+        "name": "Nagano, Tsubasa",
+        "email": "tsubasa.nagano@icloud.com"
+    },
+    "scripts": {
+        "dump": "dump-stlite-desktop-artifacts",
+        "serve": "cross-env NODE_ENV=production electron .",
+        "pack": "electron-builder --dir",
+        "dist": "electron-builder",
+        "postinstall": "electron-builder install-app-deps",
+        "commit": "pre-commit run && npx cz"
+    },
+    "build": {
+        "files": [
+            "build/**/*"
+        ],
+        "productName": "CommandGhostwriter",
+        "directories": {
+            "buildResources": "assets"
+        },
+        "mac": {
+            "target": "dmg",
+            "icon": "assets/icon.png"
+        },
+        "win": {
+            "target": "portable",
+            "icon": "assets/icon.ico"
+        }
+    },
+    "devDependencies": {
+        "@commitlint/cli": "^19.3.0",
+        "@commitlint/config-conventional": "^19.2.2",
+        "@commitlint/cz-commitlint": "^19.2.0",
+        "@stlite/desktop": "^0.58.6",
+        "commitizen": "^4.3.0",
+        "cross-env": "^7.0.3",
+        "electron": "^31.1.0",
+        "electron-builder": "^24.13.3",
+        "husky": "^9.0.11",
+        "lint-staged": "^15.2.7",
+        "rimraf": "^5.0.7"
+    },
+    "stlite": {
+        "desktop": {
+            "files": [
+                "app.py",
+                "i18n.py",
+                ".streamlit/*",
+                "features/*.py",
+                "assets/examples"
+            ],
+            "nodeJsWorker": false,
+            "entrypoint": "app.py",
+            "embed": true,
+            "dependencies": [
+                "pyyaml",
+                "jinja2",
+                "chardet",
+                "toml",
+                "python-box",
+                "pydantic"
+            ]
+        }
+    },
+    "config": {
+        "commitizen": {
+            "path": "@commitlint/cz-commitlint"
+        }
+    },
+    "hooks": {
+        "pre-commit": "lint-staged"
+    }
+}
