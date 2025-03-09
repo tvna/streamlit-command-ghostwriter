@@ -34,28 +34,66 @@ class VersionChecker:
 
         Attributes:
             repo: Gitリポジトリのインスタンス。
-            _new_version: 新しいバージョンの情報。
+            _npm_new_version: 新しいバージョンの情報。
         """
         self._git_repo = None
-        self._new_version: Optional[str] = None
+        self._npm_new_version: Optional[str] = None
+        self._npm_lock_version: Optional[str] = None
+        self._git_old_version: Optional[str] = None
 
     @property
-    def new_version(self: "VersionChecker") -> Optional[str]:
+    def npm_new_version(self: "VersionChecker") -> Optional[str]:
         """新しいバージョンを取得するプロパティ。
 
         Returns:
             新しいバージョンの文字列。
         """
-        return self._new_version
+        return self._npm_new_version
 
-    @new_version.setter
-    def new_version(self: "VersionChecker", value: str) -> None:
+    @npm_new_version.setter
+    def npm_new_version(self: "VersionChecker", value: str) -> None:
         """新しいバージョンを設定するプロパティ。
 
         Args:
             value: 新しいバージョンの文字列。
         """
-        self._new_version = value
+        self._npm_new_version = value
+
+    @property
+    def npm_lock_version(self: "VersionChecker") -> Optional[str]:
+        """ロックファイルのバージョンを取得するプロパティ。
+
+        Returns:
+            npm_lock_version: ロックファイルのバージョンの文字列。
+        """
+        return self._npm_lock_version
+
+    @npm_lock_version.setter
+    def npm_lock_version(self: "VersionChecker", value: str) -> None:
+        """ロックファイルのバージョンを設定するプロパティ。
+
+        Args:
+            value: ロックファイルのバージョンの文字列。
+        """
+        self._npm_lock_version = value
+
+    @property
+    def git_old_version(self: "VersionChecker") -> Optional[str]:
+        """前のバージョンを取得するプロパティ。
+
+        Returns:
+            git_old_version: 前のバージョンの文字列。
+        """
+        return self._git_old_version
+
+    @git_old_version.setter
+    def git_old_version(self: "VersionChecker", value: str) -> None:
+        """前のバージョンを設定するプロパティ。
+
+        Args:
+            value: 前のバージョンの文字列。
+        """
+        self._git_old_version = value
 
     # GitHub Actions用ログコマンド
     def github_notice(self: "VersionChecker", message: str) -> None:
@@ -110,17 +148,17 @@ class VersionChecker:
         for key, value in kwargs.items():
             self.set_github_output(key, value)
 
-    def set_success_output(self: "VersionChecker", new_version: str = "", old_version: str = "") -> None:
+    def set_success_output(self: "VersionChecker", npm_new_version: str = "", old_version: str = "") -> None:
         """成功時の出力を設定。
 
         Args:
-            new_version: 新しいバージョンの文字列。
+            npm_new_version: 新しいバージョンの文字列。
             old_version: 古いバージョンの文字列。
         """
         self.set_github_output("status", "success")
         self.set_github_output("version_changed", "true")
-        if new_version:
-            self.set_github_output("new_version", new_version)
+        if npm_new_version:
+            self.set_github_output("npm_new_version", npm_new_version)
         if old_version:
             self.set_github_output("old_version", old_version)
 
@@ -215,7 +253,7 @@ class VersionChecker:
         """
         return commit.committed_date
 
-    def get_previous_version(self: "VersionChecker", repo: git.Repo, commit: git.Commit, file_path: str) -> Optional[str]:
+    def get_git_old_version(self: "VersionChecker", repo: git.Repo, commit: git.Commit, file_path: str) -> Optional[str]:
         """指定コミットの一つ前のバージョンを取得。
 
         Args:
@@ -262,17 +300,17 @@ class VersionChecker:
         # タグをバージョン順にソート
         return sorted(version_tags, key=lambda t: version.parse(t[1:] if t.startswith("v") else t))
 
-    def compare_versions(self: "VersionChecker", new_version: str, old_version: str) -> int:
+    def compare_versions(self: "VersionChecker", npm_new_version: str, old_version: str) -> int:
         """セマンティックバージョンの比較。
 
         Args:
-            new_version: 新しいバージョンの文字列。
+            npm_new_version: 新しいバージョンの文字列。
             old_version: 古いバージョンの文字列。
 
         Returns:
-            new_version > old_version なら1、new_version == old_version なら0、new_version < old_version なら-1。
+            npm_new_version > old_version なら1、npm_new_version == old_version なら0、npm_new_version < old_version なら-1。
         """
-        ver_new = version.parse(new_version)
+        ver_new = version.parse(npm_new_version)
         ver_old = version.parse(old_version)
         if ver_new > ver_old:
             return 1
@@ -294,7 +332,7 @@ class VersionChecker:
             self.github_error(f"リポジトリの初期化に失敗しました: {e}")
             return False
 
-    def validate_and_check_versions(self: "VersionChecker") -> Tuple[bool, Optional[str], Optional[str]]:
+    def validate_npm_versions(self: "VersionChecker") -> bool:
         """npmファイルの存在確認とバージョンの取得と検証。
 
         Returns:
@@ -308,39 +346,41 @@ class VersionChecker:
         if not Path(package_json_path).exists():
             self.github_error(f"{package_json_path} ファイルが見つかりません")
             self.set_fail_output("package_missing")
-            return False, None, None
+            return False
 
         if not Path(package_lock_path).exists():
             self.github_error(f"{package_lock_path} ファイルが見つかりません")
             self.set_fail_output("lockfile_missing")
-            return False, None, None
+            return False
 
         # 現在のバージョン取得
-        new_version = self.get_file_version(package_json_path)
-        if not new_version:
+        npm_new_version = self._npm_new_version = self.get_file_version(package_json_path)
+        if not npm_new_version:
             self.github_error("現在のバージョンの取得に失敗しました")
-            self.set_fail_output("new_version_error")
-            return False, None, None
+            self.set_fail_output("npm_new_version_error")
+            return False
 
         # package-lock.jsonのバージョン取得
-        lock_version = self.get_file_version(package_lock_path)
-        if not lock_version:
+        npm_lock_version = self._npm_lock_version = self.get_file_version(package_lock_path)
+        if not npm_lock_version:
             self.github_error("package-lock.json のバージョン取得に失敗しました")
-            self.set_fail_output("lock_version_error")
-            return False, None, None
+            self.set_fail_output("npm_lock_version_error")
+            return False
 
         # バージョン形式の検証
-        if not self.is_semver(new_version):
-            self.github_warning(f"バージョン形式が正しくありません: {new_version}")
+        if not self.is_semver(npm_new_version):
+            self.github_warning(f"バージョン形式が正しくありません: {npm_new_version}")
 
         # バージョン整合性チェック
-        if new_version != lock_version:
-            self.github_error(f"package.json ({new_version}) は" f"package-lock.json ({lock_version}) のバージョンと一致していません")
+        if npm_new_version != npm_lock_version:
+            self.github_error(
+                f"package.json ({npm_new_version}) は" f"package-lock.json ({npm_lock_version}) のバージョンと一致していません"
+            )
             self.github_error("package-lock.json の更新が必要です。'npm install' または 'npm ci' を実行してください")
             self.set_fail_output("version_mismatch")
-            return False, new_version, lock_version
+            return False
 
-        return True, new_version, lock_version
+        return True
 
     def check_package_changes(self: "VersionChecker") -> Tuple[bool, Optional[git.Commit]]:
         """package.jsonの変更確認。
@@ -362,7 +402,7 @@ class VersionChecker:
 
         return True, pkg_commit
 
-    def check_previous_version(self: "VersionChecker", pkg_commit: git.Commit) -> Tuple[bool, Optional[str]]:
+    def check_git_old_version(self: "VersionChecker", pkg_commit: git.Commit) -> bool:
         """前のバージョンを確認。
 
         Args:
@@ -372,44 +412,44 @@ class VersionChecker:
             バージョンが正常であればTrueと前のバージョン、失敗した場合はFalseとNone。
         """
         package_json_path = "package.json"
-        new_version = self.get_file_version(package_json_path)
+        npm_new_version = self._npm_new_version
 
         if self._git_repo is None:
             self.github_error("リポジトリが初期化されていません")
             self.set_fail_output("repo_not_initialized")
-            return False, None
+            return False
 
         # 前のバージョン取得
-        previous_version = self.get_previous_version(self._git_repo, pkg_commit, package_json_path)
-        if not previous_version:
+        git_old_version = self._git_old_version = self.get_git_old_version(self._git_repo, pkg_commit, package_json_path)
+        if not git_old_version:
             self.github_notice("前のバージョンが見つかりません")
-            self.set_fail_output("no_previous_version")
-            return False, None
+            self.set_fail_output("no_git_old_version")
+            return False
 
-        if new_version is None:
+        if npm_new_version is None:
             self.github_error("現在のバージョンの取得に失敗しました")
-            self.set_fail_output("new_version_error")
-            return False, None
+            self.set_fail_output("npm_new_version_error")
+            return False
 
         # バージョン変更があるか確認
-        if new_version == previous_version:
-            self.github_notice(f"バージョンに変更がありません: {new_version}")
+        if npm_new_version == git_old_version:
+            self.github_notice(f"バージョンに変更がありません: {npm_new_version}")
             self.set_fail_output("no_version_change")
-            return False, previous_version
+            return False
 
         # バージョンが増加しているか確認
-        if self.compare_versions(new_version, previous_version) <= 0:
-            self.github_error(f"新しいバージョン ({new_version}) は前のバージョン ({previous_version}) 以下です")
+        if self.compare_versions(npm_new_version, git_old_version) <= 0:
+            self.github_error(f"新しいバージョン ({npm_new_version}) は前のバージョン ({git_old_version}) 以下です")
             self.set_fail_output("version_not_incremented")
-            return False, previous_version
+            return False
 
-        return True, previous_version
+        return True
 
-    def check_git_version_tags(self: "VersionChecker", new_version: str) -> bool:
+    def check_git_version_tags(self: "VersionChecker", npm_new_version: str) -> bool:
         """バージョンタグの確認。
 
         Args:
-            new_version: 新しいバージョンの文字列。
+            npm_new_version: 新しいバージョンの文字列。
 
         Returns:
             バージョンタグが正常であればTrue、そうでなければFalse。
@@ -426,8 +466,8 @@ class VersionChecker:
             latest_tag = tags[-1]
             latest_version = latest_tag[1:] if latest_tag.startswith("v") else latest_tag
 
-            if self.is_semver(latest_version) and self.compare_versions(new_version, latest_version) <= 0:
-                self.github_error(f"新しいバージョン ({new_version}) は最新タグ ({latest_version}) 以下です")
+            if self.is_semver(latest_version) and self.compare_versions(npm_new_version, latest_version) <= 0:
+                self.github_error(f"新しいバージョン ({npm_new_version}) は最新タグ ({latest_version}) 以下です")
                 self.set_fail_output("version_not_incremented_from_tag")
                 return False
 
@@ -445,7 +485,7 @@ class VersionChecker:
                 return 1
 
             # npmファイルの存在確認とバージョン検証
-            versions_ok, new_version, lock_version = self.validate_and_check_versions()
+            versions_ok = self.validate_npm_versions()
             if not versions_ok:
                 return 1
 
@@ -455,32 +495,32 @@ class VersionChecker:
                 return 0
 
             # 前のバージョン確認
-            prev_version_ok, previous_version = self.check_previous_version(pkg_commit)
+            prev_version_ok = self.check_git_old_version(pkg_commit)
             if not prev_version_ok:
                 return 1
 
-            if new_version is None:
+            if self._npm_new_version is None:
                 self.github_error("現在のバージョンの取得に失敗しました")
-                self.set_fail_output("new_version_error")
+                self.set_fail_output("npm_new_version_error")
                 return 1
 
-            if previous_version is None:
+            if self._git_old_version is None:
                 self.github_error("前のバージョンの取得に失敗しました")
-                self.set_fail_output("previous_version_error")
+                self.set_fail_output("git_old_version_error")
                 return 1
 
-            if lock_version is None:
+            if self._npm_lock_version is None:
                 self.github_error("package-lock.json のバージョン取得に失敗しました")
-                self.set_fail_output("lock_version_error")
+                self.set_fail_output("npm_lock_version_error")
                 return 1
 
             # バージョンタグ確認
-            if not self.check_git_version_tags(new_version):
+            if not self.check_git_version_tags(self._npm_new_version):
                 return 1
 
             # すべてのチェックが成功したら
-            self.github_notice(f"バージョンが {previous_version} から {new_version} に更新されました")
-            self.set_success_output(new_version, previous_version)
+            self.github_notice(f"バージョンが {self._git_old_version} から {self._npm_new_version} に更新されました")
+            self.set_success_output(self._npm_new_version, self._git_old_version)
             return 0
 
         except Exception as e:

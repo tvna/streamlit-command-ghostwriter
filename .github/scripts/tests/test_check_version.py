@@ -226,14 +226,14 @@ def test_initialize_git_repo(
         ([False, False], False),  # Both files missing
     ],
 )
-def test_validate_and_check_versions(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
-    """validate_and_check_versionsメソッドのテスト"""
+def test_validate_npm_versions(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
+    """validate_npm_versionsメソッドのテスト"""
     mocker.patch("pathlib.Path.exists", side_effect=exists)  # Use mocker to patch the exists method
     mocker.patch.object(checker, "get_file_version", side_effect=["1.0.0", "1.0.0"])  # Mock version retrieval
     mock_error = mocker.patch.object(VersionChecker, "github_error")
     mock_fail = mocker.patch.object(VersionChecker, "set_fail_output")
 
-    result, new_version, lock_version = checker.validate_and_check_versions()
+    result = checker.validate_npm_versions()
     assert result == expected
 
     if not expected:
