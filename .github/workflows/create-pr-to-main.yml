@@ -15,7 +15,10 @@ concurrency:
 jobs:
   create-pr:
     runs-on: ubuntu-latest
-    # 明示的にタイムアウトを設定
+    strategy:
+      matrix:
+        python-version:
+          - 3.13
     timeout-minutes: 10
     # テスト成功時のみ実行
     if: |
@@ -37,15 +40,12 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0
-          # 明示的にトークンを渡す（セキュリティのため）
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Pythonのセットアップ
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-          cache: "pip"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
