@@ -31,6 +31,17 @@ class VersionChecker:
 
     def __init__(self: "VersionChecker") -> None:
         self.repo = None
+        self._version: Optional[str] = None  # 新しいプライベート変数を追加
+
+    @property
+    def version(self: "VersionChecker") -> Optional[str]:
+        """バージョン情報を取得"""
+        return self._version
+
+    @version.setter
+    def version(self: "VersionChecker", value: str) -> None:
+        """バージョン情報を設定し、ファイル入力処理をスキップ"""
+        self._version = value
 
     # GitHub Actions用ログコマンド
     def github_notice(self: "VersionChecker", message: str) -> None:
@@ -73,10 +84,6 @@ class VersionChecker:
             self.set_github_output("old_version", old_version)
 
     def validate_command(self: "VersionChecker", cmd: List[str]) -> bool:
-        """コマンドが安全なものであるか確認"""
-        if not cmd or not isinstance(cmd[0], str):
-            return False
-
         # コマンドの先頭部分（実行ファイル名）のみを検証
         executable = cmd[0]
         base_executable = os.path.basename(executable)
@@ -237,17 +244,21 @@ class VersionChecker:
 
         return True, pkg_commit
 
-    def check_versions(self: "VersionChecker") -> Tuple[bool, Optional[str], Optional[str]]:
+    def check_next_gen_versions(self: "VersionChecker") -> Tuple[bool, Optional[str], Optional[str]]:
         """バージョンの取得と検証"""
         package_json_path = "package.json"
         package_lock_path = "package-lock.json"
 
-        # 現在のバージョン取得
-        current_version = self.get_file_version(package_json_path)
-        if not current_version:
-            self.github_error("現在のバージョンの取得に失敗しました")
-            self.set_fail_output("current_version_error")
-            return False, None, None
+        # setterが呼ばれた場合、ファイルからのバージョン取得をスキップ
+        if self._version is not None:
+            current_version = self._version
+        else:
+            # 現在のバージョン取得
+            current_version = self.get_file_version(package_json_path)
+            if not current_version:
+                self.github_error("現在のバージョンの取得に失敗しました")
+                self.set_fail_output("current_version_error")
+                return False, None, None
 
         # package-lock.jsonのバージョン取得
         lock_version = self.get_file_version(package_lock_path)
@@ -344,7 +355,7 @@ class VersionChecker:
                 return 0
 
             # バージョン検証
-            versions_ok, current_version, lock_version = self.check_versions()
+            versions_ok, current_version, lock_version = self.check_next_gen_versions()
             if not versions_ok:
                 return 1
 
@@ -366,6 +377,11 @@ class VersionChecker:
             if previous_version is None:
                 self.github_error("前のバージョンの取得に失敗しました")
                 self.set_fail_output("previous_version_error")
+                return 1
+
+            if lock_version is None:
+                self.github_error("package-lock.json のバージョン取得に失敗しました")
+                self.set_fail_output("lock_version_error")
                 return 1
 
             # バージョンタグ確認

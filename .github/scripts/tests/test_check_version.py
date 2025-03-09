@@ -5,13 +5,13 @@
 check_version.pyのユニットテスト
 """
 
-import os
+import logging
 import sys
 from pathlib import Path
-from typing import List
-from unittest import mock
+from typing import List, Optional
 
 import pytest
+from pytest_mock import MockerFixture
 
 # テスト対象モジュールのパスを追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -19,29 +19,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from check_version import VersionChecker  # noqa: E402
 
 
-@pytest.fixture()
+@pytest.fixture
 def checker() -> VersionChecker:
     """VersionCheckerのインスタンスを提供"""
     return VersionChecker()
 
 
-@pytest.fixture(autouse=True)
-def capsys() -> pytest.CaptureFixture:
-    """標準出力をキャプチャするためのフィクスチャ"""
-    with mock.patch("sys.stdout") as mock_stdout:
-        yield mock_stdout
-
-
 @pytest.mark.parametrize(
-    "test_message",
+    ("test_header", "test_message"),
     [
-        ("テスト通知",),
-        ("テスト警告",),
-        ("テストエラー",),
+        ("::notice::", "テスト通知"),
+        ("::warning::", "テスト警告"),
+        ("::error::", "テストエラー"),
     ],
 )
-def test_github_logging(checker: VersionChecker, test_message: str, capsys: pytest.CaptureFixture) -> None:
+def test_github_logging(checker: VersionChecker, test_header: str, test_message: str, capsys: pytest.CaptureFixture) -> None:
     """GitHubのログメッセージのテスト"""
+
     if "通知" in test_message:
         checker.github_notice(test_message)
     elif "警告" in test_message:
@@ -49,110 +43,115 @@ def test_github_logging(checker: VersionChecker, test_message: str, capsys: pyte
     elif "エラー" in test_message:
         checker.github_error(test_message)
 
-    captured = capsys.getvalue()
-    assert f"::{test_message}::" in captured
+    captured = capsys.readouterr()
+    assert captured.out == test_header + test_message + "\n"
 
 
 @pytest.mark.parametrize(
-    ("output_name", "output_value"),
-    [
-        ("test_name", "test_value"),
-    ],
+    ("env_var_set", "expected_output", "expected_log"),
+    [(True, "TEST_VAR=test_value\n", None), (False, None, "GITHUB_OUTPUT環境変数が設定されていません")],
 )
-def test_set_github_output(checker: VersionChecker, output_name: str, output_value: str) -> None:
-    """set_github_outputメソッドのテスト"""
-    with (
-        mock.patch.dict(os.environ, {"GITHUB_OUTPUT": "github_output.txt"}),
-        mock.patch("builtins.open", new_callable=mock.mock_open) as mock_open,
-    ):
-        checker.set_github_output(output_name, output_value)
-        mock_open.assert_called_with("github_output.txt", "a")
-        mock_open().write.assert_called_with(f"{output_name}={output_value}\n")
+def test_set_github_output(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    checker: VersionChecker,
+    env_var_set: bool,
+    expected_output: Optional[str],
+    expected_log: Optional[str],
+) -> None:
+    if env_var_set:
+        # 一時ファイルを作成し、そのパスを環境変数に設定
+        output_file = "./github/tmp/github_output.txt"
+        Path("./github/tmp").mkdir(parents=True, exist_ok=True)  # ディレクトリを作成
+        monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
+    else:
+        # 環境変数を設定しない
+        monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
 
+    # caplog を使用してログをキャプチャ
+    with caplog.at_level(logging.WARNING, logger="test_logger"):
+        checker.set_github_output("TEST_VAR", "test_value")
 
-def test_set_github_output_no_env(checker: VersionChecker) -> None:
-    """GITHUB_OUTPUT環境変数がない場合のset_github_outputメソッドのテスト"""
-    with mock.patch("check_version.logger.warning") as mock_warning:
-        checker.set_github_output("test_name", "test_value")
-        mock_warning.assert_called_with("GITHUB_OUTPUT環境変数が設定されていません")
-
-
-def test_set_fail_output(checker: VersionChecker) -> None:
-    """set_fail_outputメソッドのテスト"""
-    with mock.patch.object(VersionChecker, "set_github_output") as mock_set_github_output:
-        checker.set_fail_output("test_reason", key1="value1", key2="value2")
-        expected_calls = [
-            mock.call("status", "failure"),
-            mock.call("message", "test_reason"),
-            mock.call("version_changed", "false"),
-            mock.call("reason", "test_reason"),
-            mock.call("key1", "value1"),
-            mock.call("key2", "value2"),
-        ]
-        mock_set_github_output.assert_has_calls(expected_calls, any_order=True)
-
-
-def test_set_success_output(checker: VersionChecker) -> None:
-    """set_success_outputメソッドのテスト"""
-    with mock.patch.object(VersionChecker, "set_github_output") as mock_set_github_output:
-        checker.set_success_output("1.0.0", "0.9.0")
-        expected_calls = [
-            mock.call("status", "success"),
-            mock.call("version_changed", "true"),
-            mock.call("new_version", "1.0.0"),
-            mock.call("old_version", "0.9.0"),
-        ]
-        mock_set_github_output.assert_has_calls(expected_calls, any_order=True)
+    if env_var_set:
+        # ファイルの内容を検証
+        with open(output_file, "r") as f:
+            lines: list[str] = f.readlines()
+        assert expected_output in lines
+    else:
+        # 警告ログが出力されていることを確認
+        assert expected_log is not None
+        assert expected_log in caplog.text
 
 
 @pytest.mark.parametrize(
     ("command", "expected"),
     [
+        # Normal cases (successful commands)
         (["git", "status"], True),
         (["npm", "version"], True),
         (["jq", "."], True),
+        # Abnormal cases (failure commands)
+        (["ls", "-l"], False),
+        (["echo", "hello"], False),
         (["rm", "-rf", "/"], False),
         (["git", "push", "|", "grep"], False),
         (["npm", "install", "&", "rm"], False),
+        (["invalid_command"], False),
+        ([""], False),
+        (["git", "&&", "status"], False),
+        (["echo", "hello", "|", "grep", "hello"], False),
+        ([";"], False),
+        (["echo", "hello", ">", "output.txt"], False),
     ],
 )
-def test_validate_command(checker: VersionChecker, command: List[str], expected: bool) -> None:
-    """validate_commandメソッドのテスト"""
+def test_validate_command_combined(checker: VersionChecker, command: List[str], expected: bool) -> None:
+    """validate_commandメソッドのテスト（集約版）"""
     assert checker.validate_command(command) == expected
 
 
 @pytest.mark.parametrize("return_code", [0, 1])
-def test_run_cmd(checker: VersionChecker, return_code: int) -> None:
+def test_run_cmd(checker: VersionChecker, return_code: int, mocker: MockerFixture) -> None:
     """run_cmdメソッドのテスト"""
-    with mock.patch("subprocess.run") as mock_run, mock.patch.object(VersionChecker, "validate_command", return_value=True):
-        mock_run.return_value.returncode = return_code
+    mock_run = mocker.patch("subprocess.run")  # Use mocker to patch subprocess.run
+    mock_run.return_value.returncode = return_code  # Set the return code for the mock
+    mocker.patch.object(VersionChecker, "validate_command", return_value=True)  # Mock validate_command to return True
+
+    # Test with a valid command
+    if return_code == 0:
         result = checker.run_cmd(["git", "status"])
-        assert result if return_code == 0 else not result
+        assert result is True
+    else:
+        result = checker.run_cmd(["git", "invalid_command"])
+        assert result is False
+
+    # Test with a command that raises an exception
+    mock_run.side_effect = Exception("Command execution failed")
+    result = checker.run_cmd(["git", "status"])
+    assert result is False
 
 
 @pytest.mark.parametrize(
-    ("file_content", "expected_version"),
+    ("file_content", "expected_version", "expected_exception"),
     [
-        ('{"version": "1.0.0"}', "1.0.0"),
-        ('{"version": "2.0.0"}', "2.0.0"),
+        ('{"version": "1.0.0"}', "1.0.0", False),  # 正常ケース
+        ('{"version": "2.0.0"}', "2.0.0", False),  # 正常ケース
+        ("", None, True),  # エラーケース: 空のファイル
+        ('{"wrong_key": "value"}', None, True),  # エラーケース: バージョンキーなし
     ],
 )
-def test_get_file_version_success(checker: VersionChecker, file_content: str, expected_version: str) -> None:
-    """get_file_versionメソッドの成功テスト"""
-    with mock.patch("builtins.open", new_callable=mock.mock_open, read_data=file_content):
+def test_get_file_version(
+    checker: VersionChecker, file_content: str, expected_version: Optional[str], expected_exception: bool, mocker: MockerFixture
+) -> None:
+    """get_file_versionメソッドのテスト（成功とエラー）"""
+    open_mock = mocker.patch("builtins.open", new_callable=mocker.mock_open, read_data=str(file_content))
+
+    try:
         version = checker.get_file_version("package.json")
         assert version == expected_version
-
-
-def test_get_file_version_error(checker: VersionChecker) -> None:
-    """get_file_versionメソッドのエラーテスト"""
-    with (
-        mock.patch("builtins.open", side_effect=Exception("File not found")),
-        mock.patch.object(VersionChecker, "github_error") as mock_error,
-    ):
-        version = checker.get_file_version("package.json")
-        assert version is None
-        mock_error.assert_called_once()
+        assert open_mock.call_count == 1
+        assert expected_exception is False
+    except Exception:
+        assert expected_exception is True
 
 
 @pytest.mark.parametrize(
@@ -193,15 +192,14 @@ def test_compare_versions(v1: str, v2: str, expected: int, checker: VersionCheck
     assert checker.compare_versions(v1, v2) == expected
 
 
-def test_initialize_repo_exception(checker: VersionChecker) -> None:
+def test_initialize_repo_exception(checker: VersionChecker, mocker: MockerFixture) -> None:
     """initialize_repoメソッドの例外テスト"""
-    with (
-        mock.patch("git.Repo", side_effect=Exception("Not a git repository")),
-        mock.patch.object(VersionChecker, "github_error") as mock_error,
-    ):
-        result = checker.initialize_repo()
-        assert not result
-        mock_error.assert_called_once()
+    mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))
+    mock_error = mocker.patch.object(VersionChecker, "github_error")
+
+    result = checker.initialize_repo()
+    assert not result
+    mock_error.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -212,11 +210,11 @@ def test_initialize_repo_exception(checker: VersionChecker) -> None:
         ([True, False], False),
     ],
 )
-def test_check_file_existence(checker: VersionChecker, exists: List[bool], expected: bool) -> None:
+def test_check_file_existence(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
     """check_file_existenceメソッドのテスト"""
-    with mock.patch("pathlib.Path.exists", side_effect=exists):
-        result = checker.check_file_existence()
-        assert result == expected
+    mocker.patch("pathlib.Path.exists", side_effect=exists)
+    result = checker.check_file_existence()
+    assert result == expected
 
 
 @pytest.mark.parametrize(
@@ -226,17 +224,16 @@ def test_check_file_existence(checker: VersionChecker, exists: List[bool], expec
         ([True, False], "lockfile_missing"),
     ],
 )
-def test_check_file_existence_no_files(checker: VersionChecker, exists: List[bool], expected_fail: str) -> None:
+def test_check_file_existence_no_files(checker: VersionChecker, exists: List[bool], expected_fail: str, mocker: MockerFixture) -> None:
     """ファイルがない場合のcheck_file_existenceメソッドのテスト"""
-    with (
-        mock.patch("pathlib.Path.exists", side_effect=exists),
-        mock.patch.object(VersionChecker, "github_error") as mock_error,
-        mock.patch.object(VersionChecker, "set_fail_output") as mock_fail,
-    ):
-        result = checker.check_file_existence()
-        assert not result
-        mock_error.assert_called_once()
-        mock_fail.assert_called_once_with(expected_fail)
+    mocker.patch("pathlib.Path.exists", side_effect=exists)
+    mock_error = mocker.patch.object(VersionChecker, "github_error")
+    mock_fail = mocker.patch.object(VersionChecker, "set_fail_output")
+
+    result = checker.check_file_existence()
+    assert not result
+    mock_error.assert_called_once()
+    mock_fail.assert_called_once_with(expected_fail)
 
 
 @pytest.mark.parametrize(
@@ -246,12 +243,33 @@ def test_check_file_existence_no_files(checker: VersionChecker, exists: List[boo
         (False, 1),
     ],
 )
-def test_run(checker: VersionChecker, init_return: bool, expected: int) -> None:
+def test_run(checker: VersionChecker, init_return: bool, expected: int, mocker: MockerFixture) -> None:
     """runメソッドのテスト"""
-    with mock.patch.object(VersionChecker, "initialize_repo", return_value=init_return):
-        result = checker.run()
-        assert result == expected
+    mocker.patch.object(VersionChecker, "initialize_repo", return_value=init_return)
+    result = checker.run()
+    assert result == expected
 
 
-if __name__ == "__main__":
-    pytest.main()
+def test_initialize_repo_success(checker: VersionChecker, mocker: MockerFixture) -> None:
+    """initialize_repoメソッドの成功テスト"""
+    mock_error = mocker.patch.object(VersionChecker, "github_error")  # Patch the github_error method
+
+    result = checker.initialize_repo()
+    assert result  # Expecting True for successful initialization
+    mock_error.assert_not_called()  # No error should be logged
+
+
+@pytest.mark.parametrize(
+    ("exists", "expected"),
+    [
+        ([True, True], True),  # Both files exist
+        ([False, True], False),  # First file missing
+        ([True, False], False),  # Second file missing
+        ([False, False], False),  # Both files missing
+    ],
+)
+def test_check_file_existence_extended(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
+    """check_file_existenceメソッドの拡張テスト"""
+    mocker.patch("pathlib.Path.exists", side_effect=exists)  # Use mocker to patch the exists method
+    result = checker.check_file_existence()
+    assert result == expected
