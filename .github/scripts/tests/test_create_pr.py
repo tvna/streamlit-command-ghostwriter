@@ -7,9 +7,11 @@ create_pr.pyのユニットテスト
 
 import os
 import sys
-import unittest
 from pathlib import Path
-from unittest import mock
+from typing import Optional
+
+import pytest
+from pytest_mock import MockerFixture
 
 # テスト対象モジュールのパスを追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -17,330 +19,347 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from create_pr import PullRequestCreator  # noqa: E402
 
 
-class TestPullRequestCreator(unittest.TestCase):
-    """PullRequestCreatorクラスのテスト"""
+@pytest.fixture
+def creator() -> PullRequestCreator:
+    """PullRequestCreatorのインスタンスを提供するフィクスチャ"""
+    creator_instance = PullRequestCreator()
+    return creator_instance
 
-    def setUp(self: "TestPullRequestCreator") -> None:
-        """テスト環境のセットアップ"""
-        self.creator = PullRequestCreator()
-        # 標準出力をキャプチャするためのパッチャー
-        self.stdout_patcher = mock.patch("sys.stdout")
-        self.mock_stdout = self.stdout_patcher.start()
 
-    def tearDown(self: "TestPullRequestCreator") -> None:
-        """テスト後のクリーンアップ"""
-        self.stdout_patcher.stop()
+@pytest.mark.parametrize(
+    ("method", "test_message", "expected_output"),
+    [
+        ("github_notice", "テスト通知", "::notice::テスト通知\n"),
+        ("github_warning", "テスト警告", "::warning::テスト警告\n"),
+        ("github_error", "テストエラー", "::error::テストエラー\n"),
+    ],
+)
+def test_github_methods(
+    creator: PullRequestCreator, method: str, test_message: str, expected_output: str, capsys: pytest.CaptureFixture
+) -> None:
+    """githubメソッドのテスト"""
+    getattr(creator, method)(test_message)  # メソッドを動的に呼び出す
 
-    @mock.patch("builtins.print")
-    def test_github_notice(self: "TestPullRequestCreator", mock_print: mock.MagicMock) -> None:
-        """github_noticeメソッドのテスト"""
-        test_message = "テスト通知"
-        self.creator.github_notice(test_message)
-        mock_print.assert_called_with(f"::notice::{test_message}")
+    captured = capsys.readouterr()
+    assert captured.out == expected_output
 
-    @mock.patch("builtins.print")
-    def test_github_warning(self: "TestPullRequestCreator", mock_print: mock.MagicMock) -> None:
-        """github_warningメソッドのテスト"""
-        test_message = "テスト警告"
-        self.creator.github_warning(test_message)
-        mock_print.assert_called_with(f"::warning::{test_message}")
 
-    @mock.patch("builtins.print")
-    def test_github_error(self: "TestPullRequestCreator", mock_print: mock.MagicMock) -> None:
-        """github_errorメソッドのテスト"""
-        test_message = "テストエラー"
-        self.creator.github_error(test_message)
-        mock_print.assert_called_with(f"::error::{test_message}")
+@pytest.mark.parametrize(
+    ("env_key", "env_value", "expected_path_call_count", "expected_output"),
+    [
+        pytest.param("GITHUB_OUTPUT", "github_output.txt", 1, ""),
+        pytest.param("GITHUB_OUTPUT", None, 0, "GITHUB_OUTPUT環境変数が設定されていません\n"),
+        pytest.param(None, None, 0, "GITHUB_OUTPUT環境変数が設定されていません\n"),
+    ],
+)
+def test_set_github_output(
+    env_key: Optional[str],
+    env_value: Optional[str],
+    expected_path_call_count: int,
+    expected_output: str,
+    creator: PullRequestCreator,
+    capsys: pytest.CaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    """set_github_outputメソッドのテスト"""
 
-    @mock.patch.dict(os.environ, {"GITHUB_OUTPUT": "github_output.txt"})
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
-    def test_set_github_output(self: "TestPullRequestCreator", mock_open: mock.MagicMock) -> None:
-        """set_github_outputメソッドのテスト"""
-        self.creator.set_github_output("test_name", "test_value")
-        mock_open.assert_called_with("github_output.txt", "a")
-        mock_open().write.assert_called_with("test_name=test_value\n")
+    if env_key is not None and env_value is not None:
+        monkeypatch.setenv(env_key, env_value)
 
-    @mock.patch.dict(os.environ, {})
-    @mock.patch("logging.Logger.warning")
-    def test_set_github_output_no_env(self: "TestPullRequestCreator", mock_warning: mock.MagicMock) -> None:
-        """GITHUB_OUTPUT環境変数がない場合のset_github_outputメソッドのテスト"""
-        self.creator.set_github_output("test_name", "test_value")
-        mock_warning.assert_called_with("GITHUB_OUTPUT環境変数が設定されていません")
+    if env_key is None:
+        mock_path = mocker.patch.object(os.path, "isfile", return_value=False)
+    else:
+        mock_path = mocker.patch.object(os.path, "isfile", return_value=True)
 
-    def test_validate_command_safe(self: "TestPullRequestCreator") -> None:
-        """安全なコマンドのvalidate_commandメソッドのテスト"""
-        # 安全なコマンド
-        assert self.creator.validate_command(["gh", "pr", "create"])
-        assert self.creator.validate_command(["gh", "auth", "status"])
+    creator.set_github_output("test_name", "test_value")
+    captured = capsys.readouterr()
 
-    def test_validate_command_unsafe(self: "TestPullRequestCreator") -> None:
-        """安全でないコマンドのvalidate_commandメソッドのテスト"""
-        # 安全でないコマンド
-        assert not self.creator.validate_command(["rm", "-rf", "/"])
-        assert not self.creator.validate_command(["gh", "pr", "create", "|", "grep"])
-        assert not self.creator.validate_command(["gh", "auth", "status", "&", "rm"])
+    assert mock_path.call_count == expected_path_call_count
+    assert captured.out == expected_output
 
-    @mock.patch.dict(os.environ, {"GH_TOKEN": "dummy_token"})
-    @mock.patch("subprocess.run")
-    @mock.patch.object(PullRequestCreator, "validate_command", return_value=True)
-    def test_run_gh_cmd_success(self: "TestPullRequestCreator", mock_validate: mock.MagicMock, mock_run: mock.MagicMock) -> None:
-        """run_gh_cmdメソッドの成功テスト"""
-        mock_run.return_value.returncode = 0
-        result = self.creator.run_gh_cmd(["pr", "create"])
-        assert result
-        mock_validate.assert_called_once()
-        mock_run.assert_called_once()
 
-    @mock.patch.dict(os.environ, {})
-    @mock.patch.object(PullRequestCreator, "github_error")
-    def test_run_gh_cmd_no_token(self: "TestPullRequestCreator", mock_error: mock.MagicMock) -> None:
-        """GH_TOKENがない場合のrun_gh_cmdメソッドのテスト"""
-        result = self.creator.run_gh_cmd(["pr", "create"])
-        assert not result
-        mock_error.assert_called_once_with("GH_TOKEN環境変数が設定されていません")
+@pytest.mark.parametrize(
+    ("command", "expected_result"),
+    [
+        pytest.param(["gh", "pr", "create"], True, id="gh pr createが有効なコマンドの場合"),
+        pytest.param(["gh", "auth", "status"], True, id="gh auth statusが有効なコマンドの場合"),
+        pytest.param(["rm", "-rf", "/"], False, id="rm -rf /が無効なコマンドの場合"),
+        pytest.param(["gh", "pr", "create", "|", "grep"], False, id="gh pr create | grepが無効なコマンドの場合"),
+        pytest.param(["gh", "auth", "status", "&", "rm"], False, id="gh auth status & rmが無効なコマンドの場合"),
+    ],
+)
+def test_validate_command(command: list, expected_result: bool, creator: PullRequestCreator) -> None:
+    """コマンドのvalidate_commandメソッドのテスト"""
+    result = creator.validate_command(command)
+    assert result == expected_result
 
-    @mock.patch.dict(os.environ, {"GH_TOKEN": "dummy_token"})
-    @mock.patch.object(PullRequestCreator, "validate_command", return_value=False)
-    @mock.patch.object(PullRequestCreator, "github_error")
-    def test_run_gh_cmd_invalid(self: "TestPullRequestCreator", mock_error: mock.MagicMock, mock_validate: mock.MagicMock) -> None:
-        """無効なコマンドでのrun_gh_cmdメソッドのテスト"""
-        result = self.creator.run_gh_cmd(["rm", "-rf", "/"])
-        assert not result
-        mock_validate.assert_called_once()
-        mock_error.assert_called_once()
 
-    @mock.patch.dict(os.environ, {"GH_TOKEN": "dummy_token"})
-    @mock.patch("subprocess.run")
-    @mock.patch.object(PullRequestCreator, "validate_command", return_value=True)
-    def test_run_gh_cmd_failure(self: "TestPullRequestCreator", mock_validate: mock.MagicMock, mock_run: mock.MagicMock) -> None:
-        """実行失敗時のrun_gh_cmdメソッドのテスト"""
-        mock_run.return_value.returncode = 1
-        result = self.creator.run_gh_cmd(["pr", "create"])
-        assert not result
-        mock_validate.assert_called_once()
-        mock_run.assert_called_once()
+@pytest.mark.parametrize(
+    (
+        "command",
+        "env_var",
+        "expected_run_calls",
+        "expected_error_calls",
+        "expected_warning_calls",
+        "expected_notice_calls",
+    ),
+    [
+        (["pr", "create"], "GH_TOKEN", 1, 0, 0, 0),  # 成功ケース
+        (["pr", "create"], None, 0, 1, 0, 0),  # GH_TOKEN未設定
+        (["rm", "-rf", "/"], "GH_TOKEN", 0, 1, 0, 0),  # 無効なコマンド
+        (["pr", "create", "|", "grep"], "GH_TOKEN", 0, 1, 0, 0),  # 危険な文字を含む引数
+    ],
+)
+def test_run_gh_cmd(
+    command: list,
+    env_var: Optional[str],
+    expected_run_calls: int,
+    expected_error_calls: int,
+    expected_warning_calls: int,
+    expected_notice_calls: int,
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+) -> None:
+    """run_gh_cmdメソッドのテストをまとめたもの"""
+    if env_var:
+        mock_env = mocker.patch.dict(os.environ, {env_var: "dummy_token"})
+    else:
+        mock_env = mocker.patch.dict(os.environ, {})
 
-    @mock.patch("git.Repo")
-    def test_get_latest_commit_message_success(self: "TestPullRequestCreator", mock_repo: mock.MagicMock) -> None:
-        """get_latest_commit_messageメソッドの成功テスト"""
-        # モックの設定
-        mock_repo_instance = mock_repo.return_value
-        mock_commit = mock.MagicMock()
-        mock_commit.message = "Test commit message"
-        mock_repo_instance.head.commit = mock_commit
+    mock_error = mocker.patch.object(PullRequestCreator, "github_error")
+    mock_warning = mocker.patch.object(PullRequestCreator, "github_warning")
+    mock_notice = mocker.patch.object(PullRequestCreator, "github_notice")
+    mocker.patch.object(PullRequestCreator, "validate_command", return_value=(command != ["rm", "-rf", "/"]))
 
-        result = self.creator.get_latest_commit_message()
-        assert result == "Test commit message"
-        mock_repo.assert_called_once_with(".")
+    mock_run = mocker.patch("subprocess.run")
+    result = creator.run_gh_cmd(command)
 
-    @mock.patch("git.Repo")
-    @mock.patch.object(PullRequestCreator, "github_warning")
-    def test_get_latest_commit_message_sensitive(
-        self: "TestPullRequestCreator", mock_warning: mock.MagicMock, mock_repo: mock.MagicMock
-    ) -> None:
-        """機密情報を含むget_latest_commit_messageメソッドのテスト"""
-        # モックの設定
-        mock_repo_instance = mock_repo.return_value
-        mock_commit = mock.MagicMock()
+    assert result is False
+    assert mock_env is os.environ
+    assert mock_run.call_count == expected_run_calls
+    assert mock_error.call_count == expected_error_calls
+    assert mock_warning.call_count == expected_warning_calls
+    assert mock_notice.call_count == expected_notice_calls
+
+
+@pytest.mark.parametrize(
+    ("sensitive", "exception", "expected_result", "expected_notice_calls", "expected_warning_calls", "expected_error_calls"),
+    [
+        (False, False, "Test commit message", 0, 0, 0),  # 通常のメッセージ
+        (True, False, "Add token ghp_***", 0, 1, 0),  # 機密情報を含むメッセージ
+        (False, True, "Unable to fetch commit message", 0, 1, 0),  # 例外発生時
+    ],
+)
+def test_get_latest_commit_message(
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+    sensitive: bool,
+    exception: bool,
+    expected_result: str,
+    expected_notice_calls: int,
+    expected_warning_calls: int,
+    expected_error_calls: int,
+) -> None:
+    """get_latest_commit_messageメソッドのテスト"""
+    if exception:
+        mock_repo = mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))
+    else:
+        mock_repo = mocker.patch("git.Repo")
+
+    mock_repo_instance = mock_repo.return_value
+    mock_commit = mocker.MagicMock()
+    mock_notice = mocker.patch.object(PullRequestCreator, "github_notice")
+    mock_warning = mocker.patch.object(PullRequestCreator, "github_warning")
+    mock_error = mocker.patch.object(PullRequestCreator, "github_error")
+
+    if sensitive:
         mock_commit.message = "Add token ghp_abcdef123456"
-        mock_repo_instance.head.commit = mock_commit
+    else:
+        mock_commit.message = "Test commit message"
 
-        result = self.creator.get_latest_commit_message()
-        assert result == "Add token ghp_***"
-        mock_repo.assert_called_once_with(".")
-        mock_warning.assert_called_once()
+    mock_repo_instance.head.commit = mock_commit
 
-    @mock.patch("git.Repo", side_effect=Exception("Not a git repository"))
-    @mock.patch.object(PullRequestCreator, "github_warning")
-    def test_get_latest_commit_message_exception(
-        self: "TestPullRequestCreator", mock_warning: mock.MagicMock, mock_repo: mock.MagicMock
-    ) -> None:
-        """例外発生時のget_latest_commit_messageメソッドのテスト"""
-        result = self.creator.get_latest_commit_message()
-        assert result == "Unable to fetch commit message"
-        mock_repo.assert_called_once_with(".")
-        mock_warning.assert_called_once()
+    result = creator.get_latest_commit_message()
 
-    @mock.patch("git.Repo")
-    def test_get_commit_titles_success(self: "TestPullRequestCreator", mock_repo: mock.MagicMock) -> None:
-        """get_commit_titlesメソッドの成功テスト"""
-        # モックの設定
-        mock_repo_instance = mock_repo.return_value
-        mock_commit1 = mock.MagicMock()
-        mock_commit1.message = "First commit\nDetails here"
-        mock_commit2 = mock.MagicMock()
-        mock_commit2.message = "Second commit\nMore details"
+    assert result == expected_result
+
+    mock_repo.assert_called_once_with(".")
+    if exception:
+        assert mock_notice.call_count == expected_notice_calls
+        assert mock_warning.call_count == expected_warning_calls
+        assert mock_error.call_count == expected_error_calls
+        assert mock_repo_instance.call_count == 0
+        assert mock_commit.call_count == 0
+    else:
+        assert mock_notice.call_count == expected_notice_calls
+        assert mock_warning.call_count == expected_warning_calls
+        assert mock_error.call_count == expected_error_calls
+        assert mock_repo_instance.call_count == 0
+        assert mock_commit.call_count == 0
+
+
+@pytest.mark.parametrize(
+    ("mock_commit_messages", "expected_result", "fetch_exception"),
+    [
+        (["First commit\nDetails here", "Second commit\nMore details"], ["- First commit", "- Second commit"], False),
+        ([], ["Unable to fetch commit titles"], True),  # Fetch exception case
+    ],
+)
+def test_get_commit_titles(
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+    mock_commit_messages: list,
+    expected_result: list,
+    fetch_exception: bool,
+) -> None:
+    """get_commit_titlesメソッドのテスト"""
+    mock_repo = mocker.patch("git.Repo")
+    mock_repo_instance = mock_repo.return_value
+
+    if fetch_exception:
+        mock_repo_instance.git.fetch.side_effect = Exception("Fetch failed")
+    else:
+        mock_commit1 = mocker.MagicMock()
+        mock_commit1.message = mock_commit_messages[0]
+        mock_commit2 = mocker.MagicMock()
+        mock_commit2.message = mock_commit_messages[1]
         mock_repo_instance.iter_commits.return_value = [mock_commit1, mock_commit2]
 
-        result = self.creator.get_commit_titles()
-        assert result == ["- First commit", "- Second commit"]
-        mock_repo.assert_called_once_with(".")
+    result = creator.get_commit_titles()
+    assert result == expected_result
+
+    mock_repo.assert_called_once_with(".")
+    if not fetch_exception:
         mock_repo_instance.git.fetch.assert_called_once_with("origin", "main:main")
         mock_repo_instance.iter_commits.assert_called_once_with("main..develop", max_count=10)
-
-    @mock.patch("git.Repo")
-    @mock.patch.object(PullRequestCreator, "github_warning")
-    def test_get_commit_titles_fetch_exception(
-        self: "TestPullRequestCreator", mock_warning: mock.MagicMock, mock_repo: mock.MagicMock
-    ) -> None:
-        """フェッチ例外時のget_commit_titlesメソッドのテスト"""
-        # モックの設定
-        mock_repo_instance = mock_repo.return_value
-        mock_repo_instance.git.fetch.side_effect = Exception("Fetch failed")
-
-        result = self.creator.get_commit_titles()
-        assert result == ["Unable to fetch commit titles"]
-        mock_repo.assert_called_once_with(".")
+    else:
         mock_repo_instance.git.fetch.assert_called_once_with("origin", "main:main")
-        mock_warning.assert_called_once()
 
-    @mock.patch("git.Repo", side_effect=Exception("Git error"))
-    @mock.patch.object(PullRequestCreator, "github_warning")
-    def test_get_commit_titles_git_exception(
-        self: "TestPullRequestCreator", mock_warning: mock.MagicMock, mock_repo: mock.MagicMock
-    ) -> None:
-        """Git例外時のget_commit_titlesメソッドのテスト"""
-        result = self.creator.get_commit_titles()
-        assert result == ["Unable to fetch commit titles"]
-        mock_repo.assert_called_once_with(".")
-        mock_warning.assert_called_once()
 
-    @mock.patch.dict(os.environ, {"GH_TOKEN": "dummy_token"})
-    @mock.patch.object(PullRequestCreator, "run_gh_cmd", return_value=True)
-    def test_create_pr_success(self: "TestPullRequestCreator", mock_run_gh_cmd: mock.MagicMock) -> None:
-        """create_prメソッドの成功テスト"""
-        result = self.creator.create_pr("Test PR", "PR body", ["bug", "enhancement"])
-        assert result
-        expected_args = [
-            "pr",
-            "create",
-            "--base",
-            "main",
-            "--head",
-            "develop",
-            "--title",
-            "Test PR",
-            "--body",
-            "PR body",
-            "--label",
-            "bug,enhancement",
-        ]
-        mock_run_gh_cmd.assert_called_once_with(expected_args)
+@pytest.mark.parametrize(
+    ("labels", "expected_args"),
+    [
+        (
+            ["bug", "enhancement"],
+            [
+                "pr",
+                "create",
+                "--base",
+                "main",
+                "--head",
+                "develop",
+                "--title",
+                "Test PR",
+                "--body",
+                "PR body",
+                "--label",
+                "bug,enhancement",
+            ],
+        ),
+        (
+            [],
+            [
+                "pr",
+                "create",
+                "--base",
+                "main",
+                "--head",
+                "develop",
+                "--title",
+                "Test PR",
+                "--body",
+                "PR body",
+            ],
+        ),
+    ],
+)
+def test_create_pr(creator: PullRequestCreator, mocker: MockerFixture, labels: list, expected_args: list) -> None:
+    """create_prメソッドのテスト"""
+    mock_env = mocker.patch.dict(os.environ, {"GH_TOKEN": "dummy_token"})
+    mock_run_gh_cmd = mocker.patch.object(PullRequestCreator, "run_gh_cmd", return_value=True)
 
-    @mock.patch.dict(os.environ, {"GH_TOKEN": "dummy_token"})
-    @mock.patch.object(PullRequestCreator, "run_gh_cmd", return_value=True)
-    def test_create_pr_no_labels(self: "TestPullRequestCreator", mock_run_gh_cmd: mock.MagicMock) -> None:
-        """ラベルなしのcreate_prメソッドのテスト"""
-        result = self.creator.create_pr("Test PR", "PR body", [])
-        assert result
-        expected_args = ["pr", "create", "--base", "main", "--head", "develop", "--title", "Test PR", "--body", "PR body"]
-        mock_run_gh_cmd.assert_called_once_with(expected_args)
+    result = creator.create_pr("Test PR", "PR body", labels)
+    assert result
+    assert mock_env is os.environ
+    mock_run_gh_cmd.assert_called_once_with(expected_args)
 
-    @mock.patch.dict(os.environ, {"NEW_VERSION": "1.0.0", "OLD_VERSION": "0.9.0"})
-    def test_get_version_info_success(self: "TestPullRequestCreator") -> None:
-        """get_version_infoメソッドの成功テスト"""
-        result = self.creator.get_version_info()
-        assert result
-        assert self.creator.new_version == "1.0.0"
-        assert self.creator.old_version == "0.9.0"
 
-    @mock.patch.dict(os.environ, {"NEW_VERSION": "", "OLD_VERSION": "0.9.0"})
-    @mock.patch.object(PullRequestCreator, "github_error")
-    def test_get_version_info_missing_new(self: "TestPullRequestCreator", mock_error: mock.MagicMock) -> None:
-        """新バージョンがない場合のget_version_infoメソッドのテスト"""
-        result = self.creator.get_version_info()
-        assert not result
-        mock_error.assert_called_once()
+@pytest.mark.parametrize(
+    ("env_vars", "expected_result", "expected_calls"),
+    [
+        ({"NEW_VERSION": "1.0.0", "OLD_VERSION": "0.9.0"}, True, 0),  # 成功ケース
+        ({"NEW_VERSION": "", "OLD_VERSION": "0.9.0"}, False, 1),  # 新バージョンがない場合
+        ({"NEW_VERSION": "1.0.0", "OLD_VERSION": ""}, False, 1),  # 旧バージョンがない場合
+    ],
+)
+def test_get_version_info(
+    creator: PullRequestCreator, mocker: MockerFixture, env_vars: dict, expected_result: bool, expected_calls: int
+) -> None:
+    """get_version_infoメソッドのテスト"""
+    mocker.patch.dict(os.environ, env_vars)
+    mock_error = mocker.patch.object(PullRequestCreator, "github_error")
 
-    @mock.patch.dict(os.environ, {"NEW_VERSION": "1.0.0", "OLD_VERSION": ""})
-    @mock.patch.object(PullRequestCreator, "github_error")
-    def test_get_version_info_missing_old(self: "TestPullRequestCreator", mock_error: mock.MagicMock) -> None:
-        """旧バージョンがない場合のget_version_infoメソッドのテスト"""
-        result = self.creator.get_version_info()
-        assert not result
-        mock_error.assert_called_once()
+    result = creator.get_version_info()
+    assert result == expected_result
+    assert mock_error.call_count == expected_calls
 
-    @mock.patch.object(PullRequestCreator, "get_latest_commit_message", return_value="Test commit")
-    @mock.patch.object(PullRequestCreator, "get_commit_titles", return_value=["- Commit 1", "- Commit 2"])
-    def test_prepare_pr_content(self: "TestPullRequestCreator", mock_titles: mock.MagicMock, mock_message: mock.MagicMock) -> None:
-        """prepare_pr_contentメソッドのテスト"""
-        self.creator.new_version = "1.0.0"
-        self.creator.old_version = "0.9.0"
+    if expected_result:
+        assert creator.new_version == "1.0.0"
+        assert creator.old_version == "0.9.0"
+    else:
+        if env_vars["NEW_VERSION"] == "":
+            assert creator.new_version == ""
+            assert creator.old_version == "0.9.0"
+        else:
+            assert creator.new_version == "1.0.0"
+            assert creator.old_version == ""
 
-        title, body, labels = self.creator.prepare_pr_content()
 
-        assert title == "Release v1.0.0"
-        assert "develop から main へのバージョン 1.0.0 の自動 PR" in body
-        assert "v0.9.0 から v1.0.0 に更新された" in body
-        assert "Test commit" in body
-        assert "- Commit 1" in body
-        assert "- Commit 2" in body
-        assert labels == ["automated-pr", "release"]
-        mock_message.assert_called_once()
-        mock_titles.assert_called_once_with(50)
+def test_prepare_pr_content(creator: PullRequestCreator, mocker: MockerFixture) -> None:
+    """prepare_pr_contentメソッドのテスト"""
+    creator.new_version = "1.0.0"
+    creator.old_version = "0.9.0"
 
-    @mock.patch.dict(os.environ, {"NEW_VERSION": "1.0.0", "OLD_VERSION": "0.9.0"})
-    @mock.patch.object(PullRequestCreator, "github_notice")
-    @mock.patch.object(PullRequestCreator, "get_version_info", return_value=True)
-    @mock.patch.object(PullRequestCreator, "prepare_pr_content", return_value=("Test Title", "Test Body", ["test-label"]))
-    @mock.patch.object(PullRequestCreator, "create_pr", return_value=True)
-    def test_run_success(
-        self: "TestPullRequestCreator",
-        mock_create_pr: mock.MagicMock,
-        mock_prepare: mock.MagicMock,
-        mock_get_version: mock.MagicMock,
-        mock_notice: mock.MagicMock,
-    ) -> None:
-        """runメソッドの成功テスト"""
-        result = self.creator.run()
-        assert result == 0
-        mock_notice.assert_any_call("PRの作成準備中...")
-        mock_get_version.assert_called_once()
-        mock_prepare.assert_called_once()
+    mocker.patch.object(PullRequestCreator, "get_latest_commit_message", return_value="Test commit")
+    mocker.patch.object(PullRequestCreator, "get_commit_titles", return_value=["- Commit 1", "- Commit 2"])
+
+    title, body, labels = creator.prepare_pr_content()
+
+    assert title == "Release v1.0.0"
+    assert "develop から main へのバージョン 1.0.0 の自動 PR" in body
+    assert "v0.9.0 から v1.0.0 に更新された" in body
+    assert "Test commit" in body
+    assert "- Commit 1" in body
+    assert "- Commit 2" in body
+    assert labels == ["automated-pr", "release"]
+
+
+@pytest.mark.parametrize(
+    ("new_version", "old_version", "expected_result", "expected_calls"),
+    [
+        ("1.0.0", "0.9.0", 0, ["PRの作成準備中...", "PRを作成中...", "PRが作成されました"]),
+        ("", "", 1, ["PRの作成準備中..."]),
+    ],
+)
+def test_run(
+    creator: PullRequestCreator, mocker: MockerFixture, new_version: str, old_version: str, expected_result: int, expected_calls: list
+) -> None:
+    """runメソッドの成功およびバージョン情報エラー時のテスト"""
+    mocker.patch.dict(os.environ, {"NEW_VERSION": new_version, "OLD_VERSION": old_version})
+
+    if expected_result == 0:
+        mocker.patch.object(PullRequestCreator, "github_notice")
+        mocker.patch.object(PullRequestCreator, "get_version_info", return_value=True)
+        mocker.patch.object(PullRequestCreator, "prepare_pr_content", return_value=("Test Title", "Test Body", ["test-label"]))
+        mock_create_pr = mocker.patch.object(PullRequestCreator, "create_pr", return_value=True)
+
+        result = creator.run()
+        assert result == expected_result
         mock_create_pr.assert_called_once_with("Test Title", "Test Body", ["test-label"])
-        mock_notice.assert_any_call("PRを作成中...")
-        mock_notice.assert_any_call("PRが作成されました")
+    else:
+        mocker.patch.object(PullRequestCreator, "github_notice")
+        mocker.patch.object(PullRequestCreator, "get_version_info", return_value=False)
 
-    @mock.patch.dict(os.environ, {"NEW_VERSION": "", "OLD_VERSION": ""})
-    @mock.patch.object(PullRequestCreator, "github_notice")
-    @mock.patch.object(PullRequestCreator, "get_version_info", return_value=False)
-    def test_run_version_error(self: "TestPullRequestCreator", mock_get_version: mock.MagicMock, mock_notice: mock.MagicMock) -> None:
-        """バージョン情報エラー時のrunメソッドのテスト"""
-        result = self.creator.run()
-        assert result == 1
-        mock_notice.assert_called_once_with("PRの作成準備中...")
-        mock_get_version.assert_called_once()
-
-    @mock.patch.dict(os.environ, {"NEW_VERSION": "1.0.0", "OLD_VERSION": "0.9.0"})
-    @mock.patch.object(PullRequestCreator, "github_notice")
-    @mock.patch.object(PullRequestCreator, "get_version_info", return_value=True)
-    @mock.patch.object(PullRequestCreator, "prepare_pr_content", return_value=("Test Title", "Test Body", ["test-label"]))
-    @mock.patch.object(PullRequestCreator, "create_pr", return_value=False)
-    @mock.patch.object(PullRequestCreator, "github_error")
-    def test_run_pr_creation_error(
-        self: "TestPullRequestCreator",
-        mock_error: mock.MagicMock,
-        mock_create_pr: mock.MagicMock,
-        mock_prepare: mock.MagicMock,
-        mock_get_version: mock.MagicMock,
-        mock_notice: mock.MagicMock,
-    ) -> None:
-        """PR作成エラー時のrunメソッドのテスト"""
-        result = self.creator.run()
-        assert result == 1
-        mock_create_pr.assert_called_once_with("Test Title", "Test Body", ["test-label"])
-        mock_error.assert_called_once_with("PRの作成に失敗しました")
-
-    @mock.patch.dict(os.environ, {"NEW_VERSION": "1.0.0", "OLD_VERSION": "0.9.0"})
-    @mock.patch.object(PullRequestCreator, "github_notice", side_effect=Exception("Unexpected error"))
-    @mock.patch.object(PullRequestCreator, "github_error")
-    def test_run_exception(self: "TestPullRequestCreator", mock_error: mock.MagicMock, mock_notice: mock.MagicMock) -> None:
-        """例外発生時のrunメソッドのテスト"""
-        result = self.creator.run()
-        assert result == 1
-        mock_notice.assert_called_once_with("PRの作成準備中...")
-        mock_error.assert_called_once()
-
-
-if __name__ == "__main__":
-    unittest.main()
+        result = creator.run()
+        assert result == expected_result

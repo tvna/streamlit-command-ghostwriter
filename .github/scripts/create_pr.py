@@ -47,16 +47,22 @@ class PullRequestCreator:
     def set_github_output(self: "PullRequestCreator", name: str, value: str) -> None:
         """GitHub Actionsの出力変数を設定"""
         github_output = os.environ.get("GITHUB_OUTPUT")
-        if github_output:
-            with open(github_output, "a") as f:
-                f.write(f"{name}={value}\n")
-        else:
+
+        if not github_output:
+            print("GITHUB_OUTPUT環境変数が設定されていません")
             logger.warning("GITHUB_OUTPUT環境変数が設定されていません")
+            return
+
+        if not os.path.isfile(github_output):
+            print(f"指定されたファイルが見つかりません: {github_output}")
+            logger.error(f"指定されたファイルが見つかりません: {github_output}")
+            return
+
+        with open(github_output, "a") as f:
+            f.write(f"{name}={value}\n")
 
     def validate_command(self: "PullRequestCreator", cmd: List[str]) -> bool:
         """コマンドが安全なものであるか確認"""
-        if not cmd or not isinstance(cmd[0], str):
-            return False
 
         # コマンドの先頭部分（実行ファイル名）のみを検証
         executable = cmd[0]
@@ -69,9 +75,11 @@ class PullRequestCreator:
         if is_safe and len(cmd) > 1:
             for arg in cmd[1:]:
                 if not isinstance(arg, str):
+                    logger.error(f"無効な引数が含まれています: {arg}")
                     return False
                 # シェル特殊文字を含む引数は拒否
                 if any(c in arg for c in ["|", "&", ";", "$", ">", "<", "`", "\\"]):
+                    logger.error(f"危険な文字を含む引数が指定されました: {arg}")
                     return False
 
         return is_safe
@@ -79,6 +87,12 @@ class PullRequestCreator:
     def run_gh_cmd(self: "PullRequestCreator", args: List[str]) -> bool:
         """GitHub CLIコマンドを実行"""
         cmd = ["gh"] + args
+
+        # コマンドの引数に危険な文字が含まれているか確認
+        for arg in args:
+            if any(c in arg for c in ["|", "&", ";", "$", ">", "<", "`", "\\"]):
+                self.github_error(f"危険な文字を含む引数が指定されました: {arg}")
+                return False
 
         # GH_TOKENが環境変数に設定されているか確認
         if "GH_TOKEN" not in os.environ:
@@ -91,16 +105,14 @@ class PullRequestCreator:
             return False
 
         try:
-            # subprocess.runを使用してより安全に実行
-            # S603を無視: 事前にvalidate_commandでコマンドの安全性を確認済み
             result = subprocess.run(  # noqa: S603
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 env=os.environ,
-                shell=False,  # シェルインジェクション防止
-                check=False,  # エラー時に例外を発生させない
+                shell=False,
+                check=False,
             )
             return result.returncode == 0
         except Exception as e:
@@ -129,6 +141,10 @@ class PullRequestCreator:
 
     def get_commit_titles(self: "PullRequestCreator", max_commits: int = 10) -> List[str]:
         """main..developの範囲のコミット件名リストを取得"""
+        if not isinstance(max_commits, int) or max_commits < 0:
+            self.github_error("max_commitsは0以上の整数である必要があります")
+            return []
+
         try:
             repo = git.Repo(".")
 
@@ -156,13 +172,15 @@ class PullRequestCreator:
 
     def create_pr(self: "PullRequestCreator", title: str, body: str, labels: List[str]) -> bool:
         """PRを作成して成功・失敗を返す"""
+        if not isinstance(title, str) or not isinstance(body, str) or not isinstance(labels, list):
+            self.github_error("引数は正しい型である必要があります: titleとbodyは文字列、labelsはリスト")
+            return False
+
         args = ["pr", "create", "--base", "main", "--head", "develop", "--title", title, "--body", body]
 
-        # ラベルがある場合は追加
         if labels:
             args.extend(["--label", ",".join(labels)])
 
-        # コマンド実行
         return self.run_gh_cmd(args)
 
     def get_version_info(self: "PullRequestCreator") -> bool:

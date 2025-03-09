@@ -101,6 +101,7 @@ lint.per-file-ignores.".github/scripts/tests/*" = [
   "S101",
   "S102",
   "S103",
+  "S105",
 ]
 lint.per-file-ignores."tests/*" = [
   "S101",
