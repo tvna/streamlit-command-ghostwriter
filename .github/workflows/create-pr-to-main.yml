@@ -50,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install packaging gitpython semver
+          pip install packaging gitpython semver mock pytest pytest-cov
 
       - name: Check version change
         id: check-version
