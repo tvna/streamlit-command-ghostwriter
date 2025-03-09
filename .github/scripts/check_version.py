@@ -30,34 +30,65 @@ class VersionChecker:
     """バージョンチェッカークラス"""
 
     def __init__(self: "VersionChecker") -> None:
+        """初期化メソッド。
+
+        Attributes:
+            repo: Gitリポジトリのインスタンス。
+            _new_version: 新しいバージョンの情報。
+        """
         self.repo = None
-        self._new_version: Optional[str] = None  # 変更
+        self._new_version: Optional[str] = None
 
     @property
-    def new_version(self: "VersionChecker") -> Optional[str]:  # 変更
-        """バージョン情報を取得"""
-        return self._new_version  # 変更
+    def new_version(self: "VersionChecker") -> Optional[str]:
+        """新しいバージョンを取得するプロパティ。
+
+        Returns:
+            新しいバージョンの文字列。
+        """
+        return self._new_version
 
     @new_version.setter
-    def new_version(self: "VersionChecker", value: str) -> None:  # 変更
-        """バージョン情報を設定し、ファイル入力処理をスキップ"""
-        self._new_version = value  # 変更
+    def new_version(self: "VersionChecker", value: str) -> None:
+        """新しいバージョンを設定するプロパティ。
+
+        Args:
+            value: 新しいバージョンの文字列。
+        """
+        self._new_version = value
 
     # GitHub Actions用ログコマンド
     def github_notice(self: "VersionChecker", message: str) -> None:
-        """GitHub Actionsに通知メッセージを出力"""
+        """GitHub Actionsに通知メッセージを出力。
+
+        Args:
+            message: 通知メッセージの文字列。
+        """
         print(f"::notice::{message}")
 
     def github_warning(self: "VersionChecker", message: str) -> None:
-        """GitHub Actionsに警告メッセージを出力"""
+        """GitHub Actionsに警告メッセージを出力。
+
+        Args:
+            message: 警告メッセージの文字列。
+        """
         print(f"::warning::{message}")
 
     def github_error(self: "VersionChecker", message: str) -> None:
-        """GitHub Actionsにエラーメッセージを出力"""
+        """GitHub Actionsにエラーメッセージを出力。
+
+        Args:
+            message: エラーメッセージの文字列。
+        """
         print(f"::error::{message}")
 
     def set_github_output(self: "VersionChecker", name: str, value: str) -> None:
-        """GitHub Actionsの出力変数を設定"""
+        """GitHub Actionsの出力変数を設定。
+
+        Args:
+            name: 出力変数の名前。
+            value: 出力変数の値。
+        """
         github_output = os.environ.get("GITHUB_OUTPUT")
         if github_output:
             with open(github_output, "a") as f:
@@ -66,7 +97,12 @@ class VersionChecker:
             logger.warning("GITHUB_OUTPUT環境変数が設定されていません")
 
     def set_fail_output(self: "VersionChecker", reason: str, **kwargs: str) -> None:
-        """失敗時の出力を設定"""
+        """失敗時の出力を設定。
+
+        Args:
+            reason: 失敗の理由。
+            **kwargs: その他の出力変数。
+        """
         self.set_github_output("status", "failure")
         self.set_github_output("message", reason)
         self.set_github_output("version_changed", "false")
@@ -75,7 +111,12 @@ class VersionChecker:
             self.set_github_output(key, value)
 
     def set_success_output(self: "VersionChecker", new_version: str = "", old_version: str = "") -> None:
-        """成功時の出力を設定"""
+        """成功時の出力を設定。
+
+        Args:
+            new_version: 新しいバージョンの文字列。
+            old_version: 古いバージョンの文字列。
+        """
         self.set_github_output("status", "success")
         self.set_github_output("version_changed", "true")
         if new_version:
@@ -147,7 +188,15 @@ class VersionChecker:
         return bool(re.match(pattern, version_str))
 
     def get_latest_commit_for_file(self: "VersionChecker", repo: git.Repo, file_path: str) -> Optional[git.Commit]:
-        """ファイルを変更した最新のコミットを取得"""
+        """ファイルを変更した最新のコミットを取得。
+
+        Args:
+            repo: Gitリポジトリのインスタンス。
+            file_path: 対象ファイルのパス。
+
+        Returns:
+            最新のコミットオブジェクト、またはコミットが存在しない場合はNone。
+        """
         try:
             commits = list(repo.iter_commits(paths=file_path, max_count=1))
             return commits[0] if commits else None
@@ -156,11 +205,27 @@ class VersionChecker:
             return None
 
     def get_commit_time(self: "VersionChecker", commit: git.Commit) -> int:
-        """コミットのUNIXタイムスタンプを取得"""
+        """コミットのUNIXタイムスタンプを取得。
+
+        Args:
+            commit: コミットオブジェクト。
+
+        Returns:
+            コミットのUNIXタイムスタンプ。
+        """
         return commit.committed_date
 
     def get_previous_version(self: "VersionChecker", repo: git.Repo, commit: git.Commit, file_path: str) -> Optional[str]:
-        """指定コミットの一つ前のバージョンを取得"""
+        """指定コミットの一つ前のバージョンを取得。
+
+        Args:
+            repo: Gitリポジトリのインスタンス。
+            commit: 対象コミットオブジェクト。
+            file_path: 対象ファイルのパス。
+
+        Returns:
+            前のバージョンの文字列、または取得に失敗した場合はNone。
+        """
         try:
             parent = commit.parents[0]
             blob = parent.tree / file_path
@@ -172,7 +237,14 @@ class VersionChecker:
             return None
 
     def get_version_tags(self: "VersionChecker", repo: git.Repo) -> List[str]:
-        """リポジトリからセマンティックバージョニングに従ったタグを取得"""
+        """リポジトリからセマンティックバージョニングに従ったタグを取得。
+
+        Args:
+            repo: Gitリポジトリのインスタンス。
+
+        Returns:
+            セマンティックバージョニングに従ったタグのリスト。
+        """
         # 最新のタグ情報を取得
         try:
             repo.git.fetch(all=True, tags=True)
@@ -190,19 +262,31 @@ class VersionChecker:
         # タグをバージョン順にソート
         return sorted(version_tags, key=lambda t: version.parse(t[1:] if t.startswith("v") else t))
 
-    def compare_versions(self: "VersionChecker", v1: str, v2: str) -> int:
-        """セマンティックバージョンの比較: v1 > v2 なら1、v1 == v2 なら0、v1 < v2 なら-1"""
-        ver1 = version.parse(v1)
-        ver2 = version.parse(v2)
-        if ver1 > ver2:
+    def compare_versions(self: "VersionChecker", new_version: str, old_version: str) -> int:
+        """セマンティックバージョンの比較。
+
+        Args:
+            new_version: 新しいバージョンの文字列。
+            old_version: 古いバージョンの文字列。
+
+        Returns:
+            new_version > old_version なら1、new_version == old_version なら0、new_version < old_version なら-1。
+        """
+        ver_new = version.parse(new_version)
+        ver_old = version.parse(old_version)
+        if ver_new > ver_old:
             return 1
-        elif ver1 < ver2:
+        elif ver_new < ver_old:
             return -1
         else:
             return 0
 
     def initialize_repo(self: "VersionChecker") -> bool:
-        """リポジトリを初期化"""
+        """リポジトリを初期化。
+
+        Returns:
+            初期化が成功した場合はTrue、失敗した場合はFalse。
+        """
         try:
             self.repo = git.Repo(".")
             return True
@@ -211,7 +295,11 @@ class VersionChecker:
             return False
 
     def check_file_existence(self: "VersionChecker") -> bool:
-        """ファイルの存在確認"""
+        """ファイルの存在確認。
+
+        Returns:
+            ファイルが存在する場合はTrue、存在しない場合はFalse。
+        """
         package_json_path = "package.json"
         package_lock_path = "package-lock.json"
 
@@ -228,8 +316,11 @@ class VersionChecker:
         return True
 
     def check_package_changes(self: "VersionChecker") -> Tuple[bool, Optional[git.Commit]]:
-        """package.jsonの変更確認"""
+        """package.jsonの変更確認。
 
+        Returns:
+            変更があった場合はTrueと最新のコミット、変更がなかった場合はFalseとNone。
+        """
         if self.repo is None:
             self.github_error("リポジトリが初期化されていません")
             self.set_fail_output("repo_not_initialized")
@@ -245,13 +336,18 @@ class VersionChecker:
         return True, pkg_commit
 
     def check_next_gen_versions(self: "VersionChecker") -> Tuple[bool, Optional[str], Optional[str]]:
-        """バージョンの取得と検証"""
+        """バージョンの取得と検証。
+
+        Returns:
+            バージョンが正常であればTrueと新しいバージョン、ロックファイルのバージョン。
+            失敗した場合はFalseとNone。
+        """
         package_json_path = "package.json"
         package_lock_path = "package-lock.json"
 
         # setterが呼ばれた場合、ファイルからのバージョン取得をスキップ
-        if self._new_version is not None:  # 変更
-            new_version = self._new_version  # 変更
+        if self._new_version is not None:
+            new_version = self._new_version
         else:
             # 現在のバージョン取得
             new_version = self.get_file_version(package_json_path)
@@ -281,7 +377,14 @@ class VersionChecker:
         return True, new_version, lock_version
 
     def check_previous_version(self: "VersionChecker", pkg_commit: git.Commit) -> Tuple[bool, Optional[str]]:
-        """前のバージョンを確認"""
+        """前のバージョンを確認。
+
+        Args:
+            pkg_commit: 対象のコミットオブジェクト。
+
+        Returns:
+            バージョンが正常であればTrueと前のバージョン、失敗した場合はFalseとNone。
+        """
         package_json_path = "package.json"
         new_version = self.get_file_version(package_json_path)
 
@@ -317,8 +420,14 @@ class VersionChecker:
         return True, previous_version
 
     def check_version_tags(self: "VersionChecker", new_version: str) -> bool:
-        """バージョンタグの確認"""
+        """バージョンタグの確認。
 
+        Args:
+            new_version: 新しいバージョンの文字列。
+
+        Returns:
+            バージョンタグが正常であればTrue、そうでなければFalse。
+        """
         if self.repo is None:
             self.github_error("リポジトリが初期化されていません")
             self.set_fail_output("repo_not_initialized")
@@ -339,7 +448,11 @@ class VersionChecker:
         return True
 
     def run(self: "VersionChecker") -> int:
-        """メイン処理を実行"""
+        """メイン処理を実行。
+
+        Returns:
+            処理が成功した場合は0、失敗した場合は1。
+        """
         try:
             # リポジトリ初期化
             if not self.initialize_repo():
