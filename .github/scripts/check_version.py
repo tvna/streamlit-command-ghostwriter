@@ -36,7 +36,7 @@ class VersionChecker:
             repo: Gitリポジトリのインスタンス。
             _npm_new_version: 新しいバージョンの情報。
         """
-        self._git_repo = None
+        self._git_repo: Optional[git.Repo] = None
         self._npm_new_version: Optional[str] = None
         self._npm_lock_version: Optional[str] = None
         self._git_old_version: Optional[str] = None
@@ -332,7 +332,7 @@ class VersionChecker:
             self.github_error(f"リポジトリの初期化に失敗しました: {e}")
             return False
 
-    def validate_npm_versions(self: "VersionChecker") -> bool:
+    def read_npm_versions(self: "VersionChecker") -> bool:
         """npmファイルの存在確認とバージョンの取得と検証。
 
         Returns:
@@ -382,7 +382,7 @@ class VersionChecker:
 
         return True
 
-    def check_package_changes(self: "VersionChecker") -> Tuple[bool, Optional[git.Commit]]:
+    def read_npm_package_changes(self: "VersionChecker") -> Tuple[bool, Optional[git.Commit]]:
         """package.jsonの変更確認。
 
         Returns:
@@ -402,7 +402,7 @@ class VersionChecker:
 
         return True, pkg_commit
 
-    def check_git_old_version(self: "VersionChecker", pkg_commit: git.Commit) -> bool:
+    def compare_npm_and_git_version(self: "VersionChecker", pkg_commit: git.Commit) -> bool:
         """前のバージョンを確認。
 
         Args:
@@ -445,7 +445,7 @@ class VersionChecker:
 
         return True
 
-    def check_git_version_tags(self: "VersionChecker", npm_new_version: str) -> bool:
+    def check_git_version_tags(self: "VersionChecker", repo: git.Repo, npm_new_version: str) -> bool:
         """バージョンタグの確認。
 
         Args:
@@ -454,13 +454,9 @@ class VersionChecker:
         Returns:
             バージョンタグが正常であればTrue、そうでなければFalse。
         """
-        if self._git_repo is None:
-            self.github_error("リポジトリが初期化されていません")
-            self.set_fail_output("repo_not_initialized")
-            return False
 
         # バージョンタグ取得
-        tags = self.get_version_tags(self._git_repo)
+        tags = self.get_version_tags(repo)
         if tags:
             # 最新のバージョンタグと比較
             latest_tag = tags[-1]
@@ -485,18 +481,16 @@ class VersionChecker:
                 return 1
 
             # npmファイルの存在確認とバージョン検証
-            versions_ok = self.validate_npm_versions()
-            if not versions_ok:
+            if not self.read_npm_versions():
                 return 1
 
             # package.jsonの変更確認
-            has_changes, pkg_commit = self.check_package_changes()
+            has_changes, pkg_commit = self.read_npm_package_changes()
             if not has_changes or pkg_commit is None:
                 return 0
 
             # 前のバージョン確認
-            prev_version_ok = self.check_git_old_version(pkg_commit)
-            if not prev_version_ok:
+            if not self.compare_npm_and_git_version(pkg_commit):
                 return 1
 
             if self._npm_new_version is None:
@@ -515,7 +509,7 @@ class VersionChecker:
                 return 1
 
             # バージョンタグ確認
-            if not self.check_git_version_tags(self._npm_new_version):
+            if not self.check_git_version_tags(self._git_repo, self._npm_new_version):
                 return 1
 
             # すべてのチェックが成功したら
