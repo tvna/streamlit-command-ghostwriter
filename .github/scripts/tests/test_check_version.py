@@ -210,10 +210,16 @@ def test_initialize_repo_exception(checker: VersionChecker, mocker: MockerFixtur
         ([True, False], False),
     ],
 )
-def test_check_file_existence(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
-    """check_file_existenceメソッドのテスト"""
+def test_validate_npm_file(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
+    """npmプロジェクトのファイル存在確認メソッドのテスト。
+
+    Args:
+        checker: VersionCheckerのインスタンス。
+        exists: 各ファイルの存在状態を示すブール値のリスト。
+        expected: 期待される結果（TrueまたはFalse）。
+    """
     mocker.patch("pathlib.Path.exists", side_effect=exists)
-    result = checker.check_file_existence()
+    result = checker.validate_npm_file()
     assert result == expected
 
 
@@ -224,13 +230,13 @@ def test_check_file_existence(checker: VersionChecker, exists: List[bool], expec
         ([True, False], "lockfile_missing"),
     ],
 )
-def test_check_file_existence_no_files(checker: VersionChecker, exists: List[bool], expected_fail: str, mocker: MockerFixture) -> None:
-    """ファイルがない場合のcheck_file_existenceメソッドのテスト"""
+def test_validate_npm_file_no_files(checker: VersionChecker, exists: List[bool], expected_fail: str, mocker: MockerFixture) -> None:
+    """ファイルがない場合のvalidate_npm_fileメソッドのテスト"""
     mocker.patch("pathlib.Path.exists", side_effect=exists)
     mock_error = mocker.patch.object(VersionChecker, "github_error")
     mock_fail = mocker.patch.object(VersionChecker, "set_fail_output")
 
-    result = checker.check_file_existence()
+    result = checker.validate_npm_file()
     assert not result
     mock_error.assert_called_once()
     mock_fail.assert_called_once_with(expected_fail)
@@ -268,8 +274,8 @@ def test_initialize_repo_success(checker: VersionChecker, mocker: MockerFixture)
         ([False, False], False),  # Both files missing
     ],
 )
-def test_check_file_existence_extended(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
-    """check_file_existenceメソッドの拡張テスト"""
+def test_validate_npm_file_extended(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
+    """validate_npm_fileメソッドの拡張テスト"""
     mocker.patch("pathlib.Path.exists", side_effect=exists)  # Use mocker to patch the exists method
-    result = checker.check_file_existence()
+    result = checker.validate_npm_file()
     assert result == expected

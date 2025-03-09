@@ -294,11 +294,11 @@ class VersionChecker:
             self.github_error(f"リポジトリの初期化に失敗しました: {e}")
             return False
 
-    def check_file_existence(self: "VersionChecker") -> bool:
-        """ファイルの存在確認。
+    def validate_npm_file(self: "VersionChecker") -> bool:
+        """npmプロジェクトのファイル存在確認。
 
         Returns:
-            ファイルが存在する場合はTrue、存在しない場合はFalse。
+            npmプロジェクトに必要なファイル（package.jsonとpackage-lock.json）が存在する場合はTrue、存在しない場合はFalse。
         """
         package_json_path = "package.json"
         package_lock_path = "package-lock.json"
@@ -459,7 +459,7 @@ class VersionChecker:
                 return 1
 
             # ファイル存在確認
-            if not self.check_file_existence():
+            if not self.validate_npm_file():
                 return 1
 
             # package.jsonの変更確認
