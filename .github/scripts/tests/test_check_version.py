@@ -60,7 +60,7 @@ class TestVersionChecker(unittest.TestCase):
         mock_open().write.assert_called_with("test_name=test_value\n")
 
     @mock.patch.dict(os.environ, {})
-    @mock.patch("logging.Logger.warning")
+    @mock.patch("check_version.logger.warning")
     def test_set_github_output_no_env(self: "TestVersionChecker", mock_warning: mock.MagicMock) -> None:
         """GITHUB_OUTPUT環境変数がない場合のset_github_outputメソッドのテスト"""
         self.checker.set_github_output("test_name", "test_value")
