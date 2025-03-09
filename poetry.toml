@@ -1,2 +1,4 @@
+# poetry config --list
 [virtualenvs]
 in-project = true
+prompt = "(venv) "
