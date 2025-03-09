@@ -98,7 +98,8 @@
 		},
 		"yaml.validate": false,
 		"yaml.schemas": {
-			"https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json": "*.yml"
+			"https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-action.json": [".github/*.yml",".github/*.yaml"],
+			"https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json": [".github/*.yml",".github/*.yaml"]
 		},
 		"yaml.keyOrdering": true,
 		"ruff.lineLength": 140,
