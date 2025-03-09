@@ -192,54 +192,57 @@ def test_compare_versions(v1: str, v2: str, expected: int, checker: VersionCheck
     assert checker.compare_versions(v1, v2) == expected
 
 
-def test_initialize_git_repo_exception(checker: VersionChecker, mocker: MockerFixture) -> None:
-    """initialize_git_repoメソッドの例外テスト"""
-    mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))
-    mock_error = mocker.patch.object(VersionChecker, "github_error")
+@pytest.mark.parametrize(
+    ("init_return", "expected", "should_log_error"),
+    [
+        (True, True, False),  # Successful initialization
+        (False, False, True),  # Failed initialization
+    ],
+)
+def test_initialize_git_repo(
+    checker: VersionChecker, init_return: bool, expected: bool, should_log_error: bool, mocker: MockerFixture
+) -> None:
+    """initialize_git_repoメソッドのテスト（成功と失敗の集約）"""
+    if not init_return:
+        mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))  # Mock failure case
+
+    mock_error = mocker.patch.object(VersionChecker, "github_error")  # Patch the github_error method
 
     result = checker.initialize_git_repo()
-    assert not result
-    mock_error.assert_called_once()
+    assert result == expected  # Check if the result matches the expected value
+
+    if should_log_error:
+        mock_error.assert_called_once()  # Ensure an error was logged
+    else:
+        mock_error.assert_not_called()  # Ensure no error was logged
 
 
 @pytest.mark.parametrize(
     ("exists", "expected"),
     [
-        ([True, True], True),
-        ([False, True], False),
-        ([True, False], False),
+        ([True, True], True),  # Both files exist
+        ([False, True], False),  # First file missing
+        ([True, False], False),  # Second file missing
+        ([False, False], False),  # Both files missing
     ],
 )
-def test_validate_npm_file(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
-    """npmプロジェクトのファイル存在確認メソッドのテスト。
-
-    Args:
-        checker: VersionCheckerのインスタンス。
-        exists: 各ファイルの存在状態を示すブール値のリスト。
-        expected: 期待される結果（TrueまたはFalse）。
-    """
-    mocker.patch("pathlib.Path.exists", side_effect=exists)
-    result = checker.validate_npm_file()
-    assert result == expected
-
-
-@pytest.mark.parametrize(
-    ("exists", "expected_fail"),
-    [
-        ([False, True], "package_missing"),
-        ([True, False], "lockfile_missing"),
-    ],
-)
-def test_validate_npm_file_no_files(checker: VersionChecker, exists: List[bool], expected_fail: str, mocker: MockerFixture) -> None:
-    """ファイルがない場合のvalidate_npm_fileメソッドのテスト"""
-    mocker.patch("pathlib.Path.exists", side_effect=exists)
+def test_validate_and_check_versions(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
+    """validate_and_check_versionsメソッドのテスト"""
+    mocker.patch("pathlib.Path.exists", side_effect=exists)  # Use mocker to patch the exists method
+    mocker.patch.object(checker, "get_file_version", side_effect=["1.0.0", "1.0.0"])  # Mock version retrieval
     mock_error = mocker.patch.object(VersionChecker, "github_error")
     mock_fail = mocker.patch.object(VersionChecker, "set_fail_output")
 
-    result = checker.validate_npm_file()
-    assert not result
-    mock_error.assert_called_once()
-    mock_fail.assert_called_once_with(expected_fail)
+    result, new_version, lock_version = checker.validate_and_check_versions()
+    assert result == expected
+
+    if not expected:
+        if not exists[0]:
+            mock_error.assert_called_once_with("package.json ファイルが見つかりません")
+            mock_fail.assert_called_once_with("package_missing")
+        elif not exists[1]:
+            mock_error.assert_called_once_with("package-lock.json ファイルが見つかりません")
+            mock_fail.assert_called_once_with("lockfile_missing")
 
 
 @pytest.mark.parametrize(
@@ -253,29 +256,4 @@ def test_run(checker: VersionChecker, init_return: bool, expected: int, mocker: 
     """runメソッドのテスト"""
     mocker.patch.object(VersionChecker, "initialize_git_repo", return_value=init_return)
     result = checker.run()
-    assert result == expected
-
-
-def test_initialize_git_repo_success(checker: VersionChecker, mocker: MockerFixture) -> None:
-    """initialize_git_repoメソッドの成功テスト"""
-    mock_error = mocker.patch.object(VersionChecker, "github_error")  # Patch the github_error method
-
-    result = checker.initialize_git_repo()
-    assert result  # Expecting True for successful initialization
-    mock_error.assert_not_called()  # No error should be logged
-
-
-@pytest.mark.parametrize(
-    ("exists", "expected"),
-    [
-        ([True, True], True),  # Both files exist
-        ([False, True], False),  # First file missing
-        ([True, False], False),  # Second file missing
-        ([False, False], False),  # Both files missing
-    ],
-)
-def test_validate_npm_file_extended(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
-    """validate_npm_fileメソッドの拡張テスト"""
-    mocker.patch("pathlib.Path.exists", side_effect=exists)  # Use mocker to patch the exists method
-    result = checker.validate_npm_file()
     assert result == expected

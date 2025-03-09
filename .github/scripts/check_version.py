@@ -294,67 +294,33 @@ class VersionChecker:
             self.github_error(f"リポジトリの初期化に失敗しました: {e}")
             return False
 
-    def validate_npm_file(self: "VersionChecker") -> bool:
-        """npmプロジェクトのファイル存在確認。
+    def validate_and_check_versions(self: "VersionChecker") -> Tuple[bool, Optional[str], Optional[str]]:
+        """npmファイルの存在確認とバージョンの取得と検証。
 
         Returns:
-            npmプロジェクトに必要なファイル（package.jsonとpackage-lock.json）が存在する場合はTrue、存在しない場合はFalse。
-        """
-        package_json_path = "package.json"
-        package_lock_path = "package-lock.json"
-
-        if not Path(package_json_path).exists():
-            self.github_error(f"{package_json_path} ファイルが見つかりません")
-            self.set_fail_output("package_missing")
-            return False
-
-        if not Path(package_lock_path).exists():
-            self.github_error(f"{package_lock_path} ファイルが見つかりません")
-            self.set_fail_output("lockfile_missing")
-            return False
-
-        return True
-
-    def check_package_changes(self: "VersionChecker") -> Tuple[bool, Optional[git.Commit]]:
-        """package.jsonの変更確認。
-
-        Returns:
-            変更があった場合はTrueと最新のコミット、変更がなかった場合はFalseとNone。
-        """
-        if self._git_repo is None:
-            self.github_error("リポジトリが初期化されていません")
-            self.set_fail_output("repo_not_initialized")
-            return False, None
-
-        package_json_path = "package.json"
-        pkg_commit = self.get_latest_git_commit_for_file(self._git_repo, package_json_path)
-        if not pkg_commit:
-            self.github_notice("package.json の変更が見つかりません")
-            self.set_fail_output("no_package_change")
-            return False, None
-
-        return True, pkg_commit
-
-    def check_next_gen_versions(self: "VersionChecker") -> Tuple[bool, Optional[str], Optional[str]]:
-        """バージョンの取得と検証。
-
-        Returns:
-            バージョンが正常であればTrueと新しいバージョン、ロックファイルのバージョン。
+            npmファイルが存在し、バージョンが正常であればTrueと新しいバージョン、ロックファイルのバージョン。
             失敗した場合はFalseとNone。
         """
         package_json_path = "package.json"
         package_lock_path = "package-lock.json"
 
-        # setterが呼ばれた場合、ファイルからのバージョン取得をスキップ
-        if self._new_version is not None:
-            new_version = self._new_version
-        else:
-            # 現在のバージョン取得
-            new_version = self.get_file_version(package_json_path)
-            if not new_version:
-                self.github_error("現在のバージョンの取得に失敗しました")
-                self.set_fail_output("new_version_error")
-                return False, None, None
+        # npmファイルの存在確認
+        if not Path(package_json_path).exists():
+            self.github_error(f"{package_json_path} ファイルが見つかりません")
+            self.set_fail_output("package_missing")
+            return False, None, None
+
+        if not Path(package_lock_path).exists():
+            self.github_error(f"{package_lock_path} ファイルが見つかりません")
+            self.set_fail_output("lockfile_missing")
+            return False, None, None
+
+        # 現在のバージョン取得
+        new_version = self.get_file_version(package_json_path)
+        if not new_version:
+            self.github_error("現在のバージョンの取得に失敗しました")
+            self.set_fail_output("new_version_error")
+            return False, None, None
 
         # package-lock.jsonのバージョン取得
         lock_version = self.get_file_version(package_lock_path)
@@ -375,6 +341,26 @@ class VersionChecker:
             return False, new_version, lock_version
 
         return True, new_version, lock_version
+
+    def check_package_changes(self: "VersionChecker") -> Tuple[bool, Optional[git.Commit]]:
+        """package.jsonの変更確認。
+
+        Returns:
+            変更があった場合はTrueと最新のコミット、変更がなかった場合はFalseとNone。
+        """
+        if self._git_repo is None:
+            self.github_error("リポジトリが初期化されていません")
+            self.set_fail_output("repo_not_initialized")
+            return False, None
+
+        package_json_path = "package.json"
+        pkg_commit = self.get_latest_git_commit_for_file(self._git_repo, package_json_path)
+        if not pkg_commit:
+            self.github_notice("package.json の変更が見つかりません")
+            self.set_fail_output("no_package_change")
+            return False, None
+
+        return True, pkg_commit
 
     def check_previous_version(self: "VersionChecker", pkg_commit: git.Commit) -> Tuple[bool, Optional[str]]:
         """前のバージョンを確認。
@@ -458,24 +444,15 @@ class VersionChecker:
             if not self.initialize_git_repo():
                 return 1
 
-            # ファイル存在確認
-            if not self.validate_npm_file():
+            # npmファイルの存在確認とバージョン検証
+            versions_ok, new_version, lock_version = self.validate_and_check_versions()
+            if not versions_ok:
                 return 1
 
             # package.jsonの変更確認
             has_changes, pkg_commit = self.check_package_changes()
-            if not has_changes:
+            if not has_changes or pkg_commit is None:
                 return 0
-
-            # バージョン検証
-            versions_ok, new_version, lock_version = self.check_next_gen_versions()
-            if not versions_ok:
-                return 1
-
-            if pkg_commit is None:
-                self.github_error("package.jsonの変更が見つかりません")
-                self.set_fail_output("no_package_change")
-                return 1
 
             # 前のバージョン確認
             prev_version_ok, previous_version = self.check_previous_version(pkg_commit)
