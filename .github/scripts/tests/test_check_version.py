@@ -109,27 +109,6 @@ def test_validate_command_combined(checker: VersionChecker, command: List[str], 
     assert checker.validate_command(command) == expected
 
 
-@pytest.mark.parametrize("return_code", [0, 1])
-def test_run_cmd(checker: VersionChecker, return_code: int, mocker: MockerFixture) -> None:
-    """run_cmdメソッドのテスト"""
-    mock_run = mocker.patch("subprocess.run")  # Use mocker to patch subprocess.run
-    mock_run.return_value.returncode = return_code  # Set the return code for the mock
-    mocker.patch.object(VersionChecker, "validate_command", return_value=True)  # Mock validate_command to return True
-
-    # Test with a valid command
-    if return_code == 0:
-        result = checker.run_cmd(["git", "status"])
-        assert result is True
-    else:
-        result = checker.run_cmd(["git", "invalid_command"])
-        assert result is False
-
-    # Test with a command that raises an exception
-    mock_run.side_effect = Exception("Command execution failed")
-    result = checker.run_cmd(["git", "status"])
-    assert result is False
-
-
 @pytest.mark.parametrize(
     ("file_content", "expected_version", "expected_exception"),
     [

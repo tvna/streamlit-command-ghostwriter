@@ -10,7 +10,6 @@ import json
 import logging
 import os
 import re
-import subprocess  # noqa: S404 - セキュリティチェック済みの安全な使用法
 import sys
 from pathlib import Path
 from typing import List, Optional, Tuple, cast
@@ -180,30 +179,6 @@ class VersionChecker:
                     return False
 
         return is_safe
-
-    def run_cmd(self: "VersionChecker", cmd: List[str], cwd: Optional[str] = None) -> bool:
-        """コマンドを実行して結果を返す"""
-        # コマンドの検証
-        if not self.validate_command(cmd):
-            self.github_error(f"安全でないコマンドが指定されました: {cmd[0]}")
-            return False
-
-        try:
-            # subprocess.runを使用してより安全に実行
-            # S603を無視: 事前にvalidate_commandでコマンドの安全性を確認済み
-            result = subprocess.run(  # noqa: S603
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                cwd=cwd,
-                shell=False,  # シェルインジェクション防止
-                check=False,  # エラー時に例外を発生させない
-            )
-            return result.returncode == 0
-        except Exception as e:
-            self.github_error(f"コマンド実行中にエラーが発生しました: {e}")
-            return False
 
     def get_file_version(self: "VersionChecker", file_path: str) -> Optional[str]:
         """JSONファイルからバージョン情報を取得"""
