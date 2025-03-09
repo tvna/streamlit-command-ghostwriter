@@ -40,76 +40,30 @@ jobs:
           # 明示的にトークンを渡す（セキュリティのため）
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Pythonのセットアップ
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install packaging gitpython semver mock pytest pytest-cov
+
       - name: Check version change
         id: check-version
-        # シェルスクリプトを安全モードで実行
-        shell: bash
         run: |
-          set -euo pipefail
-
-          # package.json を変更した最新のコミットハッシュを取得
-          latest_commit=$(git log -1 --pretty=format:"%H" -- package.json || echo "")
-
-          if [ -z "$latest_commit" ]; then
-            echo "::notice::package.json の変更が見つかりません"
-            {
-              echo "version_changed=false"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # ファイルが存在するか確認
-          if [ ! -f "package.json" ]; then
-            echo "::error::package.json ファイルが見つかりません"
-            {
-              echo "version_changed=false"
-            } >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          # 変更前のバージョンを取得
-          if ! old_version=$(git show "$latest_commit^:package.json" | jq -r '.version' 2>/dev/null); then
-            echo "::warning::古いバージョンの取得に失敗しました"
-            {
-              echo "version_changed=false"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # 現在のバージョンを取得
-          if ! current_version=$(jq -r '.version' package.json 2>/dev/null); then
-            echo "::error::現在のバージョンの取得に失敗しました"
-            {
-              echo "version_changed=false"
-            } >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          # バージョン形式の簡易検証（セマンティックバージョニング）
-          if ! [[ $current_version =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
-            echo "::warning::バージョン形式が正しくありません: $current_version"
-          fi
-
-          if [ "$old_version" != "$current_version" ]; then
-            echo "::notice::バージョンが $old_version から $current_version に変更されました"
-            {
-              echo "version_changed=true"
-              echo "new_version=$current_version"
-              echo "old_version=$old_version"
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::バージョンに変更はありません"
-            {
-              echo "version_changed=false"
-            } >> "$GITHUB_OUTPUT"
-          fi
+          python scripts/check_version.py
+        env:
+          GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
 
       - name: Check if PR already exists
         id: check-pr
         if: steps.check-version.outputs.version_changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
         run: |
           set -euo pipefail
 
@@ -191,91 +145,11 @@ jobs:
           steps.check-pr.outputs.exists == '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
+          NEW_VERSION: ${{ steps.check-version.outputs.new_version }}
+          OLD_VERSION: ${{ steps.check-version.outputs.old_version }}
+          GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
         run: |
-          set -euo pipefail
-
-          echo "::notice::PRの作成準備中..."
-
-          # develop ブランチから最新のコミットメッセージを取得
-          if ! commit_msg=$(git log -1 --pretty=%B); then
-            echo "::warning::コミットメッセージの取得に失敗しました"
-            commit_msg="(コミットメッセージを取得できませんでした)"
-          fi
-
-          # 機密情報や個人情報が含まれていないか確認（簡易的）
-          if echo "$commit_msg" | grep -iE '(password|secret|token|key|認証|パスワード)'; then
-            echo "::warning::コミットメッセージに機密情報が含まれている可能性があります"
-            commit_msg="(セキュリティ上の理由でコミットメッセージを省略しました)"
-          fi
-
-          new_version="${{ steps.check-version.outputs.new_version }}"
-          old_version="${{ steps.check-version.outputs.old_version }}"
-
-          # PR タイトルを作成
-          pr_title="Release v$new_version"
-
-          echo "::notice::コミット一覧を取得中..."
-          # main ブランチにまだ取り込まれていないコミットの件名を取得
-          # main ブランチをフェッチ
-          if ! git fetch origin main:main; then
-            echo "::warning::main ブランチのフェッチに失敗しました"
-            commit_titles="(コミット一覧を取得できませんでした)"
-          else
-            # コミット件名のリストを作成（セキュリティのためコミット数に制限）
-            if ! commit_titles=$(git log main..develop --max-count=50 --pretty=format:"- %s"); then
-              echo "::warning::コミット一覧の取得に失敗しました"
-              commit_titles="(コミット一覧を取得できませんでした)"
-            fi
-
-            # コミット数が多すぎる場合は警告
-            commit_count=$(echo "$commit_titles" | wc -l)
-            if [ "$commit_count" -gt 50 ]; then
-              echo "::warning::コミット数が多すぎます: $commit_count 件（最初の50件のみ表示）"
-              commit_titles="$commit_titles\n\n... 及びその他 $((commit_count - 50)) 件のコミット"
-            fi
-          fi
-
-          # PR 本文を作成
-          pr_body="develop から main へのバージョン $new_version の自動 PR
-
-          このPRは以下の理由で自動的に作成されました:
-          1. develop ブランチ上ですべてのテストが合格
-          2. パッケージバージョンが v$old_version から v$new_version に更新された
-
-          コミットメッセージ:
-          \`\`\`
-          $commit_msg
-          \`\`\`
-
-          ## 変更概要
-          このPRには、以下のコミットが含まれています:
-
-          $commit_titles
-
-          ## チェック項目
-          - [x] すべてのテストが合格
-          - [x] コード品質チェックが合格
-          - [x] バージョンが v$new_version に更新されました"
-
-          echo "::notice::PRを作成中..."
-          # PRを作成
-          pr_url=$(gh pr create \
-            --base main \
-            --head develop \
-            --title "$pr_title" \
-            --body "$pr_body" \
-            --label "automated-pr,release" || echo "")
-
-          if [ -z "$pr_url" ]; then
-            echo "::error::PRの作成に失敗しました"
-            exit 1
-          else
-            echo "::notice::PRが作成されました: $pr_url"
-            {
-              echo "pr_url=$pr_url"
-            } >> "$GITHUB_OUTPUT"
-          fi
+          python scripts/create_pr.py
 
       # 結果の通知
       - name: Notify result
@@ -284,7 +158,17 @@ jobs:
           if [[ "${{ steps.create-pr.outcome }}" == "success" && "${{ steps.create-pr.outputs.pr_url }}" != "" ]]; then
             echo "::notice::PR作成成功: ${{ steps.create-pr.outputs.pr_url }}"
           elif [[ "${{ steps.check-version.outputs.version_changed }}" == "false" ]]; then
-            echo "::notice::バージョン変更なし - PRは作成されませんでした"
+            if [[ "${{ steps.check-version.outputs.reason }}" == "lockfile_not_updated" || \
+                  "${{ steps.check-version.outputs.reason }}" == "version_mismatch" || \
+                  "${{ steps.check-version.outputs.reason }}" == "lockfile_outdated" ]]; then
+              echo "::error::package-lock.json の更新が必要です"
+            elif [[ "${{ steps.check-version.outputs.reason }}" == "version_not_newer" ]]; then
+              echo "::error::既存タグ ${{ steps.check-version.outputs.latest_tag }} (バージョン: ${{ steps.check-version.outputs.latest_tag_version }}) と同じかそれより古いバージョンです。より新しいバージョンが必要です。"
+            elif [[ "${{ steps.check-version.outputs.reason }}" == "no_version_change" ]]; then
+              echo "::notice::バージョン変更なし - PRは作成されませんでした"
+            else
+              echo "::notice::理由: ${{ steps.check-version.outputs.reason }} - PRは作成されませんでした"
+            fi
           elif [[ "${{ steps.check-pr.outputs.exists }}" != "0" ]]; then
             echo "::notice::既存のPRが見つかりました - 新規PRは作成されませんでした"
           else

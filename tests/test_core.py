@@ -12,7 +12,7 @@ class MockParser(BaseModel):
     __csv_rows_name: str = PrivateAttr(default="csv_rows")
     __content: Optional[str] = None
     __enable_fill_nan: bool = PrivateAttr(default=False)
-    __fill_nan_with: str = PrivateAttr(default="#")
+    __fill_nan_with: Optional[str] = None
 
     def __init__(self: "MockParser", file: BytesIO) -> None:
         super().__init__()
@@ -43,7 +43,7 @@ class MockParser(BaseModel):
         self.__enable_fill_nan = is_fillna
 
     @property
-    def fill_nan_with(self: "MockParser") -> str:
+    def fill_nan_with(self: "MockParser") -> Optional[str]:
         return self.__fill_nan_with
 
     @fill_nan_with.setter
@@ -148,6 +148,8 @@ def test_mock_parser(
 
     parser = MockParser(config_file)
     assert parser.csv_rows_name == "csv_rows"
+    assert parser.enable_fill_nan is False
+    assert parser.fill_nan_with is None
     assert parser.parse() == is_successful
     assert parser.parsed_dict == expected_dict
     assert parser.parsed_str == expected_text

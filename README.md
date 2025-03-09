@@ -203,7 +203,7 @@ tar -czf {{ file.name }}.tar.gz {{ file.path }}
 
 ## 開発者向けドキュメント
 
-開発に必要なコマンド集は[こちら](docs/COMMANDS.md)を参照してください。
+開発に必要なコマンド集は[こちら](assets/docs/commands.md)を参照してください。
 
 [streamlit-img]: https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white
 [streamlit-cloud-img]: https://static.streamlit.io/badges/streamlit_badge_black_white.svg

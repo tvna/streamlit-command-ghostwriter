@@ -14,7 +14,8 @@
 			"black"
 		],
 		"python.analysis.extraPaths": [
-			"${workspaceFolderBasename}/.venv/*/site-packages"
+			"${workspaceFolderBasename}/.venv/*/site-packages",
+			"${workspaceFolderBasename}/.github/scripts/*"
 		],
 		"cSpell.words": [
 			"breakline",
@@ -96,7 +97,9 @@
 			"editor.defaultFormatter": "esbenp.prettier-vscode"
 		},
 		"yaml.validate": false,
-		"yaml.schemas": {},
+		"yaml.schemas": {
+			"https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json": "*.yml"
+		},
 		"yaml.keyOrdering": true,
 		"ruff.lineLength": 140,
 		"ruff.format.preview": true,

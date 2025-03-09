@@ -30,7 +30,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
+  actionlint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

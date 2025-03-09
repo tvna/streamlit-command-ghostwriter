@@ -144,7 +144,7 @@ jobs:
     permissions:
       contents: read
     env:
-      LIZARD_CCN_COUNT: 10
+      LIZARD_CCN_COUNT: 13
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
