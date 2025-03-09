@@ -40,149 +40,30 @@ jobs:
           # 明示的にトークンを渡す（セキュリティのため）
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Pythonのセットアップ
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install packaging gitpython semver
+
       - name: Check version change
         id: check-version
-        # シェルスクリプトを安全モードで実行
-        shell: bash
         run: |
-          set -euo pipefail
-
-          # package.json と package-lock.json のバージョン整合性チェック
-          function check_package_files {
-            # package.json を変更した最新のコミットハッシュを取得
-            latest_pkg_commit=$(git log -1 --pretty=format:"%H" -- package.json || echo "")
-
-            # package-lock.json を変更した最新のコミットハッシュを取得
-            latest_lock_commit=$(git log -1 --pretty=format:"%H" -- package-lock.json || echo "")
-
-            # package.json が変更されていない場合
-            if [ -z "$latest_pkg_commit" ]; then
-              echo "::notice::package.json の変更が見つかりません"
-              {
-                echo "version_changed=false"
-                echo "reason=no_package_change"
-              } >> "$GITHUB_OUTPUT"
-              return 1
-            fi
-
-            # ファイルの存在チェック
-            if [ ! -f "package.json" ]; then
-              echo "::error::package.json ファイルが見つかりません"
-              {
-                echo "version_changed=false"
-                echo "reason=package_missing"
-              } >> "$GITHUB_OUTPUT"
-              return 1
-            fi
-
-            if [ ! -f "package-lock.json" ]; then
-              echo "::error::package-lock.json ファイルが見つかりません"
-              {
-                echo "version_changed=false"
-                echo "reason=lockfile_missing"
-              } >> "$GITHUB_OUTPUT"
-              return 1
-            fi
-
-            # 変更前のバージョンを取得
-            if ! old_version=$(git show "$latest_pkg_commit^:package.json" | jq -r '.version' 2>/dev/null); then
-              echo "::warning::古いバージョンの取得に失敗しました"
-              {
-                echo "version_changed=false"
-                echo "reason=old_version_error"
-              } >> "$GITHUB_OUTPUT"
-              return 1
-            fi
-
-            # 現在のバージョンを取得
-            if ! current_version=$(jq -r '.version' package.json 2>/dev/null); then
-              echo "::error::現在のバージョンの取得に失敗しました"
-              {
-                echo "version_changed=false"
-                echo "reason=current_version_error"
-              } >> "$GITHUB_OUTPUT"
-              return 1
-            fi
-
-            # package-lock.json のバージョンを取得
-            if ! lock_version=$(jq -r '.version' package-lock.json 2>/dev/null); then
-              echo "::error::package-lock.json のバージョン取得に失敗しました"
-              {
-                echo "version_changed=false"
-                echo "reason=lock_version_error"
-              } >> "$GITHUB_OUTPUT"
-              return 1
-            fi
-
-            # バージョン形式の簡易検証（セマンティックバージョニング）
-            if ! [[ $current_version =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
-              echo "::warning::バージョン形式が正しくありません: $current_version"
-            fi
-
-            # バージョン整合性チェック
-            if [ "$current_version" != "$lock_version" ]; then
-              echo "::error::package.json ($current_version) と package-lock.json ($lock_version) のバージョンが一致していません"
-              echo "::error::package-lock.json の更新が必要です。'npm install' または 'npm ci' を実行してください"
-              {
-                echo "version_changed=false"
-                echo "reason=version_mismatch"
-              } >> "$GITHUB_OUTPUT"
-              return 1
-            fi
-
-            # バージョンが変更されているか確認
-            if [ "$old_version" != "$current_version" ]; then
-              # package-lock.json が最近更新されたかチェック
-              if [ -z "$latest_lock_commit" ]; then
-                echo "::error::package.json のバージョンは変更されていますが、package-lock.json が更新されていません"
-                echo "::error::package-lock.json の更新が必要です。'npm install' または 'npm ci' を実行してください"
-                {
-                  echo "version_changed=false"
-                  echo "reason=lockfile_not_updated"
-                } >> "$GITHUB_OUTPUT"
-                return 1
-              fi
-
-              # package.json 更新後に package-lock.json が更新されたか確認
-              pkg_commit_date=$(git show -s --format=%ct "$latest_pkg_commit")
-              lock_commit_date=$(git show -s --format=%ct "$latest_lock_commit")
-
-              if [ "$lock_commit_date" -lt "$pkg_commit_date" ]; then
-                echo "::error::package.json の更新後に package-lock.json が更新されていません"
-                echo "::error::package-lock.json の更新が必要です。'npm install' または 'npm ci' を実行してください"
-                {
-                  echo "version_changed=false"
-                  echo "reason=lockfile_outdated"
-                } >> "$GITHUB_OUTPUT"
-                return 1
-              fi
-
-              echo "::notice::バージョンが $old_version から $current_version に変更され、package-lock.json も更新されています"
-              {
-                echo "version_changed=true"
-                echo "new_version=$current_version"
-                echo "old_version=$old_version"
-              } >> "$GITHUB_OUTPUT"
-              return 0
-            else
-              echo "::notice::バージョンに変更はありません"
-              {
-                echo "version_changed=false"
-                echo "reason=no_version_change"
-              } >> "$GITHUB_OUTPUT"
-              return 1
-            fi
-          }
-
-          # パッケージファイルのチェックを実行
-          check_package_files
+          python scripts/check_version.py
+        env:
+          GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
 
       - name: Check if PR already exists
         id: check-pr
         if: steps.check-version.outputs.version_changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
         run: |
           set -euo pipefail
 
@@ -264,93 +145,11 @@ jobs:
           steps.check-pr.outputs.exists == '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
+          NEW_VERSION: ${{ steps.check-version.outputs.new_version }}
+          OLD_VERSION: ${{ steps.check-version.outputs.old_version }}
+          GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
         run: |
-          set -euo pipefail
-
-          echo "::notice::PRの作成準備中..."
-
-          # develop ブランチから最新のコミットメッセージを取得
-          if ! commit_msg=$(git log -1 --pretty=%B); then
-            echo "::warning::コミットメッセージの取得に失敗しました"
-            commit_msg="(コミットメッセージを取得できませんでした)"
-          fi
-
-          # 機密情報や個人情報が含まれていないか確認（簡易的）
-          if echo "$commit_msg" | grep -iE '(password|secret|token|key|認証|パスワード)'; then
-            echo "::warning::コミットメッセージに機密情報が含まれている可能性があります"
-            commit_msg="(セキュリティ上の理由でコミットメッセージを省略しました)"
-          fi
-
-          new_version="${{ steps.check-version.outputs.new_version }}"
-          old_version="${{ steps.check-version.outputs.old_version }}"
-
-          # PR タイトルを作成
-          pr_title="Release v$new_version"
-
-          echo "::notice::コミット一覧を取得中..."
-          # main ブランチにまだ取り込まれていないコミットの件名を取得
-          # main ブランチをフェッチ
-          if ! git fetch origin main:main; then
-            echo "::warning::main ブランチのフェッチに失敗しました"
-            commit_titles="(コミット一覧を取得できませんでした)"
-          else
-            # コミット件名のリストを作成（セキュリティのためコミット数に制限）
-            if ! commit_titles=$(git log main..develop --max-count=50 --pretty=format:"- %s"); then
-              echo "::warning::コミット一覧の取得に失敗しました"
-              commit_titles="(コミット一覧を取得できませんでした)"
-            fi
-
-            # コミット数が多すぎる場合は警告
-            commit_count=$(echo "$commit_titles" | wc -l)
-            if [ "$commit_count" -gt 50 ]; then
-              echo "::warning::コミット数が多すぎます: $commit_count 件（最初の50件のみ表示）"
-              commit_titles="$commit_titles\n\n... 及びその他 $((commit_count - 50)) 件のコミット"
-            fi
-          fi
-
-          # PR 本文を作成
-          pr_body="develop から main へのバージョン $new_version の自動 PR
-
-          このPRは以下の理由で自動的に作成されました:
-          1. develop ブランチ上ですべてのテストが合格
-          2. パッケージバージョンが v$old_version から v$new_version に更新された
-          3. package-lock.json も適切に更新されています
-
-          コミットメッセージ:
-          \`\`\`
-          $commit_msg
-          \`\`\`
-
-          ## 変更概要
-          このPRには、以下のコミットが含まれています:
-
-          $commit_titles
-
-          ## チェック項目
-          - [x] すべてのテストが合格
-          - [x] コード品質チェックが合格
-          - [x] バージョンが v$new_version に更新されました
-          - [x] package-lock.json も更新されています"
-
-          echo "::notice::PRを作成中..."
-          # PRを作成
-          pr_url=$(gh pr create \
-            --base main \
-            --head develop \
-            --title "$pr_title" \
-            --body "$pr_body" \
-            --label "automated-pr,release" || echo "")
-
-          if [ -z "$pr_url" ]; then
-            echo "::error::PRの作成に失敗しました"
-            exit 1
-          else
-            echo "::notice::PRが作成されました: $pr_url"
-            {
-              echo "pr_url=$pr_url"
-            } >> "$GITHUB_OUTPUT"
-          fi
+          python scripts/create_pr.py
 
       # 結果の通知
       - name: Notify result
@@ -363,6 +162,8 @@ jobs:
                   "${{ steps.check-version.outputs.reason }}" == "version_mismatch" || \
                   "${{ steps.check-version.outputs.reason }}" == "lockfile_outdated" ]]; then
               echo "::error::package-lock.json の更新が必要です"
+            elif [[ "${{ steps.check-version.outputs.reason }}" == "version_not_newer" ]]; then
+              echo "::error::既存タグ ${{ steps.check-version.outputs.latest_tag }} (バージョン: ${{ steps.check-version.outputs.latest_tag_version }}) と同じかそれより古いバージョンです。より新しいバージョンが必要です。"
             elif [[ "${{ steps.check-version.outputs.reason }}" == "no_version_change" ]]; then
               echo "::notice::バージョン変更なし - PRは作成されませんでした"
             else

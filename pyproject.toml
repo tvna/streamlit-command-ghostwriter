@@ -31,6 +31,9 @@ pydeps = "^1.12.20"
 pytest-playwright = "^0.7.0"
 ruff = "^0.5.7"
 pandas-stubs = "^2.2.2.240603"
+mock = "^5.2.0"
+gitpython = "^3.1.44"
+packaging = "^24.2"
 
 [tool.ruff]
 target-version = "py312"
@@ -86,6 +89,17 @@ lint.select = [
 ]
 lint.ignore = [
 ]
+lint.per-file-ignores.".github/scripts/check_version.py" = [
+  "S603",
+]
+lint.per-file-ignores.".github/scripts/create_pr.py" = [
+  "S603",
+]
+lint.per-file-ignores.".github/scripts/tests/*" = [
+  "S101",
+  "S102",
+  "S103",
+]
 lint.per-file-ignores."tests/*" = [
   "S101",
   "S102",
@@ -103,6 +117,7 @@ lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.pytest.ini_options]
 testpaths = [
   "tests",
+  ".github/scripts/tests",
 ]
 pythonpath = "."
 addopts = [
@@ -119,6 +134,9 @@ exclude = [
   ".venv",
   "build",
   "dist",
+  "assets",
+  "node_modules",
+  "htmlcov",
 ]
 disallow_any_decorated = false
 disallow_any_explicit = false
