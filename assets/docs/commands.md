@@ -5,6 +5,10 @@
 ```bash
 poetry install
 npm install
+
+# pre-commit hooks のインストール
+pre-commit install
+pre-commit install --hook-type commit-msg
 ```
 
 ## 開発コマンド
@@ -19,16 +23,12 @@ poetry run mypy .
 
 # テスト系
 poetry run pytest
-poetry run pytest --cov=. --cov-report=xml
+poetry run pytest --cov=. --cov-report=html
 ```
 
 ## Git 関連
 
 ```bash
-# pre-commit hooks のインストール
-pre-commit install
-pre-commit install --hook-type commit-msg
-
 # pre-commit hooks の手動実行
 pre-commit run --all-files
 
@@ -52,6 +52,7 @@ git tag -d {$TAG_NAME}
 ```bash
 # 依存関係の更新
 poetry update
+npm update
 
 # キャッシュのクリーンアップ
 poetry cache clear . --all
