@@ -23,8 +23,8 @@ jobs:
     permissions:
       contents: read
     if: >-
-      ${{ github.event.workflow_run.conclusion == 'success' }} && # 前のワークフローが成功した場合のみ実行
-      ${{ github.actor == github.repository_owner }}
+      github.event.workflow_run.conclusion == 'success' &&
+      github.actor == github.repository_owner
     steps:
       - uses: actions/checkout@v4
         with:
@@ -70,8 +70,8 @@ jobs:
     env:
       python-version: 3.12
     if: >-
-      ${{ github.event.workflow_run.conclusion == 'success' }} && # 前のワークフローが成功した場合のみ実行
-      ${{ github.actor == github.repository_owner }}
+      github.event.workflow_run.conclusion == 'success' &&
+      github.actor == github.repository_owner
     steps:
       - uses: actions/checkout@v4
         with:
