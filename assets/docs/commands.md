@@ -14,7 +14,7 @@ npm install
 poetry run streamlit run app.py
 
 # リンター&コードフォーマット実行
-poetry run ruff check .--fix
+poetry run ruff check . --fix
 poetry run mypy .
 
 # テスト系
