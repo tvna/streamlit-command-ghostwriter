@@ -1,5 +1,5 @@
 ---
-name: Coverage Workflow
+name: Test Coverage
 
 on:
   workflow_run:
@@ -7,11 +7,8 @@ on:
     types:
       - completed
     branches:
-      - develop
-  pull_request:
-    branches:
-      - develop
       - main
+      - develop
   schedule:
     # UTC 21:00 -> JST 06:00
     - cron: "00 21 * * 6"
@@ -21,13 +18,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  coverage-develop:
+  test-coverage:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      python-version: 3.12
-    if: github.actor == github.repository_owner
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' }} && # 前のワークフローが成功した場合のみ実行
+      github.actor == github.repository_owner
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,7 +69,9 @@ jobs:
       contents: read
     env:
       python-version: 3.12
-    if: github.actor == github.repository_owner
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' }} && # 前のワークフローが成功した場合のみ実行
+      github.actor == github.repository_owner
     steps:
       - uses: actions/checkout@v4
         with:
