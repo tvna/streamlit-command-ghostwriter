@@ -27,25 +27,46 @@ class PullRequestCreator:
     """PRを作成するクラス"""
 
     def __init__(self: "PullRequestCreator") -> None:
-        """初期化"""
+        """初期化メソッド。
+
+        Attributes:
+            new_version: 新しいバージョンの情報。
+            old_version: 古いバージョンの情報。
+        """
         self.new_version = None
         self.old_version = None
 
-    # GitHub Actions用ログコマンド
     def github_notice(self: "PullRequestCreator", message: str) -> None:
-        """GitHub Actionsに通知メッセージを出力"""
+        """GitHub Actionsに通知メッセージを出力。
+
+        Args:
+            message: 通知メッセージの文字列。
+        """
         print(f"::notice::{message}")
 
     def github_warning(self: "PullRequestCreator", message: str) -> None:
-        """GitHub Actionsに警告メッセージを出力"""
+        """GitHub Actionsに警告メッセージを出力。
+
+        Args:
+            message: 警告メッセージの文字列。
+        """
         print(f"::warning::{message}")
 
     def github_error(self: "PullRequestCreator", message: str) -> None:
-        """GitHub Actionsにエラーメッセージを出力"""
+        """GitHub Actionsにエラーメッセージを出力。
+
+        Args:
+            message: エラーメッセージの文字列。
+        """
         print(f"::error::{message}")
 
     def set_github_output(self: "PullRequestCreator", name: str, value: str) -> None:
-        """GitHub Actionsの出力変数を設定"""
+        """GitHub Actionsの出力変数を設定。
+
+        Args:
+            name: 出力変数の名前。
+            value: 出力変数の値。
+        """
         github_output = os.environ.get("GITHUB_OUTPUT")
 
         if not github_output:
@@ -62,8 +83,14 @@ class PullRequestCreator:
             f.write(f"{name}={value}\n")
 
     def validate_command(self: "PullRequestCreator", cmd: List[str]) -> bool:
-        """コマンドが安全なものであるか確認"""
+        """コマンドが安全なものであるか確認。
 
+        Args:
+            cmd: コマンドの引数リスト。
+
+        Returns:
+            コマンドが安全であればTrue、そうでなければFalse。
+        """
         # コマンドの先頭部分（実行ファイル名）のみを検証
         executable = cmd[0]
         base_executable = os.path.basename(executable)
@@ -85,7 +112,14 @@ class PullRequestCreator:
         return is_safe
 
     def run_gh_cmd(self: "PullRequestCreator", args: List[str]) -> bool:
-        """GitHub CLIコマンドを実行"""
+        """GitHub CLIコマンドを実行。
+
+        Args:
+            args: コマンドの引数リスト。
+
+        Returns:
+            コマンドが成功した場合はTrue、失敗した場合はFalse。
+        """
         cmd = ["gh"] + args
 
         # コマンドの引数に危険な文字が含まれているか確認
@@ -120,7 +154,11 @@ class PullRequestCreator:
             return False
 
     def get_latest_commit_message(self: "PullRequestCreator") -> str:
-        """developブランチから最新のコミットメッセージを取得"""
+        """developブランチから最新のコミットメッセージを取得。
+
+        Returns:
+            最新のコミットメッセージの文字列。
+        """
         try:
             repo = git.Repo(".")
             commit = repo.head.commit
@@ -140,7 +178,14 @@ class PullRequestCreator:
             return "Unable to fetch commit message"
 
     def get_commit_titles(self: "PullRequestCreator", max_commits: int = 10) -> List[str]:
-        """main..developの範囲のコミット件名リストを取得"""
+        """main..developの範囲のコミット件名リストを取得。
+
+        Args:
+            max_commits: 取得するコミットの最大数。
+
+        Returns:
+            コミット件名のリスト。
+        """
         if not isinstance(max_commits, int) or max_commits < 0:
             self.github_error("max_commitsは0以上の整数である必要があります")
             return []
@@ -171,7 +216,16 @@ class PullRequestCreator:
             return ["Unable to fetch commit titles"]
 
     def create_pr(self: "PullRequestCreator", title: str, body: str, labels: List[str]) -> bool:
-        """PRを作成して成功・失敗を返す"""
+        """PRを作成して成功・失敗を返す。
+
+        Args:
+            title: PRのタイトル。
+            body: PRの本文。
+            labels: PRに付けるラベルのリスト。
+
+        Returns:
+            PRの作成が成功した場合はTrue、失敗した場合はFalse。
+        """
         if not isinstance(title, str) or not isinstance(body, str) or not isinstance(labels, list):
             self.github_error("引数は正しい型である必要があります: titleとbodyは文字列、labelsはリスト")
             return False
@@ -184,7 +238,11 @@ class PullRequestCreator:
         return self.run_gh_cmd(args)
 
     def get_version_info(self: "PullRequestCreator") -> bool:
-        """バージョン情報の取得"""
+        """バージョン情報の取得。
+
+        Returns:
+            バージョン情報が正常に取得できた場合はTrue、そうでなければFalse。
+        """
         self.new_version = os.environ.get("NEW_VERSION")
         self.old_version = os.environ.get("OLD_VERSION")
 
@@ -195,7 +253,11 @@ class PullRequestCreator:
         return True
 
     def prepare_pr_content(self: "PullRequestCreator") -> Tuple[str, str, List[str]]:
-        """PR内容の準備"""
+        """PR内容の準備。
+
+        Returns:
+            PRのタイトル、本文、ラベルのタプル。
+        """
         # コミットメッセージの取得
         commit_msg = self.get_latest_commit_message()
 
@@ -232,7 +294,11 @@ class PullRequestCreator:
         return pr_title, pr_body, labels
 
     def run(self: "PullRequestCreator") -> int:
-        """メイン処理を実行"""
+        """メイン処理を実行。
+
+        Returns:
+            処理が成功した場合は0、失敗した場合は1。
+        """
         try:
             self.github_notice("PRの作成準備中...")
 
@@ -260,7 +326,11 @@ class PullRequestCreator:
 
 
 def main() -> int:
-    """メイン関数"""
+    """メイン関数。
+
+    Returns:
+        スクリプトの終了コード。
+    """
     creator = PullRequestCreator()
     return creator.run()
 

@@ -13,6 +13,12 @@ class DocumentRender(BaseModel):
     __error_message: Optional[str] = PrivateAttr(default=None)
 
     def __init__(self: "DocumentRender", template_file: BytesIO) -> None:
+        """
+        DocumentRenderの初期化メソッド。
+
+        Args:
+            template_file (BytesIO): テンプレートファイルのバイナリデータ。
+        """
         super().__init__()
 
         try:
@@ -32,14 +38,40 @@ class DocumentRender(BaseModel):
 
     @property
     def is_valid_template(self: "DocumentRender") -> bool:
+        """
+        テンプレートが有効かどうかを示すプロパティ。
+
+        Returns:
+            bool: テンプレートが有効であればTrue、無効であればFalse。
+        """
         return self.__is_valid_template
 
     def __remove_whitespaces(self: "DocumentRender", source_text: str) -> str:
+        """
+        空白行を削除します。
+
+        Args:
+            source_text (str): 空白を削除するテキスト。
+
+        Returns:
+            str: 空白行が削除されたテキスト。
+        """
         return re.sub(r"^\s+$\n", "\n", source_text, flags=re.MULTILINE)
 
     def __format_context(self: "DocumentRender", source_text: str, format_type: int) -> str:
-        """Format the context according to the formatting level."""
+        """
+        フォーマットレベルに応じてコンテキストをフォーマットします。
 
+        Args:
+            source_text (str): フォーマットするテキスト。
+            format_type (int): フォーマットの種類を示す整数。
+
+        Returns:
+            str: フォーマットされたテキスト。
+
+        Raises:
+            ValueError: 無効なフォーマットタイプが指定された場合。
+        """
         match format_type:
             case 0:
                 # raw text
@@ -62,6 +94,17 @@ class DocumentRender(BaseModel):
         raise ValueError
 
     def apply_context(self: "DocumentRender", context: Dict[str, Any], format_type: int = 3, is_strict_undefined: bool = True) -> bool:
+        """
+        テンプレートにコンテキストを適用します。
+
+        Args:
+            context (Dict[str, Any]): テンプレートに適用するコンテキスト。
+            format_type (int): フォーマットの種類（デフォルトは3）。
+            is_strict_undefined (bool): 未定義の変数に対して厳密にチェックするかどうか（デフォルトはTrue）。
+
+        Returns:
+            bool: 成功した場合はTrue、失敗した場合はFalse。
+        """
         template_str = self.__template_content
 
         if template_str is None:
@@ -89,9 +132,20 @@ class DocumentRender(BaseModel):
 
     @property
     def render_content(self: "DocumentRender") -> Optional[str]:
-        """Jinja2テンプレートをレンダリングして文字列を返す。エラーが発生した場合はNoneを返す。"""
+        """
+        Jinja2テンプレートをレンダリングして文字列を返します。
+
+        Returns:
+            Optional[str]: レンダリングされたコンテンツ、エラーが発生した場合はNone。
+        """
         return self.__render_content
 
     @property
     def error_message(self: "DocumentRender") -> Optional[str]:
+        """
+        エラーメッセージを返します。
+
+        Returns:
+            Optional[str]: エラーメッセージ、エラーが発生していない場合はNone。
+        """
         return self.__error_message

@@ -109,27 +109,6 @@ def test_validate_command_combined(checker: VersionChecker, command: List[str], 
     assert checker.validate_command(command) == expected
 
 
-@pytest.mark.parametrize("return_code", [0, 1])
-def test_run_cmd(checker: VersionChecker, return_code: int, mocker: MockerFixture) -> None:
-    """run_cmdメソッドのテスト"""
-    mock_run = mocker.patch("subprocess.run")  # Use mocker to patch subprocess.run
-    mock_run.return_value.returncode = return_code  # Set the return code for the mock
-    mocker.patch.object(VersionChecker, "validate_command", return_value=True)  # Mock validate_command to return True
-
-    # Test with a valid command
-    if return_code == 0:
-        result = checker.run_cmd(["git", "status"])
-        assert result is True
-    else:
-        result = checker.run_cmd(["git", "invalid_command"])
-        assert result is False
-
-    # Test with a command that raises an exception
-    mock_run.side_effect = Exception("Command execution failed")
-    result = checker.run_cmd(["git", "status"])
-    assert result is False
-
-
 @pytest.mark.parametrize(
     ("file_content", "expected_version", "expected_exception"),
     [
@@ -192,71 +171,29 @@ def test_compare_versions(v1: str, v2: str, expected: int, checker: VersionCheck
     assert checker.compare_versions(v1, v2) == expected
 
 
-def test_initialize_repo_exception(checker: VersionChecker, mocker: MockerFixture) -> None:
-    """initialize_repoメソッドの例外テスト"""
-    mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))
-    mock_error = mocker.patch.object(VersionChecker, "github_error")
-
-    result = checker.initialize_repo()
-    assert not result
-    mock_error.assert_called_once()
-
-
 @pytest.mark.parametrize(
-    ("exists", "expected"),
+    ("init_return", "expected", "should_log_error"),
     [
-        ([True, True], True),
-        ([False, True], False),
-        ([True, False], False),
+        (True, True, False),  # Successful initialization
+        (False, False, True),  # Failed initialization
     ],
 )
-def test_check_file_existence(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
-    """check_file_existenceメソッドのテスト"""
-    mocker.patch("pathlib.Path.exists", side_effect=exists)
-    result = checker.check_file_existence()
-    assert result == expected
+def test_initialize_git_repo(
+    checker: VersionChecker, init_return: bool, expected: bool, should_log_error: bool, mocker: MockerFixture
+) -> None:
+    """initialize_git_repoメソッドのテスト（成功と失敗の集約）"""
+    if not init_return:
+        mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))  # Mock failure case
 
-
-@pytest.mark.parametrize(
-    ("exists", "expected_fail"),
-    [
-        ([False, True], "package_missing"),
-        ([True, False], "lockfile_missing"),
-    ],
-)
-def test_check_file_existence_no_files(checker: VersionChecker, exists: List[bool], expected_fail: str, mocker: MockerFixture) -> None:
-    """ファイルがない場合のcheck_file_existenceメソッドのテスト"""
-    mocker.patch("pathlib.Path.exists", side_effect=exists)
-    mock_error = mocker.patch.object(VersionChecker, "github_error")
-    mock_fail = mocker.patch.object(VersionChecker, "set_fail_output")
-
-    result = checker.check_file_existence()
-    assert not result
-    mock_error.assert_called_once()
-    mock_fail.assert_called_once_with(expected_fail)
-
-
-@pytest.mark.parametrize(
-    ("init_return", "expected"),
-    [
-        (True, 0),
-        (False, 1),
-    ],
-)
-def test_run(checker: VersionChecker, init_return: bool, expected: int, mocker: MockerFixture) -> None:
-    """runメソッドのテスト"""
-    mocker.patch.object(VersionChecker, "initialize_repo", return_value=init_return)
-    result = checker.run()
-    assert result == expected
-
-
-def test_initialize_repo_success(checker: VersionChecker, mocker: MockerFixture) -> None:
-    """initialize_repoメソッドの成功テスト"""
     mock_error = mocker.patch.object(VersionChecker, "github_error")  # Patch the github_error method
 
-    result = checker.initialize_repo()
-    assert result  # Expecting True for successful initialization
-    mock_error.assert_not_called()  # No error should be logged
+    result = checker.initialize_git_repo()
+    assert result == expected  # Check if the result matches the expected value
+
+    if should_log_error:
+        mock_error.assert_called_once()  # Ensure an error was logged
+    else:
+        mock_error.assert_not_called()  # Ensure no error was logged
 
 
 @pytest.mark.parametrize(
@@ -268,8 +205,34 @@ def test_initialize_repo_success(checker: VersionChecker, mocker: MockerFixture)
         ([False, False], False),  # Both files missing
     ],
 )
-def test_check_file_existence_extended(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
-    """check_file_existenceメソッドの拡張テスト"""
+def test_read_npm_versions(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
+    """read_npm_versionsメソッドのテスト"""
     mocker.patch("pathlib.Path.exists", side_effect=exists)  # Use mocker to patch the exists method
-    result = checker.check_file_existence()
+    mocker.patch.object(checker, "get_file_version", side_effect=["1.0.0", "1.0.0"])  # Mock version retrieval
+    mock_error = mocker.patch.object(VersionChecker, "github_error")
+    mock_fail = mocker.patch.object(VersionChecker, "set_fail_output")
+
+    result = checker.read_npm_versions()
+    assert result == expected
+
+    if not expected:
+        if not exists[0]:
+            mock_error.assert_called_once_with("package.json ファイルが見つかりません")
+            mock_fail.assert_called_once_with("package_missing")
+        elif not exists[1]:
+            mock_error.assert_called_once_with("package-lock.json ファイルが見つかりません")
+            mock_fail.assert_called_once_with("lockfile_missing")
+
+
+@pytest.mark.parametrize(
+    ("init_return", "expected"),
+    [
+        (True, 0),
+        (False, 1),
+    ],
+)
+def test_run(checker: VersionChecker, init_return: bool, expected: int, mocker: MockerFixture) -> None:
+    """runメソッドのテスト"""
+    mocker.patch.object(VersionChecker, "initialize_git_repo", return_value=init_return)
+    result = checker.run()
     assert result == expected

@@ -19,6 +19,12 @@ class ConfigParser(BaseModel):
     __fill_nan_with: Optional[str] = PrivateAttr(default=None)
 
     def __init__(self: "ConfigParser", config_file: BytesIO) -> None:
+        """
+        ConfigParserの初期化メソッド。
+
+        Args:
+            config_file (BytesIO): 設定ファイルのバイナリデータ。
+        """
         super().__init__()
 
         self.__file_extension = config_file.name.split(".")[-1]
@@ -34,31 +40,64 @@ class ConfigParser(BaseModel):
 
     @property
     def csv_rows_name(self: "ConfigParser") -> str:
+        """CSV行名を取得します。
+
+        Returns:
+            str: CSV行名。
+        """
         return self.__csv_rows_name
 
     @csv_rows_name.setter
     def csv_rows_name(self: "ConfigParser", rows_name: str) -> None:
-        """Set list variable name when CSV rows are converted to arrays."""
+        """CSV行名を設定します。
 
+        Args:
+            rows_name (str): 設定する行名。
+        """
         self.__csv_rows_name = rows_name
 
     @property
     def enable_fill_nan(self: "ConfigParser") -> bool:
+        """NaNを埋めるオプションが有効かどうかを取得します。
+
+        Returns:
+            bool: NaNを埋めるオプションが有効であればTrue、そうでなければFalse。
+        """
         return self.__is_enable_fill_nan
 
     @enable_fill_nan.setter
     def enable_fill_nan(self: "ConfigParser", is_fillna: bool) -> None:
+        """NaNを埋めるオプションを設定します。
+
+        Args:
+            is_fillna (bool): NaNを埋めるオプションを有効にするかどうか。
+        """
         self.__is_enable_fill_nan = is_fillna
 
     @property
     def fill_nan_with(self: "ConfigParser") -> Optional[str]:
+        """NaNを埋める際の値を取得します。
+
+        Returns:
+            Optional[str]: NaNを埋める際の値。
+        """
         return self.__fill_nan_with
 
     @fill_nan_with.setter
     def fill_nan_with(self: "ConfigParser", fillna_value: str) -> None:
+        """NaNを埋める際の値を設定します。
+
+        Args:
+            fillna_value (str): NaNを埋める際の値。
+        """
         self.__fill_nan_with = fillna_value
 
     def parse(self: "ConfigParser") -> bool:
+        """設定ファイルをパースして辞書に変換します。
+
+        Returns:
+            bool: 成功した場合はTrue、失敗した場合はFalse。
+        """
         if self.__config_data is None:
             return False
 
@@ -103,15 +142,27 @@ class ConfigParser(BaseModel):
 
     @property
     def parsed_dict(self: "ConfigParser") -> Optional[Dict[str, Any]]:
-        """コンフィグファイルをパースして辞書を返す。エラーが発生した場合はNoneを返す。"""
+        """パースされた辞書を返します。エラーが発生した場合はNoneを返します。
+
+        Returns:
+            Optional[Dict[str, Any]]: パースされた辞書。
+        """
         return self.__parsed_dict
 
     @property
     def parsed_str(self: "ConfigParser") -> str:
-        """コンフィグファイルをパースして文字列を返す。エラーが発生した場合は"None"を返す。"""
+        """パースされた辞書を文字列として返します。エラーが発生した場合は"None"を返します。
+
+        Returns:
+            str: パースされた辞書の文字列表現。
+        """
         return pprint.pformat(self.__parsed_dict)
 
     @property
     def error_message(self: "ConfigParser") -> Optional[str]:
-        """エラーメッセージを返す。"""
+        """エラーメッセージを返します。
+
+        Returns:
+            Optional[str]: エラーメッセージ。
+        """
         return self.__error_message
