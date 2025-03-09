@@ -16,6 +16,8 @@ from i18n import LANGUAGES
 
 
 class ExecuteMode(Enum):
+    """実行モードを定義する列挙型。"""
+
     nothing = 0
     parsed_text = 1
     parsed_markdown = 2
@@ -25,15 +27,28 @@ class ExecuteMode(Enum):
 
 
 class TabViewModel(BaseModel):
+    """タブの表示モデルを定義するクラス。"""
+
     __texts_dict: Box = PrivateAttr()
     __execute_mode: ExecuteMode = PrivateAttr(default=ExecuteMode.nothing)
 
     def __init__(self: "TabViewModel", texts: Box) -> None:
+        """
+        TabViewModelの初期化メソッド。
+
+        Args:
+            texts (Box): テキストデータを含むBoxオブジェクト。
+        """
         super().__init__()
         self.__texts_dict = texts
 
     @property
     def __texts(self: "TabViewModel") -> Box:
+        """テキストデータを取得します。
+
+        Returns:
+            Box: テキストデータ。
+        """
         return self.__texts_dict
 
     def set_execute_mode(
@@ -44,8 +59,18 @@ class TabViewModel(BaseModel):
         is_debug_toml: bool,
         is_debug_yaml: bool,
     ) -> "TabViewModel":
-        """Set execute mode."""
+        """実行モードを設定します。
 
+        Args:
+            is_parsed_text (bool): パースされたテキストモードを有効にするかどうか。
+            is_parsed_markdown (bool): パースされたMarkdownモードを有効にするかどうか。
+            is_debug_visual (bool): デバッグビジュアルモードを有効にするかどうか。
+            is_debug_toml (bool): デバッグTOMLモードを有効にするかどうか。
+            is_debug_yaml (bool): デバッグYAMLモードを有効にするかどうか。
+
+        Returns:
+            TabViewModel: 自身のインスタンス。
+        """
         mode_mapping = {
             is_parsed_text: ExecuteMode.parsed_text,
             is_parsed_markdown: ExecuteMode.parsed_markdown,
@@ -65,8 +90,13 @@ class TabViewModel(BaseModel):
     def show_tab1(
         self: "TabViewModel", result: Optional[str], first_error_message: Optional[str], second_error_message: Optional[str]
     ) -> None:
-        """Show tab1 response content."""
+        """タブ1のレスポンスコンテンツを表示します。
 
+        Args:
+            result (Optional[str]): 表示する結果。
+            first_error_message (Optional[str]): 最初のエラーメッセージ。
+            second_error_message (Optional[str]): 2番目のエラーメッセージ。
+        """
         if first_error_message or second_error_message:
             self.__show_tab1_error(first_error_message, second_error_message)
             return
@@ -88,16 +118,24 @@ class TabViewModel(BaseModel):
                 st.container(border=True).markdown(result)
 
     def __show_tab1_error(self: "TabViewModel", first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
-        """Show tab1 error content."""
+        """タブ1のエラーコンテンツを表示します。
 
+        Args:
+            first_error_message (Optional[str]): 最初のエラーメッセージ。
+            second_error_message (Optional[str]): 2番目のエラーメッセージ。
+        """
         if first_error_message:
             st.error(first_error_message)
         if second_error_message:
             st.error(second_error_message)
 
     def show_tab2(self: "TabViewModel", parsed_config: Optional[Dict[str, Any]], error_message: Optional[str]) -> None:
-        """Show tab2 response content."""
+        """タブ2のレスポンスコンテンツを表示します。
 
+        Args:
+            parsed_config (Optional[Dict[str, Any]]): パースされた設定。
+            error_message (Optional[str]): エラーメッセージ。
+        """
         if error_message:
             st.error(error_message)
 
@@ -123,6 +161,7 @@ class TabViewModel(BaseModel):
                 st.text_area(self.__texts.tab2.debug_config_text, yaml_config, key="tab2_result_textarea", height=500)
 
     def show_tab4(self: "TabViewModel") -> None:
+        """タブ4のサンプルファイルを表示します。"""
         samples_dir = "./assets/examples"
         for filename in sorted(os.listdir(samples_dir)):
             if not filename.endswith((".toml", ".yml", ".yaml", ".csv", ".j2", ".jinja2")):
@@ -136,7 +175,7 @@ class TabViewModel(BaseModel):
 
 
 def main() -> None:
-    """Generate Streamlit web screens."""
+    """StreamlitのWeb画面を生成します。"""
 
     app_title: Final[str] = "Command ghostwriter"
     app_icon: Final[str] = ":ghost:"
