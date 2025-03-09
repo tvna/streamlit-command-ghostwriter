@@ -36,7 +36,7 @@ class VersionChecker:
             repo: Gitリポジトリのインスタンス。
             _new_version: 新しいバージョンの情報。
         """
-        self.repo = None
+        self._git_repo = None
         self._new_version: Optional[str] = None
 
     @property
@@ -187,7 +187,7 @@ class VersionChecker:
         )
         return bool(re.match(pattern, version_str))
 
-    def get_latest_commit_for_file(self: "VersionChecker", repo: git.Repo, file_path: str) -> Optional[git.Commit]:
+    def get_latest_git_commit_for_file(self: "VersionChecker", repo: git.Repo, file_path: str) -> Optional[git.Commit]:
         """ファイルを変更した最新のコミットを取得。
 
         Args:
@@ -281,14 +281,14 @@ class VersionChecker:
         else:
             return 0
 
-    def initialize_repo(self: "VersionChecker") -> bool:
+    def initialize_git_repo(self: "VersionChecker") -> bool:
         """リポジトリを初期化。
 
         Returns:
             初期化が成功した場合はTrue、失敗した場合はFalse。
         """
         try:
-            self.repo = git.Repo(".")
+            self._git_repo = git.Repo(".")
             return True
         except Exception as e:
             self.github_error(f"リポジトリの初期化に失敗しました: {e}")
@@ -321,13 +321,13 @@ class VersionChecker:
         Returns:
             変更があった場合はTrueと最新のコミット、変更がなかった場合はFalseとNone。
         """
-        if self.repo is None:
+        if self._git_repo is None:
             self.github_error("リポジトリが初期化されていません")
             self.set_fail_output("repo_not_initialized")
             return False, None
 
         package_json_path = "package.json"
-        pkg_commit = self.get_latest_commit_for_file(self.repo, package_json_path)
+        pkg_commit = self.get_latest_git_commit_for_file(self._git_repo, package_json_path)
         if not pkg_commit:
             self.github_notice("package.json の変更が見つかりません")
             self.set_fail_output("no_package_change")
@@ -388,13 +388,13 @@ class VersionChecker:
         package_json_path = "package.json"
         new_version = self.get_file_version(package_json_path)
 
-        if self.repo is None:
+        if self._git_repo is None:
             self.github_error("リポジトリが初期化されていません")
             self.set_fail_output("repo_not_initialized")
             return False, None
 
         # 前のバージョン取得
-        previous_version = self.get_previous_version(self.repo, pkg_commit, package_json_path)
+        previous_version = self.get_previous_version(self._git_repo, pkg_commit, package_json_path)
         if not previous_version:
             self.github_notice("前のバージョンが見つかりません")
             self.set_fail_output("no_previous_version")
@@ -419,7 +419,7 @@ class VersionChecker:
 
         return True, previous_version
 
-    def check_version_tags(self: "VersionChecker", new_version: str) -> bool:
+    def check_git_version_tags(self: "VersionChecker", new_version: str) -> bool:
         """バージョンタグの確認。
 
         Args:
@@ -428,13 +428,13 @@ class VersionChecker:
         Returns:
             バージョンタグが正常であればTrue、そうでなければFalse。
         """
-        if self.repo is None:
+        if self._git_repo is None:
             self.github_error("リポジトリが初期化されていません")
             self.set_fail_output("repo_not_initialized")
             return False
 
         # バージョンタグ取得
-        tags = self.get_version_tags(self.repo)
+        tags = self.get_version_tags(self._git_repo)
         if tags:
             # 最新のバージョンタグと比較
             latest_tag = tags[-1]
@@ -455,7 +455,7 @@ class VersionChecker:
         """
         try:
             # リポジトリ初期化
-            if not self.initialize_repo():
+            if not self.initialize_git_repo():
                 return 1
 
             # ファイル存在確認
@@ -498,7 +498,7 @@ class VersionChecker:
                 return 1
 
             # バージョンタグ確認
-            if not self.check_version_tags(new_version):
+            if not self.check_git_version_tags(new_version):
                 return 1
 
             # すべてのチェックが成功したら

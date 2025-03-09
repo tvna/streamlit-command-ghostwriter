@@ -192,12 +192,12 @@ def test_compare_versions(v1: str, v2: str, expected: int, checker: VersionCheck
     assert checker.compare_versions(v1, v2) == expected
 
 
-def test_initialize_repo_exception(checker: VersionChecker, mocker: MockerFixture) -> None:
-    """initialize_repoメソッドの例外テスト"""
+def test_initialize_git_repo_exception(checker: VersionChecker, mocker: MockerFixture) -> None:
+    """initialize_git_repoメソッドの例外テスト"""
     mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))
     mock_error = mocker.patch.object(VersionChecker, "github_error")
 
-    result = checker.initialize_repo()
+    result = checker.initialize_git_repo()
     assert not result
     mock_error.assert_called_once()
 
@@ -251,16 +251,16 @@ def test_validate_npm_file_no_files(checker: VersionChecker, exists: List[bool],
 )
 def test_run(checker: VersionChecker, init_return: bool, expected: int, mocker: MockerFixture) -> None:
     """runメソッドのテスト"""
-    mocker.patch.object(VersionChecker, "initialize_repo", return_value=init_return)
+    mocker.patch.object(VersionChecker, "initialize_git_repo", return_value=init_return)
     result = checker.run()
     assert result == expected
 
 
-def test_initialize_repo_success(checker: VersionChecker, mocker: MockerFixture) -> None:
-    """initialize_repoメソッドの成功テスト"""
+def test_initialize_git_repo_success(checker: VersionChecker, mocker: MockerFixture) -> None:
+    """initialize_git_repoメソッドの成功テスト"""
     mock_error = mocker.patch.object(VersionChecker, "github_error")  # Patch the github_error method
 
-    result = checker.initialize_repo()
+    result = checker.initialize_git_repo()
     assert result  # Expecting True for successful initialization
     mock_error.assert_not_called()  # No error should be logged
 
