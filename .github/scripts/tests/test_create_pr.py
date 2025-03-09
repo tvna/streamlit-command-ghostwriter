@@ -65,7 +65,9 @@ def test_set_github_output(
     """set_github_outputメソッドのテスト"""
 
     if env_key is not None and env_value is not None:
-        monkeypatch.setenv(env_key, env_value)
+        mocker.patch.dict(os.environ, {env_key: env_value})
+    else:
+        mocker.patch.dict(os.environ, {})
 
     if env_key is None:
         mock_path = mocker.patch.object(os.path, "isfile", return_value=False)
