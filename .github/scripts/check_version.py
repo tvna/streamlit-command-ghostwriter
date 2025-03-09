@@ -31,17 +31,17 @@ class VersionChecker:
 
     def __init__(self: "VersionChecker") -> None:
         self.repo = None
-        self._version: Optional[str] = None  # 新しいプライベート変数を追加
+        self._new_version: Optional[str] = None  # 変更
 
     @property
-    def version(self: "VersionChecker") -> Optional[str]:
+    def new_version(self: "VersionChecker") -> Optional[str]:  # 変更
         """バージョン情報を取得"""
-        return self._version
+        return self._new_version  # 変更
 
-    @version.setter
-    def version(self: "VersionChecker", value: str) -> None:
+    @new_version.setter
+    def new_version(self: "VersionChecker", value: str) -> None:  # 変更
         """バージョン情報を設定し、ファイル入力処理をスキップ"""
-        self._version = value
+        self._new_version = value  # 変更
 
     # GitHub Actions用ログコマンド
     def github_notice(self: "VersionChecker", message: str) -> None:
@@ -250,14 +250,14 @@ class VersionChecker:
         package_lock_path = "package-lock.json"
 
         # setterが呼ばれた場合、ファイルからのバージョン取得をスキップ
-        if self._version is not None:
-            current_version = self._version
+        if self._new_version is not None:  # 変更
+            new_version = self._new_version  # 変更
         else:
             # 現在のバージョン取得
-            current_version = self.get_file_version(package_json_path)
-            if not current_version:
+            new_version = self.get_file_version(package_json_path)
+            if not new_version:
                 self.github_error("現在のバージョンの取得に失敗しました")
-                self.set_fail_output("current_version_error")
+                self.set_fail_output("new_version_error")
                 return False, None, None
 
         # package-lock.jsonのバージョン取得
@@ -268,22 +268,22 @@ class VersionChecker:
             return False, None, None
 
         # バージョン形式の検証
-        if not self.is_semver(current_version):
-            self.github_warning(f"バージョン形式が正しくありません: {current_version}")
+        if not self.is_semver(new_version):
+            self.github_warning(f"バージョン形式が正しくありません: {new_version}")
 
         # バージョン整合性チェック
-        if current_version != lock_version:
-            self.github_error(f"package.json ({current_version}) は" f"package-lock.json ({lock_version}) のバージョンと一致していません")
+        if new_version != lock_version:
+            self.github_error(f"package.json ({new_version}) は" f"package-lock.json ({lock_version}) のバージョンと一致していません")
             self.github_error("package-lock.json の更新が必要です。'npm install' または 'npm ci' を実行してください")
             self.set_fail_output("version_mismatch")
-            return False, current_version, lock_version
+            return False, new_version, lock_version
 
-        return True, current_version, lock_version
+        return True, new_version, lock_version
 
     def check_previous_version(self: "VersionChecker", pkg_commit: git.Commit) -> Tuple[bool, Optional[str]]:
         """前のバージョンを確認"""
         package_json_path = "package.json"
-        current_version = self.get_file_version(package_json_path)
+        new_version = self.get_file_version(package_json_path)
 
         if self.repo is None:
             self.github_error("リポジトリが初期化されていません")
@@ -297,26 +297,26 @@ class VersionChecker:
             self.set_fail_output("no_previous_version")
             return False, None
 
-        if current_version is None:
+        if new_version is None:
             self.github_error("現在のバージョンの取得に失敗しました")
-            self.set_fail_output("current_version_error")
+            self.set_fail_output("new_version_error")
             return False, None
 
         # バージョン変更があるか確認
-        if current_version == previous_version:
-            self.github_notice(f"バージョンに変更がありません: {current_version}")
+        if new_version == previous_version:
+            self.github_notice(f"バージョンに変更がありません: {new_version}")
             self.set_fail_output("no_version_change")
             return False, previous_version
 
         # バージョンが増加しているか確認
-        if self.compare_versions(current_version, previous_version) <= 0:
-            self.github_error(f"新しいバージョン ({current_version}) は前のバージョン ({previous_version}) 以下です")
+        if self.compare_versions(new_version, previous_version) <= 0:
+            self.github_error(f"新しいバージョン ({new_version}) は前のバージョン ({previous_version}) 以下です")
             self.set_fail_output("version_not_incremented")
             return False, previous_version
 
         return True, previous_version
 
-    def check_version_tags(self: "VersionChecker", current_version: str) -> bool:
+    def check_version_tags(self: "VersionChecker", new_version: str) -> bool:
         """バージョンタグの確認"""
 
         if self.repo is None:
@@ -331,8 +331,8 @@ class VersionChecker:
             latest_tag = tags[-1]
             latest_version = latest_tag[1:] if latest_tag.startswith("v") else latest_tag
 
-            if self.is_semver(latest_version) and self.compare_versions(current_version, latest_version) <= 0:
-                self.github_error(f"新しいバージョン ({current_version}) は最新タグ ({latest_version}) 以下です")
+            if self.is_semver(latest_version) and self.compare_versions(new_version, latest_version) <= 0:
+                self.github_error(f"新しいバージョン ({new_version}) は最新タグ ({latest_version}) 以下です")
                 self.set_fail_output("version_not_incremented_from_tag")
                 return False
 
@@ -355,7 +355,7 @@ class VersionChecker:
                 return 0
 
             # バージョン検証
-            versions_ok, current_version, lock_version = self.check_next_gen_versions()
+            versions_ok, new_version, lock_version = self.check_next_gen_versions()
             if not versions_ok:
                 return 1
 
@@ -369,9 +369,9 @@ class VersionChecker:
             if not prev_version_ok:
                 return 1
 
-            if current_version is None:
+            if new_version is None:
                 self.github_error("現在のバージョンの取得に失敗しました")
-                self.set_fail_output("current_version_error")
+                self.set_fail_output("new_version_error")
                 return 1
 
             if previous_version is None:
@@ -385,12 +385,12 @@ class VersionChecker:
                 return 1
 
             # バージョンタグ確認
-            if not self.check_version_tags(current_version):
+            if not self.check_version_tags(new_version):
                 return 1
 
             # すべてのチェックが成功したら
-            self.github_notice(f"バージョンが {previous_version} から {current_version} に更新されました")
-            self.set_success_output(current_version, previous_version)
+            self.github_notice(f"バージョンが {previous_version} から {new_version} に更新されました")
+            self.set_success_output(new_version, previous_version)
             return 0
 
         except Exception as e:
