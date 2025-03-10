@@ -7,7 +7,7 @@ poetry install
 npm install
 
 # pre-commit hooks のインストール
-poetry run pre-commit install
+poetry run pre-commit uninstall
 poetry run pre-commit install --hook-type commit-msg
 ```
 
@@ -22,8 +22,14 @@ poetry run ruff check . --fix
 poetry run mypy .
 
 # テスト系
-poetry run pytest
 poetry run pytest --cov=. --cov-report=html
+poetry run pytest --pdb
+poetry run pudb app.py
+
+# コードの複雑さ解析
+poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN "10"
+
+# CUIデバッグ
 ```
 
 ## Git 関連
