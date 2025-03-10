@@ -45,6 +45,10 @@ git push origin ${TAG_NAME}
 
 # タグの削除
 git tag -d {$TAG_NAME}
+
+# 誤ったmainブランチへのコミットを削除
+git checkout main
+git reset --hard HEAD~3
 ```
 
 ## その他の便利なコマンド
