@@ -7,8 +7,8 @@ poetry install
 npm install
 
 # pre-commit hooks のインストール
-pre-commit install
-pre-commit install --hook-type commit-msg
+poetry run pre-commit install
+poetry run pre-commit install --hook-type commit-msg
 ```
 
 ## 開発コマンド
