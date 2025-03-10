@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from check_version import VersionChecker  # noqa: E402
 
 
-@pytest.fixture
+@pytest.fixture  # noqa: PT001
 def checker() -> VersionChecker:
     """VersionCheckerのインスタンスを提供"""
     return VersionChecker()

@@ -97,7 +97,6 @@ lint.per-file-ignores.".github/scripts/create_pr.py" = [
   "S603",
 ]
 lint.per-file-ignores.".github/scripts/tests/*" = [
-  "PT001",
   "PT023",
   "S101",
   "S102",
