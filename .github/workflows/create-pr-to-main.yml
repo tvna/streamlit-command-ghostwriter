@@ -68,30 +68,18 @@ jobs:
           set -euo pipefail
 
           echo "::notice::既存のPRを確認中..."
-          if ! pr_exists=$(gh pr list \
-            --head develop \
-            --base main \
-            --state open \
-            --json number \
-            --jq length); then
+          pr_exists=$(gh pr list --head develop --base main --state open --json number --jq length) || {
             echo "::error::PRの一覧取得に失敗しました"
-            {
-              echo "exists=error"
-            } >> "$GITHUB_OUTPUT"
+            echo "exists=error" >> "$GITHUB_OUTPUT"
             exit 1
-          fi
+          }
 
           echo "::notice::既存のオープンPR: $pr_exists"
-          {
-            echo "exists=$pr_exists"
-          } >> "$GITHUB_OUTPUT"
+          echo "exists=$pr_exists" >> "$GITHUB_OUTPUT"
 
-      # ラベルの存在確認と作成
       - name: Ensure labels exist
         id: ensure-labels
-        if: |
-          steps.check-version.outputs.version_changed == 'true' &&
-          steps.check-pr.outputs.exists == '0'
+        if: steps.check-pr.outputs.exists == '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -99,50 +87,29 @@ jobs:
           set -euo pipefail
 
           echo "::notice::ラベルの確認中..."
-
-          # リポジトリの既存ラベルを取得
-          if ! labels=$(gh label list --json name --jq '.[].name'); then
+          labels=$(gh label list --json name --jq '.[].name') || {
             echo "::warning::ラベル一覧の取得に失敗しました"
-            # 続行可能なエラーなので失敗としない
-          fi
+          }
 
-          # automated-pr ラベルがなければ作成
+          # automated-pr ラベルの確認と作成
           if ! echo "$labels" | grep -q "automated-pr"; then
             echo "::notice::ラベル 'automated-pr' を作成します"
             if ! gh label create "automated-pr" --description "自動生成されたPR" --color "0E8A16"; then
               echo "::warning::ラベル 'automated-pr' の作成に失敗しました"
-            else
-              {
-                echo "automated_pr_created=true"
-              } >> "$GITHUB_OUTPUT"
             fi
-          else
-            {
-              echo "automated_pr_exists=true"
-            } >> "$GITHUB_OUTPUT"
           fi
 
-          # release ラベルがなければ作成
+          # release ラベルの確認と作成
           if ! echo "$labels" | grep -q "release"; then
             echo "::notice::ラベル 'release' を作成します"
             if ! gh label create "release" --description "自動リリース用PR" --color "1D76DB"; then
               echo "::warning::ラベル 'release' の作成に失敗しました"
-            else
-              {
-                echo "release_created=true"
-              } >> "$GITHUB_OUTPUT"
             fi
-          else
-            {
-              echo "release_exists=true"
-            } >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create Pull Request
         id: create-pr
-        if: |
-          steps.check-version.outputs.version_changed == 'true' &&
-          steps.check-pr.outputs.exists == '0'
+        if: steps.check-version.outputs.version_changed == 'true' && steps.check-pr.outputs.exists == '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_VERSION: ${{ steps.check-version.outputs.new_version }}
@@ -152,25 +119,38 @@ jobs:
           python .github/scripts/create_pr.py
 
       # 結果の通知
-      - name: Notify result
+      - name: Notify PR creation success
+        id: notify-success
+        if: steps.create-pr.outcome == 'success' && steps.create-pr.outputs.pr_url != ''
+        run: |
+          echo "::notice::PR作成成功: ${{ steps.create-pr.outputs.pr_url }}"
+
+      - name: Notify version change issues
+        id: notify-version-issues
+        if: steps.check-version.outputs.version_changed == 'false'
+        run: |
+          case "${{ steps.check-version.outputs.reason }}" in
+            lockfile_not_updated|version_mismatch|lockfile_outdated)
+              echo "::error::package-lock.json の更新が必要です"
+              ;;
+            version_not_newer)
+              echo "::error::既存タグ ${{ steps.check-version.outputs.latest_tag }} (バージョン: ${{ steps.check-version.outputs.latest_tag_version }}) と同じかそれより古いバージョンです。より新しいバージョンが必要です。"
+              ;;
+            no_version_change)
+              echo "::notice::バージョン変更なし - PRは作成されませんでした"
+              ;;
+            *)
+              echo "::notice::理由: ${{ steps.check-version.outputs.reason }} - PRは作成されませんでした"
+              ;;
+          esac
+
+      - name: Notify existing PR
+        id: notify-existing-pr
+        if: steps.check-pr.outputs.exists != '0'
+        run: |
+          echo "::notice::既存のPRが見つかりました - 新規PRは作成されませんでした"
+
+      - name: Notify general issues
         if: always()
         run: |
-          if [[ "${{ steps.create-pr.outcome }}" == "success" && "${{ steps.create-pr.outputs.pr_url }}" != "" ]]; then
-            echo "::notice::PR作成成功: ${{ steps.create-pr.outputs.pr_url }}"
-          elif [[ "${{ steps.check-version.outputs.version_changed }}" == "false" ]]; then
-            if [[ "${{ steps.check-version.outputs.reason }}" == "lockfile_not_updated" || \
-                  "${{ steps.check-version.outputs.reason }}" == "version_mismatch" || \
-                  "${{ steps.check-version.outputs.reason }}" == "lockfile_outdated" ]]; then
-              echo "::error::package-lock.json の更新が必要です"
-            elif [[ "${{ steps.check-version.outputs.reason }}" == "version_not_newer" ]]; then
-              echo "::error::既存タグ ${{ steps.check-version.outputs.latest_tag }} (バージョン: ${{ steps.check-version.outputs.latest_tag_version }}) と同じかそれより古いバージョンです。より新しいバージョンが必要です。"
-            elif [[ "${{ steps.check-version.outputs.reason }}" == "no_version_change" ]]; then
-              echo "::notice::バージョン変更なし - PRは作成されませんでした"
-            else
-              echo "::notice::理由: ${{ steps.check-version.outputs.reason }} - PRは作成されませんでした"
-            fi
-          elif [[ "${{ steps.check-pr.outputs.exists }}" != "0" ]]; then
-            echo "::notice::既存のPRが見つかりました - 新規PRは作成されませんでした"
-          else
-            echo "::warning::PRの作成に問題が発生しました - ワークフロー実行詳細を確認してください"
-          fi
+          echo "::warning::PRの作成に問題が発生しました - ワークフロー実行詳細を確認してください"
