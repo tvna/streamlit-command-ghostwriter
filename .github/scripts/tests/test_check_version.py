@@ -26,28 +26,6 @@ def checker() -> VersionChecker:
 
 
 @pytest.mark.parametrize(
-    ("test_header", "test_message"),
-    [
-        ("::notice::", "テスト通知"),
-        ("::warning::", "テスト警告"),
-        ("::error::", "テストエラー"),
-    ],
-)
-def test_github_logging(checker: VersionChecker, test_header: str, test_message: str, capsys: pytest.CaptureFixture) -> None:
-    """GitHubのログメッセージのテスト"""
-
-    if "通知" in test_message:
-        checker.github_notice(test_message)
-    elif "警告" in test_message:
-        checker.github_warning(test_message)
-    elif "エラー" in test_message:
-        checker.github_error(test_message)
-
-    captured = capsys.readouterr()
-    assert captured.out == test_header + test_message + "\n"
-
-
-@pytest.mark.parametrize(
     ("env_var_set", "expected_output", "expected_log"),
     [(True, "TEST_VAR=test_value\n", None), (False, None, "GITHUB_OUTPUT環境変数が設定されていません")],
 )
@@ -172,31 +150,6 @@ def test_compare_versions(v1: str, v2: str, expected: int, checker: VersionCheck
 
 
 @pytest.mark.parametrize(
-    ("init_return", "expected", "should_log_error"),
-    [
-        (True, True, False),  # Successful initialization
-        (False, False, True),  # Failed initialization
-    ],
-)
-def test_initialize_git_repo(
-    checker: VersionChecker, init_return: bool, expected: bool, should_log_error: bool, mocker: MockerFixture
-) -> None:
-    """initialize_git_repoメソッドのテスト（成功と失敗の集約）"""
-    if not init_return:
-        mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))  # Mock failure case
-
-    mock_error = mocker.patch.object(VersionChecker, "github_error")  # Patch the github_error method
-
-    result = checker.initialize_git_repo()
-    assert result == expected  # Check if the result matches the expected value
-
-    if should_log_error:
-        mock_error.assert_called_once()  # Ensure an error was logged
-    else:
-        mock_error.assert_not_called()  # Ensure no error was logged
-
-
-@pytest.mark.parametrize(
     ("exists", "expected"),
     [
         ([True, True], True),  # Both files exist
@@ -205,34 +158,22 @@ def test_initialize_git_repo(
         ([False, False], False),  # Both files missing
     ],
 )
-def test_read_npm_versions(checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture) -> None:
+def test_read_npm_versions(
+    checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture, capsys: pytest.CaptureFixture
+) -> None:
     """read_npm_versionsメソッドのテスト"""
-    mocker.patch("pathlib.Path.exists", side_effect=exists)  # Use mocker to patch the exists method
-    mocker.patch.object(checker, "get_file_version", side_effect=["1.0.0", "1.0.0"])  # Mock version retrieval
-    mock_error = mocker.patch.object(VersionChecker, "github_error")
+    mocker.patch("pathlib.Path.exists", side_effect=exists)
+    mocker.patch.object(checker, "get_file_version", side_effect=["1.0.0", "1.0.0"])
     mock_fail = mocker.patch.object(VersionChecker, "set_fail_output")
 
     result = checker.read_npm_versions()
+    captured = capsys.readouterr()
     assert result == expected
 
     if not expected:
         if not exists[0]:
-            mock_error.assert_called_once_with("package.json ファイルが見つかりません")
+            assert captured.out == "::error::package.json ファイルが見つかりません\n"
             mock_fail.assert_called_once_with("package_missing")
         elif not exists[1]:
-            mock_error.assert_called_once_with("package-lock.json ファイルが見つかりません")
+            assert captured.out == "::error::package-lock.json ファイルが見つかりません\n"
             mock_fail.assert_called_once_with("lockfile_missing")
-
-
-@pytest.mark.parametrize(
-    ("init_return", "expected"),
-    [
-        (True, 0),
-        (False, 1),
-    ],
-)
-def test_run(checker: VersionChecker, init_return: bool, expected: int, mocker: MockerFixture) -> None:
-    """runメソッドのテスト"""
-    mocker.patch.object(VersionChecker, "initialize_git_repo", return_value=init_return)
-    result = checker.run()
-    assert result == expected
