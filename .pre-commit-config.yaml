@@ -50,3 +50,7 @@ repos:
       entry: pytest -m integration --disable-warnings
       language: system
       pass_filenames: false
+    - id: prevent-main-commit
+      name: Prevent commits to main branch
+      entry: bash -c 'if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then echo "Commits to the main branch are not allowed."; exit 1; fi'
+      language: system
