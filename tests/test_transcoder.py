@@ -6,7 +6,7 @@ import pytest
 from features.transcoder import TextTranscoder
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("input_str", "input_encoding", "expected_encoding", "expected_result"),
     [
@@ -56,7 +56,7 @@ def test_transcoder(input_str: str, input_encoding: str, expected_encoding: str,
         assert export_file_allow_fallback.name == import_file.name
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("input_bytes", "expected_encoding", "expected_result"),
     [
@@ -82,7 +82,7 @@ def test_transcoder_non_string(input_bytes: bytes, expected_encoding: Optional[s
         assert export_file_allow_fallback.name == import_file.name
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 def test_transcoder_missing_encode() -> None:
     trans = TextTranscoder(BytesIO(b"ABCDEF"))
     assert trans.detect_encoding() == "ASCII"

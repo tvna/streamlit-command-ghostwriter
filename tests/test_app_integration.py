@@ -8,7 +8,7 @@ import yaml
 from streamlit.testing.v1 import AppTest
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 @pytest.mark.parametrize(
     (
         "active_button",
@@ -89,7 +89,7 @@ def test_main_tab1(
     assert at.success.len == expected_success_objects
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 @pytest.mark.parametrize(
     (
         "active_button",

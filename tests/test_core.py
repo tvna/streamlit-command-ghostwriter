@@ -120,7 +120,7 @@ def model(monkeypatch: pytest.MonkeyPatch) -> AppCore:
     return AppCore("[CONFIG_ERROR]", "[TEMPLATE_ERROR]")
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     (
         "config_content",
@@ -159,7 +159,7 @@ def test_mock_parser(
         assert expected_error in str(parser.error_message)
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     (
         "is_strict_undefined",
@@ -195,7 +195,7 @@ def test_mock_render(
     assert render.error_message == expected_error
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("config_content", "expected_dict", "expected_error"),
     [
@@ -221,7 +221,7 @@ def test_load_config_file(
     assert model.config_error_message == expected_error
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("is_strict_undefined", "template_content", "config_data", "expected_result", "expected_error"),
     [
@@ -264,7 +264,7 @@ def test_load_template_file(
     assert model.template_error_message == expected_error
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("is_append_timestamp", "name_prefix", "name_suffix", "expected_prefix", "expected_suffix"),
     [
@@ -300,7 +300,7 @@ def test_get_download_filename(
         assert filename == f"{expected_prefix}{expected_suffix}"
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 def test_get_download_content(model: AppCore) -> None:
     expected_result = "This is POSITIVE"
 

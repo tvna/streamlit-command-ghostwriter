@@ -38,7 +38,6 @@ packaging = "^24.2"
 
 [tool.ruff]
 target-version = "py312"
-
 line-length = 140
 indent-width = 4
 # Exclude a variety of commonly ignored directories.
@@ -84,6 +83,7 @@ lint.select = [
   "I",
   "N",
   "PT",
+  "PT001",
   "S",
   "SLF",
   "TCH",
@@ -98,12 +98,14 @@ lint.per-file-ignores.".github/scripts/create_pr.py" = [
 ]
 lint.per-file-ignores.".github/scripts/tests/*" = [
   "PT001",
+  "PT023",
   "S101",
   "S102",
   "S103",
   "S105",
 ]
 lint.per-file-ignores."tests/*" = [
+  "PT023",
   "S101",
   "S102",
   "S103",

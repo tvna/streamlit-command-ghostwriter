@@ -6,7 +6,7 @@ import pytest
 from features.document_render import DocumentRender
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     (
         "template_content",

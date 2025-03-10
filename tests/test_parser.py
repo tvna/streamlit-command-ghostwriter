@@ -7,7 +7,7 @@ import pytest
 from features.config_parser import ConfigParser
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("content", "filename", "is_successful", "expected_dict", "expected_str", "expected_error"),
     [
@@ -184,7 +184,7 @@ def test_parse(
         assert expected_error in str(parser.error_message)
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("content", "filename", "csv_rows_name", "is_successful", "expected_dict", "expected_str"),
     [
@@ -228,7 +228,7 @@ def test_changed_rows_name(
     assert parser.parsed_str == expected_str
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("content", "filename", "enable_fill_nan", "fill_nan_with", "is_successful", "expected_dict", "expected_str"),
     [

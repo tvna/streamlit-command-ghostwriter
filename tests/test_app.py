@@ -2,7 +2,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
-@pytest.mark.unit()
+@pytest.mark.unit
 def test_main_layout() -> None:
     """Test streamlit app layout"""
 
