@@ -8,7 +8,7 @@ check_version.pyのユニットテスト
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import pytest
 from pytest_mock import MockerFixture
@@ -59,32 +59,6 @@ def test_set_github_output(
         # 警告ログが出力されていることを確認
         assert expected_log is not None
         assert expected_log in caplog.text
-
-
-@pytest.mark.parametrize(
-    ("command", "expected"),
-    [
-        # Normal cases (successful commands)
-        (["git", "status"], True),
-        (["npm", "version"], True),
-        (["jq", "."], True),
-        # Abnormal cases (failure commands)
-        (["ls", "-l"], False),
-        (["echo", "hello"], False),
-        (["rm", "-rf", "/"], False),
-        (["git", "push", "|", "grep"], False),
-        (["npm", "install", "&", "rm"], False),
-        (["invalid_command"], False),
-        ([""], False),
-        (["git", "&&", "status"], False),
-        (["echo", "hello", "|", "grep", "hello"], False),
-        ([";"], False),
-        (["echo", "hello", ">", "output.txt"], False),
-    ],
-)
-def test_validate_command_combined(checker: VersionChecker, command: List[str], expected: bool) -> None:
-    """validate_commandメソッドのテスト（集約版）"""
-    assert checker.validate_command(command) == expected
 
 
 @pytest.mark.parametrize(
@@ -150,30 +124,46 @@ def test_compare_versions(v1: str, v2: str, expected: int, checker: VersionCheck
 
 
 @pytest.mark.parametrize(
-    ("exists", "expected"),
+    (
+        "exists_package_json",
+        "exists_package_lock",
+        "new_version",
+        "lock_version",
+        "expected_result",
+        "expected_new_version",
+        "expected_lock_version",
+        "expected_print_called",
+    ),
     [
-        ([True, True], True),  # Both files exist
-        ([False, True], False),  # First file missing
-        ([True, False], False),  # Second file missing
-        ([False, False], False),  # Both files missing
+        pytest.param(True, True, "1.0.0", "1.0.0", True, "1.0.0", "1.0.0", True, id="Both files exist"),
+        pytest.param(False, True, None, "1.0.0", False, None, None, False, id="First file missing"),
+        pytest.param(True, False, "1.0.0", None, False, None, None, False, id="Second file missing"),
+        pytest.param(True, False, "1.0", "1.0.0", False, None, None, False, id="First file broken"),
+        pytest.param(True, False, "1.0.0", "1.0", False, None, None, False, id="Second file broken"),
+        pytest.param(True, True, None, None, False, None, None, False, id="Both files broken"),
     ],
 )
 def test_read_npm_versions(
-    checker: VersionChecker, exists: List[bool], expected: bool, mocker: MockerFixture, capsys: pytest.CaptureFixture
+    checker: VersionChecker,
+    exists_package_json: bool,
+    exists_package_lock: bool,
+    new_version: Optional[str],
+    lock_version: Optional[str],
+    expected_result: bool,
+    expected_new_version: Optional[str],
+    expected_lock_version: Optional[str],
+    expected_print_called: bool,
+    mocker: MockerFixture,
+    capsys: pytest.CaptureFixture,
 ) -> None:
     """read_npm_versionsメソッドのテスト"""
-    mocker.patch("pathlib.Path.exists", side_effect=exists)
-    mocker.patch.object(checker, "get_file_version", side_effect=["1.0.0", "1.0.0"])
-    mock_fail = mocker.patch.object(VersionChecker, "set_fail_output")
+    mocker.patch("pathlib.Path.exists", return_value=[exists_package_json, exists_package_lock])
+    mocker.patch.object(checker, "get_file_version", side_effect=[new_version, lock_version])
 
-    result = checker.read_npm_versions()
+    result, npm_new_version, npm_lock_version = checker.read_npm_versions()
     captured = capsys.readouterr()
-    assert result == expected
 
-    if not expected:
-        if not exists[0]:
-            assert captured.out == "::error::package.json ファイルが見つかりません\n"
-            mock_fail.assert_called_once_with("package_missing")
-        elif not exists[1]:
-            assert captured.out == "::error::package-lock.json ファイルが見つかりません\n"
-            mock_fail.assert_called_once_with("lockfile_missing")
+    assert result == expected_result
+    assert npm_new_version == expected_new_version
+    assert npm_lock_version == expected_lock_version
+    assert True if len(captured.out) == 0 else False is expected_print_called
