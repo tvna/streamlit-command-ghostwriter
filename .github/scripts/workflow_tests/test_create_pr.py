@@ -16,10 +16,10 @@ from pytest_mock import MockerFixture
 # テスト対象モジュールのパスを追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from create_pr import PullRequestCreator  # noqa: E402
+from create_pr import PullRequestCreator
 
 
-@pytest.fixture  # noqa: PT001
+@pytest.fixture
 def creator() -> PullRequestCreator:
     """PullRequestCreatorのインスタンスを提供するフィクスチャ"""
     creator_instance = PullRequestCreator()

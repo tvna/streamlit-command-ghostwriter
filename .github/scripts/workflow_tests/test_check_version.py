@@ -16,10 +16,10 @@ from pytest_mock import MockerFixture
 # テスト対象モジュールのパスを追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from check_version import VersionChecker  # noqa: E402
+from check_version import VersionChecker
 
 
-@pytest.fixture  # noqa: PT001
+@pytest.fixture
 def checker() -> VersionChecker:
     """VersionCheckerのインスタンスを提供"""
     return VersionChecker()
@@ -78,7 +78,7 @@ def test_set_github_output(
 def test_get_file_version(
     checker: VersionChecker, file_content: str, expected_version: Optional[str], expected_exception: bool, mocker: MockerFixture
 ) -> None:
-    """get_file_versionメソッドのテスト（成功とエラー）"""
+    """get_file_versionメソッドのテスト(成功とエラー)"""
     open_mock = mocker.patch("builtins.open", new_callable=mocker.mock_open, read_data=str(file_content))
 
     try:

@@ -9,7 +9,7 @@ developブランチからmainブランチへのPRを作成する
 import logging
 import os
 import re
-import subprocess  # noqa: S404 - セキュリティチェック済みの安全な使用法
+import subprocess
 import sys
 from typing import List, Tuple
 
@@ -91,7 +91,7 @@ class PullRequestCreator:
         Returns:
             コマンドが安全であればTrue、そうでなければFalse。
         """
-        # コマンドの先頭部分（実行ファイル名）のみを検証
+        # コマンドの先頭部分(実行ファイル名)のみを検証
         executable = cmd[0]
         base_executable = os.path.basename(executable)
 
@@ -120,7 +120,7 @@ class PullRequestCreator:
         Returns:
             コマンドが成功した場合はTrue、失敗した場合はFalse。
         """
-        cmd = ["gh"] + args
+        cmd = ["gh", args]
 
         # コマンドの引数に危険な文字が含まれているか確認
         for arg in args:
@@ -139,7 +139,7 @@ class PullRequestCreator:
             return False
 
         try:
-            result = subprocess.run(  # noqa: S603
+            result = subprocess.run(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -164,7 +164,7 @@ class PullRequestCreator:
             commit = repo.head.commit
             message = str(commit.message)
 
-            # 機密情報が含まれていないか確認（簡易的）
+            # 機密情報が含まれていないか確認(簡易的)
             sensitive_patterns = r"(password|secret|token|key|認証|パスワード|ghp_)"
             if re.search(sensitive_patterns, message, re.IGNORECASE):
                 self.github_warning("コミットメッセージに機密情報が含まれている可能性があります")

@@ -25,8 +25,8 @@ class AppCore(BaseModel):
         AppCoreの初期化メソッド。
 
         Args:
-            config_error_header (Optional[str]): 設定エラーのヘッダー（デフォルトはNone）。
-            template_error_header (Optional[str]): テンプレートエラーのヘッダー（デフォルトはNone）。
+            config_error_header (Optional[str]): 設定エラーのヘッダー(デフォルトはNone)
+            template_error_header (Optional[str]): テンプレートエラーのヘッダー(デフォルトはNone)
         """
         super().__init__()
 
@@ -47,8 +47,8 @@ class AppCore(BaseModel):
             config_file (Optional[BytesIO]): 設定ファイルのバイナリデータ。
             csv_rows_name (str): CSVの行名。
             enable_auto_transcoding (bool): 自動トランスコーディングを有効にするかどうか。
-            enable_fill_nan (bool): NaNを埋めるかどうか（デフォルトはFalse）。
-            fill_nan_with (str): NaNを埋める際の文字列（デフォルトは"#"）。
+            enable_fill_nan (bool): NaNを埋めるかどうか(デフォルトはFalse)
+            fill_nan_with (str): NaNを埋める際の文字列(デフォルトは"#")
 
         Returns:
             AppCore: 自身のインスタンス。
@@ -165,7 +165,7 @@ class AppCore(BaseModel):
         datetime_format = r"%Y-%m-%d_%H%M%S"
         suffix: Final[str] = f"_{datetime.today().strftime(datetime_format)}" if is_append_timestamp is True else ""
 
-        return f"{filename}{suffix}.{str(file_ext)}"
+        return f"{filename}{suffix}.{file_ext!s}"
 
     def get_download_content(self: "AppCore", encode: str) -> Optional[bytes]:
         """Get the content for download.

@@ -331,7 +331,7 @@ def main() -> None:
                     texts.tab3.format_type,
                     (x for x in texts.tab3.format_type_items),
                     index=default_format_type,
-                    format_func=lambda x: f"{str(x)}: {texts.tab3.format_type_items[x]}",
+                    format_func=lambda x: f"{x!s}: {texts.tab3.format_type_items[x]}",
                     key="result_format_type",
                 )
                 st.selectbox(texts.tab3.download_encoding, ["Shift_JIS", "utf-8"], key="download_encoding")

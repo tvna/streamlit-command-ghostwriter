@@ -113,7 +113,7 @@ class MockRender(BaseModel):
         return None
 
 
-@pytest.fixture  # noqa: PT001
+@pytest.fixture
 def model(monkeypatch: pytest.MonkeyPatch) -> AppCore:
     monkeypatch.setattr("features.core.ConfigParser", MockParser)
     monkeypatch.setattr("features.core.DocumentRender", MockRender)
