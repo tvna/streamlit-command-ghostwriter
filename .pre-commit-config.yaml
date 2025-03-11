@@ -54,13 +54,13 @@ repos:
       description: "Run 'ruff format' for extremely fast Python formatting"
       name: ruff (format)
 
-- repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-  rev: v9.22.0
-  hooks:
-    - id: commitlint
-      description: "Run 'commitlint' for commit message validation"
-      stages: [commit-msg]
-      additional_dependencies: ['@commitlint/config-conventional']
+# - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+#   rev: v9.22.0
+#   hooks:
+#     - id: commitlint
+#       description: "Run 'commitlint' for commit message validation"
+#       stages: [commit-msg]
+#       additional_dependencies: ['@commitlint/config-conventional']
 
 # The following configuration uses check-jsonschema to validate Github Workflow files.
 - repo: https://github.com/python-jsonschema/check-jsonschema
