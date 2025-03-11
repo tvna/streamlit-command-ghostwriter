@@ -135,7 +135,6 @@ markers = [
 
 [tool.coverage.run]
 parallel = false
-append = true
 
 [tool.coverage.report]
 show_missing = true

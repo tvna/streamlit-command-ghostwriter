@@ -306,11 +306,6 @@ class VersionChecker:
             if not has_changes or pkg_commit is None:
                 return 0
 
-            if npm_new_version is None:
-                print("::error::現在のバージョンの取得に失敗しました")
-                self.set_fail_output("npm_new_version_error")
-                return 1
-
             # 前のバージョン確認
             npm_old_version = self.get_package_json_from_previous_git_commit(pkg_commit)
             if not self.compare_npm_versions(npm_new_version, npm_old_version):
@@ -331,19 +326,16 @@ class VersionChecker:
         except InvalidReadPackageError:
             print("::warning::最新コミット取得後、package.jsonの読み込みに失敗しました")
             self.set_fail_output("invalid_read_package")
-            return 1
         except GitCommandNotFound:
             print("::error::gitコマンドが見つかりません")
             self.set_fail_output("git_command_not_found")
-            return 1
         except InvalidGitRepositoryError:
             print("::error::gitリポジトリが不正です")
             self.set_fail_output("repo_not_initialized")
-            return 1
         except Exception as e:
             print(f"::error::予期せぬエラーが発生しました: {e}")
             self.set_fail_output("unexpected_error")
-            return 1
+        return 1
 
 
 def main() -> int:
