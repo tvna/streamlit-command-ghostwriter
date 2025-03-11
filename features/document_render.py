@@ -99,8 +99,8 @@ class DocumentRender(BaseModel):
 
         Args:
             context (Dict[str, Any]): テンプレートに適用するコンテキスト。
-            format_type (int): フォーマットの種類（デフォルトは3）。
-            is_strict_undefined (bool): 未定義の変数に対して厳密にチェックするかどうか（デフォルトはTrue）。
+            format_type (int): フォーマットの種類(デフォルトは3)
+            is_strict_undefined (bool): 未定義の変数に対して厳密にチェックするかどうか(デフォルトはTrue)
 
         Returns:
             bool: 成功した場合はTrue、失敗した場合はFalse。

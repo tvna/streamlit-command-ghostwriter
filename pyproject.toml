@@ -30,15 +30,15 @@ poetry-types = "^0.5.1"
 types-pyyaml = "^6.0.12.20240311"
 pydeps = "^1.12.20"
 pytest-playwright = "^0.7.0"
-ruff = "^0.5.7"
+ruff = "^0.9.10"
 pandas-stubs = "^2.2.2.240603"
 mock = "^5.2.0"
 gitpython = "^3.1.44"
 packaging = "^24.2"
+pudb = "^2024.1.3"
 
 [tool.ruff]
 target-version = "py312"
-
 line-length = 140
 indent-width = 4
 # Exclude a variety of commonly ignored directories.
@@ -84,6 +84,8 @@ lint.select = [
   "I",
   "N",
   "PT",
+  "PT001",
+  "RUF",
   "S",
   "SLF",
   "TCH",
@@ -96,17 +98,16 @@ lint.per-file-ignores.".github/scripts/check_version.py" = [
 lint.per-file-ignores.".github/scripts/create_pr.py" = [
   "S603",
 ]
-lint.per-file-ignores.".github/scripts/tests/*" = [
-  "PT001",
-  "S101",
-  "S102",
-  "S103",
-  "S105",
+lint.per-file-ignores.".github/scripts/workflow_tests/*" = [
+  "PT001", # Use @pytest.fixture{expected} over @pytest.fixture{actual}
+  "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
+  "S101",  # Use of assert detected
+  "S105",  # Possible hardcoded password assigned to: "{}"
 ]
 lint.per-file-ignores."tests/*" = [
-  "S101",
-  "S102",
-  "S103",
+  "PT001", # Use @pytest.fixture{expected} over @pytest.fixture{actual}
+  "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
+  "S101",  # Use of assert detected
 ]
 # Allow fix for all enabled rules (when `--fix`) is provided.
 lint.fixable = [
@@ -120,7 +121,7 @@ lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.pytest.ini_options]
 testpaths = [
   "tests",
-  ".github/scripts/tests",
+  ".github/scripts/workflow_tests",
 ]
 pythonpath = "."
 addopts = [
@@ -129,7 +130,18 @@ addopts = [
 markers = [
   "unit: mark a test as a unit test.",
   "integration: mark a test as an integration test.",
+  "workflow: mark a test as a workflow test.",
 ]
+
+[tool.coverage.run]
+parallel = false
+append = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [tool.mypy]
 check_untyped_defs = true

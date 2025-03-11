@@ -103,7 +103,7 @@ class TextTranscoder(BaseModel):
         指定されたエンコーディングにファイルを変換します。
 
         Args:
-            new_encode (str): 変換先のエンコーディング名（デフォルトは'utf-8'）。
+            new_encode (str): 変換先のエンコーディング名(デフォルトは'utf-8')
             is_allow_fallback (bool): 変換に失敗した場合に元のファイルを返すかどうか。
 
         Returns:
