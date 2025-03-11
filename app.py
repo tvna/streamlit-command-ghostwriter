@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 import os
 from enum import Enum
 from io import BytesIO

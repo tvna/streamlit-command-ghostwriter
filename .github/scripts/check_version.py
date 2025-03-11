@@ -217,7 +217,7 @@ class VersionChecker:
 
         # バージョン整合性チェック
         if npm_new_version != npm_lock_version:
-            print(f"::error::package.json ({npm_new_version}) は" f"package-lock.json ({npm_lock_version}) のバージョンと一致していません")
+            print(f"::error::package.json ({npm_new_version}) はpackage-lock.json ({npm_lock_version}) のバージョンと一致していません")
             print("::error::package-lock.json の更新が必要です。'npm install' または 'npm ci' を実行してください")
             self.set_fail_output("version_mismatch")
             return False, None, None
