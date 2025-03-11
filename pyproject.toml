@@ -131,7 +131,18 @@ addopts = [
 markers = [
   "unit: mark a test as a unit test.",
   "integration: mark a test as an integration test.",
+  "workflow: mark a test as a workflow test.",
 ]
+
+[tool.coverage.run]
+parallel = false
+append = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [tool.mypy]
 check_untyped_defs = true
