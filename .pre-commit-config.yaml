@@ -1,6 +1,13 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
+- repo: local
+  hooks:
+    - id: prevent-main-commit
+      name: Prevent commits to main branch
+      entry: bash -c 'if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then echo "Commits to the main branch are not allowed."; exit 1; fi'
+      language: system
+
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.6.0
   hooks:
@@ -50,7 +57,13 @@ repos:
       entry: pytest -m integration --disable-warnings
       language: system
       pass_filenames: false
-    - id: prevent-main-commit
-      name: Prevent commits to main branch
-      entry: bash -c 'if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then echo "Commits to the main branch are not allowed."; exit 1; fi'
+    - id: pytest_workflow
+      name: pytest (workflow)
+      entry: pytest -m workflow --disable-warnings
       language: system
+      pass_filenames: false
+    - id: lizard
+      name: lizard (CCN)
+      entry: poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN "13"
+      language: system
+      pass_filenames: false

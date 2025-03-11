@@ -26,6 +26,7 @@ def creator() -> PullRequestCreator:
     return creator_instance
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("method", "test_message", "expected_output"),
     [
@@ -82,6 +83,7 @@ def test_set_github_output(
     assert captured.out == expected_output
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("command", "expected_result"),
     [
@@ -158,6 +160,7 @@ def test_run_gh_cmd(
     assert mock_notice.call_count == expected_notice_calls
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("sensitive", "exception", "expected_result", "expected_notice_calls", "expected_warning_calls", "expected_error_calls"),
     [
@@ -214,6 +217,7 @@ def test_get_latest_commit_message(
         assert mock_commit.call_count == 0
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("mock_commit_messages", "expected_result", "fetch_exception"),
     [
@@ -252,6 +256,7 @@ def test_get_commit_titles(
         mock_repo_instance.git.fetch.assert_called_once_with("origin", "main:main")
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("labels", "expected_args"),
     [
@@ -300,6 +305,7 @@ def test_create_pr(creator: PullRequestCreator, mocker: MockerFixture, labels: l
     mock_run_gh_cmd.assert_called_once_with(expected_args)
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("env_vars", "expected_result", "expected_calls"),
     [
@@ -331,6 +337,7 @@ def test_get_version_info(
             assert creator.old_version == ""
 
 
+@pytest.mark.workflow
 def test_prepare_pr_content(creator: PullRequestCreator, mocker: MockerFixture) -> None:
     """prepare_pr_contentメソッドのテスト"""
     creator.new_version = "1.0.0"

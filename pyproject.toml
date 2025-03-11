@@ -97,7 +97,7 @@ lint.per-file-ignores.".github/scripts/check_version.py" = [
 lint.per-file-ignores.".github/scripts/create_pr.py" = [
   "S603",
 ]
-lint.per-file-ignores.".github/scripts/tests/*" = [
+lint.per-file-ignores.".github/scripts/workflow_tests/*" = [
   "PT023",
   "S101",
   "S102",
@@ -122,7 +122,7 @@ lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.pytest.ini_options]
 testpaths = [
   "tests",
-  ".github/scripts/tests",
+  ".github/scripts/workflow_tests",
 ]
 pythonpath = "."
 addopts = [

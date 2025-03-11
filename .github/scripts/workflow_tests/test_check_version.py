@@ -25,9 +25,13 @@ def checker() -> VersionChecker:
     return VersionChecker()
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("env_var_set", "expected_output", "expected_log"),
-    [(True, "TEST_VAR=test_value\n", None), (False, None, "GITHUB_OUTPUT環境変数が設定されていません")],
+    [
+        pytest.param(True, "TEST_VAR=test_value\n", None, id="True"),
+        pytest.param(False, None, "GITHUB_OUTPUT環境変数が設定されていません", id="False"),
+    ],
 )
 def test_set_github_output(
     monkeypatch: pytest.MonkeyPatch,
@@ -61,13 +65,14 @@ def test_set_github_output(
         assert expected_log in caplog.text
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("file_content", "expected_version", "expected_exception"),
     [
-        ('{"version": "1.0.0"}', "1.0.0", False),  # 正常ケース
-        ('{"version": "2.0.0"}', "2.0.0", False),  # 正常ケース
-        ("", None, True),  # エラーケース: 空のファイル
-        ('{"wrong_key": "value"}', None, True),  # エラーケース: バージョンキーなし
+        pytest.param('{"version": "1.0.0"}', "1.0.0", False, id="1.0.0"),  # 正常ケース
+        pytest.param('{"version": "2.0.0"}', "2.0.0", False, id="2.0.0"),  # 正常ケース
+        pytest.param("", None, True, id="空のファイル"),  # エラーケース: 空のファイル
+        pytest.param('{"wrong_key": "value"}', None, True, id="バージョンキーなし"),  # エラーケース: バージョンキーなし
     ],
 )
 def test_get_file_version(
@@ -85,20 +90,21 @@ def test_get_file_version(
         assert expected_exception is True
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("version", "expected"),
     [
-        ("1.0.0", True),
-        ("1.2.3", True),
-        ("0.1.0", True),
-        ("1.0.0-alpha", True),
-        ("1.0.0-beta.1", True),
-        ("1.0.0+build.1", True),
-        ("v1.0.0", False),
-        ("1.0", False),
-        ("1", False),
-        ("1.0.a", False),
-        ("latest", False),
+        pytest.param("1.0.0", True, id="1.0.0"),
+        pytest.param("1.2.3", True, id="1.2.3"),
+        pytest.param("0.1.0", True, id="0.1.0"),
+        pytest.param("1.0.0-alpha", True, id="1.0.0-alpha"),
+        pytest.param("1.0.0-beta.1", True, id="1.0.0-beta.1"),
+        pytest.param("1.0.0+build.1", True, id="1.0.0+build.1"),
+        pytest.param("v1.0.0", False, id="v1.0.0"),
+        pytest.param("1.0", False, id="1.0"),
+        pytest.param("1", False, id="1"),
+        pytest.param("1.0.a", False, id="1.0.a"),
+        pytest.param("latest", False, id="latest"),
     ],
 )
 def test_is_semver(version: str, expected: bool, checker: VersionChecker) -> None:
@@ -106,16 +112,17 @@ def test_is_semver(version: str, expected: bool, checker: VersionChecker) -> Non
     assert checker.is_semver(version) == expected
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("v1", "v2", "expected"),
     [
-        ("1.0.1", "1.0.0", 1),
-        ("1.1.0", "1.0.0", 1),
-        ("2.0.0", "1.0.0", 1),
-        ("1.0.0", "1.0.0", 0),
-        ("1.0.0", "1.0.1", -1),
-        ("1.0.0", "1.1.0", -1),
-        ("1.0.0", "2.0.0", -1),
+        pytest.param("1.0.1", "1.0.0", 1, id="1.0.1 > 1.0.0"),
+        pytest.param("1.1.0", "1.0.0", 1, id="1.1.0 > 1.0.0"),
+        pytest.param("2.0.0", "1.0.0", 1, id="2.0.0 > 1.0.0"),
+        pytest.param("1.0.0", "1.0.0", 0, id="1.0.0 = 1.0.0"),
+        pytest.param("1.0.0", "1.0.1", -1, id="1.0.0 < 1.0.1"),
+        pytest.param("1.0.0", "1.1.0", -1, id="1.0.0 < 1.1.0"),
+        pytest.param("1.0.0", "2.0.0", -1, id="1.0.0 < 2.0.0"),
     ],
 )
 def test_compare_versions(v1: str, v2: str, expected: int, checker: VersionChecker) -> None:
@@ -123,6 +130,7 @@ def test_compare_versions(v1: str, v2: str, expected: int, checker: VersionCheck
     assert checker.compare_versions(v1, v2) == expected
 
 
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     (
         "exists_package_json",
