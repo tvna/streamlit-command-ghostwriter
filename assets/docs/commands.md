@@ -3,8 +3,10 @@
 ## 環境セットアップ
 
 ```bash
+# 依存パッケージのインストールと、開発ブランチに切り替え
 poetry install
 npm install
+git checkout develop
 
 # pre-commit hooks のインストール
 poetry run pre-commit uninstall
@@ -27,7 +29,8 @@ poetry run pytest --pdb
 poetry run pudb app.py
 
 # コードの複雑さ解析
-poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN "10"
+poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./.github/*" --CCN "10"
+poetry run lizard ./.github/* --CCN "13"
 
 # CUIデバッグ
 ```
@@ -36,7 +39,7 @@ poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist
 
 ```bash
 # pre-commit hooks の手動実行
-pre-commit run --all-files
+poetry run pre-commit run --all-files
 
 # コミットログの作成
 npm run commit
