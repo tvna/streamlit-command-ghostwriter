@@ -158,7 +158,7 @@ jobs:
     permissions:
       contents: read
     env:
-      LIZARD_CCN_COUNT: 13
+      LIZARD_CCN_COUNT: 10
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -190,7 +190,7 @@ jobs:
           poetry install
       - name: Run lizard (analyze CCN)
         run: |
-          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" --CCN "$LIZARD_CCN_COUNT"
+          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./.github/*" --CCN "$LIZARD_CCN_COUNT"
       - name: Show AST (app.py)
         run: |
           python <<EOF
