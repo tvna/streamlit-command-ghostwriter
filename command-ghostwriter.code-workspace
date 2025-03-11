@@ -72,7 +72,8 @@
 			"node_modules": true,
 			"requirements.txt": false,
 			"poetry.lock": false,
-			"package-lock.json": false
+			"package-lock.json": false,
+			".github/tmp": true
 		},
 		"explorer.excludeGitIgnore": false,
 		"python.analysis.ignore": [

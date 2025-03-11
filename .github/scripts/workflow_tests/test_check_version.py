@@ -43,8 +43,8 @@ def test_set_github_output(
 ) -> None:
     if env_var_set:
         # 一時ファイルを作成し、そのパスを環境変数に設定
-        output_file = "./github/tmp/github_output.txt"
-        Path("./github/tmp").mkdir(parents=True, exist_ok=True)  # ディレクトリを作成
+        output_file = "./.github/tmp/github_output.txt"
+        Path("./.github/tmp").mkdir(parents=True, exist_ok=True)  # ディレクトリを作成
         monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
     else:
         # 環境変数を設定しない
