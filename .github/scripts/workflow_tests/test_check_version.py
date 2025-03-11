@@ -21,8 +21,12 @@ from git.exc import GitCommandNotFound
 
 
 @pytest.fixture
-def checker() -> VersionChecker:
+def checker(mocker: MockerFixture) -> VersionChecker:
     """VersionCheckerのインスタンスを提供"""
+    # Git.Repoをモック化して、InvalidGitRepositoryErrorを回避
+    mock_repo = mocker.MagicMock()
+    mocker.patch("git.Repo", return_value=mock_repo)
+
     return VersionChecker()
 
 
@@ -270,6 +274,125 @@ def test_read_npm_versions_semver_validation(
 
 @pytest.mark.workflow
 @pytest.mark.parametrize(
+    (
+        "package_json_exists",
+        "package_lock_exists",
+        "package_json_version",
+        "package_lock_version",
+        "expected_result",
+        "expected_new_version",
+        "expected_lock_version",
+        "expected_fail_reason",
+    ),
+    [
+        # 正常系
+        pytest.param(True, True, "1.0.0", "1.0.0", True, "1.0.0", "1.0.0", None, id="Both files exist with matching versions"),
+        # 異常系: package.jsonが存在しない
+        pytest.param(False, True, None, "1.0.0", False, None, None, "package_missing", id="package.json missing"),
+        # 異常系: package-lock.jsonが存在しない
+        pytest.param(True, False, "1.0.0", None, False, None, None, "lockfile_missing", id="package-lock.json missing"),
+        # 異常系: package.jsonのバージョン取得失敗
+        pytest.param(True, True, None, "1.0.0", False, None, None, "npm_new_version_error", id="package.json version error"),
+        # 異常系: package-lock.jsonのバージョン取得失敗
+        pytest.param(True, True, "1.0.0", None, False, None, None, "npm_lock_version_error", id="package-lock.json version error"),
+        # 異常系: バージョン不一致
+        pytest.param(True, True, "1.0.0", "1.0.1", False, None, None, "version_mismatch", id="Version mismatch"),
+    ],
+)
+def test_read_npm_versions(
+    package_json_exists: bool,
+    package_lock_exists: bool,
+    package_json_version: Optional[str],
+    package_lock_version: Optional[str],
+    expected_result: bool,
+    expected_new_version: Optional[str],
+    expected_lock_version: Optional[str],
+    expected_fail_reason: Optional[str],
+    mocker: MockerFixture,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    """read_npm_versionsメソッドの全分岐テスト"""
+    # Git.Repoをモック化
+    mock_repo = mocker.MagicMock()
+    mocker.patch("git.Repo", return_value=mock_repo)
+
+    # VersionCheckerのインスタンスを作成
+    checker = VersionChecker()
+
+    # 必要なメソッドをモック化
+    # 1. Path.exists
+    original_exists = Path.exists
+
+    def mock_exists(self: Path) -> bool:
+        path_str = str(self)
+        if path_str == "package.json":
+            return package_json_exists
+        elif path_str == "package-lock.json":
+            return package_lock_exists
+        return original_exists(self)
+
+    mocker.patch.object(Path, "exists", mock_exists)
+
+    # 2. get_file_version
+    def mock_get_file_version(file_path: str) -> Optional[str]:
+        if file_path == "package.json":
+            return package_json_version
+        elif file_path == "package-lock.json":
+            return package_lock_version
+        return None
+
+    mocker.patch.object(checker, "get_file_version", side_effect=mock_get_file_version)
+
+    # 3. is_semver
+    mocker.patch.object(checker, "is_semver", return_value=True)
+
+    # 4. set_fail_output
+    set_fail_output_mock = mocker.patch.object(checker, "set_fail_output")
+
+    # テスト実行
+    result, npm_new_version, npm_lock_version = checker.read_npm_versions()
+
+    # 結果の検証
+    assert result == expected_result
+    assert npm_new_version == expected_new_version
+    assert npm_lock_version == expected_lock_version
+
+    # 出力の検証
+    captured = capsys.readouterr()
+
+    if not package_json_exists:
+        assert "::error::package.json ファイルが見つかりません" in captured.out
+
+    if package_json_exists and not package_lock_exists:
+        assert "::error::package-lock.json ファイルが見つかりません" in captured.out
+
+    if package_json_exists and package_lock_exists and package_json_version is None:
+        assert "::error::新しいpackage.jsonのバージョンの取得に失敗しました" in captured.out
+
+    if package_json_exists and package_lock_exists and package_json_version and package_lock_version is None:
+        assert "::error::新しいpackage-lock.jsonのバージョン取得に失敗しました" in captured.out
+
+    if (
+        package_json_exists
+        and package_lock_exists
+        and package_json_version
+        and package_lock_version
+        and package_json_version != package_lock_version
+    ):
+        assert (
+            f"::error::package.json ({package_json_version}) はpackage-lock.json ({package_lock_version}) のバージョンと一致していません"
+            in captured.out
+        )
+
+    # 失敗理由の検証
+    if expected_fail_reason:
+        set_fail_output_mock.assert_called_once_with(expected_fail_reason)
+    else:
+        set_fail_output_mock.assert_not_called()
+
+
+@pytest.mark.workflow
+@pytest.mark.parametrize(
     ("exception_factory", "expected_output", "expected_reason"),
     [
         pytest.param(
@@ -387,6 +510,172 @@ def test_run(
 
 
 @pytest.mark.workflow
+@pytest.mark.parametrize(
+    ("tag_names", "fetch_exception", "expected_result"),
+    [
+        pytest.param(["v1.0.0", "v1.1.0", "v0.9.0"], False, ["v0.9.0", "v1.0.0", "v1.1.0"], id="Valid tags sorted"),
+        pytest.param(["v1.0.0", "not-semver", "v0.9.0"], False, ["v0.9.0", "v1.0.0"], id="Mixed tags"),
+        pytest.param([], False, [], id="No tags"),
+        pytest.param(["not-semver1", "not-semver2"], False, [], id="No valid tags"),
+        pytest.param(["v1.0.0", "v1.1.0"], True, ["v1.0.0", "v1.1.0"], id="Fetch exception"),
+    ],
+)
+def test_get_version_tags(
+    checker: VersionChecker,
+    tag_names: list[str],
+    fetch_exception: bool,
+    expected_result: list[str],
+    mocker: MockerFixture,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    """get_version_tagsメソッドのテスト"""
+    # モックの設定
+    mock_repo = mocker.MagicMock()
+    mock_tags = []
+
+    for tag_name in tag_names:
+        mock_tag = mocker.MagicMock()
+        mock_tag.name = tag_name
+        mock_tags.append(mock_tag)
+
+    mock_repo.tags = mock_tags
+
+    # fetch呼び出しのモック
+    if fetch_exception:
+        mock_repo.git.fetch.side_effect = Exception("Test fetch exception")
+    else:
+        mocker.patch.object(mock_repo.git, "fetch")
+
+    # is_semverメソッドの元の実装を使用
+    mocker.patch.object(checker, "is_semver", side_effect=checker.is_semver)
+
+    # テスト実行
+    result = checker.get_version_tags(mock_repo)
+
+    # 結果の検証
+    assert result == expected_result
+
+    # 例外発生時の出力検証
+    if fetch_exception:
+        captured = capsys.readouterr()
+        assert "::warning::タグ取得に失敗しました" in captured.out
+
+
+@pytest.mark.workflow
+@pytest.mark.parametrize(
+    ("commit_exists", "expected_result", "expected_commit"),
+    [
+        pytest.param(True, True, "mock_commit", id="Commit exists"),
+        pytest.param(False, False, None, id="No commit"),
+    ],
+)
+def test_read_npm_package_changes(
+    checker: VersionChecker,
+    commit_exists: bool,
+    expected_result: bool,
+    expected_commit: Optional[str],
+    mocker: MockerFixture,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    """read_npm_package_changesメソッドのテスト"""
+    # モックの設定
+    mock_commit = mocker.MagicMock() if commit_exists else None
+    mocker.patch.object(checker, "get_package_json_from_latest_git_commit", return_value=mock_commit)
+    mocker.patch.object(checker, "set_fail_output")
+
+    # テスト実行
+    result, commit = checker.read_npm_package_changes()
+
+    # 結果の検証
+    assert result == expected_result
+    if expected_commit:
+        assert commit == mock_commit
+    else:
+        assert commit is None
+
+    # 出力の検証
+    captured = capsys.readouterr()
+    if not commit_exists:
+        assert "::notice::package.json の変更が見つかりません" in captured.out
+        checker.set_fail_output.assert_called_once_with("no_package_change")
+
+
+@pytest.mark.workflow
+@pytest.mark.parametrize(
+    ("new_version", "old_version", "expected_result"),
+    [
+        pytest.param("1.0.1", "1.0.0", True, id="Incremented version"),
+        pytest.param("1.0.0", "1.0.0", False, id="Same version"),
+        pytest.param("1.0.0", "1.0.1", False, id="Decremented version"),
+    ],
+)
+def test_compare_npm_versions(
+    checker: VersionChecker,
+    new_version: str,
+    old_version: str,
+    expected_result: bool,
+    mocker: MockerFixture,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    """compare_npm_versionsメソッドのテスト"""
+    # モックの設定
+    mocker.patch.object(checker, "compare_versions", side_effect=checker.compare_versions)
+    mocker.patch.object(checker, "set_fail_output")
+
+    # テスト実行
+    result = checker.compare_npm_versions(new_version, old_version)
+
+    # 結果の検証
+    assert result == expected_result
+
+    # 出力の検証
+    captured = capsys.readouterr()
+    if new_version == old_version:
+        assert f"::notice::package.jsonにて、バージョンに変更がありません: {new_version}" in captured.out
+        checker.set_fail_output.assert_called_once_with("no_version_change")
+    elif checker.compare_versions(new_version, old_version) <= 0:
+        assert f"::error::package.jsonにて、新しいバージョン ({new_version}) が、過去のバージョン ({old_version}) 以下です" in captured.out
+        checker.set_fail_output.assert_called_once_with("version_not_incremented")
+
+
+@pytest.mark.workflow
+@pytest.mark.parametrize(
+    ("tags", "npm_version", "expected_result"),
+    [
+        pytest.param(["v0.9.0", "v1.0.0"], "1.0.1", True, id="Higher version"),
+        pytest.param(["v0.9.0", "v1.0.0"], "1.0.0", False, id="Same version"),
+        pytest.param(["v0.9.0", "v1.0.0"], "0.9.5", False, id="Lower version"),
+        pytest.param([], "1.0.0", True, id="No tags"),
+    ],
+)
+def test_compare_git_tags(
+    checker: VersionChecker, tags: list[str], npm_version: str, expected_result: bool, mocker: MockerFixture, capsys: pytest.CaptureFixture
+) -> None:
+    """compare_git_tagsメソッドのテスト"""
+    # モックの設定
+    mock_repo = mocker.MagicMock()
+    mocker.patch.object(checker, "_git_repo", mock_repo)
+    mocker.patch.object(checker, "get_version_tags", return_value=tags)
+    mocker.patch.object(checker, "is_semver", return_value=True)
+    mocker.patch.object(checker, "compare_versions", side_effect=checker.compare_versions)
+    mocker.patch.object(checker, "set_fail_output")
+
+    # テスト実行
+    result = checker.compare_git_tags(npm_version)
+
+    # 結果の検証
+    assert result == expected_result
+
+    # 出力の検証
+    captured = capsys.readouterr()
+    if tags and not expected_result:
+        latest_tag = tags[-1]
+        latest_version = latest_tag[1:] if latest_tag.startswith("v") else latest_tag
+        assert f"::error::package.jsonにて、新しいバージョン ({npm_version}) が、最新タグ ({latest_version}) 以下です" in captured.out
+        checker.set_fail_output.assert_called_once_with("version_not_incremented_from_tag")
+
+
+@pytest.mark.workflow
 def test_main(mocker: MockerFixture) -> None:
     """main関数のテスト"""
     # 先にインポートしておく
@@ -398,7 +687,13 @@ def test_main(mocker: MockerFixture) -> None:
     mocker.patch("check_version.VersionChecker", return_value=mock_checker)
 
     # テスト実行
-    main()
+    result = main()
 
     # 検証
     mock_checker.run.assert_called_once()
+    assert result == 0
+
+    # 異常系のテスト
+    mock_checker.run.return_value = 1
+    result = main()
+    assert result == 1

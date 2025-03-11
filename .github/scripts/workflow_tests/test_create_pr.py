@@ -8,7 +8,8 @@ create_pr.pyのユニットテスト
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Union
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -30,9 +31,9 @@ def creator() -> PullRequestCreator:
 @pytest.mark.parametrize(
     ("method", "test_message", "expected_output"),
     [
-        ("github_notice", "テスト通知", "::notice::テスト通知\n"),
-        ("github_warning", "テスト警告", "::warning::テスト警告\n"),
-        ("github_error", "テストエラー", "::error::テストエラー\n"),
+        pytest.param("github_notice", "テスト通知", "::notice::テスト通知\n", id="github_notice"),
+        pytest.param("github_warning", "テスト警告", "::warning::テスト警告\n", id="github_warning"),
+        pytest.param("github_error", "テストエラー", "::error::テストエラー\n", id="github_error"),
     ],
 )
 def test_github_methods(
@@ -47,16 +48,17 @@ def test_github_methods(
 
 @pytest.mark.skip(reason="GitHub Actions上でのみ失敗してしまうテスト")
 @pytest.mark.parametrize(
-    ("env_key", "env_value", "expected_path_call_count", "expected_output"),
+    ("env_key", "env_value", "isfile_return", "expected_path_call_count", "expected_output"),
     [
-        pytest.param("GITHUB_OUTPUT", "github_output.txt", 1, ""),
-        pytest.param("GITHUB_OUTPUT", None, 0, "GITHUB_OUTPUT環境変数が設定されていません\n"),
-        pytest.param(None, None, 0, "GITHUB_OUTPUT環境変数が設定されていません\n"),
+        pytest.param("GITHUB_OUTPUT", "github_output.txt", True, 1, ""),
+        pytest.param("GITHUB_OUTPUT", None, False, 0, "GITHUB_OUTPUT環境変数が設定されていません\n"),
+        pytest.param(None, None, False, 0, "GITHUB_OUTPUT環境変数が設定されていません\n"),
     ],
 )
 def test_set_github_output(
     env_key: Optional[str],
     env_value: Optional[str],
+    isfile_return: bool,
     expected_path_call_count: int,
     expected_output: str,
     creator: PullRequestCreator,
@@ -65,20 +67,18 @@ def test_set_github_output(
     mocker: MockerFixture,
 ) -> None:
     """set_github_outputメソッドのテスト"""
+    # 環境変数の設定
+    env_dict = {env_key: env_value} if env_key is not None and env_value is not None else {}
+    mocker.patch.dict(os.environ, env_dict)
 
-    if env_key is not None and env_value is not None:
-        mocker.patch.dict(os.environ, {env_key: env_value})
-    else:
-        mocker.patch.dict(os.environ, {})
+    # ファイル存在チェックのモック
+    mock_path = mocker.patch.object(os.path, "isfile", return_value=isfile_return)
 
-    if env_key is None:
-        mock_path = mocker.patch.object(os.path, "isfile", return_value=False)
-    else:
-        mock_path = mocker.patch.object(os.path, "isfile", return_value=True)
-
+    # テスト実行
     creator.set_github_output("test_name", "test_value")
     captured = capsys.readouterr()
 
+    # 検証
     assert mock_path.call_count == expected_path_call_count
     assert captured.out == expected_output
 
@@ -122,10 +122,10 @@ def test_validate_command(command: list, expected_result: bool, creator: PullReq
         "expected_notice_calls",
     ),
     [
-        (["pr", "create"], "GH_TOKEN", 1, 0, 0, 0),  # 成功ケース
-        (["pr", "create"], None, 0, 1, 0, 0),  # GH_TOKEN未設定
-        (["rm", "-rf", "/"], "GH_TOKEN", 0, 1, 0, 0),  # 無効なコマンド
-        (["pr", "create", "|", "grep"], "GH_TOKEN", 0, 1, 0, 0),  # 危険な文字を含む引数
+        pytest.param(["pr", "create"], "GH_TOKEN", 1, 0, 0, 0, id="成功ケース"),
+        pytest.param(["pr", "create"], None, 0, 1, 0, 0, id="GH_TOKEN未設定"),
+        pytest.param(["rm", "-rf", "/"], "GH_TOKEN", 0, 1, 0, 0, id="無効なコマンド"),
+        pytest.param(["pr", "create", "|", "grep"], "GH_TOKEN", 0, 1, 0, 0, id="危険な文字を含む引数"),
     ],
 )
 def test_run_gh_cmd(
@@ -162,105 +162,103 @@ def test_run_gh_cmd(
 
 @pytest.mark.workflow
 @pytest.mark.parametrize(
-    ("sensitive", "exception", "expected_result", "expected_notice_calls", "expected_warning_calls", "expected_error_calls"),
+    ("repo_side_effect", "commit_message", "expected_result", "expected_notice_calls", "expected_warning_calls", "expected_error_calls"),
     [
-        (False, False, "Test commit message", 0, 0, 0),  # 通常のメッセージ
-        (True, False, "Add token ghp_***", 0, 1, 0),  # 機密情報を含むメッセージ
-        (False, True, "Unable to fetch commit message", 0, 1, 0),  # 例外発生時
+        pytest.param(None, "Test commit message", "Test commit message", 0, 0, 0, id="通常のメッセージ"),
+        pytest.param(None, "Add token ghp_abcdef123456", "Add token ghp_***", 0, 1, 0, id="機密情報を含むメッセージ"),
+        pytest.param(Exception("Not a git repository"), None, "Unable to fetch commit message", 0, 1, 0, id="例外発生時"),
     ],
 )
 def test_get_latest_commit_message(
     creator: PullRequestCreator,
     mocker: MockerFixture,
-    sensitive: bool,
-    exception: bool,
+    repo_side_effect: Optional[Exception],
+    commit_message: Optional[str],
     expected_result: str,
     expected_notice_calls: int,
     expected_warning_calls: int,
     expected_error_calls: int,
 ) -> None:
     """get_latest_commit_messageメソッドのテスト"""
-    if exception:
-        mock_repo = mocker.patch("git.Repo", side_effect=Exception("Not a git repository"))
+    # Repoのモック設定
+    if repo_side_effect:
+        mock_repo = mocker.patch("git.Repo", side_effect=repo_side_effect)
     else:
         mock_repo = mocker.patch("git.Repo")
+        mock_repo_instance = mock_repo.return_value
+        mock_commit = mocker.MagicMock()
+        mock_commit.message = commit_message
+        mock_repo_instance.head.commit = mock_commit
 
-    mock_repo_instance = mock_repo.return_value
-    mock_commit = mocker.MagicMock()
+    # 通知メソッドのモック
     mock_notice = mocker.patch.object(PullRequestCreator, "github_notice")
     mock_warning = mocker.patch.object(PullRequestCreator, "github_warning")
     mock_error = mocker.patch.object(PullRequestCreator, "github_error")
 
-    if sensitive:
-        mock_commit.message = "Add token ghp_abcdef123456"
-    else:
-        mock_commit.message = "Test commit message"
-
-    mock_repo_instance.head.commit = mock_commit
-
+    # テスト実行
     result = creator.get_latest_commit_message()
 
+    # 検証
     assert result == expected_result
-
     mock_repo.assert_called_once_with(".")
-    if exception:
-        assert mock_notice.call_count == expected_notice_calls
-        assert mock_warning.call_count == expected_warning_calls
-        assert mock_error.call_count == expected_error_calls
-        assert mock_repo_instance.call_count == 0
-        assert mock_commit.call_count == 0
-    else:
-        assert mock_notice.call_count == expected_notice_calls
-        assert mock_warning.call_count == expected_warning_calls
-        assert mock_error.call_count == expected_error_calls
-        assert mock_repo_instance.call_count == 0
-        assert mock_commit.call_count == 0
+    assert mock_notice.call_count == expected_notice_calls
+    assert mock_warning.call_count == expected_warning_calls
+    assert mock_error.call_count == expected_error_calls
 
 
 @pytest.mark.workflow
 @pytest.mark.parametrize(
-    ("mock_commit_messages", "expected_result", "fetch_exception"),
+    ("fetch_side_effect", "commit_messages", "expected_result"),
     [
-        (["First commit\nDetails here", "Second commit\nMore details"], ["- First commit", "- Second commit"], False),
-        ([], ["Unable to fetch commit titles"], True),  # Fetch exception case
+        pytest.param(
+            None, ["First commit\nDetails here", "Second commit\nMore details"], ["- First commit", "- Second commit"], id="正常ケース"
+        ),
+        pytest.param(Exception("Fetch failed"), None, ["Unable to fetch commit titles"], id="Fetch例外ケース"),
     ],
 )
 def test_get_commit_titles(
     creator: PullRequestCreator,
     mocker: MockerFixture,
-    mock_commit_messages: list,
-    expected_result: list,
-    fetch_exception: bool,
+    fetch_side_effect: Optional[Exception],
+    commit_messages: Optional[List[str]],
+    expected_result: List[str],
 ) -> None:
     """get_commit_titlesメソッドのテスト"""
+    # Repoのモック設定
     mock_repo = mocker.patch("git.Repo")
     mock_repo_instance = mock_repo.return_value
 
-    if fetch_exception:
-        mock_repo_instance.git.fetch.side_effect = Exception("Fetch failed")
+    # fetch側の設定
+    if fetch_side_effect:
+        mock_repo_instance.git.fetch.side_effect = fetch_side_effect
     else:
-        mock_commit1 = mocker.MagicMock()
-        mock_commit1.message = mock_commit_messages[0]
-        mock_commit2 = mocker.MagicMock()
-        mock_commit2.message = mock_commit_messages[1]
-        mock_repo_instance.iter_commits.return_value = [mock_commit1, mock_commit2]
+        # コミットのモック設定
+        commits = []
+        if commit_messages:
+            for message in commit_messages:
+                mock_commit = mocker.MagicMock()
+                mock_commit.message = message
+                commits.append(mock_commit)
+        mock_repo_instance.iter_commits.return_value = commits
 
+    # テスト実行
     result = creator.get_commit_titles()
-    assert result == expected_result
 
+    # 検証
+    assert result == expected_result
     mock_repo.assert_called_once_with(".")
-    if not fetch_exception:
-        mock_repo_instance.git.fetch.assert_called_once_with("origin", "main:main")
+    mock_repo_instance.git.fetch.assert_called_once_with("origin", "main:main")
+
+    # 正常ケースの場合のみiter_commitsの呼び出しを検証
+    if not fetch_side_effect:
         mock_repo_instance.iter_commits.assert_called_once_with("main..develop", max_count=10)
-    else:
-        mock_repo_instance.git.fetch.assert_called_once_with("origin", "main:main")
 
 
 @pytest.mark.workflow
 @pytest.mark.parametrize(
     ("labels", "expected_args"),
     [
-        (
+        pytest.param(
             ["bug", "enhancement"],
             [
                 "pr",
@@ -276,8 +274,9 @@ def test_get_commit_titles(
                 "--label",
                 "bug,enhancement",
             ],
+            id="ラベルあり",
         ),
-        (
+        pytest.param(
             [],
             [
                 "pr",
@@ -291,6 +290,7 @@ def test_get_commit_titles(
                 "--body",
                 "PR body",
             ],
+            id="ラベルなし",
         ),
     ],
 )
@@ -307,34 +307,36 @@ def test_create_pr(creator: PullRequestCreator, mocker: MockerFixture, labels: l
 
 @pytest.mark.workflow
 @pytest.mark.parametrize(
-    ("env_vars", "expected_result", "expected_calls"),
+    ("env_vars", "expected_result", "expected_new_version", "expected_old_version", "expected_error_calls"),
     [
-        ({"NEW_VERSION": "1.0.0", "OLD_VERSION": "0.9.0"}, True, 0),  # 成功ケース
-        ({"NEW_VERSION": "", "OLD_VERSION": "0.9.0"}, False, 1),  # 新バージョンがない場合
-        ({"NEW_VERSION": "1.0.0", "OLD_VERSION": ""}, False, 1),  # 旧バージョンがない場合
+        pytest.param({"NEW_VERSION": "1.0.0", "OLD_VERSION": "0.9.0"}, True, "1.0.0", "0.9.0", 0, id="成功ケース"),
+        pytest.param({"NEW_VERSION": "", "OLD_VERSION": "0.9.0"}, False, "", "0.9.0", 1, id="新バージョンがない場合"),
+        pytest.param({"NEW_VERSION": "1.0.0", "OLD_VERSION": ""}, False, "1.0.0", "", 1, id="旧バージョンがない場合"),
+        pytest.param({}, False, None, None, 1, id="両方のバージョンがない場合"),
     ],
 )
 def test_get_version_info(
-    creator: PullRequestCreator, mocker: MockerFixture, env_vars: dict, expected_result: bool, expected_calls: int
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+    env_vars: dict,
+    expected_result: bool,
+    expected_new_version: Optional[str],
+    expected_old_version: Optional[str],
+    expected_error_calls: int,
 ) -> None:
     """get_version_infoメソッドのテスト"""
+    # 環境変数のモック
     mocker.patch.dict(os.environ, env_vars)
     mock_error = mocker.patch.object(PullRequestCreator, "github_error")
 
+    # テスト実行
     result = creator.get_version_info()
-    assert result == expected_result
-    assert mock_error.call_count == expected_calls
 
-    if expected_result:
-        assert creator.new_version == "1.0.0"
-        assert creator.old_version == "0.9.0"
-    else:
-        if env_vars["NEW_VERSION"] == "":
-            assert creator.new_version == ""
-            assert creator.old_version == "0.9.0"
-        else:
-            assert creator.new_version == "1.0.0"
-            assert creator.old_version == ""
+    # 検証
+    assert result == expected_result
+    assert mock_error.call_count == expected_error_calls
+    assert creator.new_version == expected_new_version
+    assert creator.old_version == expected_old_version
 
 
 @pytest.mark.workflow
@@ -358,30 +360,303 @@ def test_prepare_pr_content(creator: PullRequestCreator, mocker: MockerFixture) 
 
 
 @pytest.mark.parametrize(
-    ("new_version", "old_version", "expected_result", "expected_calls"),
+    ("new_version", "old_version", "get_version_info_return", "expected_result", "expected_notice_calls", "expected_create_pr_calls"),
     [
-        ("1.0.0", "0.9.0", 0, ["PRの作成準備中...", "PRを作成中...", "PRが作成されました"]),
-        ("", "", 1, ["PRの作成準備中..."]),
+        # 成功ケース
+        pytest.param(
+            "1.0.0",
+            "0.9.0",
+            True,
+            0,
+            3,  # PRの作成準備中..., PRを作成中..., PRが作成されました
+            1,
+            id="成功ケース",
+        ),
+        # バージョン情報エラー時
+        pytest.param(
+            "",
+            "",
+            False,
+            1,
+            1,  # PRの作成準備中...
+            0,
+            id="バージョン情報エラー時",
+        ),
     ],
 )
 def test_run(
-    creator: PullRequestCreator, mocker: MockerFixture, new_version: str, old_version: str, expected_result: int, expected_calls: list
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+    new_version: str,
+    old_version: str,
+    get_version_info_return: bool,
+    expected_result: int,
+    expected_notice_calls: int,
+    expected_create_pr_calls: int,
 ) -> None:
-    """runメソッドの成功およびバージョン情報エラー時のテスト"""
+    """runメソッドのテスト"""
+    # 環境変数のモック
     mocker.patch.dict(os.environ, {"NEW_VERSION": new_version, "OLD_VERSION": old_version})
 
-    if expected_result == 0:
-        mocker.patch.object(PullRequestCreator, "github_notice")
-        mocker.patch.object(PullRequestCreator, "get_version_info", return_value=True)
-        mocker.patch.object(PullRequestCreator, "prepare_pr_content", return_value=("Test Title", "Test Body", ["test-label"]))
-        mock_create_pr = mocker.patch.object(PullRequestCreator, "create_pr", return_value=True)
+    # 通知メソッドのモック
+    mock_notice = mocker.patch.object(PullRequestCreator, "github_notice")
 
-        result = creator.run()
-        assert result == expected_result
+    # get_version_infoのモック
+    mocker.patch.object(PullRequestCreator, "get_version_info", return_value=get_version_info_return)
+
+    # 成功ケースの場合のみ追加のモックが必要
+    mocker.patch.object(PullRequestCreator, "prepare_pr_content", return_value=("Test Title", "Test Body", ["test-label"]))
+    mock_create_pr = mocker.patch.object(PullRequestCreator, "create_pr", return_value=True)
+
+    # テスト実行
+    result = creator.run()
+
+    # 検証
+    assert result == expected_result
+    assert mock_notice.call_count == expected_notice_calls
+    assert mock_create_pr.call_count == expected_create_pr_calls
+
+    # create_prが呼ばれた場合のみ引数を検証
+    if expected_create_pr_calls > 0:
         mock_create_pr.assert_called_once_with("Test Title", "Test Body", ["test-label"])
-    else:
-        mocker.patch.object(PullRequestCreator, "github_notice")
-        mocker.patch.object(PullRequestCreator, "get_version_info", return_value=False)
 
-        result = creator.run()
-        assert result == expected_result
+
+@pytest.mark.workflow
+@pytest.mark.parametrize(
+    ("title", "body", "labels", "expected_result", "expected_error_calls"),
+    [
+        pytest.param("Test PR", "Test Body", ["test-label"], True, 0, id="正常ケース"),
+        pytest.param(123, "Test Body", ["test-label"], False, 1, id="タイトルが文字列でない"),
+        pytest.param("Test PR", None, ["test-label"], False, 1, id="本文がNone"),
+        pytest.param("Test PR", "Test Body", "not-a-list", False, 1, id="ラベルがリストでない"),
+    ],
+)
+def test_create_pr_input_validation(
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+    title: Union[str, int],
+    body: Union[str, None],
+    labels: Union[List[str], str],
+    expected_result: bool,
+    expected_error_calls: int,
+) -> None:
+    """create_prメソッドの入力検証テスト"""
+    mocker.patch.dict(os.environ, {"GH_TOKEN": "dummy_token"})
+    mock_error = mocker.patch.object(PullRequestCreator, "github_error")
+    mock_run_gh_cmd = mocker.patch.object(PullRequestCreator, "run_gh_cmd", return_value=True)
+
+    # 型チェックを無視して引数を渡す
+    result = creator.create_pr(title, body, labels)  # type: ignore
+
+    assert result == expected_result
+    assert mock_error.call_count == expected_error_calls
+
+    if expected_result:
+        mock_run_gh_cmd.assert_called_once()
+    else:
+        mock_run_gh_cmd.assert_not_called()
+
+
+@pytest.mark.workflow
+@pytest.mark.parametrize(
+    (
+        "max_commits",
+        "is_valid_input",
+        "mock_commits",
+        "expected_result",
+        "expected_error_calls",
+        "expected_repo_calls",
+        "expected_fetch_calls",
+        "expected_iter_commits_calls",
+        "expected_repo_call_args",
+        "expected_fetch_call_args",
+        "expected_iter_commits_call_args",
+    ),
+    [
+        # 正常ケース
+        (
+            10,
+            True,
+            [{"message": "Commit 1\nDetails here"}, {"message": "Commit 2\nMore details"}],
+            ["- Commit 1", "- Commit 2"],
+            0,
+            1,
+            1,
+            1,
+            [(".",)],
+            [("origin", "main:main")],
+            [("main..develop",), {"max_count": 10}],
+        ),
+        # 負の値
+        (-1, False, [], [], 1, 0, 0, 0, [], [], []),
+        # 整数でない値
+        ("not-an-int", False, [], [], 1, 0, 0, 0, [], [], []),
+    ],
+)
+def test_get_commit_titles_input_validation(
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+    max_commits: Union[int, str],
+    is_valid_input: bool,
+    mock_commits: List[dict],
+    expected_result: list,
+    expected_error_calls: int,
+    expected_repo_calls: int,
+    expected_fetch_calls: int,
+    expected_iter_commits_calls: int,
+    expected_repo_call_args: List[tuple],
+    expected_fetch_call_args: List[tuple],
+    expected_iter_commits_call_args: List[Union[tuple, dict]],
+) -> None:
+    """get_commit_titlesメソッドの入力検証テスト"""
+    # Repoのモック設定
+    mock_repo = mocker.patch("git.Repo")
+    mock_repo_instance = mock_repo.return_value
+    mock_error = mocker.patch.object(PullRequestCreator, "github_error")
+
+    # コミットのモック設定
+    commits = []
+    for commit_data in mock_commits:
+        mock_commit = mocker.MagicMock()
+        mock_commit.message = commit_data["message"]
+        commits.append(mock_commit)
+
+    mock_repo_instance.iter_commits.return_value = commits
+
+    # テスト実行
+    result = creator.get_commit_titles(max_commits)  # type: ignore
+
+    # 検証
+    assert mock_error.call_count == expected_error_calls
+    assert result == expected_result
+
+    # Repoの呼び出し検証
+    assert mock_repo.call_count == expected_repo_calls
+
+    # 呼び出し引数の検証
+    _verify_call_args(mock_repo, expected_repo_call_args)
+    _verify_call_args(mock_repo_instance.git.fetch, expected_fetch_call_args)
+
+    # iter_commitsの呼び出し検証
+    assert mock_repo_instance.iter_commits.call_count == expected_iter_commits_calls
+
+    # iter_commitsの呼び出し引数検証(位置引数とキーワード引数の両方を処理)
+    if expected_iter_commits_calls > 0:
+        args, kwargs = expected_iter_commits_call_args
+        mock_repo_instance.iter_commits.assert_called_with(*args, **kwargs)
+
+
+def _verify_call_args(mock_obj: Union[Mock, MagicMock], expected_call_args: List[tuple]) -> None:
+    """モックオブジェクトの呼び出し引数を検証するヘルパー関数"""
+    if not expected_call_args:
+        return
+
+    # 実際の呼び出し回数と期待する引数リストの長さが一致することを確認
+    assert mock_obj.call_count == len(expected_call_args)
+
+    # 各呼び出しの引数を検証
+    for i, args in enumerate(expected_call_args):
+        call_args = mock_obj.call_args_list[i][0]
+        assert call_args == args
+
+
+@pytest.mark.workflow
+@pytest.mark.parametrize(
+    ("file_exists", "expected_output"),
+    [
+        pytest.param(True, "", id="ファイルが存在する場合"),
+        pytest.param(False, "指定されたファイルが見つかりません: github_output.txt\n", id="ファイルが存在しない場合"),
+    ],
+)
+def test_set_github_output_file_not_found(
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+    capsys: pytest.CaptureFixture,
+    file_exists: bool,
+    expected_output: str,
+) -> None:
+    """set_github_outputメソッドのファイル存在チェックテスト"""
+    mocker.patch.dict(os.environ, {"GITHUB_OUTPUT": "github_output.txt"})
+    mock_isfile = mocker.patch.object(os.path, "isfile", return_value=file_exists)
+    mock_open = mocker.patch("builtins.open", new_callable=mocker.mock_open)
+
+    creator.set_github_output("test_name", "test_value")
+    captured = capsys.readouterr()
+
+    assert captured.out == expected_output
+    mock_isfile.assert_called_once_with("github_output.txt")
+
+    if file_exists:
+        mock_open.assert_called_once_with("github_output.txt", "a")
+        mock_open().write.assert_called_once_with("test_name=test_value\n")
+    else:
+        mock_open.assert_not_called()
+
+
+@pytest.mark.workflow
+@pytest.mark.parametrize(
+    ("create_pr_result", "expected_result", "expected_error_calls", "expected_notice_calls"),
+    [
+        pytest.param(True, 0, 0, 3, id="PRの作成成功"),
+        pytest.param(False, 1, 1, 2, id="PRの作成失敗"),
+    ],
+)
+def test_run_pr_creation(
+    creator: PullRequestCreator,
+    mocker: MockerFixture,
+    create_pr_result: bool,
+    expected_result: int,
+    expected_error_calls: int,
+    expected_notice_calls: int,
+) -> None:
+    """runメソッドのPR作成結果テスト"""
+    mocker.patch.dict(os.environ, {"NEW_VERSION": "1.0.0", "OLD_VERSION": "0.9.0"})
+    mocker.patch.object(PullRequestCreator, "get_version_info", return_value=True)
+    mocker.patch.object(PullRequestCreator, "prepare_pr_content", return_value=("Test Title", "Test Body", ["test-label"]))
+    mock_create_pr = mocker.patch.object(PullRequestCreator, "create_pr", return_value=create_pr_result)
+    mock_error = mocker.patch.object(PullRequestCreator, "github_error")
+    mock_notice = mocker.patch.object(PullRequestCreator, "github_notice")
+
+    result = creator.run()
+
+    assert result == expected_result
+    assert mock_error.call_count == expected_error_calls
+    assert mock_notice.call_count == expected_notice_calls
+    mock_create_pr.assert_called_once_with("Test Title", "Test Body", ["test-label"])
+
+
+@pytest.mark.workflow
+def test_run_exception(creator: PullRequestCreator, mocker: MockerFixture) -> None:
+    """runメソッドの例外処理テスト"""
+    mocker.patch.object(PullRequestCreator, "get_version_info", side_effect=Exception("Test exception"))
+    mock_error = mocker.patch.object(PullRequestCreator, "github_error")
+
+    result = creator.run()
+
+    assert result == 1
+    mock_error.assert_called_once()
+    assert "予期せぬエラーが発生しました" in mock_error.call_args[0][0]
+
+
+@pytest.mark.workflow
+def test_main_function(mocker: MockerFixture) -> None:
+    """main関数のテスト"""
+    # 先にインポートしておく
+    from create_pr import main
+
+    # モックの設定
+    mock_creator = mocker.MagicMock()
+    mock_creator.run.return_value = 0
+    mocker.patch("create_pr.PullRequestCreator", return_value=mock_creator)
+
+    # テスト実行
+    result = main()
+
+    # 検証
+    mock_creator.run.assert_called_once()
+    assert result == 0
+
+    # 異常系のテスト
+    mock_creator.run.return_value = 1
+    result = main()
+    assert result == 1
