@@ -158,6 +158,7 @@ cython_debug/
 node_modules/
 
 # GitHub Actions
+tmp
 github_output.txt
 
 # PyCharm

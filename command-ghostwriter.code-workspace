@@ -13,10 +13,24 @@
 			"--profile",
 			"black"
 		],
-		"python.analysis.extraPaths": [
-			"${workspaceFolderBasename}/.venv/*/site-packages",
-			"${workspaceFolderBasename}/.github/scripts/*"
+		"python.autoComplete.extraPaths": [
+			"${workspaceRoot}/.venv/*/site-packages"
 		],
+		"python.analysis.extraPaths": [
+			"${workspaceRoot}/.venv/*/site-packages"
+		],
+		"python.analysis.include": [
+			"${workspaceRoot}/.venv/*/site-packages"
+		],
+		"python.analysis.ignore": [
+			"/opt/homebrew/Cellar/python**"
+		],
+		"python.analysis.typeCheckingMode": "basic",
+		"python.testing.pytestArgs": [
+			"tests"
+		],
+		"python.testing.unittestEnabled": false,
+		"python.testing.pytestEnabled": true,
 		"cSpell.words": [
 			"breakline",
 			"chardet",
@@ -59,10 +73,19 @@
 			"venv",
 			"virtualenvs"
 		],
-		"python.analysis.typeCheckingMode": "basic",
+		"cSpell.ignorePaths": [
+			"poetry.lock",
+			"package-lock.json",
+			"node_modules",
+			"vscode-extension",
+			".git/objects",
+			".vscode",
+			".vscode-insiders",
+			"**/.cursor/extensions/ms-python.vscode-pylance-**"
+		],
 		"files.exclude": {
 			".coverage": true,
-			".mypy_cache": true,
+			"**/.mypy_cache": true,
 			".pytest_cache": true,
 			".ruff_cache": true,
 			".venv": true,
@@ -73,26 +96,9 @@
 			"requirements.txt": false,
 			"poetry.lock": false,
 			"package-lock.json": false,
-			".github/tmp": true
+			"**/tmp": true,
 		},
 		"explorer.excludeGitIgnore": false,
-		"python.analysis.ignore": [
-			"/opt/homebrew/Cellar/python**"
-		],
-		"python.testing.pytestArgs": [
-			"tests"
-		],
-		"python.testing.unittestEnabled": false,
-		"python.testing.pytestEnabled": true,
-		"cSpell.ignorePaths": [
-			"package-lock.json",
-			"node_modules",
-			"vscode-extension",
-			".git/objects",
-			".vscode",
-			".vscode-insiders",
-			"**/.cursor/extensions/ms-python.vscode-pylance-**"
-		],
 		"yaml.format.enable": true,
 		"[github-actions-workflow]": {
 			"editor.defaultFormatter": "esbenp.prettier-vscode"

@@ -92,22 +92,22 @@ lint.select = [
 ]
 lint.ignore = [
 ]
-lint.per-file-ignores.".github/scripts/check_version.py" = [
+lint.per-file-ignores."scripts/check_version.py" = [
   "S603",
 ]
-lint.per-file-ignores.".github/scripts/create_pr.py" = [
+lint.per-file-ignores."scripts/create_pr.py" = [
   "S603",
-]
-lint.per-file-ignores.".github/scripts/workflow_tests/*" = [
-  "PT001", # Use @pytest.fixture{expected} over @pytest.fixture{actual}
-  "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
-  "S101",  # Use of assert detected
-  "S105",  # Possible hardcoded password assigned to: "{}"
 ]
 lint.per-file-ignores."tests/*" = [
   "PT001", # Use @pytest.fixture{expected} over @pytest.fixture{actual}
   "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
   "S101",  # Use of assert detected
+]
+lint.per-file-ignores."tests/workflow/*" = [
+  "PT001", # Use @pytest.fixture{expected} over @pytest.fixture{actual}
+  "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
+  "S101",  # Use of assert detected
+  "S105",  # Possible hardcoded password assigned to: "{}"
 ]
 # Allow fix for all enabled rules (when `--fix`) is provided.
 lint.fixable = [
@@ -121,7 +121,6 @@ lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.pytest.ini_options]
 testpaths = [
   "tests",
-  ".github/scripts/workflow_tests",
 ]
 pythonpath = "."
 addopts = [
@@ -130,6 +129,7 @@ addopts = [
 markers = [
   "unit: mark a test as a unit test.",
   "integration: mark a test as an integration test.",
+  "e2e: mark a test as an end-to-end test",
   "workflow: mark a test as a workflow test.",
 ]
 
