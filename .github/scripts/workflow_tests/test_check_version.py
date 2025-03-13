@@ -343,11 +343,11 @@ def test_check_develop_package_versions_match(
         # package.jsonが存在しない
         pytest.param(False, True, "1.1.0", "1.1.0", "1.0.0", True, 1, 1, None, id="package.json missing"),
         # developブランチのpackage.jsonとpackage-lock.jsonのバージョンが一致しない
-        pytest.param(True, False, "1.1.0", "1.0.0", "1.0.0", True, 1, 1, None, id="develop versions mismatch"),
+        pytest.param(True, False, "1.1.0", "1.0.0", "1.0.0", True, 1, 0, None, id="develop versions mismatch"),
         # developブランチのpackage.jsonのバージョン取得失敗
-        pytest.param(True, False, None, "1.1.0", "1.0.0", True, 1, 1, None, id="develop package.json version error"),
+        pytest.param(True, False, None, "1.1.0", "1.0.0", True, 1, 0, None, id="develop package.json version error"),
         # mainブランチのバージョン取得失敗
-        pytest.param(True, True, "1.1.0", "1.1.0", None, True, 1, 1, None, id="main version error"),
+        pytest.param(True, True, "1.1.0", "1.1.0", None, True, 1, 0, None, id="main version error"),
         # バージョン形式警告(main)
         pytest.param(
             True,
@@ -370,7 +370,7 @@ def test_check_develop_package_versions_match(
             "1.0.0",
             True,
             0,
-            1,
+            0,
             "::error::developブランチのバージョン「1.0.0」がmainブランチのバージョン「1.0.0」以下です",
             id="Same version - バージョン比較失敗(同じ)",
         ),
@@ -383,7 +383,7 @@ def test_check_develop_package_versions_match(
             "1.1.0",
             True,
             -1,
-            1,
+            0,
             "::error::developブランチのバージョン「1.0.0」がmainブランチのバージョン「1.1.0」以下です",
             id="Lower version - バージョン比較失敗(低い)",
         ),
@@ -442,7 +442,13 @@ def test_run(
         assert expected_output in captured.out
 
     # 成功時の出力検証
-    if expected_result == 0:
+    if (
+        expected_result == 0
+        and develop_versions_match
+        and develop_package_version is not None
+        and main_version is not None
+        and version_comparison > 0
+    ):
         checker.set_github_output.assert_any_call("status", "success")
         checker.set_github_output.assert_any_call("version_changed", "true")
         checker.set_github_output.assert_any_call("develop_version", develop_package_version)

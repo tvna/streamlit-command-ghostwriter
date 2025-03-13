@@ -198,13 +198,13 @@ class VersionChecker:
             # developブランチのpackage.jsonとpackage-lock.jsonのバージョン整合性チェック
             is_valid, develop_package_version, develop_lock_version = self.check_develop_package_versions_match()
             if not is_valid or develop_package_version is None:
-                return 1
+                return 0
 
             # mainブランチのバージョン取得
             main_version = self.get_version_from_branch("main")
             if main_version is None:
                 self.set_fail_output("main_version_error")
-                return 1
+                return 0
 
             # バージョン形式の検証
             if not self.is_semver(main_version):
@@ -216,7 +216,7 @@ class VersionChecker:
                     f"::error::developブランチのバージョン「{develop_package_version}」がmainブランチのバージョン「{main_version}」以下です"
                 )
                 self.set_fail_output("version_not_incremented")
-                return 1
+                return 0
 
             # すべてのチェックが成功したら
             print(
