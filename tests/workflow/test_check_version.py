@@ -6,18 +6,14 @@ check_version.pyのユニットテスト
 """
 
 import logging
-import sys
 from pathlib import Path
 from typing import Callable, Optional
 
 import pytest
+from git.exc import GitCommandNotFound
 from pytest_mock import MockerFixture
 
-# テスト対象モジュールのパスを追加
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from check_version import InvalidGitRepositoryError, VersionChecker
-from git.exc import GitCommandNotFound
+from scripts.check_version import InvalidGitRepositoryError, VersionChecker
 
 
 @pytest.fixture
@@ -49,8 +45,8 @@ def test_set_github_output(
     """set_github_outputメソッドのテスト"""
     if env_var_set:
         # 一時ファイルを作成し、そのパスを環境変数に設定
-        output_file = "./.github/tmp/github_output.txt"
-        Path("./.github/tmp").mkdir(parents=True, exist_ok=True)  # ディレクトリを作成
+        output_file = "tmp/github_output.txt"
+        Path("tmp").mkdir(parents=True, exist_ok=True)  # ディレクトリを作成
         monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
     else:
         # 環境変数を設定しない
@@ -509,12 +505,12 @@ def test_run_exceptions(
 def test_main(mocker: MockerFixture) -> None:
     """main関数のテスト"""
     # 先にインポートしておく
-    from check_version import main
+    from scripts.check_version import main
 
     # モックの設定
     mock_checker = mocker.MagicMock()
     mock_checker.run.return_value = 0
-    mocker.patch("check_version.VersionChecker", return_value=mock_checker)
+    mocker.patch("scripts.check_version.VersionChecker", return_value=mock_checker)
 
     # テスト実行
     result = main()

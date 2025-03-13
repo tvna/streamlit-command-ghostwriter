@@ -6,18 +6,13 @@ create_pr.pyのユニットテスト
 """
 
 import os
-import sys
-from pathlib import Path
 from typing import List, Optional, Union
 from unittest.mock import MagicMock, Mock
 
 import pytest
 from pytest_mock import MockerFixture
 
-# テスト対象モジュールのパスを追加
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from create_pr import PullRequestCreator
+from scripts.create_pr import PullRequestCreator
 
 
 @pytest.fixture
@@ -642,12 +637,12 @@ def test_run_exception(creator: PullRequestCreator, mocker: MockerFixture) -> No
 def test_main_function(mocker: MockerFixture) -> None:
     """main関数のテスト"""
     # 先にインポートしておく
-    from create_pr import main
+    from scripts.create_pr import main
 
     # モックの設定
     mock_creator = mocker.MagicMock()
     mock_creator.run.return_value = 0
-    mocker.patch("create_pr.PullRequestCreator", return_value=mock_creator)
+    mocker.patch("scripts.create_pr.PullRequestCreator", return_value=mock_creator)
 
     # テスト実行
     result = main()

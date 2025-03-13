@@ -55,7 +55,7 @@ jobs:
       - name: Check version change
         id: check-version
         run: |
-          python .github/scripts/check_version.py
+          python scripts/check_version.py
         env:
           GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
 
@@ -116,7 +116,7 @@ jobs:
           OLD_VERSION: ${{ steps.check-version.outputs.old_version }}
           GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
         run: |
-          python .github/scripts/create_pr.py
+          python scripts/create_pr.py
 
       # 結果の通知
       - name: Notify PR creation success
