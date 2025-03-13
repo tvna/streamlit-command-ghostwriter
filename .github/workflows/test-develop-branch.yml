@@ -4,7 +4,6 @@ name: Test & Build
 on:
   push:
     branches:
-      - main
       - develop
     paths-ignore:
       - .devcontainer/**
