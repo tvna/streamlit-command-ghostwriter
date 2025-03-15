@@ -30,11 +30,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 # i18n モジュールをインポート
 from i18n import LANGUAGES
 
-# パラメータ化テスト用のマーカーを定義
-parametrized = pytest.mark.parametrized
-# 基本テスト用のマーカーを定義
-basic = pytest.mark.basic
-
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
@@ -259,7 +254,7 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen) -> Generator[Non
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_app_title(page: Page) -> None:
     """アプリケーションのタイトルが正しく表示されることを確認"""
     # Streamlit アプリのタイトルを検証
@@ -269,7 +264,7 @@ def test_app_title(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_input_field(page: Page) -> None:
     """入力フィールドが機能することを確認"""
     # タブを選択
@@ -287,7 +282,7 @@ def test_input_field(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_button_click(page: Page) -> None:
     """ボタンクリックが機能することを確認"""
     # タブを選択
@@ -308,7 +303,7 @@ def test_button_click(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_sidebar_interaction(page: Page) -> None:
     """サイドバーの操作が機能することを確認"""
     # サイドバーを開く - Streamlitの新しいUIでは、ハンバーガーメニューをクリックする必要がある
@@ -332,7 +327,7 @@ def test_sidebar_interaction(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_file_upload(page: Page) -> None:
     """ファイルアップロード機能が動作することを確認"""
     # タブを選択
@@ -363,7 +358,7 @@ def test_file_upload(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_jinja_template_upload(page: Page) -> None:
     """Jinjaテンプレートファイルのアップロード機能が動作することを確認"""
     # タブを選択
@@ -404,7 +399,7 @@ def test_jinja_template_upload(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_config_file_upload_tab2(page: Page) -> None:
     """タブ2の設定定義ファイルのアップロード機能が動作することを確認"""
     # タブ2を選択
@@ -448,7 +443,7 @@ def test_config_file_upload_tab2(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_download_functionality(page: Page) -> None:
     """ダウンロード機能が動作することを確認"""
     # タブを選択
@@ -465,7 +460,7 @@ def test_download_functionality(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_responsive_design(page: Page) -> None:
     """レスポンシブデザインが機能することを確認"""
     # モバイルビューに設定
@@ -485,7 +480,7 @@ def test_responsive_design(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_cli_command_generation(page: Page) -> None:
     """CSVファイルとJinjaテンプレートを使用してCLIコマンドを生成する機能をテスト"""
     # タブを選択
@@ -555,7 +550,7 @@ def test_cli_command_generation(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_markdown_generation(page: Page) -> None:
     """YAMLファイルとJinjaテンプレートを使用してMarkdownを生成する機能をテスト"""
     # タブを選択
@@ -625,7 +620,7 @@ def test_markdown_generation(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_toml_config_processing(page: Page) -> None:
     """TOMLファイルとJinjaテンプレートを使用してコマンドを生成する機能をテスト"""
     # タブを選択
@@ -695,7 +690,7 @@ def test_toml_config_processing(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_config_debug_visual(page: Page) -> None:
     """設定デバッグタブでの視覚的デバッグ機能をテスト"""
     # タブ2を選択
@@ -750,7 +745,7 @@ def test_config_debug_visual(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_config_debug_toml(page: Page) -> None:
     """設定デバッグタブでのTOML形式での表示機能をテスト"""
     # タブ2を選択
@@ -805,7 +800,7 @@ def test_config_debug_toml(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_config_debug_yaml(page: Page) -> None:
     """設定デバッグタブでのYAML形式での表示機能をテスト"""
     # タブ2を選択
@@ -860,7 +855,7 @@ def test_config_debug_yaml(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_advanced_settings(page: Page) -> None:
     """詳細設定タブでの設定変更機能をテスト"""
     # タブ3を選択
@@ -895,7 +890,7 @@ def test_advanced_settings(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@basic
+@pytest.mark.e2e_basic
 def test_sample_collection(page: Page) -> None:
     """サンプル集タブでのサンプルファイル表示機能をテスト"""
     # タブ4を選択
@@ -964,7 +959,6 @@ def test_sample_collection(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@parametrized
 @pytest.mark.parametrize(
     ("tab_name", "expected_element"),
     [
@@ -1009,7 +1003,6 @@ def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element
 
 
 @pytest.mark.e2e
-@parametrized
 @pytest.mark.parametrize(
     ("tab_name", "upload_index", "file_type", "file_name"),
     [
@@ -1079,7 +1072,6 @@ def test_file_upload_parametrized(page: Page, tab_name: str, upload_index: int, 
 
 
 @pytest.mark.e2e
-@parametrized
 @pytest.mark.parametrize(
     ("config_file", "template_file", "button_text"),
     [
@@ -1197,7 +1189,6 @@ def test_command_generation_parametrized(page: Page, config_file: str, template_
 
 
 @pytest.mark.e2e
-@parametrized
 @pytest.mark.parametrize(
     ("file_name", "display_format", "expected_content"),
     [
