@@ -85,17 +85,17 @@ repos:
   hooks:
     - id: pytest_unit
       name: pytest (marker.unit)
-      entry: pytest -m unit --disable-warnings
+      entry: pytest -m unit --disable-warnings -n auto
       language: system
       pass_filenames: false
     - id: pytest_integration
       name: pytest (marker.integration)
-      entry: pytest -m integration --disable-warnings
+      entry: pytest -m integration --disable-warnings -n auto
       language: system
       pass_filenames: false
     - id: pytest_workflow
       name: pytest (marker.workflow)
-      entry: pytest -m workflow --disable-warnings
+      entry: pytest -m workflow --disable-warnings -n auto
       language: system
       pass_filenames: false
     - id: lizard
