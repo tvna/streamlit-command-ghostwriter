@@ -1,0 +1,15 @@
+---
+description: Directory pattern for this repo
+globs: *.py
+alwaysApply: false
+---
+# ディレクトリ配置規則
+
+```
+./              # アプリ本体
+assets/         # 製品コードに組み込む画像やテキストファイル
+docs/           # ドキュメント置き場
+features/       # 製品コードの付属モジュール
+scripts/        # ワークフローの制御用コード
+tests/          # テストコード
+```
