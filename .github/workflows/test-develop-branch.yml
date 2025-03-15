@@ -106,7 +106,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          source .venv/bin/activate
+          source .venv/scripts/activate
           poetry install
       - name: Install Playwright Browsers
         run: |
