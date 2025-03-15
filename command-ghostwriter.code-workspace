@@ -85,7 +85,7 @@
 		],
 		"files.exclude": {
 			"LICENSE": true,
-			".coverage": true,
+			".coverage**": true,
 			"coverage.xml": true,
 			".venv": true,
 			"**/.mypy_cache": true,
@@ -94,6 +94,8 @@
 			"**/__pycache__": true,
 			"**/tmp": true,
 			"htmlcov": false,
+			"htmlcov/z_**.html": true,
+			"htmlcov/**.js": true,
 			"node_modules": true,
 			"build": true,
 			"requirements.txt": false,
