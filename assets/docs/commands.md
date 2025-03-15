@@ -24,16 +24,77 @@ poetry run ruff check . --fix
 poetry run mypy .
 
 # テスト系
-poetry run pytest --cov=. --cov-report=html
+poetry run pytest -n auto --cov=. --cov-report=html
 poetry run pytest --pdb
 poetry run pudb app.py
 
 # コードの複雑さ解析
-poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./.github/*" --CCN "10"
-poetry run lizard ./.github/* --CCN "13"
+poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10"
+poetry run lizard ./tests/* --CCN "20"
 
 # CUIデバッグ
 ```
+
+## End-to-End テスト
+
+End-to-End テストは pytest-playwright を使用して実装されています。
+
+### 前提条件
+
+- Python 3.8 以上
+- Streamlit アプリケーションが http://localhost:8502/ で実行されていること
+- 以下のパッケージがインストールされていること:
+  - pytest
+  - pytest-playwright
+  - playwright
+
+### セットアップ
+
+```bash
+# 必要なパッケージをインストール
+pip install pytest pytest-playwright
+playwright install  # ブラウザをインストール
+
+# Streamlit アプリケーションを起動（別ターミナルで実行）
+streamlit run app.py --server.port=8502
+```
+
+### テストの実行
+
+```bash
+# すべてのテストを実行
+pytest tests/e2e/test_streamlit_app.py -v
+
+# 特定のテストを実行
+pytest tests/e2e/test_streamlit_app.py::test_app_title -v
+
+# ヘッドレスモードでテストを実行
+pytest tests/e2e/test_streamlit_app.py --browser chromium --headless -v
+
+# 非ヘッドレスモード（ブラウザを表示）でテストを実行
+pytest tests/e2e/test_streamlit_app.py --browser chromium --headed -v
+
+# 特定のブラウザでテストを実行
+pytest tests/e2e/test_streamlit_app.py --browser chromium -v  # Chromium
+pytest tests/e2e/test_streamlit_app.py --browser firefox -v   # Firefox
+pytest tests/e2e/test_streamlit_app.py --browser webkit -v    # WebKit (Safari)
+```
+
+### テストの構成
+
+- `conftest.py`: pytest の設定ファイル
+- `test_streamlit_app.py`: Streamlit アプリケーションのテスト
+- `test_data/`: テストで使用するデータファイル
+
+### テストのカスタマイズとトラブルシューティング
+
+- セレクタの調整ポイント:
+  1. ボタンやフィールドのセレクタ（例: `button:has-text('実行')`）
+  2. 期待される出力や結果のセレクタ
+  3. ファイルアップロードパスやダウンロードファイル名
+- テストが失敗する場合は、セレクタが正しいか確認
+- Streamlit の UI 構造が変更された場合、セレクタの更新が必要
+- デバッグには `page.pause()` を使用して、テスト実行中にブラウザを一時停止可能
 
 ## Git 関連
 
