@@ -89,6 +89,7 @@ lint.select = [
   "RUF",
   "S",
   "SLF",
+  "TC",
   "TCH",
 ]
 lint.ignore = [
