@@ -99,12 +99,12 @@ repos:
       language: system
       pass_filenames: false
     - id: lizard
-      name: lizard for project (CCN)
-      entry: poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./.github/*" --CCN "10"
+      name: lizard for production codes (CCN)
+      entry: poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10"
       language: system
       pass_filenames: false
     - id: lizard
-      name: lizard for github actions (CCN)
-      entry: poetry run lizard ./.github/* --CCN "20"
+      name: lizard for tests (CCN)
+      entry: poetry run lizard ./tests/* --CCN "20"
       language: system
       pass_filenames: false

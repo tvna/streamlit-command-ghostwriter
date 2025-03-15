@@ -1,0 +1,5 @@
+This is a sample text file for testing file uploads in the Streamlit application.
+
+It contains multiple lines of text to simulate a real file.
+
+You can use this file to test the file upload functionality in your E2E tests.
