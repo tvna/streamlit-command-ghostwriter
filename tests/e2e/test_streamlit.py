@@ -9,11 +9,13 @@ Streamlit アプリケーションの End-to-End テスト
 - 基本テストのみ実行: python -m pytest tests/e2e/test_streamlit.py -v -m e2e_basic
 - パラメータ化テストのみ実行: python -m pytest tests/e2e/test_streamlit.py -v -m e2e_parametrized
 - 特定のテストを実行: python -m pytest tests/e2e/test_streamlit.py::test_app_title -v
+- 並列実行: python -m pytest tests/e2e/test_streamlit.py -v -n auto
 """
 
 import logging
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -37,8 +39,29 @@ logger = logging.getLogger(__name__)
 DEFAULT_LANGUAGE = "日本語"
 texts = Box(LANGUAGES[DEFAULT_LANGUAGE])
 
+# 使用済みポート番号を追跡するグローバル変数
+# _used_ports: Dict[int, bool] = {}
+# ポート番号の範囲
+# _MIN_PORT = 8600
+# _MAX_PORT = 8700
+_PLAYWRIGHT_HEADLESS_FLAG = "true"
 
-def _wait_for_streamlit(timeout: int = 20, interval: int = 2, port: int = 8503) -> bool:
+
+def _find_free_port() -> int:
+    """使用可能なポート番号を見つける
+
+    Returns:
+        int: 使用可能なポート番号
+    """
+    # ポートが使用可能かソケットで確認
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("localhost", 0))  # OSに空きポートを割り当ててもらう
+        _, port = s.getsockname()
+        logger.info(f"使用可能なポート {port} を割り当てました")
+        return port
+
+
+def _wait_for_streamlit(timeout: int = 30, interval: int = 1, port: int = 8503) -> bool:
     """Streamlitが起動するまでHTTPリクエストで確認
 
     指定された回数だけ、Streamlitサーバーにリクエストを送信して
@@ -53,19 +76,32 @@ def _wait_for_streamlit(timeout: int = 20, interval: int = 2, port: int = 8503) 
         bool: Streamlitサーバーが起動していればTrue、そうでなければFalse
     """
     url = f"http://localhost:{port}"
-    print(f"Streamlitサーバーの起動を確認中: {url}")
-    for i in range(timeout):
+    logger.info(f"Streamlitサーバーの起動を確認中: {url}")
+
+    start_time = time.time()
+    end_time = start_time + timeout
+    attempt = 0
+
+    while time.time() < end_time:
+        attempt += 1
         try:
             # S113: Added timeout parameter to requests.get call
-            print(f"試行 {i + 1}/{timeout}...")
-            response = requests.get(url, timeout=10)
+            logger.info(f"試行 {attempt}/{timeout}... (経過時間: {time.time() - start_time:.1f}秒)")
+            response = requests.get(url, timeout=5)
             if response.status_code == 200:
-                print("Streamlitサーバーが起動しました")
+                logger.info(f"Streamlitサーバーが起動しました (経過時間: {time.time() - start_time:.1f}秒)")
                 return True
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            print(f"接続エラー: {e}")
+            logger.info(f"接続エラー: {e}")
+
+        # プロセスが終了していないか確認
+        if hasattr(psutil, "pid_exists") and not psutil.pid_exists(os.getpid()):
+            logger.warning("テストプロセスが終了しています")
+            return False
+
         time.sleep(interval)
-    print("Streamlitサーバーの起動タイムアウト")
+
+    logger.warning(f"Streamlitサーバーの起動タイムアウト (経過時間: {time.time() - start_time:.1f}秒)")
     return False
 
 
@@ -112,7 +148,7 @@ def _get_validated_streamlit_executable() -> str:
     return streamlit_executable
 
 
-def _run_streamlit_safely(app_path: str, port: int = 8503) -> subprocess.Popen:
+def _run_streamlit_safely(app_path: str, port: int) -> subprocess.Popen:
     """安全にStreamlitを実行する関数
 
     検証済みのStreamlit実行ファイルを使用して、
@@ -131,12 +167,12 @@ def _run_streamlit_safely(app_path: str, port: int = 8503) -> subprocess.Popen:
     # 環境変数の設定
     env = os.environ.copy()
 
-    # CI環境かどうかを確認
-    is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
-
     # 固定された引数リストを作成[ユーザー入力を含まない]
-    headless_flag = "true" if is_ci else "false"
+    global _PLAYWRIGHT_HEADLESS_FLAG
+    headless_flag = _PLAYWRIGHT_HEADLESS_FLAG
     args: List[str] = [executable, "run", app_path, f"--server.port={port}", f"--server.headless={headless_flag}"]
+
+    logger.info(f"Streamlitを起動します: port={port}, headless={headless_flag}")
 
     # S603を無視: これはテストコードであり、検証済みの引数のみを使用
     process = subprocess.Popen(
@@ -152,30 +188,41 @@ def _run_streamlit_safely(app_path: str, port: int = 8503) -> subprocess.Popen:
     return process
 
 
-@pytest.fixture(scope="session")
-def streamlit_app() -> Generator[subprocess.Popen, None, None]:
-    """テストセッション全体で使用するStreamlitアプリを起動するフィクスチャ
+@pytest.fixture
+def streamlit_port() -> int:
+    """テスト用の一意のポート番号を提供するフィクスチャ
 
-    テストセッションの開始時に一度だけStreamlitアプリを起動し、
-    セッション終了時にプロセスをクリーンアップします。
+    Returns:
+        int: 使用可能なポート番号
+    """
+    return _find_free_port()
 
-    conftest.pyで設定された環境変数を利用します。
+
+@pytest.fixture
+def streamlit_app(streamlit_port: int) -> Generator[subprocess.Popen, None, None]:
+    """テスト用のStreamlitアプリを起動するフィクスチャ
+
+    各テストごとに独立したStreamlitアプリを起動し、
+    テスト終了時にプロセスをクリーンアップします。
+
+    Args:
+        streamlit_port: テスト用のポート番号
 
     Yields:
         subprocess.Popen: 起動したStreamlitプロセス
     """
     process = None
-    process_port = 8503  # テスト用のポート番号
 
     try:
         # Streamlitアプリケーションを起動
         streamlit_path = _get_validated_streamlit_path()
-        process = _run_streamlit_safely(streamlit_path, port=process_port)
+        process = _run_streamlit_safely(streamlit_path, port=streamlit_port)
 
         # アプリケーションの起動を待機
-        if not _wait_for_streamlit(timeout=20, interval=2, port=process_port):
+        if not _wait_for_streamlit(timeout=20, interval=2, port=streamlit_port):
             if process:
                 process.kill()
+                process.wait(timeout=5)  # プロセスの終了を待機
             pytest.fail("Streamlit did not start in time.")
 
         # テスト実行中はプロセスを維持
@@ -186,21 +233,24 @@ def streamlit_app() -> Generator[subprocess.Popen, None, None]:
         if process:
             try:
                 process.kill()
+                process.wait(timeout=5)  # プロセスの終了を待機
+                logger.info(f"Streamlitプロセス (PID: {process.pid}) を終了しました")
             except Exception as e:
                 logger.warning(f"プロセスの終了中にエラーが発生しました: {e}")
 
-        # 念のため、残っている可能性のある Streamlit プロセスをすべて終了
-        for proc in psutil.process_iter(attrs=["pid", "name"]):
-            try:
-                if "streamlit" in proc.info["name"]:
-                    proc.kill()
-            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
-                # プロセスが既に終了している場合や権限がない場合はログに記録
-                logger.debug(f"Streamlitプロセスの終了中にエラーが発生しました: {e}")
+                # プロセスが終了していない場合は強制終了を試みる
+                try:
+                    if process.poll() is None:
+                        import signal
+
+                        os.kill(process.pid, signal.SIGKILL)
+                        logger.info(f"Streamlitプロセス (PID: {process.pid}) を強制終了しました")
+                except Exception as e2:
+                    logger.warning(f"プロセスの強制終了中にエラーが発生しました: {e2}")
 
 
 @pytest.fixture(autouse=True)
-def setup_teardown(page: Page, streamlit_app: subprocess.Popen) -> Generator[None, None, None]:
+def setup_teardown(page: Page, streamlit_app: subprocess.Popen, streamlit_port: int) -> Generator[None, None, None]:
     """各テスト前後の共通処理
 
     テスト実行前にページを初期化し、
@@ -209,6 +259,7 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen) -> Generator[Non
     Args:
         page: Playwrightのページオブジェクト
         streamlit_app: 起動済みのStreamlitプロセス
+        streamlit_port: テスト用のポート番号
 
     Yields:
         None: テスト実行中のコンテキスト
@@ -225,15 +276,12 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen) -> Generator[Non
         if not is_running:
             pytest.skip("Streamlitプロセスが実行されていません")
 
-        # ページを初期化
-        process_port = 8503  # テスト用のポート番号
-
         # Streamlitサーバーが応答することを確認
-        if not _wait_for_streamlit(timeout=10, interval=1, port=process_port):
+        if not _wait_for_streamlit(timeout=10, interval=1, port=streamlit_port):
             pytest.fail("Streamlit server is not responding before test.")
 
         # ページにアクセス
-        page.goto(f"http://localhost:{process_port}/")
+        page.goto(f"http://localhost:{streamlit_port}/")
 
         # Streamlit アプリの読み込みを待機
         page.wait_for_load_state("networkidle")
@@ -261,7 +309,7 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen) -> Generator[Non
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_app_title(page: Page) -> None:
+def test_app_title(page: Page, streamlit_port: int) -> None:
     """アプリケーションのタイトルが正しく表示されることを確認"""
     # Streamlit アプリのタイトルを検証
     title = page.locator("h1:has-text('Command ghostwriter')")
@@ -271,7 +319,7 @@ def test_app_title(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_input_field(page: Page) -> None:
+def test_input_field(page: Page, streamlit_port: int) -> None:
     """入力フィールドが機能することを確認"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -289,7 +337,7 @@ def test_input_field(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_button_click(page: Page) -> None:
+def test_button_click(page: Page, streamlit_port: int) -> None:
     """ボタンクリックが機能することを確認"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -310,7 +358,7 @@ def test_button_click(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_sidebar_interaction(page: Page) -> None:
+def test_sidebar_interaction(page: Page, streamlit_port: int) -> None:
     """サイドバーの操作が機能することを確認"""
     # サイドバーを開く - Streamlitの新しいUIでは、ハンバーガーメニューをクリックする必要がある
     sidebar = page.locator("section[data-testid='stSidebar']")
@@ -334,7 +382,7 @@ def test_sidebar_interaction(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_file_upload(page: Page) -> None:
+def test_file_upload(page: Page, streamlit_port: int) -> None:
     """ファイルアップロード機能が動作することを確認"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -365,7 +413,7 @@ def test_file_upload(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_jinja_template_upload(page: Page) -> None:
+def test_jinja_template_upload(page: Page, streamlit_port: int) -> None:
     """Jinjaテンプレートファイルのアップロード機能が動作することを確認"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -406,7 +454,7 @@ def test_jinja_template_upload(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_config_file_upload_tab2(page: Page) -> None:
+def test_config_file_upload_tab2(page: Page, streamlit_port: int) -> None:
     """タブ2の設定定義ファイルのアップロード機能が動作することを確認"""
     # タブ2を選択
     tab_button = page.locator(f"button[role='tab']:has-text('📜 {texts.tab2.menu_title}')").first
@@ -450,7 +498,7 @@ def test_config_file_upload_tab2(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_download_functionality(page: Page) -> None:
+def test_download_functionality(page: Page, streamlit_port: int) -> None:
     """ダウンロード機能が動作することを確認"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -467,7 +515,7 @@ def test_download_functionality(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_responsive_design(page: Page) -> None:
+def test_responsive_design(page: Page, streamlit_port: int) -> None:
     """レスポンシブデザインが機能することを確認"""
     # モバイルビューに設定
     page.set_viewport_size({"width": 375, "height": 667})  # iPhone 8 サイズ
@@ -487,7 +535,7 @@ def test_responsive_design(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_cli_command_generation(page: Page) -> None:
+def test_cli_command_generation(page: Page, streamlit_port: int) -> None:
     """CSVファイルとJinjaテンプレートを使用してCLIコマンドを生成する機能をテスト"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -557,7 +605,7 @@ def test_cli_command_generation(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_markdown_generation(page: Page) -> None:
+def test_markdown_generation(page: Page, streamlit_port: int) -> None:
     """YAMLファイルとJinjaテンプレートを使用してMarkdownを生成する機能をテスト"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -627,7 +675,7 @@ def test_markdown_generation(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_toml_config_processing(page: Page) -> None:
+def test_toml_config_processing(page: Page, streamlit_port: int) -> None:
     """TOMLファイルとJinjaテンプレートを使用してコマンドを生成する機能をテスト"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -697,7 +745,7 @@ def test_toml_config_processing(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_config_debug_visual(page: Page) -> None:
+def test_config_debug_visual(page: Page, streamlit_port: int) -> None:
     """設定デバッグタブでの視覚的デバッグ機能をテスト"""
     # タブ2を選択
     tab_button = page.locator(f"button[role='tab']:has-text('📜 {texts.tab2.menu_title}')").first
@@ -752,7 +800,7 @@ def test_config_debug_visual(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_config_debug_toml(page: Page) -> None:
+def test_config_debug_toml(page: Page, streamlit_port: int) -> None:
     """設定デバッグタブでのTOML形式での表示機能をテスト"""
     # タブ2を選択
     tab_button = page.locator(f"button[role='tab']:has-text('📜 {texts.tab2.menu_title}')").first
@@ -807,7 +855,7 @@ def test_config_debug_toml(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_config_debug_yaml(page: Page) -> None:
+def test_config_debug_yaml(page: Page, streamlit_port: int) -> None:
     """設定デバッグタブでのYAML形式での表示機能をテスト"""
     # タブ2を選択
     tab_button = page.locator(f"button[role='tab']:has-text('📜 {texts.tab2.menu_title}')").first
@@ -862,7 +910,7 @@ def test_config_debug_yaml(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_advanced_settings(page: Page) -> None:
+def test_advanced_settings(page: Page, streamlit_port: int) -> None:
     """詳細設定タブでの設定変更機能をテスト"""
     # タブ3を選択
     tab_button = page.locator(f"button[role='tab']:has-text('🛠️ {texts.tab3.menu_title}')").first
@@ -897,7 +945,7 @@ def test_advanced_settings(page: Page) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_sample_collection(page: Page) -> None:
+def test_sample_collection(page: Page, streamlit_port: int) -> None:
     """サンプル集タブでのサンプルファイル表示機能をテスト"""
     # タブ4を選択
     tab_button = page.locator(f"button[role='tab']:has-text('💼 {texts.tab4.menu_title}')").first
@@ -975,19 +1023,19 @@ def test_sample_collection(page: Page) -> None:
         pytest.param(f"💼 {texts.tab4.menu_title}", f"h3:has-text('{texts.tab4.subheader}')", id="サンプル集タブ"),
     ],
 )
-def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element: str) -> None:
+def test_tab_navigation_parametrized(page: Page, streamlit_port: int, tab_name: str, expected_element: str) -> None:
     """パラメータ化されたタブナビゲーションのテスト
 
     各タブに切り替えて、期待される要素が表示されることを確認します。
 
     Args:
         page: Playwrightのページオブジェクト
+        streamlit_port: テスト用のポート番号
         tab_name: テスト対象のタブ名
         expected_element: タブ内に表示されるべき要素のセレクタ
     """
     # Streamlitサーバーが応答することを確認
-    process_port = 8503
-    assert _wait_for_streamlit(timeout=5, interval=1, port=process_port), "Streamlit server is not responding before test."
+    assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test."
 
     # Arrange: タブボタンを取得
     tab_button = page.locator(f"button[role='tab']:has-text('{tab_name}')").first
@@ -1019,7 +1067,9 @@ def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element
         pytest.param(f"📜 {texts.tab2.menu_title}", 0, texts.tab2.upload_debug_config, "cisco_config.toml", id="TOMLファイルアップロード"),
     ],
 )
-def test_file_upload_parametrized(page: Page, tab_name: str, upload_index: int, file_type: str, file_name: str) -> None:
+def test_file_upload_parametrized(
+    page: Page, streamlit_port: int, tab_name: str, upload_index: int, file_type: str, file_name: str
+) -> None:
     """パラメータ化されたファイルアップロードのテスト
 
     各タブで指定されたインデックスのファイルアップローダーにファイルをアップロードし、
@@ -1027,14 +1077,14 @@ def test_file_upload_parametrized(page: Page, tab_name: str, upload_index: int, 
 
     Args:
         page: Playwrightのページオブジェクト
+        streamlit_port: テスト用のポート番号
         tab_name: テスト対象のタブ名
         upload_index: ファイルアップローダーのインデックス
         file_type: アップロードするファイルの種類[表示用]
         file_name: アップロードするファイル名
     """
     # Streamlitサーバーが応答することを確認
-    process_port = 8503
-    assert _wait_for_streamlit(timeout=5, interval=1, port=process_port), "Streamlit server is not responding before test."
+    assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test."
 
     # Arrange: タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('{tab_name}')").first
@@ -1089,7 +1139,7 @@ def test_file_upload_parametrized(page: Page, tab_name: str, upload_index: int, 
         pytest.param("cisco_config.toml", "cisco_template.jinja2", texts.tab1.generate_text_button, id="TOML_CLIコマンド生成"),
     ],
 )
-def test_command_generation_parametrized(page: Page, config_file: str, template_file: str, button_text: str) -> None:
+def test_command_generation_parametrized(page: Page, streamlit_port: int, config_file: str, template_file: str, button_text: str) -> None:
     """パラメータ化されたコマンド生成機能のテスト
 
     コマンド生成タブで設定ファイルとテンプレートファイルをアップロードし、
@@ -1098,13 +1148,13 @@ def test_command_generation_parametrized(page: Page, config_file: str, template_
 
     Args:
         page: Playwrightのページオブジェクト
+        streamlit_port: テスト用のポート番号
         config_file: アップロードする設定ファイル名
         template_file: アップロードするテンプレートファイル名
         button_text: クリックするボタンのテキスト
     """
     # Streamlitサーバーが応答することを確認
-    process_port = 8503
-    assert _wait_for_streamlit(timeout=5, interval=1, port=process_port), "Streamlit server is not responding before test."
+    assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test."
 
     # Arrange: コマンド生成タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -1207,7 +1257,9 @@ def test_command_generation_parametrized(page: Page, config_file: str, template_
         pytest.param("dns_dig_config.csv", "yaml", ["resolver", "fqdn", "record_type"], id="CSV_YAML形式表示"),
     ],
 )
-def test_config_debug_parametrized(page: Page, file_name: str, display_format: str, expected_content: List[str]) -> None:
+def test_config_debug_parametrized(
+    page: Page, streamlit_port: int, file_name: str, display_format: str, expected_content: List[str]
+) -> None:
     """パラメータ化された設定デバッグ機能のテスト
 
     設定デバッグタブで各種ファイルをアップロードし、指定された形式で解析結果を表示して、
@@ -1215,13 +1267,13 @@ def test_config_debug_parametrized(page: Page, file_name: str, display_format: s
 
     Args:
         page: Playwrightのページオブジェクト
+        streamlit_port: テスト用のポート番号
         file_name: アップロードするファイル名
         display_format: 表示形式[visual, toml, yaml]
         expected_content: 解析結果に含まれるべき内容のリスト
     """
     # Streamlitサーバーが応答することを確認
-    process_port = 8503
-    assert _wait_for_streamlit(timeout=5, interval=1, port=process_port), "Streamlit server is not responding before test."
+    assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test."
 
     # Arrange: 設定デバッグタブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📜 {texts.tab2.menu_title}')").first

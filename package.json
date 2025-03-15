@@ -15,7 +15,7 @@
         "dist": "electron-builder",
         "postinstall": "electron-builder install-app-deps",
         "commit": "pre-commit run && npx cz",
-        "test": "poetry run pytest -n auto --cov=. --cov-report=html"
+        "test": "poetry run pytest -n auto --cov=. --cov-report=html -v"
     },
     "build": {
         "files": [

@@ -2165,6 +2165,20 @@ pytest-base-url = ">=1.0.0,<3.0.0"
 python-slugify = ">=6.0.0,<9.0.0"
 
 [[package]]
+name = "pytest-randomly"
+version = "3.16.0"
+description = "Pytest plugin to randomly order tests and control random.seed."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "pytest_randomly-3.16.0-py3-none-any.whl", hash = "sha256:8633d332635a1a0983d3bba19342196807f6afb17c3eef78e02c2f85dade45d6"},
+    {file = "pytest_randomly-3.16.0.tar.gz", hash = "sha256:11bf4d23a26484de7860d82f726c0629837cf4064b79157bd18ec9d41d7feb26"},
+]
+
+[package.dependencies]
+pytest = "*"
+
+[[package]]
 name = "pytest-xdist"
 version = "3.6.1"
 description = "pytest xdist plugin for distributed testing, most importantly across multiple CPUs"
@@ -2183,21 +2197,6 @@ pytest = ">=7.0.0"
 psutil = ["psutil (>=3.0)"]
 setproctitle = ["setproctitle"]
 testing = ["filelock"]
-
-[[package]]
-name = "pytest-xvfb"
-version = "3.1.1"
-description = "A pytest plugin to run Xvfb (or Xephyr/Xvnc) for tests."
-optional = false
-python-versions = ">=3.9"
-files = [
-    {file = "pytest_xvfb-3.1.1-py3-none-any.whl", hash = "sha256:3270f91417cfa0652b7c5a90e93a676e3a80bec12ccbd20cae3b42511e4aba98"},
-    {file = "pytest_xvfb-3.1.1.tar.gz", hash = "sha256:90593634427d974b272e845793e4533f5b827c9d84c051879013624504175e44"},
-]
-
-[package.dependencies]
-pytest = ">=2.8.1"
-pyvirtualdisplay = ">=1.3"
 
 [[package]]
 name = "python-box"
@@ -2274,17 +2273,6 @@ python-versions = "*"
 files = [
     {file = "pytz-2025.1-py2.py3-none-any.whl", hash = "sha256:89dd22dca55b46eac6eda23b2d72721bf1bdfef212645d81513ef5d03038de57"},
     {file = "pytz-2025.1.tar.gz", hash = "sha256:c2db42be2a2518b28e65f9207c4d05e6ff547d1efa4086469ef855e4ab70178e"},
-]
-
-[[package]]
-name = "pyvirtualdisplay"
-version = "3.0"
-description = "python wrapper for Xvfb, Xephyr and Xvnc"
-optional = false
-python-versions = "*"
-files = [
-    {file = "PyVirtualDisplay-3.0-py3-none-any.whl", hash = "sha256:40d4b8dfe4b8de8552e28eb367647f311f88a130bf837fe910e7f180d5477f0e"},
-    {file = "PyVirtualDisplay-3.0.tar.gz", hash = "sha256:09755bc3ceb6eb725fb07eca5425f43f2358d3bf08e00d2a9b792a1aedd16159"},
 ]
 
 [[package]]
@@ -3128,4 +3116,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <4.0"
-content-hash = "f44b0c7c348c7ab260e12291457e5146b9280c9fa46240d387042aa7c080ecfe"
+content-hash = "f69ede2d529b5d6fd5f9fc02878739b4a289a488b2b774137270b60a986eb43c"
