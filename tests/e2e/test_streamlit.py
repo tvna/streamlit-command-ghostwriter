@@ -6,8 +6,8 @@ Streamlit アプリケーションの End-to-End テスト
 
 実行方法:
 - すべてのテストを実行: python -m pytest tests/e2e/test_streamlit.py -v
-- 基本テストのみ実行: python -m pytest tests/e2e/test_streamlit.py -v -m basic
-- パラメータ化テストのみ実行: python -m pytest tests/e2e/test_streamlit.py -v -m parametrized
+- 基本テストのみ実行: python -m pytest tests/e2e/test_streamlit.py -v -m e2e_basic
+- パラメータ化テストのみ実行: python -m pytest tests/e2e/test_streamlit.py -v -m e2e_parametrized
 - 特定のテストを実行: python -m pytest tests/e2e/test_streamlit.py::test_app_title -v
 """
 
@@ -959,6 +959,7 @@ def test_sample_collection(page: Page) -> None:
 
 
 @pytest.mark.e2e
+@pytest.mark.e2e_parametrized
 @pytest.mark.parametrize(
     ("tab_name", "expected_element"),
     [
@@ -1003,6 +1004,7 @@ def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element
 
 
 @pytest.mark.e2e
+@pytest.mark.e2e_parametrized
 @pytest.mark.parametrize(
     ("tab_name", "upload_index", "file_type", "file_name"),
     [
@@ -1072,6 +1074,7 @@ def test_file_upload_parametrized(page: Page, tab_name: str, upload_index: int, 
 
 
 @pytest.mark.e2e
+@pytest.mark.e2e_parametrized
 @pytest.mark.parametrize(
     ("config_file", "template_file", "button_text"),
     [
@@ -1189,6 +1192,7 @@ def test_command_generation_parametrized(page: Page, config_file: str, template_
 
 
 @pytest.mark.e2e
+@pytest.mark.e2e_parametrized
 @pytest.mark.parametrize(
     ("file_name", "display_format", "expected_content"),
     [
