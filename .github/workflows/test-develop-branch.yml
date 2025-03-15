@@ -84,8 +84,7 @@ jobs:
             .venv
           key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ${{ runner.os }}-python${{ matrix.python-version }}-poetry-
-            ${{ runner.os }}-python${{ matrix.python-version }}-
+            ${{ runner.os }}-python${{ matrix.python-version }}-poetry
       - name: Bootstrap poetry (Windows)
         if: runner.os == 'Windows'
         uses: snok/install-poetry@v1
@@ -151,8 +150,7 @@ jobs:
             .venv
           key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ${{ runner.os }}-python${{ env.python-version }}-poetry-
-            ${{ runner.os }}-python${{ env.python-version }}-
+            ${{ runner.os }}-python${{ env.python-version }}-poetry
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
