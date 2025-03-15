@@ -1,7 +1,7 @@
 ---
 description: Directory pattern for this repo
 globs: *.py
-alwaysApply: false
+alwaysApply: true
 ---
 # ディレクトリ配置規則
 

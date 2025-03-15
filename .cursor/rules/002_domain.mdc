@@ -1,9 +1,15 @@
 ---
 description: Domain knowledges for this repo
 globs: *.py
-alwaysApply: false
+alwaysApply: true
 ---
 # このリポジトリにおけるドメイン知識
+
+## パッケージ管理
+- pythonにおいては、poetryを利用します
+- javascriptにおいては、npmを利用します
+- pythonの依存パッケージを新規インストールする場合は、`pip install`ではなく`poetry add`を利用すること
+- テストコード専用の依存パッケージを新規インストールする場合は、`poetry add -G dev`を利用すること
 
 ## フロントエンドの技術選定
 - streamlitを利用するWebアプリであること
