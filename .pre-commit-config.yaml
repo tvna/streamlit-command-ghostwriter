@@ -1,6 +1,8 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 minimum_pre_commit_version: "3.7.1"  # pyproject.tomlと一致させる
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [commit]
 repos:
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -11,13 +13,16 @@ repos:
     description: "Run 'no-commit-to-branch' for preventing commits to main branch"
     name: don't commit to main branch
   - id: trailing-whitespace
+    types: [text]
   - id: check-added-large-files
     description: "Run 'check-added-large-files' for checking added large files"
   - id: detect-private-key
   - id: check-json
+    types: [json]
   - id: check-toml
     files: \.toml$
   - id: check-docstring-first
+    types: [python]
   - id: check-shebang-scripts-are-executable
     description: "checking shebang scripts are executable"
     name: check-shebang-scripts-are-executable (only for github actions)
@@ -42,6 +47,7 @@ repos:
       name: fomart pyproject
       # https://pyproject-fmt.readthedocs.io/en/latest/#calculating-max-supported-python-version
       additional_dependencies: ["tox>=4.9"]
+      files: ^pyproject\.toml$
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.9.10
@@ -50,9 +56,11 @@ repos:
       description: "Run 'ruff' for extremely fast Python linting"
       name: ruff (lint)
       args: ["--fix"]
+      types: [python]
     - id: ruff-format
       description: "Run 'ruff format' for extremely fast Python formatting"
       name: ruff (format)
+      types: [python]
 
 # - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
 #   rev: v9.22.0
@@ -68,43 +76,36 @@ repos:
   hooks:
     - id: check-github-workflows
       description: "Run 'check-github-workflows' for Github Workflow validation"
+      files: ^\.github/workflows/.*\.(yml|yaml)$
+
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.15.0
   hooks:
     - id: mypy
       description: "Run 'mypy' for Python linting"
       additional_dependencies: ["types-PyYAML"]
+      types: [python]
 
 - repo: https://github.com/pre-commit/pygrep-hooks
   rev: v1.10.0
   hooks:
     - id: python-use-type-annotations
       description: "Run 'python-use-type-annotations' for Python linting"
+      types: [python]
 
 - repo: local
   hooks:
-    - id: pytest_unit
-      name: pytest (marker.unit)
-      entry: pytest -m unit --disable-warnings -n auto
+    - id: pytest_combined
+      name: pytest (all markers)
+      entry: pytest -m "unit or integration or workflow" --disable-warnings -n auto
       language: system
       pass_filenames: false
-    - id: pytest_integration
-      name: pytest (marker.integration)
-      entry: pytest -m integration --disable-warnings -n auto
+      verbose: true
+      stages: [push]
+    - id: lizard_combined
+      name: lizard (CCN check)
+      entry: poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10" && poetry run lizard ./tests/* --CCN "20"
       language: system
       pass_filenames: false
-    - id: pytest_workflow
-      name: pytest (marker.workflow)
-      entry: pytest -m workflow --disable-warnings -n auto
-      language: system
-      pass_filenames: false
-    - id: lizard
-      name: lizard for production codes (CCN)
-      entry: poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10"
-      language: system
-      pass_filenames: false
-    - id: lizard
-      name: lizard for tests (CCN)
-      entry: poetry run lizard ./tests/* --CCN "20"
-      language: system
-      pass_filenames: false
+      verbose: true
+      stages: [push]
