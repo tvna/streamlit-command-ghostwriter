@@ -76,15 +76,25 @@ jobs:
             ~/.cache/pip
             .venv
           key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      - name: Bootstrap poetry
+      - name: Bootstrap poetry (Windows)
+        if: runner.os == 'Windows'
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.7.1
+          virtualenvs-create: true
+          virtualenvs-in-project: false
+      - name: Bootstrap poetry (Non-Windows)
+        if: runner.os != 'Windows'
         run: |
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
-      - name: Update PATH
+      - name: Update PATH (Non-Windows)
+        if: runner.os != 'Windows'
         run: |
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
-      - name: Configure poetry
+      - name: Configure poetry (Non-Windows)
+        if: runner.os != 'Windows'
         run: |
           poetry config virtualenvs.in-project false
         shell: bash
