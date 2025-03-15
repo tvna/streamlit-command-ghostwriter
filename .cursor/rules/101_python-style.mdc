@@ -1,7 +1,7 @@
 ---
 description: Code style rules for python
 globs: *.py
-alwaysApply: false
+alwaysApply: true
 ---
 # Pythonのコードスタイルの基本
 - `pyroject.toml`における、`[tool.ruff]`の設定に従ってフォーマットを実施すること
