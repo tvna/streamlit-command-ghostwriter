@@ -28,7 +28,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   actionlint:
@@ -46,16 +46,23 @@ jobs:
   test:
     name: Test streamlit web-app
     strategy:
+      fail-fast: false
       matrix:
         os:
-          - macos-latest
-          - windows-latest
           - ubuntu-latest
+          - windows-latest
+          - macos-latest
           - ubuntu-22.04
           - ubuntu-20.04
         python-version:
           - 3.12.3
           - 3.11
+        include:
+          # 最も一般的な環境を優先的にテスト
+          - os: ubuntu-latest
+            python-version: 3.12.3
+            priority: high
+      max-parallel: 5
     runs-on: ${{ matrix.os }}
     needs:
       - actionlint
@@ -76,6 +83,9 @@ jobs:
             ~/.cache/pip
             .venv
           key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python${{ matrix.python-version }}-poetry-
+            ${{ runner.os }}-python${{ matrix.python-version }}-
       - name: Bootstrap poetry (Windows)
         if: runner.os == 'Windows'
         uses: snok/install-poetry@v1
@@ -97,29 +107,23 @@ jobs:
         run: |
           poetry config virtualenvs.in-project false
         shell: bash
-      - name: Install dependencies (Non-Windows)
-        if: runner.os != 'Windows'
+      - name: Install dependencies
         shell: bash
         run: |
-          poetry install
-      - name: Install dependencies (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          source .venv/scripts/activate
           poetry install
       - name: Install Playwright Browsers
         run: |
           poetry run playwright install
-      - name: Run ruff
+      # リンターとテストを分離して並列実行
+      - name: Lint
+        if: ${{ !cancelled() }}
         run: |
           poetry run ruff check .
-      - name: Run mypy
-        run: |
           poetry run mypy .
-      - name: Run pytest
+      - name: Test
+        if: ${{ !cancelled() }}
         run: |
-          poetry run pytest --cov . -n auto
+          poetry run pytest --cov . -n auto --dist loadscope
 
   analyze:
     # https://github.com/terryyin/lizard
@@ -146,6 +150,9 @@ jobs:
             ~/.cache/pip
             .venv
           key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python${{ env.python-version }}-poetry-
+            ${{ runner.os }}-python${{ env.python-version }}-
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
