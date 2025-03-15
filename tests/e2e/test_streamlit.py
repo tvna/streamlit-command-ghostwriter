@@ -112,7 +112,7 @@ def _get_validated_streamlit_executable() -> str:
     return streamlit_executable
 
 
-def _run_streamlit_safely(app_path: str, port: int = 8501) -> subprocess.Popen:
+def _run_streamlit_safely(app_path: str, port: int = 8503) -> subprocess.Popen:
     """安全にStreamlitを実行する関数
 
     検証済みのStreamlit実行ファイルを使用して、
@@ -128,8 +128,15 @@ def _run_streamlit_safely(app_path: str, port: int = 8501) -> subprocess.Popen:
     # 検証済みの実行ファイルパスを取得
     executable = _get_validated_streamlit_executable()
 
+    # 環境変数の設定
+    env = os.environ.copy()
+
+    # CI環境かどうかを確認
+    is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+
     # 固定された引数リストを作成[ユーザー入力を含まない]
-    args: List[str] = [executable, "run", app_path, f"--server.port={port}", "--server.headless=false"]
+    headless_flag = "true" if is_ci else "false"
+    args: List[str] = [executable, "run", app_path, f"--server.port={port}", f"--server.headless={headless_flag}"]
 
     # S603を無視: これはテストコードであり、検証済みの引数のみを使用
     process = subprocess.Popen(
@@ -138,7 +145,7 @@ def _run_streamlit_safely(app_path: str, port: int = 8501) -> subprocess.Popen:
         stderr=subprocess.PIPE,
         shell=False,
         # 追加のセキュリティ対策
-        env=os.environ.copy(),  # 環境変数を明示的にコピー
+        env=env,  # 環境変数を明示的にコピー
         cwd=os.path.dirname(app_path),  # 作業ディレクトリを明示的に設定
     )
 
@@ -151,6 +158,8 @@ def streamlit_app() -> Generator[subprocess.Popen, None, None]:
 
     テストセッションの開始時に一度だけStreamlitアプリを起動し、
     セッション終了時にプロセスをクリーンアップします。
+
+    conftest.pyで設定された環境変数を利用します。
 
     Yields:
         subprocess.Popen: 起動したStreamlitプロセス
@@ -205,18 +214,15 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen) -> Generator[Non
         None: テスト実行中のコンテキスト
     """
     try:
-        # CI環境かどうかを確認
-        is_ci = os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS")
-
         # Streamlitプロセスの状態を確認
-        is_running = streamlit_app.poll() is None
+        is_running = streamlit_app and streamlit_app.poll() is None
         logger.info(
-            f"Streamlitプロセス (PID: {streamlit_app.pid}) の状態: "
-            f"{'実行中' if is_running else f'終了 (コード: {streamlit_app.returncode})'}"
+            f"Streamlitプロセス (PID: {streamlit_app.pid if streamlit_app else 'None'}) の状態: "
+            f"{'実行中' if is_running else f'終了 (コード: {streamlit_app.returncode if streamlit_app else None})'}"
         )
 
-        # 非CI環境でプロセスが実行されていない場合はテストをスキップ
-        if not is_running and not is_ci:
+        # プロセスが実行されていない場合はテストをスキップ
+        if not is_running:
             pytest.skip("Streamlitプロセスが実行されていません")
 
         # ページを初期化
@@ -224,10 +230,7 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen) -> Generator[Non
 
         # Streamlitサーバーが応答することを確認
         if not _wait_for_streamlit(timeout=10, interval=1, port=process_port):
-            if is_ci:
-                logger.warning("CI環境でStreamlitサーバーが応答していませんが、テストを続行します")
-            else:
-                pytest.fail("Streamlit server is not responding before test.")
+            pytest.fail("Streamlit server is not responding before test.")
 
         # ページにアクセス
         page.goto(f"http://localhost:{process_port}/")
@@ -243,9 +246,12 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen) -> Generator[Non
 
     finally:
         # ページをリセット
-        page.reload()
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(1000)  # 待機時間を追加
+        try:
+            page.reload()
+            page.wait_for_load_state("networkidle")
+            page.wait_for_timeout(1000)  # 待機時間を追加
+        except Exception as e:
+            logger.warning(f"ページのリセット中にエラーが発生しました: {e}")
 
 
 # ============================================================================
