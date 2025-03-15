@@ -80,9 +80,8 @@ jobs:
         if: runner.os == 'Windows'
         uses: snok/install-poetry@v1
         with:
-          version: 1.7.1
           virtualenvs-create: true
-          virtualenvs-in-project: false
+          virtualenvs-in-project: true
       - name: Bootstrap poetry (Non-Windows)
         if: runner.os != 'Windows'
         run: |
@@ -98,9 +97,16 @@ jobs:
         run: |
           poetry config virtualenvs.in-project false
         shell: bash
-      - name: Install dependencies
+      - name: Install dependencies (Non-Windows)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
+          poetry install
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          source .venv/bin/activate
           poetry install
       - name: Install Playwright Browsers
         run: |
