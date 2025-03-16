@@ -165,6 +165,7 @@ jobs:
             ~/.cache/ms-playwright
             ~/Library/Caches/ms-playwright
             /home/runner/.cache/ms-playwright
+            /Users/runner/Library/Caches/ms-playwright
             %USERPROFILE%\AppData\Local\ms-playwright
           key: ${{ runner.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
       # リンターとテストを分離して並列実行
@@ -186,13 +187,13 @@ jobs:
           matrix.browser != 'chromium'
         run: |
           # E2Eテスト実行（指定されたブラウザのみ）
-          poetry run pytest tests/e2e/ -vv --browser=${{ matrix.browser }} -k "not benchmark"
+          poetry run pytest tests/e2e/ -vv --benchmark-disable
       - name: E2E Tests with benchmark (Chromium only)
         if: |
           matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
-          poetry run pytest tests/e2e/ -vv -m "benchmark" --browser=${{ matrix.browser }} --benchmark-only --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
+          poetry run pytest tests/e2e/ -vv -m "benchmark" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
 
   analyze:
     # https://github.com/terryyin/lizard

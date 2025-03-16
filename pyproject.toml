@@ -99,6 +99,7 @@ lint.select = [
 ]
 lint.ignore = [
   "RUF001",
+  "RUF002",
   "RUF003",
 ]
 lint.per-file-ignores."scripts/check_version.py" = [
@@ -132,15 +133,15 @@ testpaths = [
 pythonpath = "."
 addopts = [
   "-vv",
+  "-n=auto",
   "--cache-clear",
   "--maxfail=5",
-  "--durations=10",
+  "--durations=20",
   "--import-mode=importlib",
   "--benchmark-autosave",
   "--benchmark-save=github-actions",
   "--benchmark-columns=min,max,mean,stddev,median,ops",
   "--benchmark-sort=mean",
-  "--benchmark-histogram=none",
 ]
 markers = [
   "unit: mark a test as a unit test.",

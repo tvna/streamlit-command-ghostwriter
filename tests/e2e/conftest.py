@@ -13,7 +13,7 @@ import socket
 import subprocess
 import sys
 import time
-from typing import Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 import psutil
 import pytest
@@ -41,7 +41,7 @@ def playwright_browser_type(playwright: Playwright) -> Browser:
         playwright: Playwrightインスタンス
 
     Returns:
-        browser: 設定されたブラウザインスタンス
+        Browser: 設定されたブラウザインスタンス
     """
     # CI環境かどうかを確認
     is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
@@ -58,8 +58,15 @@ def playwright_browser_type(playwright: Playwright) -> Browser:
 
 
 @pytest.fixture(scope="session")
-def browser_context_args(browser_context_args: dict) -> dict:
-    """ブラウザコンテキストの引数を設定"""
+def browser_context_args(browser_context_args: Dict[str, Any]) -> Dict[str, Any]:
+    """ブラウザコンテキストの引数を設定
+
+    Args:
+        browser_context_args: 既存のブラウザコンテキスト引数
+
+    Returns:
+        Dict[str, Any]: 更新されたブラウザコンテキスト引数
+    """
     return {
         **browser_context_args,
         # ブラウザの言語設定
@@ -79,8 +86,15 @@ def browser_context_args(browser_context_args: dict) -> dict:
 
 
 @pytest.fixture(scope="session")
-def browser_type_launch_args(browser_type_launch_args: dict) -> dict:
-    """ブラウザ起動時の引数を設定"""
+def browser_type_launch_args(browser_type_launch_args: Dict[str, Any]) -> Dict[str, Any]:
+    """ブラウザ起動時の引数を設定
+
+    Args:
+        browser_type_launch_args: 既存のブラウザ起動引数
+
+    Returns:
+        Dict[str, Any]: 更新されたブラウザ起動引数
+    """
     return {
         **browser_type_launch_args,
         # ヘッドレスモードを有効化 [テスト実行時にブラウザを表示しない]
@@ -89,35 +103,6 @@ def browser_type_launch_args(browser_type_launch_args: dict) -> dict:
         # "headless": False,
         # "slow_mo": 100,
     }
-
-
-# ブラウザ選択のためのコマンドラインオプションを追加
-def pytest_addoption(parser: pytest.Parser) -> None:
-    """コマンドラインオプションを追加する
-
-    Args:
-        parser: pytestのパーサーオブジェクト
-    """
-    parser.addoption(
-        "--browser-type",
-        action="store",
-        default="chromium",
-        help="ブラウザを指定: chromium, firefox, webkit",
-    )
-
-
-# ブラウザ選択のためのフィクスチャ
-@pytest.fixture(scope="session")
-def browser_name(request: pytest.FixtureRequest) -> str:
-    """テストで使用するブラウザ名を取得するフィクスチャ
-
-    Args:
-        request: pytestのリクエストオブジェクト
-
-    Returns:
-        str: ブラウザ名(chromium, firefox, webkit)
-    """
-    return str(request.config.getoption("--browser-type"))
 
 
 def _find_free_port() -> int:
@@ -141,8 +126,8 @@ def _wait_for_streamlit(timeout: int = 30, interval: int = 1, port: int = 8503) 
     起動が完了したかどうかを確認します。
 
     Args:
-        timeout: 最大試行回数
-        interval: 試行間隔[秒]
+        timeout: 最大待機時間（秒）
+        interval: 試行間隔（秒）
         port: Streamlitサーバーのポート番号
 
     Returns:
