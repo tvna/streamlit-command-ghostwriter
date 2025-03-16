@@ -382,9 +382,6 @@ def pytest_configure(config: PytestConfig) -> None:
     Args:
         config: pytestの設定オブジェクト
     """
-    # プロジェクトのルートディレクトリに移動
-    os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-
     config.option.benchmark_autosave = True
     config.option.benchmark_save = ".benchmarks"
     config.option.benchmark_compare = "last"

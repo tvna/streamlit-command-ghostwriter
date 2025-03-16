@@ -164,6 +164,7 @@ jobs:
           path: |
             ~/.cache/ms-playwright
             ~/Library/Caches/ms-playwright
+            /home/runner/.cache/ms-playwright
             %USERPROFILE%\AppData\Local\ms-playwright
           key: ${{ runner.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
       # リンターとテストを分離して並列実行
