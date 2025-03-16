@@ -138,10 +138,6 @@ addopts = [
   "--maxfail=5",
   "--durations=20",
   "--import-mode=importlib",
-  "--benchmark-autosave",
-  "--benchmark-save=github-actions",
-  "--benchmark-columns=min,max,mean,stddev,median,ops",
-  "--benchmark-sort=mean",
 ]
 markers = [
   "unit: mark a test as a unit test.",
