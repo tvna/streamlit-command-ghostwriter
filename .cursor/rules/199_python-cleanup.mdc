@@ -3,7 +3,7 @@ description: Cleanup rules for python
 globs: *.py
 alwaysApply: true
 ---
-# クリーンアップの基本ルール
+# Pythonのクリーンアップの基本ルール
 - このルールの適応は、コード回答の直前でのみ実施することとします。
 
 ## フォーマットの徹底
