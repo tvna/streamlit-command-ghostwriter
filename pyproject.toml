@@ -39,7 +39,7 @@ pytest-xdist = "^3.6.1"
 pytest-mock = "^3.14.0"
 psutil = "^7.0.0"
 pytest-randomly = "^3.16.0"
-pytest-benchmark = "^5.1.0"
+pytest-benchmark = "4.0.0"
 pytest-clarity = "^1.0.1"
 pygal = "^3.0.5"
 
@@ -140,6 +140,7 @@ addopts = [
   "--benchmark-save=github-actions",
   "--benchmark-columns=min,max,mean,stddev,median,ops",
   "--benchmark-sort=mean",
+  "--benchmark-histogram=none",
 ]
 markers = [
   "unit: mark a test as a unit test.",

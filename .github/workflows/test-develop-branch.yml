@@ -191,7 +191,7 @@ jobs:
           matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
-          poetry run pytest tests/e2e/ -vv -m "benchmark" --browser=${{ matrix.browser }} --benchmark-only --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+          poetry run pytest tests/e2e/ -vv -m "benchmark" --browser=${{ matrix.browser }} --benchmark-only --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
 
   analyze:
     # https://github.com/terryyin/lizard
