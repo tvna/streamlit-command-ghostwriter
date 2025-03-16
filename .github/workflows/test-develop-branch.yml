@@ -44,6 +44,8 @@ jobs:
         uses: docker://rhysd/actionlint:latest
         with:
           args: -color
+      - name: Run Typos
+        uses: crate-ci/typos@master
 
   test:
     name: Test streamlit web-app
