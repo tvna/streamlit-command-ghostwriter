@@ -3,7 +3,7 @@ description: Coding style rules for python
 globs: *.py
 alwaysApply: true
 ---
-# Pythonのコードスタイルの基本ルール
+# Pythonのコードスタイルの基本
 - このルールの適応は、コード回答の直前とします。
 - 保守性に問題が出てしまうため、必ず実施することとします。
 

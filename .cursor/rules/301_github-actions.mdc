@@ -3,7 +3,7 @@ description: Rules for GitHub Actions workflow
 globs: **/.github/workflows/*.{yml,yaml}
 alwaysApply: false
 ---
-# GitHub Actionsの基本ルール
+# GitHub Actionsの基本
 
 ## トップレベルキーのチェック
 - ワークフローファイルに必要なトップレベルキー（name, on, jobs）が欠けている場合、エラーを出します。
