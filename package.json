@@ -15,7 +15,7 @@
         "dist": "electron-builder",
         "postinstall": "electron-builder install-app-deps",
         "commit": "pre-commit run && npx cz",
-        "minitest": "poetry run pytest --cov=. --cov-report=html --cov-report=term -n auto --dist loadfile --durations=10 --cache-clear --maxfail=5 -k 'not e2e'",
+        "minitest": "poetry run pytest --cov=. --cov-report=html --cov-report=term -n auto --dist loadfile --durations=10 --cache-clear --maxfail=5 -k 'not e2e' --benchmark-disable",
         "test": "poetry run pytest -n auto --cov=. --cov-report=html"
     },
     "build": {
