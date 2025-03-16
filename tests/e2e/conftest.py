@@ -19,7 +19,7 @@ import psutil
 import pytest
 import requests
 from _pytest.config import Config as PytestConfig
-from playwright.sync_api import Browser, Page, Playwright
+from playwright.sync_api import Page
 
 # アプリケーションのルートディレクトリをPythonパスに追加
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -32,42 +32,24 @@ _PLAYWRIGHT_HEADLESS_FLAG = "true"
 
 
 @pytest.fixture(scope="session")
-def playwright_browser_type(playwright: Playwright) -> Browser:
-    """Playwrightのブラウザタイプを設定するフィクスチャ
-
-    CI環境では常にヘッドレスモードで実行します。
-    環境変数 PLAYWRIGHT_BROWSER_TYPE で指定されたブラウザを使用します。
-    指定がない場合は chromium を使用します。
+def browser_type_launch_args(browser_type_launch_args: Dict[str, Any]) -> Dict[str, Any]:
+    """ブラウザ起動時の引数を設定
 
     Args:
-        playwright: Playwrightインスタンス
+        browser_type_launch_args: 既存のブラウザ起動引数
 
     Returns:
-        Browser: 設定されたブラウザインスタンス
+        Dict[str, Any]: 更新されたブラウザ起動引数
     """
     # CI環境かどうかを確認
     is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
 
-    # ブラウザの起動オプション
-    launch_options = {
-        "headless": is_ci,  # CI環境ではヘッドレスモードで実行
+    return {
+        **browser_type_launch_args,
+        # CI環境ではヘッドレスモードで実行
+        "headless": is_ci,
         "args": ["--no-sandbox", "--disable-dev-shm-usage"],
     }
-
-    # 環境変数からブラウザタイプを取得
-    browser_type_name = os.environ.get("PLAYWRIGHT_BROWSER_TYPE", "chromium").lower()
-
-    # ブラウザタイプを選択
-    if browser_type_name == "firefox":
-        browser_type = playwright.firefox
-    elif browser_type_name == "webkit":
-        browser_type = playwright.webkit
-    else:
-        # デフォルトまたは不明な値の場合は chromium を使用
-        browser_type = playwright.chromium
-
-    logger.info(f"Using browser: {browser_type_name}")
-    return browser_type.launch(**launch_options)
 
 
 @pytest.fixture(scope="session")
@@ -95,26 +77,6 @@ def browser_context_args(browser_context_args: Dict[str, Any]) -> Dict[str, Any]
         },
         "ignore_https_errors": True,
         "java_script_enabled": True,
-    }
-
-
-@pytest.fixture(scope="session")
-def browser_type_launch_args(browser_type_launch_args: Dict[str, Any]) -> Dict[str, Any]:
-    """ブラウザ起動時の引数を設定
-
-    Args:
-        browser_type_launch_args: 既存のブラウザ起動引数
-
-    Returns:
-        Dict[str, Any]: 更新されたブラウザ起動引数
-    """
-    return {
-        **browser_type_launch_args,
-        # ヘッドレスモードを有効化 [テスト実行時にブラウザを表示しない]
-        "headless": True,
-        # デバッグが必要な場合は以下の設定を有効にしてください
-        # "headless": False,
-        # "slow_mo": 100,
     }
 
 

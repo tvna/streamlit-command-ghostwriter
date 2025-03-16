@@ -186,17 +186,13 @@ jobs:
           matrix.browser != 'chromium'
         run: |
           # E2Eテスト実行（ベンチマークなし）
-          poetry run pytest -vv --benchmark-disable
-        env:
-          PLAYWRIGHT_BROWSER_TYPE: ${{ matrix.browser }}
+          poetry run pytest -vv --browser ${{ matrix.browser }} --benchmark-disable
       - name: E2E Tests with benchmark (Chromium only)
         if: |
           matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
-          poetry run pytest -vv -m "benchmark" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
-        env:
-          PLAYWRIGHT_BROWSER_TYPE: ${{ matrix.browser }}
+          poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
 
   analyze:
     # https://github.com/terryyin/lizard
