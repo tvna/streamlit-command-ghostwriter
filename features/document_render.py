@@ -4,7 +4,7 @@ from io import BytesIO
 from typing import Any, ClassVar, Dict, Optional
 
 import jinja2 as j2
-from pydantic import BaseModel, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 
 
 class DocumentRender(BaseModel):
@@ -21,8 +21,7 @@ class DocumentRender(BaseModel):
     __render_content: Optional[str] = PrivateAttr(default=None)
     __error_message: Optional[str] = PrivateAttr(default=None)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @field_validator("template_file")
     def _validate_file_size(cls, v: BytesIO) -> BytesIO:  # noqa: N805

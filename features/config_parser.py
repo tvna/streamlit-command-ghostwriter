@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Dict, Optional
 
 import pandas as pd
 import yaml
-from pydantic import BaseModel, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 
 
 class ConfigParser(BaseModel):
@@ -27,8 +27,7 @@ class ConfigParser(BaseModel):
     __is_enable_fill_nan: bool = PrivateAttr(default=False)
     __fill_nan_with: Optional[str] = PrivateAttr(default=None)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @field_validator("config_file")
     def _validate_file_size(cls, v: BytesIO) -> BytesIO:  # noqa: N805
@@ -153,6 +152,15 @@ class ConfigParser(BaseModel):
                     csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
 
                     if self.__is_enable_fill_nan is True:
+                        # 数値列に文字列を設定する場合の警告を回避するため、
+                        # 文字列値で置換する前に全ての列をオブジェクト型に変換
+                        if self.__fill_nan_with is not None and isinstance(self.__fill_nan_with, str):
+                            # 数値列を含む可能性のある全ての列をオブジェクト型に変換
+                            for col in csv_data.columns:
+                                if pd.api.types.is_numeric_dtype(csv_data[col]):
+                                    csv_data[col] = csv_data[col].astype("object")
+
+                        # NaN値を置換
                         csv_data.fillna(value=self.__fill_nan_with, inplace=True)
 
                     if isinstance(csv_data, pd.DataFrame):
