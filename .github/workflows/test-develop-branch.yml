@@ -180,23 +180,18 @@ jobs:
         run: |
           # 通常のテスト実行（カバレッジ有、ベンチマークなし）
           poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e"
-        env:
-          CI: "true"
-          GITHUB_ACTIONS: "true"
-          STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
-          STREAMLIT_SERVER_HEADLESS: true
       - name: E2E Tests (not chromium)
         if: |
           matrix.browser != 'chromium'
         run: |
           # E2Eテスト実行（指定されたブラウザのみ）
-          poetry run pytest tests/e2e/ -v --browser=${{ matrix.browser }} -k "not benchmark"
+          poetry run pytest tests/e2e/ -vv --browser=${{ matrix.browser }} -k "not benchmark"
       - name: E2E Tests with benchmark (Chromium only)
         if: |
           matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
-          poetry run pytest tests/e2e/ -v -m "benchmark" --browser=${{ matrix.browser }} --benchmark-only --benchmark-autosave --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+          poetry run pytest tests/e2e/ -vv -m "benchmark" --browser=${{ matrix.browser }} --benchmark-only --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
 
   analyze:
     # https://github.com/terryyin/lizard
