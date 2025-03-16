@@ -1,7 +1,0 @@
-url: "https://example.com/samplefile.txt"
-date: 2024-04-01
-
-users:
-  test:
-    first_name: "太郎"
-    last_name: "テスト"

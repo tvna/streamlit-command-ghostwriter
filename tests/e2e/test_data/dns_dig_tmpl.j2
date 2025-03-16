@@ -1,4 +1,0 @@
-
-{% for row in csv_rows %}
-dig @{{ row["resolver"] }} {{ row["fqdn"] }} {{ row["type"] }} +short
-{% endfor %}
