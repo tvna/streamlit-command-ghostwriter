@@ -65,13 +65,19 @@ jobs:
           - firefox
           - webkit
         exclude:
-          # UbuntuとWebkitの組み合わせを除外
+          # UbuntuとWebkit、Chromiumの組み合わせを除外
           - os: ubuntu-latest
             browser: webkit
           - os: ubuntu-22.04
             browser: webkit
           - os: ubuntu-20.04
             browser: webkit
+          - os: ubuntu-latest
+            browser: chromium
+          - os: ubuntu-22.04
+            browser: chromium
+          - os: ubuntu-20.04
+            browser: chromium
           # WindowsとWebkitの組み合わせを除外
           - os: windows-latest
             browser: webkit
