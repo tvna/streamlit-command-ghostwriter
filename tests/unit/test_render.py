@@ -1,7 +1,9 @@
+import sys
 from io import BytesIO
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 import pytest
+from pydantic import ValidationError
 
 from features.document_render import DocumentRender
 
@@ -470,3 +472,108 @@ def test_format_types(
         # 各行の内容を確認
         for i, (expected_line, rendered_line) in enumerate(zip(expected_lines, rendered_lines, strict=False)):
             assert rendered_line == expected_line, f"Line {i + 1} does not match: expected '{expected_line}', got '{rendered_line}'"
+
+
+@pytest.mark.unit
+def test_file_size_limit(create_template_file: Callable[[bytes, str], BytesIO]) -> None:
+    """ファイルサイズの上限を超えた場合のテスト。
+
+    Args:
+        create_template_file: テンプレートファイル作成用フィクスチャ
+    """
+    # Arrange
+    # 31MBのデータを作成 (上限は30MB)
+    large_content = b"x" * (31 * 1024 * 1024)
+    template_file = create_template_file(large_content, "large_template.txt")
+
+    # Act & Assert
+    # Pydanticのバリデーションエラーが発生することを確認
+    with pytest.raises(ValidationError) as excinfo:
+        DocumentRender(template_file)
+
+    # エラーメッセージを確認
+    assert "File size exceeds the maximum limit of 30MB" in str(excinfo.value)
+
+
+@pytest.mark.unit
+def test_memory_consumption_limit() -> None:
+    """メモリ消費量の上限を超えた場合のテスト。
+
+    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
+    大きなメモリサイズを返すようにします。
+    """
+    # Arrange
+    template_content = b"Hello {{ name }}!"
+    template_file = BytesIO(template_content)
+    template_file.name = "template.txt"
+
+    renderer = DocumentRender(template_file)
+    assert renderer.is_valid_template is True
+
+    # sys.getsizeofの元の実装を保存
+    original_getsizeof = sys.getsizeof
+
+    try:
+        # sys.getsizeofをモンキーパッチして大きな値を返すようにする
+        def mock_getsizeof(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+            if isinstance(obj, str) and "Hello" in obj:
+                # 300MBを返す (上限は250MB)
+                return 300 * 1024 * 1024
+            return original_getsizeof(obj)
+
+        sys.getsizeof = mock_getsizeof
+
+        # Act
+        apply_result = renderer.apply_context({"name": "World"})
+
+        # Assert
+        assert apply_result is False
+        assert renderer.error_message is not None
+        assert "Memory consumption exceeds the maximum limit of 250MB" in renderer.error_message
+        assert renderer.render_content is None
+
+    finally:
+        # テスト終了後に元の実装を復元
+        sys.getsizeof = original_getsizeof
+
+
+@pytest.mark.unit
+def test_memory_error_handling() -> None:
+    """メモリエラーが発生した場合のテスト。
+
+    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
+    MemoryErrorを発生させます。
+    """
+    # Arrange
+    template_content = b"Hello {{ name }}!"
+    template_file = BytesIO(template_content)
+    template_file.name = "template.txt"
+
+    renderer = DocumentRender(template_file)
+    assert renderer.is_valid_template is True
+
+    # sys.getsizeofの元の実装を保存
+    original_getsizeof = sys.getsizeof
+
+    try:
+        # sys.getsizeofをモンキーパッチしてMemoryErrorを発生させる
+        def mock_getsizeof_error(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+            if isinstance(obj, str) and "Hello" in obj:
+                raise MemoryError("Simulated memory error")
+            return original_getsizeof(obj)
+
+        sys.getsizeof = mock_getsizeof_error
+
+        # Act
+        apply_result = renderer.apply_context({"name": "World"})
+
+        # Assert
+        assert apply_result is False
+        assert renderer.error_message is not None
+        assert "Memory error while checking size" in renderer.error_message
+        assert "Simulated memory error" in renderer.error_message
+        assert renderer.render_content is None
+
+    finally:
+        # テスト終了後に元の実装を復元
+        sys.getsizeof = original_getsizeof

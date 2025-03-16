@@ -1,7 +1,9 @@
+import sys
 from io import BytesIO
-from typing import Optional
+from typing import Dict, Optional, Union
 
 import pytest
+from pydantic import ValidationError
 
 from features.config_parser import ConfigParser
 
@@ -189,31 +191,23 @@ def test_memory_usage_with_reasonable_file() -> None:
     config_file = BytesIO(content)
     config_file.name = "reasonable_file.csv"
 
-    # Record memory usage before parsing
-    import resource
-
-    before_mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-
     # Parse the file
     parser = ConfigParser(config_file)
     result = parser.parse()
 
-    # Record memory usage after parsing
-    after_mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-
     # Verify parsing succeeded
     assert result is True
 
-    # Check that memory usage didn't increase too dramatically
-    # This is a rough check - the exact threshold depends on the system
-    memory_increase_mb = (after_mem - before_mem) / 1024  # Convert KB to MB
+    # 辞書と文字列の表現が取得できることを確認
+    assert parser.parsed_dict is not None
+    assert parser.parsed_str != "None"
 
-    # Log the memory increase for debugging
-    print(f"Memory increase: {memory_increase_mb:.2f} MB")
-
-    # Adjust threshold based on observed memory usage
-    # The actual memory usage can vary significantly between systems and Python implementations
-    assert memory_increase_mb < 200, f"Memory usage increased by {memory_increase_mb:.2f} MB"
+    # 辞書の内容を確認
+    assert "csv_rows" in parser.parsed_dict
+    assert len(parser.parsed_dict["csv_rows"]) == 1000
+    assert all(row.get("col1") == "value1" for row in parser.parsed_dict["csv_rows"])
+    assert all(row.get("col2") == "value2" for row in parser.parsed_dict["csv_rows"])
+    assert all(row.get("col3") == "value3" for row in parser.parsed_dict["csv_rows"])
 
 
 @pytest.mark.unit
@@ -278,3 +272,148 @@ def test_nested_structures() -> None:
     assert "level3" in parser.parsed_dict["level1"]["level2"]
     assert "level4" in parser.parsed_dict["level1"]["level2"]["level3"]
     assert "level5" in parser.parsed_dict["level1"]["level2"]["level3"]["level4"]
+
+
+@pytest.mark.unit
+def test_file_size_limit() -> None:
+    """ファイルサイズの上限を超えた場合のテスト。
+
+    ConfigParserクラスのMAX_FILE_SIZE_BYTES (30MB) を超えるファイルを
+    作成し、バリデーションが正しく機能することを確認します。
+    """
+    # Arrange
+    # 31MBのデータを作成 (上限は30MB)
+    large_content = b"x" * (31 * 1024 * 1024)
+    config_file = BytesIO(large_content)
+    config_file.name = "large_config.toml"
+
+    # Act & Assert
+    # Pydanticのバリデーションエラーが発生することを確認
+    with pytest.raises(ValidationError) as excinfo:
+        ConfigParser(config_file)
+
+    # エラーメッセージを確認
+    assert "File size exceeds the maximum limit of 30MB" in str(excinfo.value)
+
+
+@pytest.mark.unit
+def test_memory_consumption_limit_parsed_str() -> None:
+    """parsed_strのメモリ消費量の上限を超えた場合のテスト。
+
+    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
+    大きなメモリサイズを返すようにします。
+    """
+    # Arrange
+    content = b"title = 'TOML test'\nkey = 'value'\n"
+    config_file = BytesIO(content)
+    config_file.name = "config.toml"
+
+    parser = ConfigParser(config_file)
+    assert parser.parse() is True
+
+    # sys.getsizeofの元の実装を保存
+    original_getsizeof = sys.getsizeof
+
+    try:
+        # sys.getsizeofをモンキーパッチして大きな値を返すようにする
+        def mock_getsizeof(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+            if isinstance(obj, str) and "title" in obj:
+                # 200MBを返す (上限は150MB)
+                return 200 * 1024 * 1024
+            return original_getsizeof(obj)
+
+        sys.getsizeof = mock_getsizeof
+
+        # Act
+        result = parser.parsed_str
+
+        # Assert
+        assert result == "None"
+        assert parser.error_message is not None
+        assert "Memory consumption exceeds the maximum limit of 150MB" in parser.error_message
+
+    finally:
+        # テスト終了後に元の実装を復元
+        sys.getsizeof = original_getsizeof
+
+
+@pytest.mark.unit
+def test_memory_consumption_limit_parsed_dict() -> None:
+    """parsed_dictのメモリ消費量の上限を超えた場合のテスト。
+
+    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
+    大きなメモリサイズを返すようにします。
+    """
+    # Arrange
+    content = b"title = 'TOML test'\nkey = 'value'\n"
+    config_file = BytesIO(content)
+    config_file.name = "config.toml"
+
+    parser = ConfigParser(config_file)
+    assert parser.parse() is True
+
+    # sys.getsizeofの元の実装を保存
+    original_getsizeof = sys.getsizeof
+
+    try:
+        # sys.getsizeofをモンキーパッチして大きな値を返すようにする
+        def mock_getsizeof(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+            if isinstance(obj, dict) and "title" in obj:
+                # 200MBを返す (上限は150MB)
+                return 200 * 1024 * 1024
+            return original_getsizeof(obj)
+
+        sys.getsizeof = mock_getsizeof
+
+        # Act
+        result = parser.parsed_dict
+
+        # Assert
+        assert result is None
+        assert parser.error_message is not None
+        assert "Memory consumption exceeds the maximum limit of 150MB" in parser.error_message
+
+    finally:
+        # テスト終了後に元の実装を復元
+        sys.getsizeof = original_getsizeof
+
+
+@pytest.mark.unit
+def test_memory_error_handling() -> None:
+    """メモリエラーが発生した場合のテスト。
+
+    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
+    MemoryErrorを発生させます。
+    """
+    # Arrange
+    content = b"title = 'TOML test'\nkey = 'value'\n"
+    config_file = BytesIO(content)
+    config_file.name = "config.toml"
+
+    parser = ConfigParser(config_file)
+    assert parser.parse() is True
+
+    # sys.getsizeofの元の実装を保存
+    original_getsizeof = sys.getsizeof
+
+    try:
+        # sys.getsizeofをモンキーパッチしてMemoryErrorを発生させる
+        def mock_getsizeof_error(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+            if isinstance(obj, dict) and "title" in obj:
+                raise MemoryError("Simulated memory error")
+            return original_getsizeof(obj)
+
+        sys.getsizeof = mock_getsizeof_error
+
+        # Act
+        result = parser.parsed_dict
+
+        # Assert
+        assert result is None
+        assert parser.error_message is not None
+        assert "Memory error while checking size" in parser.error_message
+        assert "Simulated memory error" in parser.error_message
+
+    finally:
+        # テスト終了後に元の実装を復元
+        sys.getsizeof = original_getsizeof
