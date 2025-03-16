@@ -1,5 +1,9 @@
 # 開発者向けコマンド集
 
+## TL;DR
+- https://docs.pytest.org/en/stable/getting-started.html
+- https://docs.github.com/ja/actions/writing-workflows/workflow-syntax-for-github-actions
+
 ## 環境セットアップ
 
 ```bash
@@ -24,6 +28,7 @@ poetry run ruff check . --fix
 poetry run mypy .
 
 # テスト系
+npm run minitest
 npm run test
 poetry run pytest --pdb
 poetry run pudb app.py
