@@ -24,7 +24,7 @@ poetry run ruff check . --fix
 poetry run mypy .
 
 # テスト系
-poetry run pytest -n auto --cov=. --cov-report=html
+npm run test
 poetry run pytest --pdb
 poetry run pudb app.py
 

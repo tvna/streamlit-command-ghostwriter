@@ -39,6 +39,9 @@ pytest-xdist = "^3.6.1"
 pytest-mock = "^3.14.0"
 psutil = "^7.0.0"
 pytest-randomly = "^3.16.0"
+pytest-benchmark = "^5.1.0"
+pytest-clarity = "^1.0.1"
+pygal = "^3.0.5"
 
 [tool.ruff]
 target-version = "py312"
@@ -130,7 +133,15 @@ testpaths = [
 ]
 pythonpath = "."
 addopts = [
+  "-vv",
+  "--cache-clear",
+  "--maxfail=5",
+  "--durations=10",
   "--import-mode=importlib",
+  "--benchmark-autosave",
+  "--benchmark-save=github-actions",
+  "--benchmark-columns=min,max,mean,stddev,median,ops",
+  "--benchmark-sort=mean",
 ]
 markers = [
   "unit: mark a test as a unit test.",
@@ -139,13 +150,27 @@ markers = [
   "e2e_basic: mark a test as a basic end-to-end test",
   "e2e_parametrized: mark a test as a parametrized end-to-end test",
   "workflow: mark a test as a workflow test.",
+  "benchmark: mark a test for benchmarking",
 ]
 
 [tool.coverage.run]
 parallel = false
+omit = [
+  "tests/e2e/*",
+  ".venv/*",
+  "node_modules/*",
+]
 
 [tool.coverage.report]
 show_missing = true
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "pass",
+  "raise ImportError",
+]
 
 [tool.coverage.html]
 directory = "htmlcov"
@@ -174,3 +199,12 @@ python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 warn_unreachable = true
+
+[tool.benchmark]
+min_time = 0.1
+max_time = 2.0
+min_rounds = 3
+timer = "time.perf_counter"
+disable_gc = false
+warmup = false
+warmup_iterations = 10000
