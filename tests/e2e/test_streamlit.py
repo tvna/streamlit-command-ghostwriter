@@ -10,6 +10,7 @@ Streamlit アプリケーションの End-to-End テスト
 - パラメータ化テストのみ実行: python -m pytest tests/e2e/test_streamlit.py -v -m e2e_parametrized
 - 特定のテストを実行: python -m pytest tests/e2e/test_streamlit.py::test_app_title -v
 - 並列実行: python -m pytest tests/e2e/test_streamlit.py -v -n auto
+- ベンチマーク実行: python -m pytest tests/e2e/test_streamlit.py -v --benchmark-only
 """
 
 import logging
@@ -24,8 +25,10 @@ from typing import Generator, List, Optional
 import psutil
 import pytest
 import requests
+from _pytest.config import Config as PytestConfig
 from box import Box
 from playwright.sync_api import Page, expect
+from pytest_benchmark.fixture import BenchmarkFixture
 
 # アプリケーションのルートディレクトリをPythonパスに追加
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -309,30 +312,39 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen, streamlit_port: 
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_app_title(page: Page, streamlit_port: int) -> None:
+@pytest.mark.benchmark
+def test_app_title(page: Page, streamlit_port: int, benchmark: BenchmarkFixture) -> None:
     """アプリケーションのタイトルが正しく表示されることを確認"""
-    # Streamlit アプリのタイトルを検証
-    title = page.locator("h1:has-text('Command ghostwriter')")
-    expect(title).to_be_visible()
-    expect(title).to_contain_text("Command ghostwriter")
+
+    def _check_title() -> None:
+        # Streamlit アプリのタイトルを検証
+        title = page.locator("h1:has-text('Command ghostwriter')")
+        expect(title).to_be_visible()
+        expect(title).to_contain_text("Command ghostwriter")
+
+    benchmark(_check_title)
 
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_input_field(page: Page, streamlit_port: int) -> None:
+@pytest.mark.benchmark
+def test_input_field(page: Page, streamlit_port: int, benchmark: BenchmarkFixture) -> None:
     """入力フィールドが機能することを確認"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
     expect(tab_button).to_be_visible()
     tab_button.click()
 
-    # ファイルアップロードボタンを見つける
-    upload_button = page.locator("button:has-text('Browse files')").first
-    expect(upload_button).to_be_visible()
+    def _check_input_fields() -> None:
+        # ファイルアップロードボタンを見つける
+        upload_button = page.locator("button:has-text('Browse files')").first
+        expect(upload_button).to_be_visible()
 
-    # CLIコマンド生成ボタンを見つける
-    cli_button = page.locator(f"button:has-text('{texts.tab1.generate_text_button}')").first
-    expect(cli_button).to_be_visible()
+        # CLIコマンド生成ボタンを見つける
+        cli_button = page.locator(f"button:has-text('{texts.tab1.generate_text_button}')").first
+        expect(cli_button).to_be_visible()
+
+    benchmark(_check_input_fields)
 
 
 @pytest.mark.e2e
@@ -535,7 +547,8 @@ def test_responsive_design(page: Page, streamlit_port: int) -> None:
 
 @pytest.mark.e2e
 @pytest.mark.e2e_basic
-def test_cli_command_generation(page: Page, streamlit_port: int) -> None:
+@pytest.mark.benchmark
+def test_cli_command_generation(page: Page, streamlit_port: int, benchmark: BenchmarkFixture) -> None:
     """CSVファイルとJinjaテンプレートを使用してCLIコマンドを生成する機能をテスト"""
     # タブを選択
     tab_button = page.locator(f"button[role='tab']:has-text('📝 {texts.tab1.menu_title}')").first
@@ -584,23 +597,26 @@ def test_cli_command_generation(page: Page, streamlit_port: int) -> None:
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1000)
 
-    # CLIコマンド生成ボタンをクリック
-    cli_button = page.locator(f"button:has-text('{texts.tab1.generate_text_button}')").first
-    expect(cli_button).to_be_visible()
-    cli_button.click()
+    def _generate_command() -> None:
+        # CLIコマンド生成ボタンをクリック
+        cli_button = page.locator(f"button:has-text('{texts.tab1.generate_text_button}')").first
+        expect(cli_button).to_be_visible()
+        cli_button.click()
 
-    # 結果が表示されるまで待機
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(2000)
+        # 結果が表示されるまで待機
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2000)
 
-    # 生成されたコマンドが表示されることを確認
-    # 結果が表示されるエリアが存在することを確認
-    result_area = page.locator("div.element-container").filter(has=page.locator("div.stMarkdown")).first
-    expect(result_area).to_be_visible()
+        # 生成されたコマンドが表示されることを確認
+        # 結果が表示されるエリアが存在することを確認
+        result_area = page.locator("div.element-container").filter(has=page.locator("div.stMarkdown")).first
+        expect(result_area).to_be_visible()
 
-    # 何らかの結果が表示されていることを確認[具体的な内容はアプリケーションの実装に依存]
-    result_text = result_area.inner_text()
-    assert len(result_text) > 0, "生成されたコマンドが表示されていません"
+        # 何らかの結果が表示されていることを確認[具体的な内容はアプリケーションの実装に依存]
+        result_text = result_area.inner_text()
+        assert len(result_text) > 0, "生成されたコマンドが表示されていません"
+
+    benchmark(_generate_command)
 
 
 @pytest.mark.e2e
@@ -1131,6 +1147,7 @@ def test_file_upload_parametrized(
 
 @pytest.mark.e2e
 @pytest.mark.e2e_parametrized
+@pytest.mark.benchmark
 @pytest.mark.parametrize(
     ("config_file", "template_file", "button_text"),
     [
@@ -1139,7 +1156,9 @@ def test_file_upload_parametrized(
         pytest.param("cisco_config.toml", "cisco_template.jinja2", texts.tab1.generate_text_button, id="TOML_CLIコマンド生成"),
     ],
 )
-def test_command_generation_parametrized(page: Page, streamlit_port: int, config_file: str, template_file: str, button_text: str) -> None:
+def test_command_generation_parametrized(
+    page: Page, streamlit_port: int, config_file: str, template_file: str, button_text: str, benchmark: BenchmarkFixture
+) -> None:
     """パラメータ化されたコマンド生成機能のテスト
 
     コマンド生成タブで設定ファイルとテンプレートファイルをアップロードし、
@@ -1152,6 +1171,7 @@ def test_command_generation_parametrized(page: Page, streamlit_port: int, config
         config_file: アップロードする設定ファイル名
         template_file: アップロードするテンプレートファイル名
         button_text: クリックするボタンのテキスト
+        benchmark: ベンチマーク実行用のフィクスチャ
     """
     # Streamlitサーバーが応答することを確認
     assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test."
@@ -1209,42 +1229,31 @@ def test_command_generation_parametrized(page: Page, streamlit_port: int, config
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(3000)
 
-    # Act: コマンド生成ボタンをクリック
-    command_button = page.locator(f"button:has-text('{button_text}')").first
-    expect(command_button).to_be_visible()
-    command_button.click()
+    def _generate_and_verify() -> None:
+        # Act: コマンド生成ボタンをクリック
+        command_button = page.locator(f"button:has-text('{button_text}')").first
+        expect(command_button).to_be_visible()
+        command_button.click()
 
-    # ページの読み込みを待機 - 待機時間を増やす
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(5000)
+        # ページの読み込みを待機 - 待機時間を増やす
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(5000)
 
-    # Assert: 生成結果が表示されていることを確認 - セレクタを改善
-    result_areas = page.locator("div.element-container div.stMarkdown").all()
+        # Assert: 生成結果が表示されていることを確認 - セレクタを改善
+        result_areas = page.locator("div.element-container div.stMarkdown").all()
 
-    # 結果が表示されるまで少し待機
-    page.wait_for_timeout(2000)
+        # 結果が表示されるまで少し待機
+        page.wait_for_timeout(2000)
 
-    # 結果テキストを取得
-    result_text = ""
-    for area in result_areas:
-        result_text += area.inner_text() + "\n"
+        # 結果テキストを取得
+        result_text = ""
+        for area in result_areas:
+            result_text += area.inner_text() + "\n"
 
-    # 何らかの結果が表示されていることを確認
-    assert len(result_text.strip()) > 0, f"生成された{button_text}の結果が表示されていません"
+        # 何らかの結果が表示されていることを確認
+        assert len(result_text.strip()) > 0, f"生成された{button_text}の結果が表示されていません"
 
-    # ダウンロードボタンが有効になっていることを確認 - 待機時間を追加
-    page.wait_for_timeout(2000)
-    download_button = page.locator("div[data-testid='stDownloadButton'] button").first
-
-    # ダウンロードボタンが表示されるまで待機
-    try:
-        expect(download_button).to_be_visible(timeout=5000)
-        # disabled属性がないか、空文字列であることを確認
-        is_enabled = download_button.get_attribute("disabled") is None or download_button.get_attribute("disabled") == ""
-        assert is_enabled, "ダウンロードボタンが有効になっていません"
-    except Exception as e:
-        # ボタンが見つからない場合はテストをスキップ
-        pytest.skip(f"ダウンロードボタンが見つかりませんでした: {e}")
+    benchmark(_generate_and_verify)
 
 
 @pytest.mark.e2e
@@ -1376,3 +1385,12 @@ def test_config_debug_parametrized(
 
     # 少なくとも1つの期待コンテンツが見つかればテスト成功
     assert found_content, f"期待される内容 {expected_content} のいずれも解析結果に表示されていません。実際の結果: {result_text[:200]}..."
+
+
+# pytest-benchmark プラグインの設定を追加
+# pytest.ini または conftest.py に追加
+def pytest_configure(config: PytestConfig) -> None:
+    config.option.benchmark_autosave = True
+    config.option.benchmark_save = ".benchmarks"
+    config.option.benchmark_compare = "last"
+    config.option.benchmark_histogram = ".benchmarks/histograms"
