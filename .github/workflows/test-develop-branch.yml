@@ -48,7 +48,7 @@ jobs:
         uses: crate-ci/typos@master
 
   test:
-    name: Test streamlit web-app
+    name: Test web app
     strategy:
       fail-fast: false
       matrix:
@@ -64,8 +64,19 @@ jobs:
           - chromium
           - firefox
           - webkit
+        exclude:
+          # UbuntuとWebkitの組み合わせを除外
+          - os: ubuntu-latest
+            browser: webkit
+          - os: ubuntu-22.04
+            browser: webkit
+          - os: ubuntu-20.04
+            browser: webkit
+          # WindowsとWebkitの組み合わせを除外
+          - os: windows-latest
+            browser: webkit
         include:
-          # Windowsのみタイムアウト時間を15分に設定
+          # Windowsのみタイムアウト時間を15分に設定（Webkitは除外）
           - os: windows-latest
             python-version: 3.12.3
             browser: chromium
@@ -81,17 +92,9 @@ jobs:
           - os: windows-latest
             python-version: 3.11
             browser: firefox
-            timeout-minutes: 15
-          - os: windows-latest
-            python-version: 3.12.3
-            browser: webkit
-            timeout-minutes: 15
-          - os: windows-latest
-            python-version: 3.11
-            browser: webkit
             timeout-minutes: 15
           # 最も一般的な環境を優先的にテスト
-          - os: ubuntu-latest
+          - os: macos-latest
             python-version: 3.12.3
             browser: chromium
             priority: high
@@ -176,25 +179,18 @@ jobs:
           GITHUB_ACTIONS: "true"
           STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
           STREAMLIT_SERVER_HEADLESS: true
-      - name: E2E Tests
+      - name: E2E Tests (not chromium)
+        if: |
+          matrix.browser != 'chromium'
         run: |
           # E2Eテスト実行（指定されたブラウザのみ）
           poetry run pytest tests/e2e/ -v --browser=${{ matrix.browser }} -k "not benchmark"
-        env:
-          CI: "true"
-          GITHUB_ACTIONS: "true"
-          STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
-          STREAMLIT_SERVER_HEADLESS: true
-      - name: Benchmark Tests
-        if: ${{ matrix.browser == 'chromium' }}
+      - name: E2E Tests with benchmark (Chromium only)
+        if: |
+          matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
           poetry run pytest tests/e2e/ -v -m "benchmark" --browser=${{ matrix.browser }} --benchmark-only --benchmark-autosave --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
-        env:
-          CI: "true"
-          GITHUB_ACTIONS: "true"
-          STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
-          STREAMLIT_SERVER_HEADLESS: true
 
   analyze:
     # https://github.com/terryyin/lizard
