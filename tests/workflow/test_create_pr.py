@@ -1,8 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-create_pr.pyのユニットテスト
+"""create_pr.pyのユニットテストモジュール。
+
+このモジュールは、scripts/create_pr.py内のPullRequestCreatorクラスの
+機能をテストするためのテストケースを提供します。
+
+テストの主な対象:
+- GitHub Actions関連のメソッド (github_notice, github_warning, github_error)
+- 環境変数の処理 (set_github_output)
+- コマンド検証と実行 (validate_command, run_gh_cmd)
+- Git操作 (get_latest_commit_message, get_commit_titles)
+- PRの作成と管理 (create_pr, prepare_pr_content, run)
+
+これらのテストは、モックを使用して外部依存性を分離し、
+様々な条件下での動作を検証します。
 """
 
 import os
@@ -17,7 +29,14 @@ from scripts.create_pr import PullRequestCreator
 
 @pytest.fixture
 def creator() -> PullRequestCreator:
-    """PullRequestCreatorのインスタンスを提供するフィクスチャ"""
+    """PullRequestCreatorのインスタンスを提供するフィクスチャ。
+
+    各テストで使用するPullRequestCreatorの新しいインスタンスを作成します。
+    これにより、テスト間の状態の分離が保証されます。
+
+    Returns:
+        初期化されたPullRequestCreatorインスタンス
+    """
     creator_instance = PullRequestCreator()
     return creator_instance
 
@@ -34,23 +53,34 @@ def creator() -> PullRequestCreator:
 def test_github_methods(
     creator: PullRequestCreator, method: str, test_message: str, expected_output: str, capsys: pytest.CaptureFixture
 ) -> None:
-    """githubメソッドのテスト"""
+    """GitHub Actions向けの通知メソッドをテストする。
+
+    github_notice、github_warning、github_errorの各メソッドが
+    正しい形式で標準出力にメッセージを出力することを検証します。
+
+    Args:
+        creator: テスト対象のPullRequestCreatorインスタンス
+        method: テスト対象のメソッド名
+        test_message: テストで使用するメッセージ
+        expected_output: 期待される出力文字列
+        capsys: 標準出力をキャプチャするフィクスチャ
+    """
     getattr(creator, method)(test_message)  # メソッドを動的に呼び出す
 
     captured = capsys.readouterr()
     assert captured.out == expected_output
 
 
-@pytest.mark.skip(reason="GitHub Actions上でのみ失敗してしまうテスト")
+@pytest.mark.workflow
 @pytest.mark.parametrize(
     ("env_key", "env_value", "isfile_return", "expected_path_call_count", "expected_output"),
     [
-        pytest.param("GITHUB_OUTPUT", "github_output.txt", True, 1, ""),
-        pytest.param("GITHUB_OUTPUT", None, False, 0, "GITHUB_OUTPUT環境変数が設定されていません\n"),
-        pytest.param(None, None, False, 0, "GITHUB_OUTPUT環境変数が設定されていません\n"),
+        pytest.param("GITHUB_OUTPUT", "github_output.txt", True, 1, "", id="環境変数あり・ファイルあり"),
+        pytest.param("GITHUB_OUTPUT", None, False, 0, "GITHUB_OUTPUT環境変数が設定されていません\n", id="環境変数なし"),
+        pytest.param(None, None, False, 0, "GITHUB_OUTPUT環境変数が設定されていません\n", id="環境変数キーなし"),
     ],
 )
-def test_set_github_output(
+def test_set_github_output_improved(
     env_key: Optional[str],
     env_value: Optional[str],
     isfile_return: bool,
@@ -58,24 +88,56 @@ def test_set_github_output(
     expected_output: str,
     creator: PullRequestCreator,
     capsys: pytest.CaptureFixture,
-    monkeypatch: pytest.MonkeyPatch,
     mocker: MockerFixture,
 ) -> None:
-    """set_github_outputメソッドのテスト"""
-    # 環境変数の設定
-    env_dict = {env_key: env_value} if env_key is not None and env_value is not None else {}
-    mocker.patch.dict(os.environ, env_dict)
+    """set_github_outputメソッドの改良版テスト - GitHub Actions環境でも動作する。
 
-    # ファイル存在チェックのモック
-    mock_path = mocker.patch.object(os.path, "isfile", return_value=isfile_return)
+    Args:
+        env_key: テストする環境変数のキー
+        env_value: テストする環境変数の値
+        isfile_return: os.path.isfileの戻り値
+        expected_path_call_count: os.path.isfileの呼び出し回数の期待値
+        expected_output: 期待される標準出力
+        creator: テスト対象のPullRequestCreatorインスタンス
+        capsys: 標準出力をキャプチャするフィクスチャ
+        mocker: モックを作成するためのフィクスチャ
+    """
+    # 現在の環境変数を保存
+    original_env = os.environ.copy()
 
-    # テスト実行
-    creator.set_github_output("test_name", "test_value")
-    captured = capsys.readouterr()
+    try:
+        # 環境変数の設定 [テスト用]
+        if env_key is not None:
+            if env_value is not None:
+                os.environ[env_key] = env_value
+            elif env_key in os.environ:
+                del os.environ[env_key]
 
-    # 検証
-    assert mock_path.call_count == expected_path_call_count
-    assert captured.out == expected_output
+        # ファイル存在チェックのモック
+        mock_path = mocker.patch.object(os.path, "isfile", return_value=isfile_return)
+
+        # ファイル書き込みのモック
+        mock_open = mocker.patch("builtins.open", new_callable=mocker.mock_open)
+
+        # テスト実行
+        creator.set_github_output("test_name", "test_value")
+        captured = capsys.readouterr()
+
+        # 検証
+        assert mock_path.call_count == expected_path_call_count
+        assert captured.out == expected_output
+
+        # ファイルが存在する場合は書き込みが行われることを確認
+        if isfile_return and env_value:
+            mock_open.assert_called_once_with(env_value, "a")
+            mock_open().write.assert_called_once_with("test_name=test_value\n")
+        else:
+            mock_open.assert_not_called()
+
+    finally:
+        # 環境変数を元に戻す
+        os.environ.clear()
+        os.environ.update(original_env)
 
 
 @pytest.mark.workflow
