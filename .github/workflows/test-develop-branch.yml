@@ -181,18 +181,30 @@ jobs:
         run: |
           # 通常のテスト実行（カバレッジ有、ベンチマークなし）
           poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
+      - name: Configure Windows for UTF-8
+        if: runner.os == 'Windows'
+        run: |
+          # Windows環境でUTF-8を使用するための設定
+          chcp 65001
+        shell: cmd
       - name: E2E Tests (not chromium)
         if: |
           matrix.browser != 'chromium'
         run: |
           # E2Eテスト実行（ベンチマークなし）
           poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-disable
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
       - name: E2E Tests with benchmark (Chromium only)
         if: |
           matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
           poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
 
   analyze:
     # https://github.com/terryyin/lizard

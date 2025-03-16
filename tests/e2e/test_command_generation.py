@@ -96,9 +96,9 @@ def test_toml_config_processing(page: Page, streamlit_port: int) -> None:
 @pytest.mark.parametrize(
     ("config_file", "template_file", "button_text"),
     [
-        pytest.param("dns_dig_config.csv", "dns_dig_tmpl.j2", texts.tab1.generate_text_button, id="CSV_CLIコマンド生成"),
-        pytest.param("success_config.yaml", "success_template.j2", texts.tab1.generate_markdown_button, id="YAML_Markdown生成"),
-        pytest.param("cisco_config.toml", "cisco_template.jinja2", texts.tab1.generate_text_button, id="TOML_CLIコマンド生成"),
+        pytest.param("dns_dig_config.csv", "dns_dig_tmpl.j2", texts.tab1.generate_text_button, id="CSV_CLI_Command_Generation"),
+        pytest.param("success_config.yaml", "success_template.j2", texts.tab1.generate_markdown_button, id="YAML_Markdown_Generation"),
+        pytest.param("cisco_config.toml", "cisco_template.jinja2", texts.tab1.generate_text_button, id="TOML_CLI_Command_Generation"),
     ],
 )
 def test_command_generation_parametrized(
