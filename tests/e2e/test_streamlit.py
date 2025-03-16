@@ -50,6 +50,35 @@ texts = Box(LANGUAGES[DEFAULT_LANGUAGE])
 _PLAYWRIGHT_HEADLESS_FLAG = "true"
 
 
+# ブラウザ選択のためのコマンドラインオプションを追加
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """コマンドラインオプションを追加する
+
+    Args:
+        parser: pytestのパーサーオブジェクト
+    """
+    parser.addoption(
+        "--browser",
+        action="store",
+        default="chromium",
+        help="ブラウザを指定: chromium, firefox, webkit",
+    )
+
+
+# ブラウザ選択のためのフィクスチャ
+@pytest.fixture(scope="session")
+def browser_name(request: pytest.FixtureRequest) -> str:
+    """テストで使用するブラウザ名を取得するフィクスチャ
+
+    Args:
+        request: pytestのリクエストオブジェクト
+
+    Returns:
+        str: ブラウザ名(chromium, firefox, webkit)
+    """
+    return str(request.config.getoption("--browser"))
+
+
 def _find_free_port() -> int:
     """使用可能なポート番号を見つける
 
@@ -1394,3 +1423,21 @@ def pytest_configure(config: PytestConfig) -> None:
     config.option.benchmark_save = ".benchmarks"
     config.option.benchmark_compare = "last"
     config.option.benchmark_histogram = ".benchmarks/histograms"
+
+
+# Playwrightのブラウザコンテキスト設定
+@pytest.fixture
+def browser_context_args(browser_name: str) -> dict:
+    """ブラウザコンテキストの引数を設定するフィクスチャ
+
+    Args:
+        browser_name: ブラウザ名
+
+    Returns:
+        dict: ブラウザコンテキストの引数
+    """
+    return {
+        "viewport": {"width": 1280, "height": 720},
+        "ignore_https_errors": True,
+        "java_script_enabled": True,
+    }

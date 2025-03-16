@@ -58,15 +58,42 @@ jobs:
         python-version:
           - 3.12.3
           - 3.11
+        browser:
+          - chromium
+          - firefox
+          - webkit
         include:
           # Windowsのみタイムアウト時間を15分に設定
           - os: windows-latest
             python-version: 3.12.3
+            browser: chromium
             timeout-minutes: 15
           - os: windows-latest
             python-version: 3.11
+            browser: chromium
             timeout-minutes: 15
-      max-parallel: 5
+          - os: windows-latest
+            python-version: 3.12.3
+            browser: firefox
+            timeout-minutes: 15
+          - os: windows-latest
+            python-version: 3.11
+            browser: firefox
+            timeout-minutes: 15
+          - os: windows-latest
+            python-version: 3.12.3
+            browser: webkit
+            timeout-minutes: 15
+          - os: windows-latest
+            python-version: 3.11
+            browser: webkit
+            timeout-minutes: 15
+          # 最も一般的な環境を優先的にテスト
+          - os: ubuntu-latest
+            python-version: 3.12.3
+            browser: chromium
+            priority: high
+      max-parallel: 10
     runs-on: ${{ matrix.os }}
     needs:
       - actionlint
@@ -134,13 +161,33 @@ jobs:
         run: |
           poetry run ruff check .
           poetry run mypy .
-      - name: Test
+      - name: Install Playwright Browser
         run: |
-          poetry run playwright install --with-deps chromium
+          poetry run playwright install --with-deps ${{ matrix.browser }}
+      - name: Unit Tests
+        if: ${{ matrix.browser == 'chromium' }}
+        run: |
           # 通常のテスト実行（カバレッジ有、ベンチマークなし）
           poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e"
-          # E2Eテストのベンチマーク実行
-          poetry run pytest tests/e2e/ -v -m "benchmark" --benchmark-only --benchmark-autosave --benchmark-save=github-actions --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+        env:
+          CI: "true"
+          GITHUB_ACTIONS: "true"
+          STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+          STREAMLIT_SERVER_HEADLESS: true
+      - name: E2E Tests
+        run: |
+          # E2Eテスト実行（指定されたブラウザのみ）
+          poetry run pytest tests/e2e/ -v --browser=${{ matrix.browser }} -k "not benchmark"
+        env:
+          CI: "true"
+          GITHUB_ACTIONS: "true"
+          STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+          STREAMLIT_SERVER_HEADLESS: true
+      - name: Benchmark Tests
+        if: ${{ matrix.browser == 'chromium' }}
+        run: |
+          # E2Eテストのベンチマーク実行（Chromiumのみ）
+          poetry run pytest tests/e2e/ -v -m "benchmark" --browser=${{ matrix.browser }} --benchmark-only --benchmark-autosave --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
         env:
           CI: "true"
           GITHUB_ACTIONS: "true"
