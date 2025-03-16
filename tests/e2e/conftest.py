@@ -36,6 +36,8 @@ def playwright_browser_type(playwright: Playwright) -> Browser:
     """Playwrightのブラウザタイプを設定するフィクスチャ
 
     CI環境では常にヘッドレスモードで実行します。
+    環境変数 PLAYWRIGHT_BROWSER_TYPE で指定されたブラウザを使用します。
+    指定がない場合は chromium を使用します。
 
     Args:
         playwright: Playwrightインスタンス
@@ -52,8 +54,19 @@ def playwright_browser_type(playwright: Playwright) -> Browser:
         "args": ["--no-sandbox", "--disable-dev-shm-usage"],
     }
 
-    # Chromiumブラウザを使用
-    browser_type = playwright.chromium
+    # 環境変数からブラウザタイプを取得
+    browser_type_name = os.environ.get("PLAYWRIGHT_BROWSER_TYPE", "chromium").lower()
+
+    # ブラウザタイプを選択
+    if browser_type_name == "firefox":
+        browser_type = playwright.firefox
+    elif browser_type_name == "webkit":
+        browser_type = playwright.webkit
+    else:
+        # デフォルトまたは不明な値の場合は chromium を使用
+        browser_type = playwright.chromium
+
+    logger.info(f"Using browser: {browser_type_name}")
     return browser_type.launch(**launch_options)
 
 

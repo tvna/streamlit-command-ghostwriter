@@ -128,9 +128,9 @@ jobs:
             .venv
             %LOCALAPPDATA%\pypoetry\Cache
             %USERPROFILE%\.cache\pypoetry
-          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ matrix.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ${{ runner.os }}-python${{ matrix.python-version }}-poetry
+            ${{ matrix.os }}-python${{ matrix.python-version }}-poetry
       - name: Bootstrap poetry (Windows)
         if: runner.os == 'Windows'
         uses: snok/install-poetry@v1
@@ -139,7 +139,7 @@ jobs:
           virtualenvs-in-project: true
           installer-parallel: true
       - name: Bootstrap poetry (Non-Windows)
-        if: runner.os != 'Windows'
+        if: matrix.os != 'Windows'
         run: |
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
@@ -149,7 +149,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
       - name: Configure poetry (Non-Windows)
-        if: runner.os != 'Windows'
+        if: matrix.os != 'Windows'
         run: |
           poetry config virtualenvs.in-project false
         shell: bash
@@ -167,7 +167,7 @@ jobs:
             /home/runner/.cache/ms-playwright
             /Users/runner/Library/Caches/ms-playwright
             %USERPROFILE%\AppData\Local\ms-playwright
-          key: ${{ runner.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ matrix.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
       # リンターとテストを分離して並列実行
       - name: Lint
         if: ${{ !cancelled() }}
@@ -187,12 +187,16 @@ jobs:
         run: |
           # E2Eテスト実行（ベンチマークなし）
           poetry run pytest -vv --benchmark-disable
+        env:
+          PLAYWRIGHT_BROWSER_TYPE: ${{ matrix.browser }}
       - name: E2E Tests with benchmark (Chromium only)
         if: |
           matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
           poetry run pytest -vv -m "benchmark" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
+        env:
+          PLAYWRIGHT_BROWSER_TYPE: ${{ matrix.browser }}
 
   analyze:
     # https://github.com/terryyin/lizard
