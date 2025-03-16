@@ -98,6 +98,8 @@ lint.select = [
   "TCH",
 ]
 lint.ignore = [
+  "RUF001",
+  "RUF003",
 ]
 lint.per-file-ignores."scripts/check_version.py" = [
   "S603",
@@ -112,11 +114,7 @@ lint.per-file-ignores."tests/*" = [
   "S603",  # `subprocess` call: check for execution of untrusted input
 ]
 lint.per-file-ignores."tests/workflow/*" = [
-  "PT001", # Use @pytest.fixture{expected} over @pytest.fixture{actual}
-  "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
-  "S101",  # Use of assert detected
-  "S105",  # Possible hardcoded password assigned to: "{}"
-  "S603",  # `subprocess` call: check for execution of untrusted input
+  "S105", # Possible hardcoded password assigned to: "{}"
 ]
 # Allow fix for all enabled rules (when `--fix`) is provided.
 lint.fixable = [

@@ -14,13 +14,19 @@
 			"black"
 		],
 		"python.autoComplete.extraPaths": [
-			"${workspaceRoot}/.venv/*/site-packages"
+			"${workspaceRoot}/.venv/*/site-packages",
+			"${workspaceRoot}/features",
+			"${workspaceRoot}/tests/e2e"
 		],
 		"python.analysis.extraPaths": [
-			"${workspaceRoot}/.venv/*/site-packages"
+			"${workspaceRoot}/.venv/*/site-packages",
+			"${workspaceRoot}/features",
+			"${workspaceRoot}/tests/e2e"
 		],
 		"python.analysis.include": [
-			"${workspaceRoot}/.venv/*/site-packages"
+			"${workspaceRoot}/.venv/*/site-packages",
+			"${workspaceRoot}/features",
+			"${workspaceRoot}/tests/e2e"
 		],
 		"python.analysis.ignore": [
 			"/opt/homebrew/Cellar/python**"

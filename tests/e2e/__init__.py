@@ -2,5 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ユニットテストパッケージ
+Streamlit アプリケーションの End-to-End テストパッケージ
 """
+
+__version__ = "1.0.0"
