@@ -156,7 +156,7 @@ jobs:
             ~/.cache/ms-playwright
             ~/Library/Caches/ms-playwright
             %USERPROFILE%\AppData\Local\ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ runner.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
       # リンターとテストを分離して並列実行
       - name: Lint
         if: ${{ !cancelled() }}
