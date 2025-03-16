@@ -262,14 +262,15 @@ jobs:
           pprint.pprint(ast_trees, width=100, compact=False)
           EOF
 
-  prebuild:
-    name: Prebuild environment
+  build:
+    name: Build desktop app
     strategy:
       matrix:
         os:
           - macos-latest
           - windows-latest
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     needs:
       - actionlint
     permissions:
@@ -293,32 +294,6 @@ jobs:
       - name: Install stlite
         run: |
           npm install
-
-  build:
-    name: Build desktop-app
-    strategy:
-      matrix:
-        os:
-          - macos-latest
-          - windows-latest
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    needs:
-      - test
-      - prebuild
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
-    permissions:
-      contents: read
-    timeout-minutes: 5
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - name: Install Node.js, NPM and Yarn
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.node-version }}
       - name: Restore cache node-electron dependencies
         uses: actions/cache@v4
         with:
