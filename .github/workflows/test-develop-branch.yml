@@ -308,28 +308,8 @@ jobs:
       contents: read
     timeout-minutes: ${{ matrix.timeout-minutes || 10 }}
     steps:
-      # Windowsの場合は固定バージョンのcheckoutを使用
-      - name: Check out Git repository (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/checkout@v4.1.1
-        id: checkout-windows
-        with:
-          fetch-depth: 1
-        continue-on-error: true
-
-      # Windowsでcheckoutが失敗した場合のフォールバック
-      - name: Fallback checkout for Windows
-        if: runner.os == 'Windows' && steps.checkout-windows.outcome != 'success'
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-
-      # 非Windows環境ではv4を使用
-      - name: Check out Git repository (Non-Windows)
-        if: runner.os != 'Windows'
+      - name: Check out Git repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5.1.0
