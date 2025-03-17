@@ -367,108 +367,11 @@ jobs:
           key: ${{ matrix.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
       - name: Install Playwright Browser
         run: |
+          # 数秒待機してサーバーの同期問題を回避
+          sleep 5
+
+          # ブラウザのインストール
           poetry run playwright install --with-deps ${{ matrix.browser }}
-
-      # E2Eテスト用のファイルハッシュを計算
-      - name: Generate hash for E2E test files (Unix)
-        id: e2e-hash
-        if: runner.os != 'Windows'
-        run: |
-          # E2Eテストに影響するファイルのハッシュを計算（存在するディレクトリ/ファイルのみ）
-          HASH=""
-          DIRS_TO_CHECK=("app.py" "features" "i18n.py" "tests/e2e")
-          FILES_LIST=""
-
-          # 存在するディレクトリ/ファイルのみチェック
-          for dir in "${DIRS_TO_CHECK[@]}"; do
-            if [ -e "$dir" ]; then
-              if [ -d "$dir" ]; then
-                # -type fをグループ化してOR条件を正しく処理
-                FILES_LIST+=" $(find "$dir" -type f \( -name "*.py" -o -name "*.j2" -o -name "*.csv" -o -name "*.yaml" -o -name "*.txt" \) 2>/dev/null | sort)"
-              elif [ -f "$dir" ]; then
-                FILES_LIST+=" $dir"
-              fi
-            fi
-          done
-
-          # ファイルが1つ以上見つかった場合のみハッシュ計算
-          if [ -n "$FILES_LIST" ]; then
-            # MacOSとLinuxでハッシュコマンドが異なるため条件分岐
-            if [[ "$RUNNER_OS" == "macOS" ]]; then
-              # macOSの場合はshasum -a 256を使用
-              HASH=$(echo "$FILES_LIST" | xargs cat 2>/dev/null | shasum -a 256 | cut -d ' ' -f 1)
-            else
-              # Linuxの場合はsha256sumを使用
-              HASH=$(echo "$FILES_LIST" | xargs cat 2>/dev/null | sha256sum | cut -d ' ' -f 1)
-            fi
-          else
-            # ファイルが見つからない場合のデフォルトハッシュ
-            HASH="no_files_found_$(date +%s)"
-          fi
-
-          echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
-          echo "E2E test files hash: ${HASH}"
-        shell: bash
-
-      - name: Generate hash for E2E test files (Windows)
-        id: e2e-hash-win
-        if: runner.os == 'Windows'
-        run: |
-          # Windows用のハッシュ計算
-          # ファイルが存在するかチェックしてから処理
-          $paths = @("app.py", "features", "i18n.py", "tests\e2e")
-          $validPaths = @()
-
-          foreach ($path in $paths) {
-            if (Test-Path $path) {
-              $validPaths += $path
-            }
-          }
-
-          if ($validPaths.Count -gt 0) {
-            try {
-              $files = Get-ChildItem -Path $validPaths -Recurse -Include *.py,*.j2,*.csv,*.yaml,*.txt -ErrorAction SilentlyContinue | Sort-Object -Property FullName
-              if ($files.Count -gt 0) {
-                $content = $files | Get-Content -ErrorAction SilentlyContinue | Out-String
-                $hash = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash.ToLower()
-              } else {
-                $hash = "no_files_found_$(Get-Date -UFormat %s)"
-              }
-            } catch {
-              $hash = "error_computing_hash_$(Get-Date -UFormat %s)"
-              Write-Host "Error computing hash: $_"
-            }
-          } else {
-            $hash = "no_valid_paths_found_$(Get-Date -UFormat %s)"
-          }
-
-          echo "hash=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          echo "E2E test files hash: $hash"
-        shell: pwsh
-
-      # ハッシュ値を統合
-      - name: Set combined hash
-        id: combined-hash
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            HASH="${{ steps.e2e-hash-win.outputs.hash }}"
-          else
-            HASH="${{ steps.e2e-hash.outputs.hash }}"
-          fi
-          echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
-          echo "Combined hash: ${HASH}"
-        shell: bash
-
-      # E2Eテスト結果のキャッシュを復元
-      - name: Restore E2E test results cache
-        # v4.2.2を使用 (最新の安定版)
-        uses: actions/cache@v4.2.2
-        id: e2e-cache
-        with:
-          path: |
-            .pytest_cache
-            .benchmarks
-          key: e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}
 
       - name: Configure Windows for UTF-8
         if: runner.os == 'Windows'
@@ -478,8 +381,7 @@ jobs:
         shell: cmd
 
       - name: E2E Tests (not chromium)
-        if: |
-          matrix.browser != 'chromium' && steps.e2e-cache.outputs.cache-hit != 'true'
+        if: matrix.browser != 'chromium'
         run: |
           # E2Eテスト実行（ベンチマークなし）
           poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-disable
@@ -488,8 +390,7 @@ jobs:
           PYTHONUTF8: 1
 
       - name: E2E Tests with benchmark (Chromium only)
-        if: |
-          matrix.browser == 'chromium' && steps.e2e-cache.outputs.cache-hit != 'true'
+        if: matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
           poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
@@ -497,38 +398,13 @@ jobs:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
 
-      - name: Skip E2E Tests (Cache Hit)
-        if: steps.e2e-cache.outputs.cache-hit == 'true'
-        run: |
-          echo "E2E tests skipped - using cached results from previous run with identical code"
-          echo "Cache key: e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}"
-          echo "::notice::E2E tests skipped - using cached results (no code changes detected)"
-          {
-            echo "### E2E Tests Skipped - Using Cached Results"
-            echo "No changes detected in E2E test files or application code."
-            echo "Cache key: \`e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # E2Eテスト結果のキャッシュを保存（テスト実行後）
-      - name: Save E2E test results cache
-        if: steps.e2e-cache.outputs.cache-hit != 'true'
-        # v4.2.2を使用 (安定版)
-        uses: actions/cache/save@v4.2.2
-        with:
-          path: |
-            .pytest_cache
-            .benchmarks
-          key: e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}
-
       # E2Eテスト実行結果をサマリーに表示
       - name: Add E2E test execution summary
-        if: steps.e2e-cache.outputs.cache-hit != 'true'
         run: |
-          echo "::notice::E2E tests executed - results cached for future runs"
+          echo "::notice::E2E tests executed"
           {
             echo "### E2E Tests Executed"
-            echo "Test results have been cached for future runs with the same code."
-            echo "Cache key: \`e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}\`"
+            echo "Tests for ${{ matrix.os }} / Python ${{ matrix.python-version }} / ${{ matrix.browser }} browser completed."
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
@@ -704,7 +580,7 @@ jobs:
   # WORKFLOW SUMMARY
   # ============================================================
   workflow-summary:
-    name: Workflow Summary
+    name: Workflow Summary (Test & Build)
     if: always()
     needs:
       [
