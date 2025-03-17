@@ -1,11 +1,133 @@
 import ast
 from datetime import date
 from io import BytesIO
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import pytest
 
 from features.config_parser import ConfigParser
+
+
+def assert_dict_equality(parsed_dict: Dict[str, Any], expected_dict: Dict[str, Any]) -> None:
+    """辞書の内容を比較する。
+
+    Args:
+        parsed_dict: 実際のパース結果の辞書
+        expected_dict: 期待される辞書
+    """
+    # キー一覧の比較
+    assert set(parsed_dict.keys()) == set(expected_dict.keys()), "Keys do not match"
+
+    # 各キーの値を比較
+    for key in expected_dict:
+        if isinstance(expected_dict[key], dict) and isinstance(parsed_dict[key], dict):
+            assert_nested_dict_equality(parsed_dict[key], expected_dict[key], key)
+        elif key == "csv_rows" and isinstance(expected_dict[key], list) and isinstance(parsed_dict[key], list):
+            assert_csv_rows_equality(parsed_dict[key], expected_dict[key])
+        else:
+            assert parsed_dict[key] == expected_dict[key], f"Value for key {key} does not match"
+
+
+def assert_nested_dict_equality(parsed_dict: Dict[str, Any], expected_dict: Dict[str, Any], parent_key: str) -> None:
+    """ネストされた辞書の内容を比較する。
+
+    Args:
+        parsed_dict: 実際のパース結果の辞書
+        expected_dict: 期待される辞書
+        parent_key: 親キー名
+    """
+    assert set(parsed_dict.keys()) == set(expected_dict.keys()), f"Nested keys for {parent_key} do not match"
+
+
+def assert_csv_rows_equality(parsed_rows: List[Dict[str, Any]], expected_rows: List[Dict[str, Any]]) -> None:
+    """CSVの行データの内容を比較する。
+
+    Args:
+        parsed_rows: 実際のパース結果の行データ
+        expected_rows: 期待される行データ
+    """
+    assert len(parsed_rows) == len(expected_rows), "CSV row count does not match"
+
+    # 各行のキーと値が一致することを確認
+    for i, (expected_row, actual_row) in enumerate(zip(expected_rows, parsed_rows, strict=False)):
+        assert set(expected_row.keys()) == set(actual_row.keys()), f"CSV row {i} keys do not match"
+
+        # 値が一致するか確認
+        for col_key in expected_row:
+            assert actual_row[col_key] == expected_row[col_key], f"Value for column {col_key} in row {i} does not match"
+
+
+def assert_string_representation(
+    parsed_dict: Optional[Dict[str, Any]],
+    parsed_str: str,
+    expected_str: str,
+) -> None:
+    """文字列表現を比較する。
+
+    Args:
+        parsed_dict: パース結果の辞書
+        parsed_str: パース結果の文字列表現
+        expected_str: 期待される文字列表現
+    """
+    # 辞書形式の文字列表現を処理
+    if expected_str.startswith("{") and expected_str.endswith("}"):
+        assert_dict_string_representation(parsed_dict, parsed_str, expected_str)
+    else:
+        # 単純な文字列比較
+        assert parsed_str == expected_str, "String representation does not match"
+
+
+def assert_dict_string_representation(
+    parsed_dict: Optional[Dict[str, Any]],
+    parsed_str: str,
+    expected_str: str,
+) -> None:
+    """辞書の文字列表現を比較する。
+
+    Args:
+        parsed_dict: パース結果の辞書
+        parsed_str: パース結果の文字列表現
+        expected_str: 期待される文字列表現
+    """
+    try:
+        # datetimeオブジェクトを含む場合
+        if "datetime.date" in expected_str:
+            parsed_str_normalized = str(parsed_dict).replace(" ", "")
+            expected_str_normalized = expected_str.replace(" ", "")
+            assert parsed_str_normalized == expected_str_normalized, "String representation with date objects does not match"
+        else:
+            # 通常の辞書の場合
+            expected_dict_from_str = ast.literal_eval(expected_str)
+            if parsed_dict is not None:
+                assert set(parsed_dict.keys()) == set(expected_dict_from_str.keys()), "Keys from string representation do not match"
+    except (SyntaxError, NameError, TypeError, ValueError):
+        # 文字列の評価に失敗した場合は、単純な文字列比較を行う
+        assert parsed_str == expected_str, "String representation does not match"
+
+
+def check_file_specific_string_representation(
+    parsed_str: Optional[str],
+    expected_str: Optional[str],
+    filename: str,
+    is_successful: bool,
+) -> None:
+    """ファイル形式に応じた文字列表現のチェックを行う。
+
+    Args:
+        parsed_str: パース結果の文字列表現
+        expected_str: 期待される文字列表現
+        filename: ファイル名
+        is_successful: パースが成功したかどうか
+    """
+    # CSVデータとYAMLデータの文字列表現はスキップ
+    if filename.endswith((".csv", ".yaml", ".yml")):
+        return
+
+    # パースが失敗した場合
+    if not is_successful:
+        assert parsed_str == "None", "Failed parse should have 'None' string representation"
+    else:
+        assert parsed_str == expected_str, "String representation does not match"
 
 
 @pytest.mark.unit
@@ -247,71 +369,17 @@ def test_parse(
 
     # 辞書の比較
     if expected_dict is not None and parser.parsed_dict is not None:
-        # 辞書の比較が失敗する場合があるため、キーと値を個別に確認
-        assert set(parser.parsed_dict.keys()) == set(expected_dict.keys()), "Keys do not match"
-
-        # 各キーの値を確認
-        for key in expected_dict:
-            if isinstance(expected_dict[key], dict) and isinstance(parser.parsed_dict[key], dict):
-                # ネストされた辞書の場合は、キーの存在だけ確認
-                assert set(parser.parsed_dict[key].keys()) == set(expected_dict[key].keys()), f"Nested keys for {key} do not match"
-            elif key == "csv_rows" and isinstance(expected_dict[key], list) and isinstance(parser.parsed_dict[key], list):
-                # CSVの行データの場合は、行数だけ確認
-                assert len(parser.parsed_dict[key]) == len(expected_dict[key]), "CSV row count does not match"
-
-                # 各行のキーが一致することを確認
-                for i, (expected_row, actual_row) in enumerate(zip(expected_dict[key], parser.parsed_dict[key], strict=False)):
-                    assert set(expected_row.keys()) == set(actual_row.keys()), f"CSV row {i} keys do not match"
-
-                    # 値が一致するか確認
-                    for col_key in expected_row:
-                        assert actual_row[col_key] == expected_row[col_key], f"Value for column {col_key} in row {i} does not match"
-            else:
-                # 通常の値の場合は、値が一致するか確認
-                assert parser.parsed_dict[key] == expected_dict[key], f"Value for key {key} does not match"
+        assert_dict_equality(parser.parsed_dict, expected_dict)
     else:
         assert parser.parsed_dict == expected_dict
 
     # 文字列表現の比較
     if expected_str is not None and parser.parsed_str is not None:
-        # 文字列表現が辞書の場合、文字列化して比較
-        if expected_str.startswith("{") and expected_str.endswith("}"):
-            # 辞書の文字列表現を正規化して比較
-            try:
-                # datetimeモジュールをローカルスコープで利用可能にする
-                # ast.literal_evalでは日付オブジェクトを評価できないため、
-                # 文字列表現の比較に切り替える
-                if "datetime.date" in expected_str:
-                    # 日付オブジェクトを含む場合は、文字列表現を比較
-                    parsed_str_normalized = str(parser.parsed_dict).replace(" ", "")
-                    expected_str_normalized = expected_str.replace(" ", "")
-                    assert parsed_str_normalized == expected_str_normalized, "String representation with date objects does not match"
-                else:
-                    # 通常の辞書の場合はast.literal_evalを使用
-                    expected_dict_from_str = ast.literal_eval(expected_str)
-                    # 文字列表現から生成した辞書と実際の辞書を比較
-                    if parser.parsed_dict is not None:
-                        # キーの存在を確認
-                        assert set(parser.parsed_dict.keys()) == set(expected_dict_from_str.keys()), (
-                            "Keys from string representation do not match"
-                        )
-            except (SyntaxError, NameError, TypeError, ValueError):
-                # 文字列の評価に失敗した場合は、単純な文字列比較を行う
-                # pytestのassertを使用して比較
-                parsed_str = str(parser.parsed_dict)
-                assert parsed_str == expected_str, "String representation does not match"
-        else:
-            # 単純な文字列比較
-            assert parser.parsed_str == expected_str
+        assert_string_representation(parser.parsed_dict, parser.parsed_str, expected_str)
     else:
-        # CSVデータの場合、文字列表現がNoneでも問題ないため、スキップする
-        if filename.endswith(".csv") or filename.endswith(".yaml") or filename.endswith(".yml"):
-            pass  # CSVデータとYAMLデータの文字列表現はスキップ
-        elif not is_successful:  # パースが失敗した場合は文字列表現が'None'であることを確認
-            assert parser.parsed_str == "None"
-        else:
-            assert parser.parsed_str == expected_str
+        check_file_specific_string_representation(parser.parsed_str, expected_str, filename, is_successful)
 
+    # エラーメッセージの確認
     if expected_error is None:
         assert parser.error_message is None
     else:
