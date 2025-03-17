@@ -10,6 +10,9 @@ alwaysApply: true
 - javascriptにおいては、npmを利用します
 - pythonの依存パッケージを新規インストールする場合は、`pip install`ではなく`poetry add`を利用すること
 - テストコード専用の依存パッケージを新規インストールする場合は、`poetry add -G dev`を利用すること
+- pyproject.tomlにおいては、パッケージモードの有効化を禁止とします
+- package.jsonにおいては、常にパッケージモードを利用するものとします
+- 頻出するコマンドのエイリアスについては、package.jsonに全て定義します
 
 ## フロントエンドの技術選定
 - streamlitを利用するWebアプリであること
