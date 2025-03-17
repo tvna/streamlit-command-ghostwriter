@@ -375,7 +375,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           # E2Eテストに影響するファイルのハッシュを計算
-          HASH=$(find app.py features i18n tests/e2e -type f -name "*.py" -o -name "*.j2" -o -name "*.csv" -o -name "*.yaml" -o -name "*.txt" | sort | xargs cat | sha256sum | cut -d ' ' -f 1)
+          HASH=$(find app.py features i18n.py tests/e2e -type f -name "*.py" -o -name "*.j2" -o -name "*.csv" -o -name "*.yaml" -o -name "*.txt" | sort | xargs cat | sha256sum | cut -d ' ' -f 1)
           echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
           echo "E2E test files hash: ${HASH}"
         shell: bash
@@ -385,7 +385,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           # Windows用のハッシュ計算
-          $files = Get-ChildItem -Path app.py,features,i18n,tests\e2e -Recurse -Include *.py,*.j2,*.csv,*.yaml,*.txt | Sort-Object -Property FullName
+          $files = Get-ChildItem -Path app.py,features,i18n.py,tests\e2e -Recurse -Include *.py,*.j2,*.csv,*.yaml,*.txt | Sort-Object -Property FullName
           $content = $files | Get-Content | Out-String
           $hash = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash.ToLower()
           echo "hash=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -590,12 +590,6 @@ jobs:
       - name: Install stlite
         run: |
           npm install
-      - name: Restore cache node-electron dependencies
-        uses: actions/cache@v4.2.2
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
       - name: Restore cache electron-builder (Windows)
         # https://github.com/electron/get#usage
         uses: actions/cache@v4.2.2
@@ -624,7 +618,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # NODE_OPTIONSにセキュリティ強化オプションを追加
-          NODE_OPTIONS: --max-http-header-size=8192 --no-experimental-fetch --disable-proto=throw --disallow-code-generation-from-strings
+          NODE_OPTIONS: "--max-http-header-size=8192 --max-old-space-size=4096"
         # TODO: stliteのWindows環境のビルド失敗が解消したら削除
         if: ${{ runner.os == 'MacOS' }}
       - name: Upload artifact (Windows)
