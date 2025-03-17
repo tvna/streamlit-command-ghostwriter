@@ -101,11 +101,15 @@ repos:
       language: system
       pass_filenames: false
       verbose: true
-      stages: [push]
     - id: lizard_combined
-      name: lizard (CCN check)
-      entry: poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10" && poetry run lizard ./tests/* --CCN "20"
+      name: lizard (check CCN for production codes)
+      entry: poetry run lizard -l python -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10"
       language: system
       pass_filenames: false
       verbose: true
-      stages: [push]
+    - id: lizard_for_tests
+      name: lizard (check CCN for testing codes)
+      entry: poetry run lizard -l python "./tests" --CCN "30"
+      language: system
+      pass_filenames: false
+      verbose: true

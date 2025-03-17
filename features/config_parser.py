@@ -3,7 +3,7 @@ import pprint
 import sys
 import tomllib
 from io import BytesIO, StringIO
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 import pandas as pd
 import yaml
@@ -14,6 +14,7 @@ class ConfigParser(BaseModel):
     # Constants for size limits as class variables
     MAX_FILE_SIZE_BYTES: ClassVar[int] = 30 * 1024 * 1024  # 30MB
     MAX_MEMORY_SIZE_BYTES: ClassVar[int] = 150 * 1024 * 1024  # 150MB
+    SUPPORTED_EXTENSIONS: ClassVar[List[str]] = ["toml", "yaml", "yml", "csv"]
 
     # Public fields for validation
     config_file: BytesIO = Field(..., description="設定ファイルのバイナリデータ")
@@ -59,18 +60,33 @@ class ConfigParser(BaseModel):
         """
         # Pydanticモデルの初期化
         super().__init__(config_file=config_file)
+        self.__initialize_from_file()
 
+    def __initialize_from_file(self) -> None:
+        """ファイルから初期化処理を行います。"""
         try:
-            self.__file_extension = self.config_file.name.split(".")[-1]
-            if self.__file_extension not in ["toml", "yaml", "yml", "csv"]:
+            self.__file_extension = self.__extract_file_extension()
+            if self.__file_extension not in self.SUPPORTED_EXTENSIONS:
                 self.__error_message = "Unsupported file type"
                 return
 
-            try:
-                self.__config_data = self.config_file.read().decode("utf-8")
-            except UnicodeDecodeError as e:
-                self.__error_message = str(e)
+            self.__read_file_content()
         except Exception as e:
+            self.__error_message = str(e)
+
+    def __extract_file_extension(self) -> str:
+        """ファイル名から拡張子を抽出します。
+
+        Returns:
+            ファイルの拡張子
+        """
+        return self.config_file.name.split(".")[-1]
+
+    def __read_file_content(self) -> None:
+        """ファイルの内容を読み込みます。"""
+        try:
+            self.__config_data = self.config_file.read().decode("utf-8")
+        except UnicodeDecodeError as e:
             self.__error_message = str(e)
 
     @property
@@ -137,36 +153,8 @@ class ConfigParser(BaseModel):
             return False
 
         try:
-            match self.__file_extension:
-                case "toml":
-                    self.__parsed_dict = tomllib.loads(self.__config_data)
-                case "yaml" | "yml":
-                    self.__parsed_dict = yaml.safe_load(self.__config_data)
-
-                    if not isinstance(self.__parsed_dict, dict):
-                        raise SyntaxError("Invalid YAML file loaded.")
-                case "csv":
-                    if len(self.__csv_rows_name) < 1:
-                        raise ValueError("ensure this value has at least 1 characters.")
-
-                    csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
-
-                    if self.__is_enable_fill_nan is True:
-                        # 数値列に文字列を設定する場合の警告を回避するため、
-                        # 文字列値で置換する前に全ての列をオブジェクト型に変換
-                        if self.__fill_nan_with is not None and isinstance(self.__fill_nan_with, str):
-                            # 数値列を含む可能性のある全ての列をオブジェクト型に変換
-                            for col in csv_data.columns:
-                                if pd.api.types.is_numeric_dtype(csv_data[col]):
-                                    csv_data[col] = csv_data[col].astype("object")
-
-                        # NaN値を置換
-                        csv_data.fillna(value=self.__fill_nan_with, inplace=True)
-
-                    if isinstance(csv_data, pd.DataFrame):
-                        mapped_list = [row.to_dict() for _, row in csv_data.iterrows()]
-                        self.__parsed_dict = {self.__csv_rows_name: mapped_list}
-
+            self.__parsed_dict = self.__parse_by_file_type()
+            return True
         except (
             tomllib.TOMLDecodeError,
             yaml.MarkedYAMLError,
@@ -182,7 +170,79 @@ class ConfigParser(BaseModel):
             self.__parsed_dict = None
             return False
 
-        return True
+    def __parse_by_file_type(self) -> Dict[str, Any]:
+        """ファイルタイプに応じたパース処理を行います。
+
+        Returns:
+            パースされた辞書
+
+        Raises:
+            SyntaxError: YAMLファイルが辞書形式でない場合
+            ValueError: CSV行名が1文字未満の場合または設定データがNoneの場合
+        """
+        if self.__config_data is None:
+            raise ValueError("Config data is None")
+
+        match self.__file_extension:
+            case "toml":
+                return tomllib.loads(self.__config_data)
+            case "yaml" | "yml":
+                parsed_data = yaml.safe_load(self.__config_data)
+                if not isinstance(parsed_data, dict):
+                    raise SyntaxError("Invalid YAML file loaded.")
+                return parsed_data
+            case "csv":
+                return self.__parse_csv_data()
+            case _:
+                # This should never happen due to the check in __initialize_from_file
+                raise ValueError(f"Unsupported file type: {self.__file_extension}")
+
+    def __parse_csv_data(self) -> Dict[str, Any]:
+        """CSVデータをパースします。
+
+        Returns:
+            パースされたCSVデータを含む辞書
+
+        Raises:
+            ValueError: CSV行名が1文字未満の場合または設定データがNoneの場合
+        """
+        if self.__config_data is None:
+            raise ValueError("Config data is None")
+
+        if len(self.__csv_rows_name) < 1:
+            raise ValueError("ensure this value has at least 1 characters.")
+
+        csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
+
+        if self.__is_enable_fill_nan:
+            csv_data = self.__handle_csv_nan_values(csv_data)
+
+        if isinstance(csv_data, pd.DataFrame):
+            mapped_list = [row.to_dict() for _, row in csv_data.iterrows()]
+            return {self.__csv_rows_name: mapped_list}
+
+        return {}
+
+    def __handle_csv_nan_values(self, csv_data: pd.DataFrame) -> pd.DataFrame:
+        """CSVデータのNaN値を処理します。
+
+        Args:
+            csv_data: 処理するCSVデータ
+
+        Returns:
+            NaN値が処理されたCSVデータ
+        """
+        # 数値列に文字列を設定する場合の警告を回避するため、
+        # 文字列値で置換する前に全ての列をオブジェクト型に変換
+        if self.__fill_nan_with is not None and isinstance(self.__fill_nan_with, str):
+            # 数値列を含む可能性のある全ての列をオブジェクト型に変換
+            for col in csv_data.columns:
+                if pd.api.types.is_numeric_dtype(csv_data[col]):
+                    csv_data[col] = csv_data[col].astype("object")
+
+        # NaN値を置換
+        csv_data.fillna(value=self.__fill_nan_with, inplace=True)
+        return csv_data
 
     def _validate_memory_size(self, obj: Any) -> bool:  # noqa: ANN401
         """メモリサイズのバリデーションを行います。
