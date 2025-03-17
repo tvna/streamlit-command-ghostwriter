@@ -71,8 +71,10 @@ jobs:
           head-ref: ${{ github.event.pull_request.head.ref }}
       - name: Report Status
         run: |
-          echo "### Security Dependency Review Complete" >> $GITHUB_STEP_SUMMARY
-          echo "Scanned for vulnerable dependencies in PR changes." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Security Dependency Review Complete"
+            echo "Scanned for vulnerable dependencies in PR changes."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   security-npm-audit:
     name: Security - NPM Audit
@@ -90,15 +92,15 @@ jobs:
       - name: NPM Audit
         run: |
           # npm auditを実行（高リスクの脆弱性のみ失敗とする）
-          echo "### NPM Audit Results" >> $GITHUB_STEP_SUMMARY
+          echo "### NPM Audit Results" >> "$GITHUB_STEP_SUMMARY"
           npm audit --production --audit-level=high || {
             echo "::warning::High severity vulnerabilities found in production dependencies"
-            echo "⚠️ High severity vulnerabilities found in production dependencies" >> $GITHUB_STEP_SUMMARY
-            npm audit --production --audit-level=high >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ High severity vulnerabilities found in production dependencies" >> "$GITHUB_STEP_SUMMARY"
+            npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
           }
       - name: Report Status
         run: |
-          echo "### Security NPM Security Audit Complete" >> $GITHUB_STEP_SUMMARY
+          echo "### Security NPM Security Audit Complete" >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # LINT CHECKS GROUP
@@ -128,8 +130,10 @@ jobs:
         uses: crate-ci/typos@v1.16.8
       - name: Report Status
         run: |
-          echo "### Workflow Lint Passed" >> $GITHUB_STEP_SUMMARY
-          echo "All GitHub Actions workflow files are valid." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Workflow Lint Passed"
+            echo "All GitHub Actions workflow files are valid."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   lint-python:
     name: Lint - Python Code
@@ -180,8 +184,10 @@ jobs:
           poetry run mypy .
       - name: Report Status
         run: |
-          echo "### Python Lint Passed" >> $GITHUB_STEP_SUMMARY
-          echo "All Python files pass linting requirements." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Python Lint Passed"
+            echo "All Python files pass linting requirements."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # TESTS GROUP
@@ -233,8 +239,10 @@ jobs:
           poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
       - name: Report Status
         run: |
-          echo "### Unit Tests Passed" >> $GITHUB_STEP_SUMMARY
-          echo "All unit tests passing with coverage." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Unit Tests Passed"
+            echo "All unit tests passing with coverage."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   test-e2e:
     name: Test - E2E (${{ matrix.os }} / ${{ matrix.python-version }} / ${{ matrix.browser }})
@@ -368,8 +376,8 @@ jobs:
         run: |
           # E2Eテストに影響するファイルのハッシュを計算
           HASH=$(find app.py features i18n tests/e2e -type f -name "*.py" -o -name "*.j2" -o -name "*.csv" -o -name "*.yaml" -o -name "*.txt" | sort | xargs cat | sha256sum | cut -d ' ' -f 1)
-          echo "hash=$HASH" >> $GITHUB_OUTPUT
-          echo "E2E test files hash: $HASH"
+          echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
+          echo "E2E test files hash: ${HASH}"
         shell: bash
 
       - name: Generate hash for E2E test files (Windows)
@@ -441,9 +449,11 @@ jobs:
           echo "E2E tests skipped - using cached results from previous run with identical code"
           echo "Cache key: e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}"
           echo "::notice::E2E tests skipped - using cached results (no code changes detected)"
-          echo "### E2E Tests Skipped - Using Cached Results" >> $GITHUB_STEP_SUMMARY
-          echo "No changes detected in E2E test files or application code." >> $GITHUB_STEP_SUMMARY
-          echo "Cache key: \`e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}\`" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### E2E Tests Skipped - Using Cached Results"
+            echo "No changes detected in E2E test files or application code."
+            echo "Cache key: \`e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # E2Eテスト結果のキャッシュを保存（テスト実行後）
       - name: Save E2E test results cache
@@ -461,9 +471,11 @@ jobs:
         if: steps.e2e-cache.outputs.cache-hit != 'true'
         run: |
           echo "::notice::E2E tests executed - results cached for future runs"
-          echo "### E2E Tests Executed" >> $GITHUB_STEP_SUMMARY
-          echo "Test results have been cached for future runs with the same code." >> $GITHUB_STEP_SUMMARY
-          echo "Cache key: \`e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}\`" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### E2E Tests Executed"
+            echo "Test results have been cached for future runs with the same code."
+            echo "Cache key: \`e2e-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}-${{ steps.combined-hash.outputs.hash }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # ANALYZE GROUP
@@ -538,8 +550,10 @@ jobs:
           EOF
       - name: Report Status
         run: |
-          echo "### Code Analysis Complete" >> $GITHUB_STEP_SUMMARY
-          echo "Code complexity and AST analysis performed successfully." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Code Analysis Complete"
+            echo "Code complexity and AST analysis performed successfully."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # BUILD GROUP
@@ -633,8 +647,10 @@ jobs:
         if: ${{ runner.os == 'MacOS' }}
       - name: Report Status
         run: |
-          echo "### Desktop Build Complete" >> $GITHUB_STEP_SUMMARY
-          echo "Desktop application built successfully for ${{ runner.os }}." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Desktop Build Complete"
+            echo "Desktop application built successfully for ${{ runner.os }}."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # WORKFLOW SUMMARY
@@ -656,15 +672,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          echo "### Workflow Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Category | Job | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Security | Dependency Review | ${{ needs.security-dependency-review.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' && '➖ Skipped') || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Security | NPM Audit | ${{ needs.security-npm-audit.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Lint | Workflow Files | ${{ needs.lint-workflow.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Lint | Python Code | ${{ needs.lint-python.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Test | Unit Tests | ${{ needs.test-unit.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Test | E2E Tests | ${{ needs.test-e2e.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Analysis | Code Complexity | ${{ needs.analyze-code.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | Desktop App | ${{ needs.build-desktop.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Workflow Summary"
+            echo ""
+            echo "| Category | Job | Status |"
+            echo "| --- | --- | --- |"
+            echo "| Security | Dependency Review | ${{ needs.security-dependency-review.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' && '➖ Skipped') || '❌ Failed' }} |"
+            echo "| Security | NPM Audit | ${{ needs.security-npm-audit.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo "| Lint | Workflow Files | ${{ needs.lint-workflow.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo "| Lint | Python Code | ${{ needs.lint-python.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo "| Test | Unit Tests | ${{ needs.test-unit.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo "| Test | E2E Tests | ${{ needs.test-e2e.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo "| Analysis | Code Complexity | ${{ needs.analyze-code.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo "| Build | Desktop App | ${{ needs.build-desktop.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
