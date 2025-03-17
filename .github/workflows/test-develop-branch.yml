@@ -629,4 +629,32 @@ jobs:
             echo "| Test | E2E Tests | ${{ needs.test-e2e.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
             echo "| Analysis | Code Complexity | ${{ needs.analyze-code.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
             echo "| Build | Desktop App | ${{ needs.build-desktop.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+
+            # 総合結果の表示
+            echo ""
+            echo "## 総合結果"
+
+            # いずれかのジョブが失敗した場合に失敗とする
+            if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+              echo "⚠️ **一部のジョブが失敗しました。詳細を確認してください。**"
+              echo ""
+              # 失敗したジョブのリスト
+              echo "### 失敗したジョブ"
+              [[ "${{ needs.security-dependency-review.result }}" != "success" && "${{ needs.security-dependency-review.result }}" != "skipped" ]] && echo "- Security Dependency Review"
+              [[ "${{ needs.security-npm-audit.result }}" != "success" ]] && echo "- Security NPM Audit"
+              [[ "${{ needs.lint-workflow.result }}" != "success" ]] && echo "- Workflow Lint"
+              [[ "${{ needs.lint-python.result }}" != "success" ]] && echo "- Python Lint"
+              [[ "${{ needs.test-unit.result }}" != "success" ]] && echo "- Unit Tests"
+              [[ "${{ needs.test-e2e.result }}" != "success" ]] && echo "- E2E Tests"
+              [[ "${{ needs.analyze-code.result }}" != "success" ]] && echo "- Code Analysis"
+              [[ "${{ needs.build-desktop.result }}" != "success" ]] && echo "- Desktop Build"
+            else
+              echo "✅ **すべてのジョブが正常に完了しました**"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+          # ワークフロー全体の結果を設定 - いずれかのジョブが失敗した場合に失敗とする
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "Some jobs have failed. See the summary for details."
+            exit 1
+          fi
