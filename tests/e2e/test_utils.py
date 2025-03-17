@@ -2,12 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Streamlit アプリケーションのテスト用ユーティリティ関数
+Streamlit アプリケーションのテスト用ユーティリティ
 """
 
 import os
-
-# i18n モジュールをインポート
 import sys
 import tempfile
 from typing import List, Optional
@@ -229,6 +227,159 @@ show startup-config"""
         return file_content_map.get(file_name, "")
 
 
+class StreamlitTestHelper:
+    """Streamlitアプリケーションのテスト支援クラス"""
+
+    def __init__(self, page: Page) -> None:
+        """初期化
+
+        Args:
+            page: Playwrightのページオブジェクト
+        """
+        self.page = page
+        self.default_wait_time = 1000  # ミリ秒
+
+    def get_test_file_path(self, file_name: str) -> str:
+        """テスト用のファイルパスを取得する
+
+        Args:
+            file_name: ファイル名
+
+        Returns:
+            str: テスト用のファイルパス
+        """
+        return TestData.get_test_file_path(file_name)
+
+    def wait_for_ui_stabilization(self) -> None:
+        """UI要素が安定するまで待機する"""
+        self.page.wait_for_load_state("networkidle")
+        self.page.wait_for_timeout(self.default_wait_time)
+
+    def upload_file(self, upload_container_selector: str, file_name: str) -> None:
+        """ファイルをアップロードする
+
+        Args:
+            upload_container_selector: アップロードコンテナのセレクタ
+            file_name: アップロードするファイル名
+        """
+        # アップロードコンテナを取得
+        upload_container = self.page.locator(upload_container_selector).first
+        expect(upload_container).to_be_visible()
+
+        # ファイルアップロードボタンを見つける
+        upload_button = upload_container.locator("button:has-text('Browse files')").first
+        expect(upload_button).to_be_visible()
+
+        # ファイルをアップロード
+        test_file_path = self.get_test_file_path(file_name)
+        with self.page.expect_file_chooser() as fc_info:
+            upload_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(test_file_path)
+
+        # アップロード後の処理を待機
+        self.wait_for_ui_stabilization()
+
+    def select_tab(self, tab_name: str) -> None:
+        """タブを選択する
+
+        Args:
+            tab_name: タブ名
+        """
+        tab_button = self.page.locator(f"button[role='tab']:has-text('{tab_name}')").first
+        expect(tab_button).to_be_visible()
+        tab_button.click()
+
+        # タブ切り替え後の表示を待機
+        self.page.wait_for_timeout(self.default_wait_time)
+        self.page.wait_for_load_state("networkidle")
+
+        # タブパネルが表示されるのを待機
+        tab_panel = self.page.locator("div[role='tabpanel']:visible").first
+        expect(tab_panel).to_be_visible()
+
+    def click_button(self, button_text: str) -> None:
+        """ボタンをクリックする
+
+        Args:
+            button_text: ボタンのテキスト
+        """
+        button = self.page.locator(f"button:has-text('{button_text}')").first
+        expect(button).to_be_visible()
+        button.click()
+
+        # ボタンクリック後の処理を待機
+        self.wait_for_ui_stabilization()
+
+    def check_result_displayed(self, expected_contents: Optional[List[str]] = None) -> str:
+        """結果が表示されていることを確認する
+
+        Args:
+            expected_contents: 結果に含まれるべき内容のリスト
+
+        Returns:
+            str: 表示されている結果のテキスト
+        """
+        # 結果が表示されるエリアが存在することを確認
+        result_area = self.page.locator("div.element-container").filter(has=self.page.locator("div.stMarkdown")).first
+        expect(result_area).to_be_visible()
+
+        # 結果テキストを取得
+        result_text = result_area.inner_text()
+
+        # 何らかの結果が表示されていることを確認
+        assert len(result_text) > 0, "生成された結果が表示されていません"
+
+        # 期待される内容が含まれていることを確認
+        if expected_contents:
+            for content in expected_contents:
+                assert content in result_text, f"期待される内容 '{content}' が結果に含まれていません"
+
+        return result_text
+
+    def upload_config_and_template(self, config_file: str, template_file: str) -> None:
+        """設定ファイルとテンプレートファイルをアップロードする
+
+        Args:
+            config_file: 設定ファイル名
+            template_file: テンプレートファイル名
+        """
+        # ファイルアップロード要素を取得
+        upload_containers = self.page.locator("div[data-testid='stFileUploader']").all()
+        assert len(upload_containers) > 1, "ファイルアップローダーが2つ以上見つかりません"
+
+        # 設定ファイルをアップロード
+        config_upload_container = upload_containers[0]
+        config_upload_button = config_upload_container.locator("button:has-text('Browse files')").first
+        expect(config_upload_button).to_be_visible()
+
+        config_file_path = self.get_test_file_path(config_file)
+        with self.page.expect_file_chooser() as fc_info:
+            config_upload_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(config_file_path)
+
+        # アップロード後の処理を待機
+        self.wait_for_ui_stabilization()
+
+        # テンプレートファイルをアップロード
+        jinja_upload_container = upload_containers[1]
+        jinja_upload_button = jinja_upload_container.locator("button:has-text('Browse files')").first
+        expect(jinja_upload_button).to_be_visible()
+
+        jinja_file_path = self.get_test_file_path(template_file)
+        with self.page.expect_file_chooser() as fc_info:
+            jinja_upload_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(jinja_file_path)
+
+        # アップロード後の処理を待機
+        self.wait_for_ui_stabilization()
+
+
+# 後方互換性のための関数
+
+
 def get_test_file_path(file_name: str) -> str:
     """テスト用のファイルパスを取得する
 
@@ -249,24 +400,8 @@ def upload_file(page: Page, upload_container_selector: str, file_name: str) -> N
         upload_container_selector: アップロードコンテナのセレクタ
         file_name: アップロードするファイル名
     """
-    # アップロードコンテナを取得
-    upload_container = page.locator(upload_container_selector).first
-    expect(upload_container).to_be_visible()
-
-    # ファイルアップロードボタンを見つける
-    upload_button = upload_container.locator("button:has-text('Browse files')").first
-    expect(upload_button).to_be_visible()
-
-    # ファイルをアップロード
-    test_file_path = get_test_file_path(file_name)
-    with page.expect_file_chooser() as fc_info:
-        upload_button.click()
-    file_chooser = fc_info.value
-    file_chooser.set_files(test_file_path)
-
-    # アップロード後の処理を待機
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    helper = StreamlitTestHelper(page)
+    helper.upload_file(upload_container_selector, file_name)
 
 
 def select_tab(page: Page, tab_name: str) -> None:
@@ -276,17 +411,8 @@ def select_tab(page: Page, tab_name: str) -> None:
         page: Playwrightのページオブジェクト
         tab_name: タブ名
     """
-    tab_button = page.locator(f"button[role='tab']:has-text('{tab_name}')").first
-    expect(tab_button).to_be_visible()
-    tab_button.click()
-
-    # タブ切り替え後の表示を待機
-    page.wait_for_timeout(1000)
-    page.wait_for_load_state("networkidle")
-
-    # タブパネルが表示されるのを待機
-    tab_panel = page.locator("div[role='tabpanel']:visible").first
-    expect(tab_panel).to_be_visible()
+    helper = StreamlitTestHelper(page)
+    helper.select_tab(tab_name)
 
 
 def click_button(page: Page, button_text: str) -> None:
@@ -296,13 +422,8 @@ def click_button(page: Page, button_text: str) -> None:
         page: Playwrightのページオブジェクト
         button_text: ボタンのテキスト
     """
-    button = page.locator(f"button:has-text('{button_text}')").first
-    expect(button).to_be_visible()
-    button.click()
-
-    # ボタンクリック後の処理を待機
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    helper = StreamlitTestHelper(page)
+    helper.click_button(button_text)
 
 
 def check_result_displayed(page: Page, expected_contents: Optional[List[str]] = None) -> str:
@@ -315,22 +436,8 @@ def check_result_displayed(page: Page, expected_contents: Optional[List[str]] = 
     Returns:
         str: 表示されている結果のテキスト
     """
-    # 結果が表示されるエリアが存在することを確認
-    result_area = page.locator("div.element-container").filter(has=page.locator("div.stMarkdown")).first
-    expect(result_area).to_be_visible()
-
-    # 結果テキストを取得
-    result_text = result_area.inner_text()
-
-    # 何らかの結果が表示されていることを確認
-    assert len(result_text) > 0, "生成された結果が表示されていません"
-
-    # 期待される内容が含まれていることを確認
-    if expected_contents:
-        for content in expected_contents:
-            assert content in result_text, f"期待される内容 '{content}' が結果に含まれていません"
-
-    return result_text
+    helper = StreamlitTestHelper(page)
+    return helper.check_result_displayed(expected_contents)
 
 
 def upload_config_and_template(page: Page, config_file: str, template_file: str) -> None:
@@ -341,36 +448,5 @@ def upload_config_and_template(page: Page, config_file: str, template_file: str)
         config_file: 設定ファイル名
         template_file: テンプレートファイル名
     """
-    # ファイルアップロード要素を取得
-    upload_containers = page.locator("div[data-testid='stFileUploader']").all()
-    assert len(upload_containers) > 1, "ファイルアップローダーが2つ以上見つかりません"
-
-    # 設定ファイルをアップロード
-    config_upload_container = upload_containers[0]
-    config_upload_button = config_upload_container.locator("button:has-text('Browse files')").first
-    expect(config_upload_button).to_be_visible()
-
-    config_file_path = get_test_file_path(config_file)
-    with page.expect_file_chooser() as fc_info:
-        config_upload_button.click()
-    file_chooser = fc_info.value
-    file_chooser.set_files(config_file_path)
-
-    # アップロード後の処理を待機
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
-
-    # テンプレートファイルをアップロード
-    jinja_upload_container = upload_containers[1]
-    jinja_upload_button = jinja_upload_container.locator("button:has-text('Browse files')").first
-    expect(jinja_upload_button).to_be_visible()
-
-    jinja_file_path = get_test_file_path(template_file)
-    with page.expect_file_chooser() as fc_info:
-        jinja_upload_button.click()
-    file_chooser = fc_info.value
-    file_chooser.set_files(jinja_file_path)
-
-    # アップロード後の処理を待機
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    helper = StreamlitTestHelper(page)
+    helper.upload_config_and_template(config_file, template_file)

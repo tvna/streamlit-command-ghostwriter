@@ -109,11 +109,3 @@ repos:
       pass_filenames: false
       types: [python]
       verbose: true
-    - id: lizard_for_tests
-      name: lizard (check CCN for testing codes)
-      entry: poetry run lizard -l python "./tests" --CCN "30"
-      files: ^/tests\/.*\.py$
-      language: system
-      pass_filenames: false
-      types: [python]
-      verbose: true
