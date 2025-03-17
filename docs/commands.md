@@ -24,20 +24,18 @@ poetry run pre-commit install --hook-type commit-msg
 poetry run streamlit run app.py
 
 # リンター&コードフォーマット実行
-poetry run ruff check . --fix
-poetry run mypy .
+npm run lint
 
 # テスト系
-npm run minitest
 npm run test
+npm run coverage
+npm run benchmark
 poetry run pytest --pdb
 poetry run pudb app.py
 
 # コードの複雑さ解析
-poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10"
-poetry run lizard ./tests/* --CCN "20"
+npm run scan
 
-# CUIデバッグ
 ```
 
 ## End-to-End テスト
@@ -57,8 +55,9 @@ End-to-End テストは pytest-playwright を使用して実装されていま�
 
 ```bash
 # 必要なパッケージをインストール
-pip install pytest pytest-playwright
-playwright install  # ブラウザをインストール
+poetry run playwright install --with-deps chromium
+poetry run playwright install --with-deps firefox
+poetry run playwright install --with-deps webkit
 
 # Streamlit アプリケーションを起動（別ターミナルで実行）
 streamlit run app.py --server.port=8502
@@ -67,45 +66,17 @@ streamlit run app.py --server.port=8502
 ### テストの実行
 
 ```bash
-# すべてのテストを実行
-pytest tests/e2e/test_streamlit_app.py -v
-
-# 特定のテストを実行
-pytest tests/e2e/test_streamlit_app.py::test_app_title -v
-
-# ヘッドレスモードでテストを実行
-pytest tests/e2e/test_streamlit_app.py --browser chromium --headless -v
-
-# 非ヘッドレスモード（ブラウザを表示）でテストを実行
-pytest tests/e2e/test_streamlit_app.py --browser chromium --headed -v
-
 # 特定のブラウザでテストを実行
-pytest tests/e2e/test_streamlit_app.py --browser chromium -v  # Chromium
-pytest tests/e2e/test_streamlit_app.py --browser firefox -v   # Firefox
-pytest tests/e2e/test_streamlit_app.py --browser webkit -v    # WebKit (Safari)
+poetry run pytest -vv -n auto --browser chromium -m "benchmark" --benchmark-disable
+poetry run pytest -vv -n auto --browser firefox -m "benchmark" --benchmark-disable
+poetry run pytest -vv -n auto --browser webkit -m "benchmark" --benchmark-disable
 ```
-
-### テストの構成
-
-- `conftest.py`: pytest の設定ファイル
-- `test_streamlit_app.py`: Streamlit アプリケーションのテスト
-- `test_data/`: テストで使用するデータファイル
-
-### テストのカスタマイズとトラブルシューティング
-
-- セレクタの調整ポイント:
-  1. ボタンやフィールドのセレクタ（例: `button:has-text('実行')`）
-  2. 期待される出力や結果のセレクタ
-  3. ファイルアップロードパスやダウンロードファイル名
-- テストが失敗する場合は、セレクタが正しいか確認
-- Streamlit の UI 構造が変更された場合、セレクタの更新が必要
-- デバッグには `page.pause()` を使用して、テスト実行中にブラウザを一時停止可能
 
 ## Git 関連
 
 ```bash
 # pre-commit hooks の手動実行
-poetry run pre-commit run --all-files
+npm run scan
 
 # コミットログの作成
 npm run commit
@@ -130,7 +101,7 @@ git reset --hard HEAD~3
 
 ```bash
 # 依存関係の更新
-poetry update
+poetry update && poetry lock
 npm update
 
 # キャッシュのクリーンアップ
