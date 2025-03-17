@@ -374,8 +374,38 @@ jobs:
         id: e2e-hash
         if: runner.os != 'Windows'
         run: |
-          # E2Eテストに影響するファイルのハッシュを計算
-          HASH=$(find app.py features i18n.py tests/e2e -type f -name "*.py" -o -name "*.j2" -o -name "*.csv" -o -name "*.yaml" -o -name "*.txt" | sort | xargs cat | sha256sum | cut -d ' ' -f 1)
+          # E2Eテストに影響するファイルのハッシュを計算（存在するディレクトリ/ファイルのみ）
+          HASH=""
+          DIRS_TO_CHECK=("app.py" "features" "i18n.py" "tests/e2e")
+          FILES_LIST=""
+
+          # 存在するディレクトリ/ファイルのみチェック
+          for dir in "${DIRS_TO_CHECK[@]}"; do
+            if [ -e "$dir" ]; then
+              if [ -d "$dir" ]; then
+                # -type fをグループ化してOR条件を正しく処理
+                FILES_LIST+=" $(find "$dir" -type f \( -name "*.py" -o -name "*.j2" -o -name "*.csv" -o -name "*.yaml" -o -name "*.txt" \) 2>/dev/null | sort)"
+              elif [ -f "$dir" ]; then
+                FILES_LIST+=" $dir"
+              fi
+            fi
+          done
+
+          # ファイルが1つ以上見つかった場合のみハッシュ計算
+          if [ -n "$FILES_LIST" ]; then
+            # MacOSとLinuxでハッシュコマンドが異なるため条件分岐
+            if [[ "$RUNNER_OS" == "macOS" ]]; then
+              # macOSの場合はshasum -a 256を使用
+              HASH=$(echo "$FILES_LIST" | xargs cat 2>/dev/null | shasum -a 256 | cut -d ' ' -f 1)
+            else
+              # Linuxの場合はsha256sumを使用
+              HASH=$(echo "$FILES_LIST" | xargs cat 2>/dev/null | sha256sum | cut -d ' ' -f 1)
+            fi
+          else
+            # ファイルが見つからない場合のデフォルトハッシュ
+            HASH="no_files_found_$(date +%s)"
+          fi
+
           echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
           echo "E2E test files hash: ${HASH}"
         shell: bash
@@ -385,9 +415,33 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           # Windows用のハッシュ計算
-          $files = Get-ChildItem -Path app.py,features,i18n.py,tests\e2e -Recurse -Include *.py,*.j2,*.csv,*.yaml,*.txt | Sort-Object -Property FullName
-          $content = $files | Get-Content | Out-String
-          $hash = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash.ToLower()
+          # ファイルが存在するかチェックしてから処理
+          $paths = @("app.py", "features", "i18n.py", "tests\e2e")
+          $validPaths = @()
+
+          foreach ($path in $paths) {
+            if (Test-Path $path) {
+              $validPaths += $path
+            }
+          }
+
+          if ($validPaths.Count -gt 0) {
+            try {
+              $files = Get-ChildItem -Path $validPaths -Recurse -Include *.py,*.j2,*.csv,*.yaml,*.txt -ErrorAction SilentlyContinue | Sort-Object -Property FullName
+              if ($files.Count -gt 0) {
+                $content = $files | Get-Content -ErrorAction SilentlyContinue | Out-String
+                $hash = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash.ToLower()
+              } else {
+                $hash = "no_files_found_$(Get-Date -UFormat %s)"
+              }
+            } catch {
+              $hash = "error_computing_hash_$(Get-Date -UFormat %s)"
+              Write-Host "Error computing hash: $_"
+            }
+          } else {
+            $hash = "no_valid_paths_found_$(Get-Date -UFormat %s)"
+          }
+
           echo "hash=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           echo "E2E test files hash: $hash"
         shell: pwsh
