@@ -49,6 +49,8 @@ jobs:
   security-dependency-review:
     name: 🔒 Security - Dependency Review
     runs-on: ubuntu-latest
+    # Pull Requestの場合のみ実行するように設定
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
       pull-requests: write
@@ -64,6 +66,9 @@ jobs:
         with:
           fail-on-severity: high
           comment-summary-in-pr: true
+          # Pull Requestのコンテキストからbase_refとhead_refを取得
+          base-ref: ${{ github.event.pull_request.base.ref }}
+          head-ref: ${{ github.event.pull_request.head.ref }}
       - name: Report Status
         run: |
           echo "### 🔒 Dependency Review Complete" >> $GITHUB_STEP_SUMMARY
@@ -95,31 +100,6 @@ jobs:
         run: |
           echo "### 🔒 NPM Security Audit Complete" >> $GITHUB_STEP_SUMMARY
 
-  # CodeQL解析を追加（セキュリティ分析）
-  security-codeql:
-    name: 🔒 Security - CodeQL Analysis
-    runs-on: ubuntu-latest
-    # メインブランチとPRのみで実行
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        # v2.22.8を使用 (最新の安定版)
-        uses: github/codeql-action/init@v2.22.8
-        with:
-          languages: python, javascript
-      - name: Perform CodeQL Analysis
-        # v2.22.8を使用 (最新の安定版)
-        uses: github/codeql-action/analyze@v2.22.8
-      - name: Report Status
-        run: |
-          echo "### 🔒 CodeQL Analysis Complete" >> $GITHUB_STEP_SUMMARY
-          echo "Static code analysis completed for security vulnerabilities." >> $GITHUB_STEP_SUMMARY
-
   # ============================================================
   # LINT CHECKS GROUP
   # ============================================================
@@ -136,7 +116,7 @@ jobs:
           fetch-depth: 1
       - name: Check workflow file
         # 特定のダイジェストでイメージを固定（セキュリティのため）
-        uses: docker://rhysd/actionlint@sha256:55c184eca5f8d372e6fbaf3bb3af1ff2b0a299c994ec61dd738c69d616637f9d
+        uses: docker://rhysd/actionlint:1.6.26@sha256:b84d3a0e37eccd4da8cdc423d73157ddd1a9d7d568cff7bde38f7c7d635376cb
         with:
           args: -color
       - name: Check typos
@@ -157,13 +137,13 @@ jobs:
         with:
           fetch-depth: 1
       - name: Set up Python ${{ env.python-version }}
-        # v5.0.0を使用 (最新の安定版)
-        uses: actions/setup-python@v5.0.0
+        # v5.1.0を使用 (最新の安定版)
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ env.python-version }}
       - name: Restore cache pip dependencies
-        # v4.0.2を使用 (最新の安定版)
-        uses: actions/cache@v4.0.2
+        # v4.2.2を使用 (最新の安定版)
+        uses: actions/cache@v4.2.2
         with:
           path: |
             ~/.cache/pypoetry
@@ -216,11 +196,11 @@ jobs:
         with:
           fetch-depth: 1
       - name: Set up Python ${{ env.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ env.python-version }}
       - name: Restore cache pip dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.2
         with:
           path: |
             ~/.cache/pypoetry
@@ -320,11 +300,11 @@ jobs:
         with:
           fetch-depth: 1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Restore cache pip dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.2
         with:
           path: |
             ~/.cache/pypoetry
@@ -362,8 +342,8 @@ jobs:
         run: |
           poetry install --no-interaction --no-root --only main,dev
       - name: Cache Playwright browsers
-        # v4.0.2を使用 (最新の安定版)
-        uses: actions/cache@v4.0.2
+        # v4.2.2を使用 (最新の安定版)
+        uses: actions/cache@v4.2.2
         id: playwright-cache
         with:
           path: |
@@ -415,8 +395,8 @@ jobs:
 
       # E2Eテスト結果のキャッシュを復元
       - name: Restore E2E test results cache
-        # v4.0.2を使用 (最新の安定版)
-        uses: actions/cache@v4.0.2
+        # v4.2.2を使用 (最新の安定版)
+        uses: actions/cache@v4.2.2
         id: e2e-cache
         with:
           path: |
@@ -464,8 +444,8 @@ jobs:
       # E2Eテスト結果のキャッシュを保存（テスト実行後）
       - name: Save E2E test results cache
         if: steps.e2e-cache.outputs.cache-hit != 'true'
-        # v4.0.0を使用 (安定版)
-        uses: actions/cache/save@v4.0.0
+        # v4.2.2を使用 (安定版)
+        uses: actions/cache/save@v4.2.2
         with:
           path: |
             .pytest_cache
@@ -499,11 +479,11 @@ jobs:
         with:
           fetch-depth: 1
       - name: Set up Python ${{ env.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ env.python-version }}
       - name: Restore cache pip dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.2
         with:
           path: |
             ~/.cache/pypoetry
@@ -584,7 +564,7 @@ jobs:
         with:
           node-version: ${{ env.node-version }}
       - name: Restore cache node-electron dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.2
         with:
           path: |
             **/node_modules
@@ -593,14 +573,14 @@ jobs:
         run: |
           npm install
       - name: Restore cache node-electron dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.2
         with:
           path: |
             **/node_modules
           key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
       - name: Restore cache electron-builder (Windows)
         # https://github.com/electron/get#usage
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.2
         with:
           path: |
             %LOCALAPPDATA%/electron/Cache
@@ -609,7 +589,7 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
       - name: Restore cache electron-builder (MacOS)
         # https://github.com/electron/get#usage
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.2
         with:
           path: |
             ~/Library/Caches/electron/
@@ -686,3 +666,28 @@ jobs:
           echo "| Test | E2E Tests | ${{ needs.test-e2e.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Analysis | Code Complexity | ${{ needs.analyze-code.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build | Desktop App | ${{ needs.build-desktop.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+
+  # CodeQL解析を追加（セキュリティ分析）
+  security-codeql:
+    name: 🔒 Security - CodeQL Analysis
+    runs-on: ubuntu-latest
+    # メインブランチとPRのみで実行
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        # v3.28.10を使用 (最新の安定版)
+        uses: github/codeql-action/init@v3.28.10
+        with:
+          languages: python, javascript
+      - name: Perform CodeQL Analysis
+        # v3.28.10を使用 (最新の安定版)
+        uses: github/codeql-action/analyze@v3.28.10
+      - name: Report Status
+        run: |
+          echo "### 🔒 CodeQL Analysis Complete" >> $GITHUB_STEP_SUMMARY
+          echo "Static code analysis completed for security vulnerabilities." >> $GITHUB_STEP_SUMMARY
