@@ -117,7 +117,10 @@ jobs:
       - name: Download and run actionlint
         run: |
           # バイナリのダウンロードとインストール
-          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          curl -sSLo actionlint.bash https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash
+          # ダウンロードしたバッシュスクリプトに実行権限を与えて実行
+          chmod +x actionlint.bash
+          ./actionlint.bash
           # actionlintを実行
           ./actionlint -color
       - name: Check typos
@@ -390,8 +393,8 @@ jobs:
           else
             HASH="${{ steps.e2e-hash.outputs.hash }}"
           fi
-          echo "hash=$HASH" >> $GITHUB_OUTPUT
-          echo "Combined hash: $HASH"
+          echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
+          echo "Combined hash: ${HASH}"
         shell: bash
 
       # E2Eテスト結果のキャッシュを復元
@@ -511,7 +514,7 @@ jobs:
           poetry install --no-interaction --no-root --only main,dev
       - name: Run lizard (analyze CCN for production codes)
         run: |
-          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "$LIZARD_CCN_COUNT"
+          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "${LIZARD_CCN_COUNT}"
       - name: Show AST (app.py)
         run: |
           python <<EOF
