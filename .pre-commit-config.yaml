@@ -95,21 +95,25 @@ repos:
 
 - repo: local
   hooks:
-    - id: pytest_combined
-      name: pytest (all markers)
-      entry: pytest -m "unit or integration or workflow" --disable-warnings -n auto
+    - id: pytest_without_e2e
+      name: pytest (without e2e)
+      entry: pytest -vv -n auto -m "unit or integration or workflow" --disable-warnings --benchmark-disable
       language: system
       pass_filenames: false
+      types: [python]
       verbose: true
     - id: lizard_combined
       name: lizard (check CCN for production codes)
       entry: poetry run lizard -l python -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10"
       language: system
       pass_filenames: false
+      types: [python]
       verbose: true
     - id: lizard_for_tests
       name: lizard (check CCN for testing codes)
       entry: poetry run lizard -l python "./tests" --CCN "30"
+      files: ^/tests\/.*\.py$
       language: system
       pass_filenames: false
+      types: [python]
       verbose: true
