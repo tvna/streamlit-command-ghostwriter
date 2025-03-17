@@ -14,13 +14,19 @@
 			"black"
 		],
 		"python.autoComplete.extraPaths": [
-			"${workspaceRoot}/.venv/*/site-packages"
+			"${workspaceRoot}/.venv/*/site-packages",
+			"${workspaceRoot}/features",
+			"${workspaceRoot}/tests/e2e"
 		],
 		"python.analysis.extraPaths": [
-			"${workspaceRoot}/.venv/*/site-packages"
+			"${workspaceRoot}/.venv/*/site-packages",
+			"${workspaceRoot}/features",
+			"${workspaceRoot}/tests/e2e"
 		],
 		"python.analysis.include": [
-			"${workspaceRoot}/.venv/*/site-packages"
+			"${workspaceRoot}/.venv/*/site-packages",
+			"${workspaceRoot}/features",
+			"${workspaceRoot}/tests/e2e"
 		],
 		"python.analysis.ignore": [
 			"/opt/homebrew/Cellar/python**"
@@ -84,19 +90,29 @@
 			"**/.cursor/extensions/ms-python.vscode-pylance-**"
 		],
 		"files.exclude": {
-			".coverage": true,
-			"**/.mypy_cache": true,
-			".pytest_cache": true,
-			".ruff_cache": true,
-			".venv": true,
-			"**/__pycache__": true,
-			"build": true,
+			"LICENSE": true,
+			".coverage**": true,
 			"coverage.xml": true,
+			".venv": true,
+			"**/.mypy_cache": true,
+			"**/.pytest_cache": true,
+			"**/.ruff_cache": true,
+			"**/__pycache__": true,
+			"**/tmp": true,
+			"htmlcov": false,
+			"htmlcov/z_**.html": true,
+			"htmlcov/**.js": true,
 			"node_modules": true,
+			"build": true,
 			"requirements.txt": false,
 			"poetry.lock": false,
 			"package-lock.json": false,
-			"**/tmp": true,
+			"commitlint.config.cjs": true,
+			".codeclimate.yml": true,
+			".devcontainer": true,
+			".gitignore": false,
+			".streamlit": true,
+			".benchmarks": false,
 		},
 		"explorer.excludeGitIgnore": false,
 		"yaml.format.enable": true,

@@ -4,7 +4,6 @@ name: Test & Build
 on:
   push:
     branches:
-      - main
       - develop
     paths-ignore:
       - .devcontainer/**
@@ -29,7 +28,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   actionlint:
@@ -39,26 +38,83 @@ jobs:
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Check workflow files
         uses: docker://rhysd/actionlint:latest
         with:
           args: -color
+      - name: Run Typos
+        uses: crate-ci/typos@master
 
   test:
-    name: Run unittest web-app
-    runs-on: ubuntu-latest
-    needs:
-      - actionlint
+    name: Test web app
     strategy:
+      fail-fast: false
       matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - ubuntu-22.04
+          - ubuntu-20.04
         python-version:
           - 3.12.3
           - 3.11
+        browser:
+          - chromium
+          - firefox
+          - webkit
+        exclude:
+          # UbuntuとWebkit、Chromiumの組み合わせを除外
+          - os: ubuntu-latest
+            browser: webkit
+          - os: ubuntu-22.04
+            browser: webkit
+          - os: ubuntu-20.04
+            browser: webkit
+          - os: ubuntu-latest
+            browser: chromium
+          - os: ubuntu-22.04
+            browser: chromium
+          - os: ubuntu-20.04
+            browser: chromium
+          # WindowsとWebkitの組み合わせを除外
+          - os: windows-latest
+            browser: webkit
+        include:
+          # Windowsのみタイムアウト時間を15分に設定（Webkitは除外）
+          - os: windows-latest
+            python-version: 3.12.3
+            browser: chromium
+            timeout-minutes: 15
+          - os: windows-latest
+            python-version: 3.11
+            browser: chromium
+            timeout-minutes: 15
+          - os: windows-latest
+            python-version: 3.12.3
+            browser: firefox
+            timeout-minutes: 15
+          - os: windows-latest
+            python-version: 3.11
+            browser: firefox
+            timeout-minutes: 15
+          # 最も一般的な環境を優先的にテスト
+          - os: macos-latest
+            python-version: 3.12.3
+            browser: chromium
+            priority: high
+      max-parallel: 10
+    runs-on: ${{ matrix.os }}
+    needs:
+      - actionlint
     permissions:
       contents: read
-    timeout-minutes: 5
+    timeout-minutes: ${{ matrix.timeout-minutes || 10 }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -70,91 +126,92 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             .venv
-          key: ${{ runner.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      - name: Bootstrap poetry
+            %LOCALAPPDATA%\pypoetry\Cache
+            %USERPROFILE%\.cache\pypoetry
+          key: ${{ matrix.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-python${{ matrix.python-version }}-poetry
+      - name: Bootstrap poetry (Windows)
+        if: runner.os == 'Windows'
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: Bootstrap poetry (Non-Windows)
+        if: matrix.os != 'Windows'
         run: |
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
-      - name: Update PATH
+      - name: Update PATH (Non-Windows)
+        if: runner.os != 'Windows'
         run: |
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
-      - name: Configure poetry
+      - name: Configure poetry (Non-Windows)
+        if: matrix.os != 'Windows'
         run: |
           poetry config virtualenvs.in-project false
         shell: bash
       - name: Install dependencies
         shell: bash
         run: |
-          poetry install
-      - name: Run ruff
-        run: |
-          poetry run ruff check .
-      - name: Run mypy
-        run: |
-          poetry run mypy .
-      - name: Run pytest
-        run: |
-          poetry run pytest --cov .
-
-  e2e_test:
-    name: Run E2E-test web-app
-    runs-on: ubuntu-latest
-    needs:
-      - test
-    permissions:
-      contents: read
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ env.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.python-version }}
-      - name: Restore cache pip dependencies
+          poetry install --no-interaction --no-root --only main,dev
+      - name: Cache Playwright browsers
         uses: actions/cache@v4
+        id: playwright-cache
         with:
           path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-            .venv
-          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      - name: Restore cache playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-pytest-playwright-${{ hashFiles('**/poetry.lock') }}
-      - name: Bootstrap poetry
+            ~/.cache/ms-playwright
+            ~/Library/Caches/ms-playwright
+            /home/runner/.cache/ms-playwright
+            /Users/runner/Library/Caches/ms-playwright
+            %USERPROFILE%\AppData\Local\ms-playwright
+          key: ${{ matrix.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
+      # リンターとテストを分離して並列実行
+      - name: Lint
+        if: ${{ !cancelled() }}
         run: |
-          curl -sL https://install.python-poetry.org | python - -y
-        shell: bash
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-        shell: bash
-      - name: Configure poetry
-        run: poetry config virtualenvs.in-project false
-        shell: bash
-      - name: Install dependencies
-        shell: bash
+          poetry run ruff check .
+          poetry run mypy .
+      - name: Install Playwright Browser
         run: |
-          poetry install
-      - name: Install Playwright Browsers
+          poetry run playwright install --with-deps ${{ matrix.browser }}
+      - name: Unit Tests
         run: |
-          poetry run playwright install
-      - name: Start Streamlit app
+          # 通常のテスト実行（カバレッジ有、ベンチマークなし）
+          poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
+      - name: Configure Windows for UTF-8
+        if: runner.os == 'Windows'
         run: |
-          nohup poetry run streamlit run app.py &
-          sleep 5
-      - name: Check if Streamlit app is running
+          # Windows環境でUTF-8を使用するための設定
+          chcp 65001
+        shell: cmd
+      - name: E2E Tests (not chromium)
+        if: |
+          matrix.browser != 'chromium'
         run: |
-          curl -f http://localhost:8501 || exit 1
+          # E2Eテスト実行（ベンチマークなし）
+          poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-disable
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
+      - name: E2E Tests with benchmark (Chromium only)
+        if: |
+          matrix.browser == 'chromium'
+        run: |
+          # E2Eテストのベンチマーク実行（Chromiumのみ）
+          poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
 
   analyze:
     # https://github.com/terryyin/lizard
     name: Analyze CCN number, AST
     runs-on: ubuntu-latest
     needs:
-      - test
+      - actionlint
     permissions:
       contents: read
     env:
@@ -162,6 +219,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -173,7 +232,11 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             .venv
+            %LOCALAPPDATA%\pypoetry\Cache
+            %USERPROFILE%\.cache\pypoetry
           key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python${{ env.python-version }}-poetry
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
@@ -187,10 +250,10 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          poetry install
-      - name: Run lizard (analyze CCN)
+          poetry install --no-interaction --no-root --only main,dev
+      - name: Run lizard (analyze CCN for production codes)
         run: |
-          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./.github/*" --CCN "$LIZARD_CCN_COUNT"
+          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "$LIZARD_CCN_COUNT"
       - name: Show AST (app.py)
         run: |
           python <<EOF
@@ -213,22 +276,25 @@ jobs:
           pprint.pprint(ast_trees, width=100, compact=False)
           EOF
 
-  prepare-build:
-    name: Prepare build environment
-    runs-on: ${{ matrix.os }}
-    needs:
-      - actionlint
+  build:
+    name: Build desktop app
     strategy:
       matrix:
         os:
           - macos-latest
           - windows-latest
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    needs:
+      - actionlint
     permissions:
       contents: read
     timeout-minutes: 5
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Install Node.js, NPM and Yarn
         uses: actions/setup-node@v4
         with:
@@ -242,31 +308,6 @@ jobs:
       - name: Install stlite
         run: |
           npm install
-
-  build:
-    name: Build desktop-app
-    runs-on: ${{ matrix.os }}
-    needs:
-      - e2e_test
-      - analyze
-      - prepare-build
-    strategy:
-      matrix:
-        os:
-          - macos-latest
-          - windows-latest
-      fail-fast: false
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
-    permissions:
-      contents: read
-    timeout-minutes: 5
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-      - name: Install Node.js, NPM and Yarn
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.node-version }}
       - name: Restore cache node-electron dependencies
         uses: actions/cache@v4
         with:

@@ -1,8 +1,8 @@
 {
     "name": "command_ghostwriter",
-    "version": "0.3.3",
+    "version": "0.3.4",
     "main": "./build/electron/main.js",
-    "description": "Electron application with streamlit",
+    "description": "This application is designed for infrastratcture engineers who want to automatically generate commands in template to configure servers, routers, and switches",
     "license": "MIT",
     "author": {
         "name": "Nagano, Tsubasa",
@@ -14,6 +14,11 @@
         "pack": "electron-builder --dir",
         "dist": "electron-builder",
         "postinstall": "electron-builder install-app-deps",
+        "lint": "poetry run ruff check . --fix && poetry run mypy .",
+        "test": "poetry run pytest -vv -n auto --cov=. --cov-report=html --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 -k 'not e2e' --benchmark-disable",
+        "coverage": "poetry run pytest -vv -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=html -k 'not e2e' --benchmark-disable",
+        "benchmark": "poetry run pytest -vv -n 0 -m 'benchmark' --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean",
+        "scan": "pre-commit run --all-files",
         "commit": "pre-commit run && npx cz"
     },
     "build": {

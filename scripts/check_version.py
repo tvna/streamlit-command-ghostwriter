@@ -103,7 +103,7 @@ class VersionChecker:
             try:
                 blob = commit.tree / file_path
                 content = blob.data_stream.read().decode("utf-8")
-                version_str = cast(Optional[str], json.loads(content).get("version"))
+                version_str = cast("Optional[str]", json.loads(content).get("version"))
 
                 if version_str is None:
                     print(f"::error::{branch_name}ブランチの{file_path}にバージョンが見つかりません")

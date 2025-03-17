@@ -1,0 +1,24 @@
+---
+description: Domain knowledges for this repo
+globs: *.py
+alwaysApply: true
+---
+# このリポジトリにおけるドメイン知識
+
+## パッケージ管理
+- pythonにおいては、poetryを利用します
+- javascriptにおいては、npmを利用します
+- pythonの依存パッケージを新規インストールする場合は、`pip install`ではなく`poetry add`を利用すること
+- テストコード専用の依存パッケージを新規インストールする場合は、`poetry add -G dev`を利用すること
+
+## フロントエンドの技術選定
+- streamlitを利用するWebアプリであること
+- Pythonのみのコード知識で保守できるよう、可能な限り独自のJavascript実装を作らないこと
+- 画面に表示する文字列は可能な限り各ファイルにハードコードせず、`i18n.py`に記述してからインポートして利用すること
+
+## 型バリデーションの採用
+- 製品コードのファイルにおいては、`from pydantic`を利用して型バリデーションを行います
+- BytesIOにおいては、30MBを上限とします
+
+## featuresのクラス化
+- featuresフォルダ内のPythonファイルは、インポートの利便性を考慮してクラス化を徹底すること
