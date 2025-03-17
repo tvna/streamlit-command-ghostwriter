@@ -105,9 +105,9 @@ jobs:
         shell: bash
         run: |
           poetry install
-      - name: Run pytest
+      - name: Run pytest (coverage without e2e)
         run: |
-          poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e"
+          poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile -k "not e2e" --benchmark-disable
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5.4.0
         with:
