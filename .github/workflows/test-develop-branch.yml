@@ -74,9 +74,7 @@ jobs:
             playwright.azureedge.net:443
 
       - name: Check out Git repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          fetch-depth: 1
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
 
       - name: Dependency Review
         uses: actions/dependency-review-action@01bc87099ba56df1e897b6874784491ea6309bc4 # v3.1.4
@@ -116,15 +114,26 @@ jobs:
             playwright.azureedge.net:443
 
       - name: Check out Git repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          fetch-depth: 1
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
 
-      - name: Setup Node and restore cache
-        uses: ./.github/workflows/reusable-npm-cache.yml
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
           node-version: ${{ env.node-version }}
-          os: ubuntu-latest
+
+      - name: Cache node-electron dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: |
+            node_modules
+            ${{ runner.os == 'windows-latest' && '%LOCALAPPDATA%\electron\Cache' || '~/Library/Caches/electron' }}
+            ${{ runner.os == 'windows-latest' && '%LOCALAPPDATA%\electron-builder\Cache' || '~/Library/Caches/electron-builder' }}
+          key: ${{ runner.os }}-node-electron-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-electron-
+
+      - name: Install stlite
+        run: npm install @stlite/mountable
 
       - name: NPM Audit
         run: |
@@ -238,15 +247,33 @@ jobs:
             playwright.azureedge.net:443
 
       - name: Check out Git repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 1
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
 
-      - name: Setup Python and restore cache
-        uses: ./.github/workflows/reusable-pip-cache.yml
+      - name: Setup Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: ${{ env.python-version }}
-          os: ubuntu-latest
+          cache: "pip"
+
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Configure poetry
+        run: |
+          poetry config virtualenvs.in-project true
+
+      - name: Cache poetry dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install dependencies
+        run: poetry install
 
       - name: Check for vulnerable dependencies
         run: |
@@ -297,11 +324,31 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Python and restore cache
-        uses: ./.github/workflows/reusable-pip-cache.yml
+      - name: Setup Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: ${{ env.python-version }}
-          os: ubuntu-latest
+          cache: "pip"
+
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Configure poetry
+        run: |
+          poetry config virtualenvs.in-project true
+
+      - name: Cache poetry dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install dependencies
+        run: poetry install
 
       - name: Run Unit Tests
         run: |
@@ -399,11 +446,31 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Python and restore cache
-        uses: ./.github/workflows/reusable-pip-cache.yml
+      - name: Setup Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: ${{ matrix.python-version }}
-          os: ${{ matrix.os }}
+          cache: "pip"
+
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Configure poetry
+        run: |
+          poetry config virtualenvs.in-project true
+
+      - name: Cache poetry dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: .venv
+          key: ${{ matrix.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-poetry-
+
+      - name: Install dependencies
+        run: poetry install
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4.2.2
@@ -494,11 +561,31 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Python and restore cache
-        uses: ./.github/workflows/reusable-pip-cache.yml
+      - name: Setup Python
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: ${{ env.python-version }}
-          os: ubuntu-latest
+          cache: "pip"
+
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Configure poetry
+        run: |
+          poetry config virtualenvs.in-project true
+
+      - name: Cache poetry dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install dependencies
+        run: poetry install
 
       - name: Run lizard (analyze CCN for production codes)
         run: |
@@ -572,12 +659,21 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Node and restore cache
-        uses: ./.github/workflows/reusable-npm-cache.yml
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
           node-version: ${{ env.node-version }}
-          os: ${{ matrix.os }}
-          cache-electron-builder: true
+
+      - name: Cache node-electron dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: |
+            node_modules
+            ${{ runner.os == 'windows-latest' && '%LOCALAPPDATA%\electron\Cache' || '~/Library/Caches/electron' }}
+            ${{ runner.os == 'windows-latest' && '%LOCALAPPDATA%\electron-builder\Cache' || '~/Library/Caches/electron-builder' }}
+          key: ${{ runner.os }}-node-electron-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-electron-
 
       - name: Dump package
         run: |
