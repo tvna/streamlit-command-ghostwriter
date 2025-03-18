@@ -42,7 +42,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
+permissions: # added using https://github.com/step-security/secure-repo
   contents: read
 
 jobs:
@@ -62,19 +62,11 @@ jobs:
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
 
       - name: Check out Git repository
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
 
       - name: Dependency Review
         uses: actions/dependency-review-action@01bc87099ba56df1e897b6874784491ea6309bc4 # v3.1.4
@@ -98,43 +90,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
-        with:
-          egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
-
       - name: Check out Git repository
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        # actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 = v4.0.1
+        uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8
         with:
           node-version: ${{ env.node-version }}
-
-      - name: Cache node-electron dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        with:
-          path: |
-            node_modules
-            ${{ runner.os == 'windows-latest' && '%LOCALAPPDATA%\electron\Cache' || '~/Library/Caches/electron' }}
-            ${{ runner.os == 'windows-latest' && '%LOCALAPPDATA%\electron-builder\Cache' || '~/Library/Caches/electron-builder' }}
-          key: ${{ runner.os }}-node-electron-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-electron-
-
-      - name: Install stlite
-        run: npm install @stlite/mountable
-
       - name: NPM Audit
         run: |
           # npm auditを実行（高リスクの脆弱性のみ失敗とする）
@@ -144,16 +106,13 @@ jobs:
             echo "⚠️ High severity vulnerabilities found in production dependencies" >> "$GITHUB_STEP_SUMMARY"
             npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
           }
-
       - name: Report Status
         run: |
           echo "### Security NPM Security Audit Complete" >> "$GITHUB_STEP_SUMMARY"
 
-  security-scorecards:
-    name: Security - OpenSSF Scorecards Analysis
+  scorecards:
+    name: OpenSSF Scorecards Analysis
     runs-on: ubuntu-latest
-    # mainブランチへのプルリクエストの場合のみ実行
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
     permissions:
       security-events: write
       id-token: write
@@ -161,8 +120,10 @@ jobs:
       actions: read
 
     steps:
-      - name: Harden the runner
-        uses: ./.github/actions/harden-runner
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
 
       - name: "Checkout code"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -190,16 +151,6 @@ jobs:
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -235,45 +186,45 @@ jobs:
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
 
       - name: Check out Git repository
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
 
-      - name: Setup Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+      - name: Set up Python ${{ env.python-version }}
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
         with:
           python-version: ${{ env.python-version }}
-          cache: "pip"
 
-      - name: Install poetry
+      - name: Restore cache pip dependencies
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python${{ env.python-version }}-poetry
+
+      - name: Bootstrap poetry
         run: |
-          python -m pip install --upgrade pip
-          pip install poetry
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        shell: bash
 
       - name: Configure poetry
-        run: |
-          poetry config virtualenvs.in-project true
-
-      - name: Cache poetry dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        with:
-          path: .venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
+        run: poetry config virtualenvs.in-project false
+        shell: bash
 
       - name: Install dependencies
-        run: poetry install
+        shell: bash
+        run: |
+          poetry install --no-interaction --no-root --only main,dev
 
       - name: Check for vulnerable dependencies
         run: |
@@ -308,47 +259,45 @@ jobs:
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
 
-      - name: Setup Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+      - name: Set up Python ${{ env.python-version }}
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ env.python-version }}
-          cache: "pip"
 
-      - name: Install poetry
+      - name: Restore cache pip dependencies
+        uses: actions/cache@v4.2.2
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python${{ env.python-version }}-poetry
+
+      - name: Bootstrap poetry
         run: |
-          python -m pip install --upgrade pip
-          pip install poetry
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        shell: bash
 
       - name: Configure poetry
-        run: |
-          poetry config virtualenvs.in-project true
-
-      - name: Cache poetry dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        with:
-          path: .venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
+        run: poetry config virtualenvs.in-project false
+        shell: bash
 
       - name: Install dependencies
-        run: poetry install
+        shell: bash
+        run: |
+          poetry install --no-interaction --no-root --only main,dev
 
       - name: Run Unit Tests
         run: |
@@ -430,49 +379,76 @@ jobs:
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
 
-      - name: Setup Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
 
-      - name: Install poetry
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-
-      - name: Configure poetry
-        run: |
-          poetry config virtualenvs.in-project true
-
-      - name: Cache poetry dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      # Windowsのみキャッシュ障害に備えてリトライロジックを追加
+      - name: Restore cache pip dependencies (Windows with retry)
+        uses: actions/cache@v4.2.2
+        id: pip-cache-windows
+        if: runner.os == 'Windows'
         with:
-          path: .venv
-          key: ${{ matrix.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+            %LOCALAPPDATA%\pypoetry\Cache
+            %USERPROFILE%\.cache\pypoetry
+          key: ${{ matrix.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ${{ matrix.os }}-poetry-
+            ${{ matrix.os }}-python${{ matrix.python-version }}-poetry
+        continue-on-error: true
 
+      # 非Windows環境用のキャッシュ復元
+      - name: Restore cache pip dependencies (Non-Windows)
+        uses: actions/cache@v4.2.2
+        if: runner.os != 'Windows'
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+            %LOCALAPPDATA%\pypoetry\Cache
+            %USERPROFILE%\.cache\pypoetry
+          key: ${{ matrix.os }}-python${{ matrix.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-python${{ matrix.python-version }}-poetry
+      - name: Install Poetry (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        # v1.3.4を使用 (最新の安定版)
+        uses: snok/install-poetry@v1.3.4
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+      - name: Bootstrap poetry (Non-Windows)
+        if: matrix.os != 'Windows'
+        run: |
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+      - name: Update PATH (Non-Windows)
+        if: runner.os != 'Windows'
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        shell: bash
+      - name: Configure poetry (Non-Windows)
+        if: matrix.os != 'Windows'
+        run: |
+          poetry config virtualenvs.in-project false
+        shell: bash
       - name: Install dependencies
-        run: poetry install
-
+        shell: bash
+        run: |
+          poetry install --no-interaction --no-root --only main,dev
       - name: Cache Playwright browsers
+        # v4.2.2を使用 (最新の安定版)
         uses: actions/cache@v4.2.2
         id: playwright-cache
         with:
@@ -483,7 +459,6 @@ jobs:
             /Users/runner/Library/Caches/ms-playwright
             %USERPROFILE%\AppData\Local\ms-playwright
           key: ${{ matrix.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
-
       - name: Install Playwright Browser
         run: |
           # 数秒待機してサーバーの同期問題を回避
@@ -545,47 +520,47 @@ jobs:
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
 
-      - name: Setup Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+      - name: Set up Python ${{ env.python-version }}
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ env.python-version }}
-          cache: "pip"
 
-      - name: Install poetry
+      - name: Restore cache pip dependencies
+        uses: actions/cache@v4.2.2
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+            %LOCALAPPDATA%\pypoetry\Cache
+            %USERPROFILE%\.cache\pypoetry
+          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python${{ env.python-version }}-poetry
+
+      - name: Bootstrap poetry
         run: |
-          python -m pip install --upgrade pip
-          pip install poetry
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        shell: bash
 
       - name: Configure poetry
-        run: |
-          poetry config virtualenvs.in-project true
-
-      - name: Cache poetry dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
-        with:
-          path: .venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
+        run: poetry config virtualenvs.in-project false
+        shell: bash
 
       - name: Install dependencies
-        run: poetry install
+        shell: bash
+        run: |
+          poetry install --no-interaction --no-root --only main,dev
 
       - name: Run lizard (analyze CCN for production codes)
         run: |
@@ -613,7 +588,6 @@ jobs:
 
           pprint.pprint(ast_trees, width=100, compact=False)
           EOF
-
       - name: Report Status
         run: |
           {
@@ -643,43 +617,52 @@ jobs:
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
 
-      - name: Setup Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+      - name: Install Node.js, NPM and Yarn
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.node-version }}
 
-      - name: Cache node-electron dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      - name: Restore cache node-electron dependencies
+        uses: actions/cache@v4.2.2
         with:
           path: |
-            node_modules
-            ${{ runner.os == 'windows-latest' && '%LOCALAPPDATA%\electron\Cache' || '~/Library/Caches/electron' }}
-            ${{ runner.os == 'windows-latest' && '%LOCALAPPDATA%\electron-builder\Cache' || '~/Library/Caches/electron-builder' }}
-          key: ${{ runner.os }}-node-electron-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-electron-
+            **/node_modules
+          key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install stlite
+        run: |
+          npm install
+
+      - name: Restore cache electron-builder (Windows)
+        # https://github.com/electron/get#usage
+        uses: actions/cache@v4.2.2
+        with:
+          path: |
+            %LOCALAPPDATA%/electron/Cache
+            ~/AppData/Local/electron/Cache/
+          key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+        if: ${{ runner.os == 'Windows' }}
+
+      - name: Restore cache electron-builder (MacOS)
+        # https://github.com/electron/get#usage
+        uses: actions/cache@v4.2.2
+        with:
+          path: |
+            ~/Library/Caches/electron/
+          key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+        if: ${{ runner.os == 'MacOS' }}
 
       - name: Dump package
         run: |
           npm run dump
         # TODO: stliteのWindows環境のビルド失敗が解消したら削除
-        if: runner.os == 'MacOS'
+        if: ${{ runner.os == 'MacOS' }}
 
       - name: Build
         run: |
@@ -689,9 +672,10 @@ jobs:
           # NODE_OPTIONSにセキュリティ強化オプションを追加
           NODE_OPTIONS: "--max-http-header-size=8192 --max-old-space-size=4096"
         # TODO: stliteのWindows環境のビルド失敗が解消したら削除
-        if: runner.os == 'MacOS'
+        if: ${{ runner.os == 'MacOS' }}
 
       - name: Upload artifact (Windows)
+        # v4.3.1を使用 (最新の安定版)
         uses: actions/upload-artifact@v4.3.1
         with:
           name: ${{ runner.os }}-build-artifact
@@ -701,6 +685,7 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
 
       - name: Upload artifact (MacOS)
+        # v4.3.1を使用 (最新の安定版)
         uses: actions/upload-artifact@v4.3.1
         with:
           name: ${{ runner.os }}-build-artifact
@@ -708,7 +693,6 @@ jobs:
           retention-days: 3
           compression-level: 9
         if: ${{ runner.os == 'MacOS' }}
-
       - name: Report Status
         run: |
           {
@@ -726,7 +710,6 @@ jobs:
       [
         security-dependency-review,
         security-npm-audit,
-        security-scorecards,
         lint-workflow,
         lint-python,
         test-unit,
@@ -736,9 +719,6 @@ jobs:
       ]
     runs-on: ubuntu-latest
     steps:
-      - name: Harden the runner
-        uses: ./.github/actions/harden-runner
-
       - run: |
           {
             echo "### Workflow Summary"
@@ -747,7 +727,6 @@ jobs:
             echo "| --- | --- | --- |"
             echo "| Security | Dependency Review | ${{ needs.security-dependency-review.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' && '➖ Skipped') || '❌ Failed' }} |"
             echo "| Security | NPM Audit | ${{ needs.security-npm-audit.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-            echo "| Security | OpenSSF Scorecards | ${{ needs.security-scorecards.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' && '➖ Skipped') || '❌ Failed' }} |"
             echo "| Lint | Workflow Files | ${{ needs.lint-workflow.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
             echo "| Lint | Python Code | ${{ needs.lint-python.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
             echo "| Test | Unit Tests | ${{ needs.test-unit.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
@@ -767,7 +746,6 @@ jobs:
               echo "### 失敗したジョブ"
               [[ "${{ needs.security-dependency-review.result }}" != "success" && "${{ needs.security-dependency-review.result }}" != "skipped" ]] && echo "- Security Dependency Review"
               [[ "${{ needs.security-npm-audit.result }}" != "success" ]] && echo "- Security NPM Audit"
-              [[ "${{ needs.security-scorecards.result }}" != "success" ]] && echo "- OpenSSF Scorecards"
               [[ "${{ needs.lint-workflow.result }}" != "success" ]] && echo "- Workflow Lint"
               [[ "${{ needs.lint-python.result }}" != "success" ]] && echo "- Python Lint"
               [[ "${{ needs.test-unit.result }}" != "success" ]] && echo "- Unit Tests"
