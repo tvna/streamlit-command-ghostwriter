@@ -62,7 +62,7 @@ jobs:
           fetch-depth: 0
       - name: Dependency Review
         # v3.1.4を使用 (最新の安定版)
-        uses: actions/dependency-review-action@v3.1.4
+        uses: actions/dependency-review-action@v4.5.0
         with:
           fail-on-severity: high
           comment-summary-in-pr: true
@@ -127,7 +127,7 @@ jobs:
           ./actionlint -color
       - name: Check typos
         # v1.16.8を使用 (安定版)
-        uses: crate-ci/typos@v1.16.8
+        uses: crate-ci/typos@v1.30.2
       - name: Report Status
         run: |
           {
@@ -350,7 +350,7 @@ jobs:
       - name: Install Poetry (Windows)
         if: ${{ runner.os == 'Windows' }}
         # v1.3.4を使用 (最新の安定版)
-        uses: snok/install-poetry@v1.3.4
+        uses: snok/install-poetry@v1.4.1
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
@@ -573,7 +573,7 @@ jobs:
         if: ${{ runner.os == 'MacOS' }}
       - name: Upload artifact (Windows)
         # v4.3.1を使用 (最新の安定版)
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.6.1
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.exe
@@ -582,7 +582,7 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
       - name: Upload artifact (MacOS)
         # v4.3.1を使用 (最新の安定版)
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.6.1
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.dmg
