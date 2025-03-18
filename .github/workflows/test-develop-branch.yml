@@ -42,6 +42,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: # added using https://github.com/step-security/secure-repo
+  contents: read
+
 jobs:
   # ============================================================
   # SECURITY CHECKS GROUP
@@ -55,20 +58,25 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
       - name: Check out Git repository
-        # v4.1.1を使用 (OIDCトークン対応、安定版)
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
+
       - name: Dependency Review
-        # v3.1.4を使用 (最新の安定版)
-        uses: actions/dependency-review-action@v3.1.4
+        uses: actions/dependency-review-action@01bc87099ba56df1e897b6874784491ea6309bc4 # v3.1.4
         with:
           fail-on-severity: high
           comment-summary-in-pr: true
           # Pull Requestのコンテキストからbase_refとhead_refを取得
           base-ref: ${{ github.event.pull_request.base.ref }}
           head-ref: ${{ github.event.pull_request.head.ref }}
+
       - name: Report Status
         run: |
           {
@@ -102,6 +110,33 @@ jobs:
         run: |
           echo "### Security NPM Security Audit Complete" >> "$GITHUB_STEP_SUMMARY"
 
+  scorecards:
+    name: OpenSSF Scorecards Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
+      - name: "Checkout code"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@0864cf19026789058feabb7e87baa5f140aac736 # v2.3.1
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: trueSTEP_SUMMARY"
+
   # ============================================================
   # LINT CHECKS GROUP
   # ============================================================
@@ -112,10 +147,16 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
       - name: Check out Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+
       - name: Download and run actionlint
         run: |
           # バイナリのダウンロードとインストール
@@ -125,9 +166,10 @@ jobs:
           ./actionlint.bash
           # actionlintを実行
           ./actionlint -color
+
       - name: Check typos
-        # v1.16.8を使用 (安定版)
-        uses: crate-ci/typos@v1.16.8
+        uses: crate-ci/typos@e477391cc0243daaeeb154a7bfa67cb7d6fc5831 # v1.16.8
+
       - name: Report Status
         run: |
           {
@@ -140,18 +182,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
       - name: Check out Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+
       - name: Set up Python ${{ env.python-version }}
-        # v5.1.0を使用 (最新の安定版)
-        uses: actions/setup-python@v5.1.0
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
         with:
           python-version: ${{ env.python-version }}
+
       - name: Restore cache pip dependencies
-        # v4.2.2を使用 (最新の安定版)
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: |
             ~/.cache/pypoetry
@@ -160,28 +207,35 @@ jobs:
           key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-python${{ env.python-version }}-poetry
+
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
+
       - name: Update PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
+
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
         shell: bash
+
       - name: Install dependencies
         shell: bash
         run: |
           poetry install --no-interaction --no-root --only main,dev
+
       - name: Check for vulnerable dependencies
         run: |
           poetry run pip install safety
           poetry run safety check
+
       - name: Run Python Linters
         run: |
           poetry run ruff check .
           poetry run mypy .
+
       - name: Report Status
         run: |
           {
@@ -201,14 +255,21 @@ jobs:
       contents: read
       checks: write # テスト結果出力用の権限を追加
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
       - name: Check out Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+
       - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ env.python-version }}
+
       - name: Restore cache pip dependencies
         uses: actions/cache@v4.2.2
         with:
@@ -219,24 +280,30 @@ jobs:
           key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-python${{ env.python-version }}-poetry
+
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
+
       - name: Update PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
+
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
         shell: bash
+
       - name: Install dependencies
         shell: bash
         run: |
           poetry install --no-interaction --no-root --only main,dev
+
       - name: Run Unit Tests
         run: |
           # 通常のテスト実行（カバレッジ有、ベンチマークなし）
           poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
+
       - name: Report Status
         run: |
           {
@@ -308,8 +375,15 @@ jobs:
       contents: read
     timeout-minutes: ${{ matrix.timeout-minutes || 10 }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
       - name: Check out Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5.1.0
@@ -439,15 +513,24 @@ jobs:
       contents: read
     env:
       LIZARD_CCN_COUNT: 10
+
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+
       - name: Set up Python ${{ env.python-version }}
         uses: actions/setup-python@v5.1.0
         with:
           python-version: ${{ env.python-version }}
+
       - name: Restore cache pip dependencies
         uses: actions/cache@v4.2.2
         with:
@@ -460,29 +543,36 @@ jobs:
           key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-python${{ env.python-version }}-poetry
+
       - name: Bootstrap poetry
         run: |
           curl -sL https://install.python-poetry.org | python - -y
         shell: bash
+
       - name: Update PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         shell: bash
+
       - name: Configure poetry
         run: poetry config virtualenvs.in-project false
         shell: bash
+
       - name: Install dependencies
         shell: bash
         run: |
           poetry install --no-interaction --no-root --only main,dev
+
       - name: Run lizard (analyze CCN for production codes)
         run: |
           poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "${LIZARD_CCN_COUNT}"
+
       - name: Show AST (app.py)
         run: |
           python <<EOF
           import ast
           print(ast.dump(ast.parse(open("app.py").read()), indent=2))
           EOF
+
       - name: Show AST (features/*.py)
         run: |
           python <<EOF
@@ -523,23 +613,32 @@ jobs:
       security-events: write # セキュリティイベントの書き込み権限を追加
     timeout-minutes: 5
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+
       - name: Check out Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+
       - name: Install Node.js, NPM and Yarn
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.node-version }}
+
       - name: Restore cache node-electron dependencies
         uses: actions/cache@v4.2.2
         with:
           path: |
             **/node_modules
           key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
+
       - name: Install stlite
         run: |
           npm install
+
       - name: Restore cache electron-builder (Windows)
         # https://github.com/electron/get#usage
         uses: actions/cache@v4.2.2
@@ -549,6 +648,7 @@ jobs:
             ~/AppData/Local/electron/Cache/
           key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
         if: ${{ runner.os == 'Windows' }}
+
       - name: Restore cache electron-builder (MacOS)
         # https://github.com/electron/get#usage
         uses: actions/cache@v4.2.2
@@ -557,11 +657,13 @@ jobs:
             ~/Library/Caches/electron/
           key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
         if: ${{ runner.os == 'MacOS' }}
+
       - name: Dump package
         run: |
           npm run dump
         # TODO: stliteのWindows環境のビルド失敗が解消したら削除
         if: ${{ runner.os == 'MacOS' }}
+
       - name: Build
         run: |
           npm run dist
@@ -571,6 +673,7 @@ jobs:
           NODE_OPTIONS: "--max-http-header-size=8192 --max-old-space-size=4096"
         # TODO: stliteのWindows環境のビルド失敗が解消したら削除
         if: ${{ runner.os == 'MacOS' }}
+
       - name: Upload artifact (Windows)
         # v4.3.1を使用 (最新の安定版)
         uses: actions/upload-artifact@v4.3.1
@@ -580,6 +683,7 @@ jobs:
           retention-days: 3
           compression-level: 9
         if: ${{ runner.os == 'Windows' }}
+
       - name: Upload artifact (MacOS)
         # v4.3.1を使用 (最新の安定版)
         uses: actions/upload-artifact@v4.3.1
