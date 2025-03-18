@@ -1,0 +1,50 @@
+name: Reusable Pip Cache
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+      os:
+        required: true
+        type: string
+
+jobs:
+  setup-python-and-cache:
+    runs-on: ${{ inputs.os }}
+    steps:
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Restore cache pip dependencies
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            .venv
+            %LOCALAPPDATA%\pypoetry\Cache
+            %USERPROFILE%\.cache\pypoetry
+          key: ${{ inputs.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ inputs.os }}-python${{ inputs.python-version }}-poetry
+
+      - name: Bootstrap poetry
+        run: |
+          curl -sL https://install.python-poetry.org | python - -y
+        shell: bash
+
+      - name: Update PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        shell: bash
+
+      - name: Configure poetry
+        run: poetry config virtualenvs.in-project false
+        shell: bash
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          poetry install --no-interaction --no-root --only main,dev
