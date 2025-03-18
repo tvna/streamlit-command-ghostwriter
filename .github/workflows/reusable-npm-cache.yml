@@ -1,0 +1,71 @@
+name: Reusable NPM Cache
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: true
+        type: string
+      os:
+        required: true
+        type: string
+      cache-electron-builder:
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  setup-node-and-cache:
+    runs-on: ${{ inputs.os }}
+    steps:
+      - name: Install Node.js
+        uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 # v4.0.1
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Restore cache node-electron dependencies
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            **/node_modules
+          key: ${{ inputs.os }}-node${{ inputs.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install stlite
+        run: |
+          npm install
+
+      - name: Restore cache electron-builder (Windows)
+        if: inputs.cache-electron-builder && runner.os == 'Windows'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            %LOCALAPPDATA%\electron\Cache
+            %LOCALAPPDATA%\electron-builder\Cache
+            %USERPROFILE%\.electron
+            %USERPROFILE%\.electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: ${{ inputs.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Restore cache electron-builder (MacOS)
+        if: inputs.cache-electron-builder && runner.os == 'MacOS'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/.electron
+            ~/.electron-builder
+            ~/Library/Caches/electron/
+            ~/Library/Caches/electron-builder/
+          key: ${{ inputs.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Restore cache electron-builder (Linux)
+        if: inputs.cache-electron-builder && runner.os == 'Linux'
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/.electron
+            ~/.electron-builder
+          key: ${{ inputs.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}

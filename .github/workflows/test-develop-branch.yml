@@ -96,11 +96,11 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install Node.js
-        # actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 = v4.0.1
-        uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8
+      - name: Setup Node and restore cache
+        uses: ./.github/workflows/reusable-npm-cache.yml
         with:
           node-version: ${{ env.node-version }}
+          os: ubuntu-latest
 
       - name: NPM Audit
         run: |
@@ -111,11 +111,12 @@ jobs:
             echo "⚠️ High severity vulnerabilities found in production dependencies" >> "$GITHUB_STEP_SUMMARY"
             npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
           }
+
       - name: Report Status
         run: |
           echo "### Security NPM Security Audit Complete" >> "$GITHUB_STEP_SUMMARY"
 
-  scorecards:
+  security-scorecards:
     name: Security - OpenSSF Scorecards Analysis
     runs-on: ubuntu-latest
     # mainブランチへのプルリクエストの場合のみ実行
@@ -475,40 +476,12 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install Node.js, NPM and Yarn
-        uses: actions/setup-node@v4
+      - name: Setup Node and restore cache
+        uses: ./.github/workflows/reusable-npm-cache.yml
         with:
           node-version: ${{ env.node-version }}
-
-      - name: Restore cache node-electron dependencies
-        uses: actions/cache@v4.2.2
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-node${{ env.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
-
-      - name: Install stlite
-        run: |
-          npm install
-
-      - name: Restore cache electron-builder (Windows)
-        # https://github.com/electron/get#usage
-        uses: actions/cache@v4.2.2
-        with:
-          path: |
-            %LOCALAPPDATA%/electron/Cache
-            ~/AppData/Local/electron/Cache/
-          key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
-        if: runner.os == 'Windows'
-
-      - name: Restore cache electron-builder (MacOS)
-        # https://github.com/electron/get#usage
-        uses: actions/cache@v4.2.2
-        with:
-          path: |
-            ~/Library/Caches/electron/
-          key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
-        if: runner.os == 'MacOS'
+          os: ${{ matrix.os }}
+          cache-electron-builder: true
 
       - name: Dump package
         run: |
@@ -527,7 +500,6 @@ jobs:
         if: runner.os == 'MacOS'
 
       - name: Upload artifact (Windows)
-        # v4.3.1を使用 (最新の安定版)
         uses: actions/upload-artifact@v4.3.1
         with:
           name: ${{ runner.os }}-build-artifact
@@ -537,7 +509,6 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
 
       - name: Upload artifact (MacOS)
-        # v4.3.1を使用 (最新の安定版)
         uses: actions/upload-artifact@v4.3.1
         with:
           name: ${{ runner.os }}-build-artifact
@@ -563,7 +534,7 @@ jobs:
       [
         security-dependency-review,
         security-npm-audit,
-        scorecards,
+        security-scorecards,
         lint-workflow,
         lint-python,
         test-unit,
@@ -584,7 +555,7 @@ jobs:
             echo "| --- | --- | --- |"
             echo "| Security | Dependency Review | ${{ needs.security-dependency-review.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' && '➖ Skipped') || '❌ Failed' }} |"
             echo "| Security | NPM Audit | ${{ needs.security-npm-audit.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-            echo "| Security | OpenSSF Scorecards | ${{ needs.scorecards.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' && '➖ Skipped') || '❌ Failed' }} |"
+            echo "| Security | OpenSSF Scorecards | ${{ needs.security-scorecards.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' && '➖ Skipped') || '❌ Failed' }} |"
             echo "| Lint | Workflow Files | ${{ needs.lint-workflow.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
             echo "| Lint | Python Code | ${{ needs.lint-python.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
             echo "| Test | Unit Tests | ${{ needs.test-unit.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
@@ -604,7 +575,7 @@ jobs:
               echo "### 失敗したジョブ"
               [[ "${{ needs.security-dependency-review.result }}" != "success" && "${{ needs.security-dependency-review.result }}" != "skipped" ]] && echo "- Security Dependency Review"
               [[ "${{ needs.security-npm-audit.result }}" != "success" ]] && echo "- Security NPM Audit"
-              [[ "${{ needs.scorecards.result }}" != "success" ]] && echo "- OpenSSF Scorecards"
+              [[ "${{ needs.security-scorecards.result }}" != "success" ]] && echo "- OpenSSF Scorecards"
               [[ "${{ needs.lint-workflow.result }}" != "success" ]] && echo "- Workflow Lint"
               [[ "${{ needs.lint-python.result }}" != "success" ]] && echo "- Python Lint"
               [[ "${{ needs.test-unit.result }}" != "success" ]] && echo "- Unit Tests"
