@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.1.0
         with:
           python-version: ${{ inputs.python-version }}
 
