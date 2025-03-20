@@ -69,7 +69,7 @@ jobs:
           fetch-depth: 0
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@01bc87099ba56df1e897b6874784491ea6309bc4 # v3.1.4
+        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
         with:
           fail-on-severity: high
           comment-summary-in-pr: true
@@ -132,7 +132,7 @@ jobs:
           persist-credentials: false
 
       - name: "Run analysis"
-        uses: ossf/scorecard-action@0864cf19026789058feabb7e87baa5f140aac736 # v2.3.1
+        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
         with:
           results_file: results.sarif
           results_format: sarif
@@ -169,7 +169,7 @@ jobs:
           ./actionlint -color
 
       - name: Check typos
-        uses: crate-ci/typos@e477391cc0243daaeeb154a7bfa67cb7d6fc5831 # v1.16.8
+        uses: crate-ci/typos@7bc041cbb7ca9167c9e0e4ccbb26f48eb0f9d4e0 # v1.30.2
 
       - name: Report Status
         run: |
@@ -194,7 +194,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up Python ${{ env.python-version }}
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.1.0
         with:
           python-version: ${{ env.python-version }}
 
@@ -267,7 +267,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up Python ${{ env.python-version }}
-        uses: actions/setup-python@v5.1.0
+        uses: actions/setup-python@v5.4.0
         with:
           python-version: ${{ env.python-version }}
 
@@ -387,7 +387,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5.1.0
+        uses: actions/setup-python@v5.4.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -425,7 +425,7 @@ jobs:
       - name: Install Poetry (Windows)
         if: ${{ runner.os == 'Windows' }}
         # v1.3.4を使用 (最新の安定版)
-        uses: snok/install-poetry@v1.3.4
+        uses: snok/install-poetry@v1.4.1
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
@@ -528,7 +528,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up Python ${{ env.python-version }}
-        uses: actions/setup-python@v5.1.0
+        uses: actions/setup-python@v5.4.0
         with:
           python-version: ${{ env.python-version }}
 
@@ -677,7 +677,7 @@ jobs:
 
       - name: Upload artifact (Windows)
         # v4.3.1を使用 (最新の安定版)
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.6.1
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.exe
@@ -687,7 +687,7 @@ jobs:
 
       - name: Upload artifact (MacOS)
         # v4.3.1を使用 (最新の安定版)
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.6.1
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.dmg

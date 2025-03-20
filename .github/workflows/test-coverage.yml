@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
 
       - name: Setup Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.0.0
         with:
           python-version: "3.11"
           cache: "pip"
@@ -47,7 +47,7 @@ jobs:
           poetry config virtualenvs.in-project true
 
       - name: Cache poetry dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: .venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
@@ -80,7 +80,7 @@ jobs:
         uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
 
       - name: Setup Python
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.0.0
         with:
           python-version: "3.11"
           cache: "pip"
@@ -95,7 +95,7 @@ jobs:
           poetry config virtualenvs.in-project true
 
       - name: Cache poetry dependencies
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: .venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
