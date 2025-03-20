@@ -28,35 +28,35 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.actor == github.repository_owner
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out Git repository
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+
+      - name: Setup Python
+        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.0.0
         with:
-          ref: develop
-      - name: Set up Python ${{ env.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.python-version }}
-      - name: Restore cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-            .venv
-          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      - name: Bootstrap poetry
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install poetry
         run: |
-          curl -sL https://install.python-poetry.org | python - -y
-        shell: bash
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-        shell: bash
+          python -m pip install --upgrade pip
+          pip install poetry
+
       - name: Configure poetry
-        run: poetry config virtualenvs.in-project false
-        shell: bash
-      - name: Install dependencies
-        shell: bash
         run: |
-          poetry install
+          poetry config virtualenvs.in-project true
+
+      - name: Cache poetry dependencies
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install dependencies
+        run: poetry install
+
       - name: Run pytest
         run: |
           poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e"
@@ -76,44 +76,47 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.actor == github.repository_owner
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out Git repository
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
+
+      - name: Setup Python
+        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.0.0
         with:
-          ref: main
-      - name: Set up Python ${{ env.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.python-version }}
-      - name: Restore cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-            .venv
-          key: ${{ runner.os }}-python${{ env.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      - name: Bootstrap poetry
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install poetry
         run: |
-          curl -sL https://install.python-poetry.org | python - -y
-        shell: bash
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-        shell: bash
+          python -m pip install --upgrade pip
+          pip install poetry
+
       - name: Configure poetry
-        run: poetry config virtualenvs.in-project false
-        shell: bash
-      - name: Install dependencies
-        shell: bash
         run: |
-          poetry install
+          poetry config virtualenvs.in-project true
+
+      - name: Cache poetry dependencies
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install dependencies
+        run: poetry install
+
       - name: Run pytest (coverage without e2e)
         run: |
           poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile -k "not e2e" --benchmark-disable
+
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5.4.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Setup Code Climate
         uses: remarkablemark/setup-codeclimate@v2
+
       - name: Upload coverage reports to code climate
         run: |
           cc-test-reporter before-build
