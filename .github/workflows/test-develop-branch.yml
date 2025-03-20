@@ -110,9 +110,10 @@ jobs:
         run: |
           echo "### Security NPM Security Audit Complete" >> "$GITHUB_STEP_SUMMARY"
 
-  scorecards:
+  security-scorecards:
     name: OpenSSF Scorecards Analysis
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
     permissions:
       security-events: write
       id-token: write
