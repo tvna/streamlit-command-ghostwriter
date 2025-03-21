@@ -304,7 +304,6 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - ubuntu-22.04
-          - ubuntu-20.04
         python-version:
           - "3.12.3"
           - "3.11"
