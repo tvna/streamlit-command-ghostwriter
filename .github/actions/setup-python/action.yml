@@ -4,7 +4,7 @@ inputs:
   python-version:
     description: 'Python version to use'
     required: true
-  os:
+  runner-os:
     description: 'Operating system'
     required: true
 
@@ -16,9 +16,10 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Restore cache pip dependencies
-      id: cache-poetry
-      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+    # 非Windows環境用のキャッシュ復元
+    - name: Restore cache pip dependencies (Non-Windows)
+      uses: actions/cache@v4.2.2
+      if: inputs.runner-os != 'Windows'
       with:
         path: |
           ~/.cache/pypoetry
@@ -26,22 +27,45 @@ runs:
           .venv
           %LOCALAPPDATA%\pypoetry\Cache
           %USERPROFILE%\.cache\pypoetry
-        key: ${{ inputs.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        key: ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
-          ${{ inputs.os }}-python${{ inputs.python-version }}-poetry
+          ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry
 
-    - name: Bootstrap poetry
-      shell: bash
+    # Windowsのみキャッシュ障害に備えてリトライロジックを追加
+    - name: Restore cache pip dependencies (Windows with retry)
+      uses: actions/cache@v4.2.2
+      id: pip-cache-windows
+      if: inputs.runner-os == 'Windows'
+      with:
+        path: |
+          ~/.cache/pypoetry
+          ~/.cache/pip
+          .venv
+          %LOCALAPPDATA%\pypoetry\Cache
+          %USERPROFILE%\.cache\pypoetry
+        key: ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry
+      continue-on-error: true
+
+    - name: Bootstrap poetry (Non-Windows)
+      if: matrix.os != 'Windows'
       run: |
         curl -sL https://install.python-poetry.org | python - -y
+        poetry config virtualenvs.in-project false
+      shell: bash
+
+    - name: Bootstrap Poetry (Windows)
+      if: ${{ inputs.runner-os == 'Windows' }}
+      # v1.3.4を使用 (最新の安定版)
+      uses: snok/install-poetry@v1.4.1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: false
 
     - name: Update PATH
       shell: bash
       run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-    - name: Configure poetry
-      shell: bash
-      run: poetry config virtualenvs.in-project false
 
     - name: Install dependencies
       shell: bash

@@ -36,7 +36,7 @@ jobs:
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.python-version }}
-          os: ${{ runner.os }}
+          runner-os: ${{ runner.os }}
 
       - name: Run pytest
         run: |
@@ -65,7 +65,7 @@ jobs:
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.python-version }}
-          os: ${{ runner.os }}
+          runner-os: ${{ runner.os }}
 
       - name: Run pytest (coverage without e2e)
         run: |
