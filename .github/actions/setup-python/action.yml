@@ -49,6 +49,7 @@ runs:
       continue-on-error: true
 
     - name: Bootstrap poetry
+      shell: bash
       run: |
         pipx install poetry
         poetry config virtualenvs.in-project false
