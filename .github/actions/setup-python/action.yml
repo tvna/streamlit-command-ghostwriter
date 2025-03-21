@@ -48,27 +48,10 @@ runs:
           ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry
       continue-on-error: true
 
-    - name: Bootstrap poetry (without Windows)
-      if: matrix.os != 'Windows'
+    - name: Bootstrap poetry
       run: |
-        curl -sL https://install.python-poetry.org | python - -y
+        pipx install poetry
         poetry config virtualenvs.in-project false
-        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      shell: bash
-
-    - name: Bootstrap Poetry (Windows only)
-      if: ${{ inputs.runner-os == 'Windows' }}
-      # v1.3.4を使用 (最新の安定版)
-      uses: snok/install-poetry@v1.4.1
-      with:
-        virtualenvs-create: true
-        virtualenvs-in-project: false
-
-    - name: Configure PATH (Windows only)
-      if: ${{ inputs.runner-os == 'Windows' }}
-      run: |
-        [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\Users\runneradmin\AppData\Roaming\Python\Scripts", "User")
-      shell: powershell
 
     - name: Install dependencies
       shell: bash
