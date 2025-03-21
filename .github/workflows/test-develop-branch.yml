@@ -121,7 +121,7 @@ jobs:
           fetch-depth: 1
 
       - name: Setup Node and restore cache
-        uses: ./.github/workflows/reusable-setup-npm.yml
+        uses: ./.github/workflows/reusable-setup-npm.yml@main
         with:
           node-version: ${{ env.node-version }}
           os: ubuntu-latest
@@ -255,7 +255,7 @@ jobs:
           fetch-depth: 1
 
       - name: Setup Python and restore cache
-        uses: ./.github/workflows/reusable-setup-pip.yml
+        uses: ./.github/workflows/reusable-setup-pip.yml@main
         with:
           python-version: ${{ env.python-version }}
           os: ubuntu-latest
@@ -310,7 +310,7 @@ jobs:
           fetch-depth: 1
 
       - name: Setup Python and restore cache
-        uses: ./.github/workflows/reusable-setup-pip.yml
+        uses: ./.github/workflows/reusable-setup-pip.yml@main
         with:
           python-version: ${{ env.python-version }}
           os: ubuntu-latest
@@ -412,7 +412,7 @@ jobs:
           fetch-depth: 1
 
       - name: Setup Python and restore cache
-        uses: ./.github/workflows/reusable-setup-pip.yml
+        uses: ./.github/workflows/reusable-setup-pip.yml@main
         with:
           python-version: ${{ matrix.python-version }}
           os: ${{ matrix.os }}
@@ -506,8 +506,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Python and restore cache
-        uses: ./.github/workflows/reusable-setup-pip.yml
+      - uses: ./.github/workflows/reusable-setup-pip.yml@main
         with:
           python-version: ${{ env.python-version }}
           os: ubuntu-latest
@@ -585,7 +584,7 @@ jobs:
           fetch-depth: 1
 
       - name: Setup Node and restore cache
-        uses: ./.github/workflows/reusable-setup-npm.yml
+        uses: ./.github/workflows/reusable-setup-npm.yml@main
         with:
           node-version: ${{ env.node-version }}
           os: ${{ matrix.os }}
