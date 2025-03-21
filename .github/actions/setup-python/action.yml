@@ -1,0 +1,49 @@
+name: 'Setup Python Environment'
+description: 'Setup Python with Poetry and run tests'
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: true
+  os:
+    description: 'Operating system'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Restore cache pip dependencies
+      id: cache-poetry
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      with:
+        path: |
+          ~/.cache/pypoetry
+          ~/.cache/pip
+          .venv
+          %LOCALAPPDATA%\pypoetry\Cache
+          %USERPROFILE%\.cache\pypoetry
+        key: ${{ inputs.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ inputs.os }}-python${{ inputs.python-version }}-poetry
+
+    - name: Bootstrap poetry
+      shell: bash
+      run: |
+        curl -sL https://install.python-poetry.org | python - -y
+
+    - name: Update PATH
+      shell: bash
+      run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Configure poetry
+      shell: bash
+      run: poetry config virtualenvs.in-project false
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        poetry install --no-interaction --no-root --only main,dev
