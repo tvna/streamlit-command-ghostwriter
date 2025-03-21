@@ -12,17 +12,21 @@
 
 繰り返しが多くなりがちなCLI実行コマンドを、設定定義ファイル(csv/yaml/toml)とJinjaテンプレートファイルの2つに分けて記述することで、設定定義ファイルの変更のみでCLIコマンドが生成できます。また、コマンドに留まらず、Markdownによる作業手順書の生成にも対応しています。
 
-まずはサンプルファイルをアップロードして、「CLIコマンド生成」をクリックした結果を確認してみてください。
+## 目次
+1. [Quick Start](#quick-start)
+2. [使い方の流れ](#使い方の流れ)
+3. [テンプレート化の手順](#テンプレート化の手順)
+4. [入力ファイルのフォーマット](#入力ファイルのフォーマット)
+5. [機能モード](#機能モード)
+6. [デバッグ機能](#デバッグ機能)
+7. [ユースケース例](#ユースケース例)
+8. [制限事項と注意点](#制限事項と注意点)
+9. [高度な機能](#高度な機能)
+10. [開発者向けドキュメント](#開発者向けドキュメント)
 
-## 主な利用ケース
-- PowerShellコマンド
-- Linuxコマンド
-- ネットワーク機器の操作コマンド
-- Markdown由来の手順書やマニュアル
+## Quick start
 
-# Quick start
-
-## Windows (amd64)
+### Windows (amd64)
 1. 実行環境のセットアップ (Python, Git)
 
 ```ps1
@@ -51,7 +55,109 @@ cd $env:PROGRAMDATA\streamlit-command-ghostwriter
 poetry run streamlit app.py
 ```
 
-# 詳細機能説明
+まずはサンプルファイルをアップロードして、「CLIコマンド生成」をクリックした結果を確認してみてください。
+
+## 使い方の流れ
+
+```mermaid
+graph LR
+    %% Initial State
+    P1[既存のコマンド<br>または手順書] --> P2{テンプレート化<br>が必要?}
+
+    %% Template Path
+    subgraph PreparationTemplate ["テンプレート化"]
+        direction TB
+        PT1[変数部分の<br>特定と抽出]
+        PT2[設定定義ファイル<br>作成]
+        PT3[Jinjaテンプレート<br>作成]
+
+        PT1 --> PT2
+        PT1 --> PT3
+    end
+
+    %% Main Flow
+    subgraph Input ["入力"]
+        direction TB
+        B1[設定定義ファイル<br>アップロード]
+        B2[テンプレート<br>アップロード]
+    end
+
+    C1[実行可能な<br>CLIコマンド]
+
+    %% Connections for Template Path
+    P2 -->|Yes| PT1
+    PT2 --> B1
+    PT3 --> B2
+    B1 & B2 --> C1
+
+    %% Connections for Direct Path
+    P2 -->|No| C1
+
+    %% Styles - Semantic Colors
+    %% 入力系: 青系統
+    style P1 fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
+    style P2 fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
+
+    %% サブグラフ内のノード: 白背景・黒文字
+    style PT1 fill:#FFFFFF,stroke:#424242,color:#000000
+    style PT2 fill:#FFFFFF,stroke:#424242,color:#000000
+    style PT3 fill:#FFFFFF,stroke:#424242,color:#000000
+    style B1 fill:#FFFFFF,stroke:#424242,color:#000000
+    style B2 fill:#FFFFFF,stroke:#424242,color:#000000
+
+    %% 出力系: 赤系統
+    style C1 fill:#FFEBEE,stroke:#C62828,color:#B71C1C
+
+    %% サブグラフのスタイル
+    style PreparationTemplate fill:#FFF3E0,stroke:#E65100
+    style Input fill:#E8F5E9,stroke:#2E7D32
+
+    %% Link Styles - Flow based colors
+    linkStyle default stroke:#9E9E9E,stroke-width:2px
+    %% 判断フロー
+    linkStyle 0,1 stroke:#1565C0,stroke-width:2px
+    %% 準備フロー
+    linkStyle 2,3 stroke:#F57C00,stroke-width:2px
+    %% ファイルフロー
+    linkStyle 4,5 stroke:#2E7D32,stroke-width:2px
+    %% 直接パス
+    linkStyle 6 stroke:#C62828,stroke-width:2px
+
+    %% Subgraph Styles
+    classDef subgraphStyle fill:none,stroke-width:2px
+    class PreparationTemplate,Input subgraphStyle
+```
+
+## テンプレート化の手順
+
+既存のコマンドやMarkdownをテンプレート化する手順は以下の通りです：
+
+1. **変数部分の特定**
+   ```bash
+   # 変数化前のコマンド例
+   ssh 192.168.1.101 "df -h"
+   ssh 192.168.1.102 "df -h"
+   ```
+
+2. **設定定義ファイルの作成**
+   ```yaml
+   servers:
+     - ip: 192.168.1.101
+     - ip: 192.168.1.102
+   commands:
+     disk_check: df -h
+   ```
+
+3. **Jinjaテンプレートの作成**
+   ```jinja
+   {% for server in servers %}
+   ssh {{ server.ip }} "{{ commands.disk_check }}"
+   {% endfor %}
+   ```
+
+4. **動作確認**
+   - Visual Debugモードで変数の展開を確認
+   - エラーがある場合は設定定義ファイルまたはテンプレートを修正
 
 ## 入力ファイルのフォーマット
 
@@ -160,15 +266,6 @@ ssh {{ server.ip }} "{{ commands.check_memory }}"
 - データ型の確認
 - 構文エラーの詳細表示
 
-## 高度な機能
-
-### カスタムテンプレート
-独自のテンプレートを作成して利用できます。
-
-- Jinjaの標準フィルターをサポート
-- カスタムフィルターの追加も可能
-- 複数テンプレートの組み合わせに対応
-
 ## ユースケース例
 
 ### PowerShellコマンド生成
@@ -193,13 +290,20 @@ tar -czf {{ file.name }}.tar.gz {{ file.path }}
 - 改行コード: LF/CRLF両対応
 
 ### セキュリティ
-- テンプレート内でのシステムコマンド実行は制限されています
-- 機密情報は設定ファイルに直接記載せず、環境変数等で管理することを推奨
 - 生成されたコマンドは実行前に必ず内容を確認してください
 
 ### 既知の制限事項
 - 一部の特殊文字はエスケープが必要
 - テンプレートにおけるネストされたループは非推奨
+
+## 高度な機能
+
+### カスタムテンプレート
+独自のテンプレートを作成して利用できます。
+
+- Jinjaの標準フィルターをサポート
+- カスタムフィルターの追加も可能
+- 複数テンプレートの組み合わせに対応
 
 ## 開発者向けドキュメント
 
