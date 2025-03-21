@@ -17,7 +17,7 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     # 非Windows環境用のキャッシュ復元
-    - name: Restore cache pip dependencies (Non-Windows)
+    - name: Restore cache pip dependencies (without Windows)
       uses: actions/cache@v4.2.2
       if: inputs.runner-os != 'Windows'
       with:
@@ -48,14 +48,15 @@ runs:
           ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry
       continue-on-error: true
 
-    - name: Bootstrap poetry (Non-Windows)
+    - name: Bootstrap poetry (without Windows)
       if: matrix.os != 'Windows'
       run: |
         curl -sL https://install.python-poetry.org | python - -y
         poetry config virtualenvs.in-project false
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       shell: bash
 
-    - name: Bootstrap Poetry (Windows)
+    - name: Bootstrap Poetry (Windows only)
       if: ${{ inputs.runner-os == 'Windows' }}
       # v1.3.4を使用 (最新の安定版)
       uses: snok/install-poetry@v1.4.1
@@ -63,9 +64,11 @@ runs:
         virtualenvs-create: true
         virtualenvs-in-project: false
 
-    - name: Update PATH
-      shell: bash
-      run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Configure PATH (Windows only)
+      if: ${{ inputs.runner-os == 'Windows' }}
+      run: |
+        [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\Users\runneradmin\AppData\Roaming\Python\Scripts", "User")
+      shell: powershell
 
     - name: Install dependencies
       shell: bash
