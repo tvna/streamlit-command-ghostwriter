@@ -67,7 +67,7 @@ jobs:
           fetch-depth: 1
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@01bc87099ba56df1e897b6874784491ea6309bc4 # v3.1.4
+        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
         with:
           fail-on-severity: high
           comment-summary-in-pr: true
@@ -137,7 +137,7 @@ jobs:
           persist-credentials: false
 
       - name: "Run analysis"
-        uses: ossf/scorecard-action@0864cf19026789058feabb7e87baa5f140aac736 # v2.3.1
+        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
         with:
           results_file: results.sarif
           results_format: sarif
@@ -172,7 +172,7 @@ jobs:
           ./actionlint -color
 
       - name: Check typos
-        uses: crate-ci/typos@e477391cc0243daaeeb154a7bfa67cb7d6fc5831 # v1.16.8
+        uses: crate-ci/typos@7bc041cbb7ca9167c9e0e4ccbb26f48eb0f9d4e0 # v1.30.2
 
       - name: Report Status
         run: |
@@ -334,7 +334,7 @@ jobs:
           os: ${{ matrix.os }}
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         id: playwright-cache
         with:
           path: |
@@ -500,7 +500,7 @@ jobs:
         if: runner.os == 'MacOS'
 
       - name: Upload artifact (Windows)
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.exe
@@ -509,7 +509,7 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
 
       - name: Upload artifact (MacOS)
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.dmg
