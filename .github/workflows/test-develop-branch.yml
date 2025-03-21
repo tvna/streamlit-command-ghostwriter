@@ -199,7 +199,7 @@ jobs:
           python-version: ${{ env.python-version }}
 
       - name: Restore cache pip dependencies
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             ~/.cache/pypoetry
@@ -272,7 +272,7 @@ jobs:
           python-version: ${{ env.python-version }}
 
       - name: Restore cache pip dependencies
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.cache/pypoetry
@@ -393,7 +393,7 @@ jobs:
 
       # Windowsのみキャッシュ障害に備えてリトライロジックを追加
       - name: Restore cache pip dependencies (Windows with retry)
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         id: pip-cache-windows
         if: runner.os == 'Windows'
         with:
@@ -410,7 +410,7 @@ jobs:
 
       # 非Windows環境用のキャッシュ復元
       - name: Restore cache pip dependencies (Non-Windows)
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         if: runner.os != 'Windows'
         with:
           path: |
@@ -450,7 +450,7 @@ jobs:
           poetry install --no-interaction --no-root --only main,dev
       - name: Cache Playwright browsers
         # v4.2.2を使用 (最新の安定版)
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         id: playwright-cache
         with:
           path: |
@@ -533,7 +533,7 @@ jobs:
           python-version: ${{ env.python-version }}
 
       - name: Restore cache pip dependencies
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.cache/pypoetry
@@ -630,7 +630,7 @@ jobs:
           node-version: ${{ env.node-version }}
 
       - name: Restore cache node-electron dependencies
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         with:
           path: |
             **/node_modules
@@ -642,7 +642,7 @@ jobs:
 
       - name: Restore cache electron-builder (Windows)
         # https://github.com/electron/get#usage
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         with:
           path: |
             %LOCALAPPDATA%/electron/Cache
@@ -652,7 +652,7 @@ jobs:
 
       - name: Restore cache electron-builder (MacOS)
         # https://github.com/electron/get#usage
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/Library/Caches/electron/
@@ -677,7 +677,7 @@ jobs:
 
       - name: Upload artifact (Windows)
         # v4.3.1を使用 (最新の安定版)
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.exe
@@ -687,7 +687,7 @@ jobs:
 
       - name: Upload artifact (MacOS)
         # v4.3.1を使用 (最新の安定版)
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.dmg
