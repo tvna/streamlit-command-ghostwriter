@@ -248,9 +248,10 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
           - macos-latest
+          - ubuntu-latest
           - ubuntu-22.04
+          - windows-latest
         python-version:
           - "3.12.3"
           - "3.11"
@@ -271,7 +272,7 @@ jobs:
           # WindowsとWebkitの組み合わせを除外
           - os: windows-latest
             browser: webkit
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Harden Runner
