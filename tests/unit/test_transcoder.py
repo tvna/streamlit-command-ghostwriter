@@ -148,27 +148,6 @@ def test_transcoder_non_string_data(
 
 
 @pytest.mark.unit
-def test_transcoder_missing_encoding() -> None:
-    """存在しないエンコーディングを指定した場合のTextTranscoderの動作をテストする。"""
-    # Arrange
-    test_data = b"ABCDEF"
-
-    # Act
-    transcoder = TextTranscoder(BytesIO(test_data))
-    detected_encoding = transcoder.detect_encoding()
-    result_without_fallback = transcoder.convert("utf-9", False)
-    result_with_fallback = transcoder.convert("utf-9", True)
-
-    # Assert
-    assert detected_encoding == "ASCII"
-    assert result_without_fallback is None
-
-    assert isinstance(result_with_fallback, BytesIO)
-    if isinstance(result_with_fallback, BytesIO):
-        assert result_with_fallback.getvalue() == test_data
-
-
-@pytest.mark.unit
 @pytest.mark.parametrize(
     ("input_str", "input_encoding", "expected_encoding", "expected_result"),
     [
@@ -340,3 +319,35 @@ def test_transcoder_encoding_conversion(
                     pytest.fail(f"Could not decode {result.getvalue()} with {target_encoding}")
             else:
                 assert result.getvalue() == expected_result
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("test_data", "invalid_encoding", "expected_encoding"),
+    [
+        pytest.param(b"ABCDEF", "utf-9", "ASCII", id="Invalid_encoding_with_ASCII_data"),
+    ],
+)
+def test_transcoder_missing_encoding(test_data: bytes, invalid_encoding: str, expected_encoding: str) -> None:
+    """存在しないエンコーディングを指定した場合のTextTranscoderの動作をテストする。
+
+    Args:
+        test_data: テスト用のバイトデータ
+        invalid_encoding: 無効なエンコーディング
+        expected_encoding: 期待されるエンコーディング
+    """
+    # Arrange
+    transcoder = TextTranscoder(BytesIO(test_data))
+
+    # Act
+    detected_encoding = transcoder.detect_encoding()
+    result_without_fallback = transcoder.convert(invalid_encoding, False)
+    result_with_fallback = transcoder.convert(invalid_encoding, True)
+
+    # Assert
+    assert detected_encoding == expected_encoding
+    assert result_without_fallback is None
+
+    assert isinstance(result_with_fallback, BytesIO)
+    if isinstance(result_with_fallback, BytesIO):
+        assert result_with_fallback.getvalue() == test_data
