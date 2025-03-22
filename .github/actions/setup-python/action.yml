@@ -1,5 +1,5 @@
 name: 'Setup Python Environment'
-description: 'Setup Python with Poetry and run tests'
+description: 'Setup Python with Poetry and cache pip dependencies'
 inputs:
   python-version:
     description: 'Python version to use'
