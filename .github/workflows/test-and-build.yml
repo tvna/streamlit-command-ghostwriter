@@ -18,6 +18,7 @@ on:
     branches:
       - develop
     paths-ignore:
+      - .cursor/**
       - .devcontainer/**
       - assets/**
       - README.md
