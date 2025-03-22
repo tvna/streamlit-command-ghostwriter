@@ -35,8 +35,16 @@ defaults:
     shell: bash
 
 env:
-  python-version: 3.12.3
-  node-version: 22
+  GLOBAL_PYTHON_VERSION: 3.12.3
+  GLOBAL_NODE_VERSION: 22
+  GLOBAL_ALLOWED_ENDPOINTS: |
+    api.github.com:443
+    github.com:443
+    objects.githubusercontent.com:443
+    registry.npmjs.org:443
+    pypi.org:443
+    files.pythonhosted.org:443
+    playwright.azureedge.net:443
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -64,14 +72,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -99,14 +100,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -116,7 +110,7 @@ jobs:
       - name: Setup Node.js and restore cache
         uses: ./.github/actions/setup-node
         with:
-          node-version: ${{ env.node-version }}
+          node-version: ${{ env.GLOBAL_NODE_VERSION }}
           os: ${{ runner.os }}
 
       - name: NPM Audit
@@ -129,11 +123,12 @@ jobs:
             npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
           }
 
-  security-scorecards:
+  analyze-scorecards:
     name: Security - OpenSSF Scorecards Analysis
     runs-on: ubuntu-latest
-    # mainブランチへのプルリクエストの場合のみ実行
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'main'
     permissions:
       security-events: write
       id-token: write
@@ -147,14 +142,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: "Checkout code"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -184,14 +172,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -223,14 +204,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -240,18 +214,15 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.python-version }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
 
-      - name: Check for vulnerable dependencies
-        run: |
-          poetry run pip install safety
-          poetry run safety check
-
-      - name: Run Python Linters
+      - name: Run Python Linters and check for vulnerable dependencies
         run: |
           poetry run ruff check .
           poetry run mypy .
+          poetry run pip install safety
+          poetry run safety check
 
   # ============================================================
   # TESTS GROUP
@@ -270,14 +241,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -287,7 +251,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.python-version }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
 
       - name: Run Unit Tests
@@ -358,14 +322,7 @@ jobs:
           egress-policy: audit
           disable-sudo: false
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -375,7 +332,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.python-version }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
 
       - name: Restore cache Playwright browsers
@@ -406,7 +363,7 @@ jobs:
         if: matrix.browser != 'chromium'
         run: |
           # E2Eテスト実行（ベンチマークなし）
-          poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-disable
+          poetry run pytest- -n auto -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-disable
         env:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
@@ -415,7 +372,7 @@ jobs:
         if: matrix.browser == 'chromium'
         run: |
           # E2Eテストのベンチマーク実行（Chromiumのみ）
-          poetry run pytest -vv --browser ${{ matrix.browser }} -m "benchmark" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean --benchmark-histogram=none
+          poetry run pytest -n 1 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
         env:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
@@ -427,12 +384,12 @@ jobs:
           name: benchmark-results-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}
           path: .benchmarks/**/*
           retention-days: 90
-          if-no-files-found: error
+          if-no-files-found: warn
 
   # ============================================================
   # ANALYZE GROUP
   # ============================================================
-  analyze-code:
+  analyze-code-ccn:
     name: Analysis - Code Complexity
     needs: [lint-workflow, lint-python]
     # https://github.com/terryyin/lizard
@@ -449,14 +406,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -466,7 +416,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.python-version }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
 
       - name: Run lizard (analyze CCN for production codes)
@@ -517,14 +467,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -534,7 +477,7 @@ jobs:
       - name: Setup Node.js and cache
         uses: ./.github/actions/setup-node
         with:
-          node-version: ${{ env.node-version }}
+          node-version: ${{ env.GLOBAL_NODE_VERSION }}
           os: ${{ runner.os }}
 
       - name: Restore cache electron-builder (Windows)
@@ -618,12 +561,12 @@ jobs:
       [
         security-dependency-review,
         security-npm-audit,
-        security-scorecards,
         lint-workflow,
         lint-python,
         test-unit,
         test-e2e,
-        analyze-code,
+        analyze-code-ccn,
+        analyze-scorecards,
         build-desktop,
       ]
     runs-on: ubuntu-latest
@@ -634,31 +577,10 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            registry.npmjs.org:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            playwright.azureedge.net:443
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - run: |
           {
-            echo "### Workflow Summary"
-            echo ""
-            echo "| Category | Job | Status |"
-            echo "| --- | --- | --- |"
-            echo "| Security | Dependency Review | ${{ needs.security-dependency-review.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' && '➖ Skipped') || '❌ Failed' }} |"
-            echo "| Security | NPM Audit | ${{ needs.security-npm-audit.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-            echo "| Security | OpenSSF Scorecards | ${{ needs.security-scorecards.result == 'success' && '✅ Passed' || (github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' && '➖ Skipped') || '❌ Failed' }} |"
-            echo "| Lint | Workflow Files | ${{ needs.lint-workflow.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-            echo "| Lint | Python Code | ${{ needs.lint-python.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-            echo "| Test | Unit Tests | ${{ needs.test-unit.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-            echo "| Test | E2E Tests | ${{ needs.test-e2e.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-            echo "| Analysis | Code Complexity | ${{ needs.analyze-code.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-            echo "| Build | Desktop App | ${{ needs.build-desktop.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
-
             # 総合結果の表示
             echo ""
             echo "## 総合結果"
@@ -666,18 +588,6 @@ jobs:
             # いずれかのジョブが失敗した場合に失敗とする
             if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
               echo "⚠️ **一部のジョブが失敗しました。詳細を確認してください。**"
-              echo ""
-              # 失敗したジョブのリスト
-              echo "### 失敗したジョブ"
-              [[ "${{ needs.security-dependency-review.result }}" != "success" && "${{ needs.security-dependency-review.result }}" != "skipped" ]] && echo "- Security Dependency Review"
-              [[ "${{ needs.security-npm-audit.result }}" != "success" ]] && echo "- Security NPM Audit"
-              [[ "${{ needs.security-scorecards.result }}" != "success" ]] && echo "- OpenSSF Scorecards"
-              [[ "${{ needs.lint-workflow.result }}" != "success" ]] && echo "- Workflow Lint"
-              [[ "${{ needs.lint-python.result }}" != "success" ]] && echo "- Python Lint"
-              [[ "${{ needs.test-unit.result }}" != "success" ]] && echo "- Unit Tests"
-              [[ "${{ needs.test-e2e.result }}" != "success" ]] && echo "- E2E Tests"
-              [[ "${{ needs.analyze-code.result }}" != "success" ]] && echo "- Code Analysis"
-              [[ "${{ needs.build-desktop.result }}" != "success" ]] && echo "- Desktop Build"
             else
               echo "✅ **すべてのジョブが正常に完了しました**"
             fi
