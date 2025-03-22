@@ -15,6 +15,9 @@ git checkout develop
 # pre-commit hooks のインストール
 poetry run pre-commit uninstall
 poetry run pre-commit install --hook-type commit-msg
+
+# macosにおけるcompletion
+poetry completions zsh > $(brew --prefix)/share/zsh-completions/_poetry
 ```
 
 ---
