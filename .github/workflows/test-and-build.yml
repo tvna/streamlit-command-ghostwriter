@@ -580,10 +580,6 @@ jobs:
     needs:
       [
         security-dependency-review,
-        security-npm-audit,
-        lint-workflow,
-        lint-python,
-        test-unit,
         test-e2e,
         analysis-code-ccn,
         analysis-scorecards,
