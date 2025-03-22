@@ -26,7 +26,7 @@ repos:
   - id: check-shebang-scripts-are-executable
     description: "checking shebang scripts are executable"
     name: check-shebang-scripts-are-executable (only for github actions)
-    files: /\.github\/scripts\/.*\.py$/
+    files: \/scripts\/.*\.py$/
   - id: check-symlinks
   - id: check-illegal-windows-names
   - id: pretty-format-json
