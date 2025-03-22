@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye
+FROM mcr.microsoft.com/devcontainers/python:1-3.12-bullseye@sha256:dc700ba8866ffabe940621af82c0a11812505df2449bb7b44fd87f311b3f3099
 
 RUN apt-get update \
     && export DEBIAN_FRONTEND=noninteractive \

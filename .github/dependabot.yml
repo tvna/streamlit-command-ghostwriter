@@ -30,3 +30,8 @@ updates:
       time: "11:00"
       timezone: "Japan"
     target-branch: develop
+
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: daily

@@ -13,10 +13,18 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
 jobs:
   setup-node-and-cache:
     runs-on: ${{ inputs.os }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - name: Install Node.js
         uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 # v4.0.1
         with:
