@@ -79,7 +79,7 @@ jobs:
           fetch-depth: 1
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@01bc87099ba56df1e897b6874784491ea6309bc4 # v3.1.4
+        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
         with:
           fail-on-severity: high
           comment-summary-in-pr: true
@@ -162,7 +162,7 @@ jobs:
           persist-credentials: false
 
       - name: "Run analysis"
-        uses: ossf/scorecard-action@0864cf19026789058feabb7e87baa5f140aac736 # v2.3.1
+        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
         with:
           results_file: results.sarif
           results_format: sarif
@@ -209,7 +209,7 @@ jobs:
           ./actionlint -color
 
       - name: Check typos
-        uses: crate-ci/typos@e477391cc0243daaeeb154a7bfa67cb7d6fc5831 # v1.16.8
+        uses: crate-ci/typos@7bc041cbb7ca9167c9e0e4ccbb26f48eb0f9d4e0 # v1.30.2
 
   lint-python:
     name: Lint - Python Code
@@ -379,7 +379,7 @@ jobs:
           runner-os: ${{ runner.os }}
 
       - name: Restore cache Playwright browsers
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v4.2.3
         id: playwright-cache
         with:
           path: |
@@ -422,7 +422,7 @@ jobs:
 
       - name: Upload Benchmark Results
         if: matrix.browser == 'chromium'
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: benchmark-results-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}
           path: .benchmarks/**/*
@@ -539,7 +539,7 @@ jobs:
 
       - name: Restore cache electron-builder (Windows)
         if: runner.os == 'Windows'
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             %LOCALAPPDATA%\electron\Cache
@@ -552,7 +552,7 @@ jobs:
 
       - name: Restore cache electron-builder (MacOS)
         if: runner.os == 'MacOS'
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             ~/Library/Caches/electron
@@ -565,7 +565,7 @@ jobs:
 
       - name: Restore cache electron-builder (Linux)
         if: runner.os == 'Linux'
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             ~/.cache/electron
@@ -591,7 +591,7 @@ jobs:
         if: runner.os == 'MacOS'
 
       - name: Upload artifact (Windows)
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.exe
@@ -600,7 +600,7 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
 
       - name: Upload artifact (MacOS)
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ runner.os }}-build-artifact
           path: ./dist/*.dmg
