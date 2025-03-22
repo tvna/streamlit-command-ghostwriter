@@ -9,10 +9,18 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   setup-python-and-cache:
     runs-on: ${{ inputs.os }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.1.0
         with:
