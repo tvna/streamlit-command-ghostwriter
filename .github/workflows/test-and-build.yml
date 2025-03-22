@@ -131,6 +131,7 @@ jobs:
   # ============================================================
   # LINT CHECKS GROUP
   # ============================================================
+
   lint-workflow:
     name: Lint - Workflow Files
     permissions:
@@ -203,6 +204,7 @@ jobs:
   # ============================================================
   # TESTS GROUP
   # ============================================================
+
   test-unit:
     name: Test - Unit
     needs: lint-python
@@ -269,30 +271,7 @@ jobs:
           # WindowsとWebkitの組み合わせを除外
           - os: windows-latest
             browser: webkit
-        include:
-          # Windowsのみタイムアウト時間を15分に設定（Webkitは除外）
-          - os: windows-latest
-            python-version: "3.12.3"
-            browser: chromium
-            timeout-minutes: 15
-          - os: windows-latest
-            python-version: "3.11"
-            browser: chromium
-            timeout-minutes: 15
-          - os: windows-latest
-            python-version: "3.12.3"
-            browser: firefox
-            timeout-minutes: 15
-          - os: windows-latest
-            python-version: "3.11"
-            browser: firefox
-            timeout-minutes: 15
-          # 最も一般的な環境を優先的にテスト
-          - os: macos-latest
-            python-version: "3.12.3"
-            browser: chromium
-            priority: high
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Harden Runner
