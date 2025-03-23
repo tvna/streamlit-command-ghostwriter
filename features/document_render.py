@@ -8,10 +8,28 @@
 
 クラス階層：
 - DocumentRender: メインのレンダリングクラス
-  - TemplateValidator: テンプレート検証
+  - FileValidator: ファイルサイズの検証
   - ContentFormatter: フォーマット処理
   - TemplateSecurityValidator: テンプレートのセキュリティ検証
-  - ContextValidator: コンテキスト検証
+
+検証プロセス:
+1. ファイルサイズの検証
+   - FileValidatorによるサイズ制限のチェック
+   - ファイルポインタの位置を保持したまま検証
+
+2. テンプレートの検証
+   - 構文チェック
+   - セキュリティチェック（禁止タグ、属性）
+   - 再帰的構造の検出
+
+3. コンテキストの適用
+   - 変数の型チェック
+   - 未定義変数の検証
+   - メモリ使用量の制限
+
+4. 出力フォーマット
+   - 空白行の処理（保持/圧縮/削除）
+   - 改行の正規化
 
 TODO:
 1. セキュリティ検証の改善 [CWE-94]
@@ -19,13 +37,18 @@ TODO:
    - テンプレートインジェクション対策の見直し
    - 再帰的な構造の検出精度の向上
 
-2. ファイルサイズ制限の検証方法の改善
-   - 現在の実装: read()メソッドの戻り値のサイズをチェック
-   - 課題: メモリ効率が悪い（ファイル全体をメモリに読み込む）
-   - 改善案: seek()とtell()を使用したファイルサイズの事前チェック
-
-3. エラーメッセージの一貫性確保
+2. エラーメッセージの一貫性確保
    - 各種バリデーションエラーの明確な区別
+   - エラーメッセージの多言語対応
+
+典型的な使用方法:
+```python
+with open('template.txt', 'rb') as f:
+    template_file = BytesIO(f.read())
+    renderer = DocumentRender(template_file)
+    if renderer.is_valid_template:
+        renderer.apply_context({'name': 'World'}, format_type=2)  # NORMALIZE_BREAKS
+        result = renderer.render_content
 ```
 """
 
@@ -46,6 +69,7 @@ from jinja2 import Environment, nodes
 from jinja2.runtime import StrictUndefined, Undefined
 
 from features.validate_template import TemplateSecurityValidator, ValidationState  # type: ignore
+from features.validate_uploaded_file import FileValidator  # type: ignore
 
 
 class ContentFormatter:
@@ -140,6 +164,19 @@ class DocumentRender:
             初期検証に失敗した場合、エラー状態を保持します。
             エラー状態は is_valid_template と error_message プロパティで確認できます。
         """
+        self._validation_state = ValidationState()
+        self._file_validator = FileValidator(max_size_bytes=self.MAX_FILE_SIZE)
+
+        try:
+            self._file_validator.validate_size(template_file)
+        except ValueError as e:
+            self._validation_state.set_error(str(e))
+            self._initial_validation_passed = False
+            return
+        except IOError as e:
+            self._validation_state.set_error(f"Failed to validate template file: {e!s}")
+            self._initial_validation_passed = False
+            return
 
         self._template_file = template_file
         self._template_content: Optional[str] = None
@@ -147,7 +184,6 @@ class DocumentRender:
         self._is_strict_undefined: bool = True
         self._formatter = ContentFormatter()
         self._security_validator = TemplateSecurityValidator()
-        self._validation_state = ValidationState()
 
         self._ast: Optional[nodes.Template] = None
 
