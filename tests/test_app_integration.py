@@ -32,7 +32,7 @@ from streamlit.testing.v1 import AppTest
             0,
             0,
             1,
-            id="Text_render_success_with_valid_template",
+            id="text_render_valid_basic_template",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -44,7 +44,7 @@ from streamlit.testing.v1 import AppTest
             0,
             1,
             0,
-            id="Text_render_warning_missing_config",
+            id="text_render_invalid_missing_config",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -56,7 +56,7 @@ from streamlit.testing.v1 import AppTest
             0,
             1,
             0,
-            id="Text_render_warning_missing_template",
+            id="text_render_invalid_missing_template",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -68,7 +68,7 @@ from streamlit.testing.v1 import AppTest
             0,
             0,
             1,
-            id="Text_render_success_with_date",
+            id="text_render_valid_date_format",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -80,7 +80,7 @@ from streamlit.testing.v1 import AppTest
             1,
             0,
             0,
-            id="Text_render_error_invalid_template_bytes",
+            id="text_render_invalid_template_bytes",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -92,7 +92,7 @@ from streamlit.testing.v1 import AppTest
             1,
             0,
             0,
-            id="Text_render_error_invalid_config_bytes",
+            id="text_render_invalid_config_bytes",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -104,7 +104,7 @@ from streamlit.testing.v1 import AppTest
             1,
             0,
             0,
-            id="Text_render_error_invalid_date",
+            id="text_render_invalid_date_format",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -116,7 +116,7 @@ from streamlit.testing.v1 import AppTest
             1,
             0,
             0,
-            id="Text_render_error_syntax_error",
+            id="text_render_invalid_syntax_error",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -128,7 +128,7 @@ from streamlit.testing.v1 import AppTest
             2,
             0,
             0,
-            id="Text_render_error_multiple_errors",
+            id="text_render_invalid_multiple_errors",
         ),
         pytest.param(
             "tab1_execute_text",
@@ -140,7 +140,7 @@ from streamlit.testing.v1 import AppTest
             2,
             0,
             0,
-            id="Text_render_error_all_invalid_bytes",
+            id="text_render_invalid_all_bytes",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -152,7 +152,7 @@ from streamlit.testing.v1 import AppTest
             0,
             0,
             1,
-            id="Markdown_render_success_with_valid_template",
+            id="markdown_render_valid_basic_template",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -164,7 +164,7 @@ from streamlit.testing.v1 import AppTest
             0,
             1,
             0,
-            id="Markdown_render_warning_missing_config",
+            id="markdown_render_invalid_missing_config",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -176,7 +176,7 @@ from streamlit.testing.v1 import AppTest
             0,
             1,
             0,
-            id="Markdown_render_warning_missing_template",
+            id="markdown_render_invalid_missing_template",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -188,7 +188,7 @@ from streamlit.testing.v1 import AppTest
             0,
             0,
             1,
-            id="Markdown_render_success_with_date",
+            id="markdown_render_valid_date_format",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -200,7 +200,7 @@ from streamlit.testing.v1 import AppTest
             1,
             0,
             0,
-            id="Markdown_render_error_invalid_template_bytes",
+            id="markdown_render_invalid_template_bytes",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -212,7 +212,7 @@ from streamlit.testing.v1 import AppTest
             1,
             0,
             0,
-            id="Markdown_render_error_invalid_config_bytes",
+            id="markdown_render_invalid_config_bytes",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -224,7 +224,7 @@ from streamlit.testing.v1 import AppTest
             1,
             0,
             0,
-            id="Markdown_render_error_invalid_date",
+            id="markdown_render_invalid_date_format",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -236,7 +236,7 @@ from streamlit.testing.v1 import AppTest
             1,
             0,
             0,
-            id="Markdown_render_error_syntax_error",
+            id="markdown_render_invalid_syntax_error",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -248,7 +248,7 @@ from streamlit.testing.v1 import AppTest
             2,
             0,
             0,
-            id="Markdown_render_error_multiple_errors",
+            id="markdown_render_invalid_multiple_errors",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -260,7 +260,7 @@ from streamlit.testing.v1 import AppTest
             2,
             0,
             0,
-            id="Markdown_render_error_all_invalid_bytes",
+            id="markdown_render_invalid_all_bytes",
         ),
     ],
 )
@@ -327,7 +327,7 @@ def test_main_tab1(
             0,
             0,
             1,
-            id="Visual_config_success",
+            id="visual_config_valid_basic_JSON",
         ),
         pytest.param(
             "tab2_execute_visual",
@@ -336,7 +336,7 @@ def test_main_tab1(
             0,
             1,
             0,
-            id="Visual_config_warning_missing_file",
+            id="visual_config_invalid_missing_file",
         ),
         pytest.param(
             "tab2_execute_visual",
@@ -345,7 +345,7 @@ def test_main_tab1(
             1,
             1,
             0,
-            id="Visual_config_error_invalid_toml",
+            id="visual_config_invalid_TOML_syntax",
         ),
         pytest.param(
             "tab2_execute_toml",
@@ -354,7 +354,7 @@ def test_main_tab1(
             0,
             0,
             1,
-            id="TOML_config_success",
+            id="TOML_config_valid_basic_format",
         ),
         pytest.param(
             "tab2_execute_toml",
@@ -363,7 +363,7 @@ def test_main_tab1(
             0,
             1,
             0,
-            id="TOML_config_warning_missing_file",
+            id="TOML_config_invalid_missing_file",
         ),
         pytest.param(
             "tab2_execute_toml",
@@ -372,7 +372,7 @@ def test_main_tab1(
             1,
             1,
             0,
-            id="TOML_config_error_invalid_toml",
+            id="TOML_config_invalid_syntax",
         ),
         pytest.param(
             "tab2_execute_yaml",
@@ -381,7 +381,7 @@ def test_main_tab1(
             0,
             0,
             1,
-            id="YAML_config_success",
+            id="YAML_config_valid_basic_format",
         ),
         pytest.param(
             "tab2_execute_yaml",
@@ -390,7 +390,7 @@ def test_main_tab1(
             0,
             1,
             0,
-            id="YAML_config_warning_missing_file",
+            id="YAML_config_invalid_missing_file",
         ),
         pytest.param(
             "tab2_execute_yaml",
@@ -399,7 +399,7 @@ def test_main_tab1(
             1,
             1,
             0,
-            id="YAML_config_error_invalid_yaml",
+            id="YAML_config_invalid_syntax",
         ),
     ],
 )
