@@ -78,10 +78,10 @@ def test_i18n_no_empty_strings() -> None:
 @pytest.mark.parametrize(
     ("unsafe_pattern"),
     [
-        pytest.param("{0}", id="Format_string_with_index_0"),
-        pytest.param("{1}", id="Format_string_with_index_1"),
-        pytest.param("%s", id="C_style_string_format"),
-        pytest.param("%d", id="C_style_integer_format"),
+        pytest.param("{0}", id="i18n_validate_format_index_0"),
+        pytest.param("{1}", id="i18n_validate_format_index_1"),
+        pytest.param("%s", id="i18n_validate_c_style_string"),
+        pytest.param("%d", id="i18n_validate_c_style_integer"),
     ],
 )
 def test_i18n_string_interpolation_safety(unsafe_pattern: str) -> None:

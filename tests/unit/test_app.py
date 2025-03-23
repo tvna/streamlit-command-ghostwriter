@@ -61,7 +61,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": False,
                 "tab2_execute_yaml": False,
             },
-            id="テキスト実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_text_active_only",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -72,7 +72,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": False,
                 "tab2_execute_yaml": False,
             },
-            id="マークダウン実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_markdown_active_only",
         ),
         pytest.param(
             "tab2_execute_visual",
@@ -83,7 +83,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": False,
                 "tab2_execute_yaml": False,
             },
-            id="ビジュアル実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_visual_active_only",
         ),
         pytest.param(
             "tab2_execute_toml",
@@ -94,7 +94,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": True,
                 "tab2_execute_yaml": False,
             },
-            id="TOML実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_toml_active_only",
         ),
         pytest.param(
             "tab2_execute_yaml",
@@ -105,7 +105,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": False,
                 "tab2_execute_yaml": True,
             },
-            id="YAML実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_yaml_active_only",
         ),
     ],
 )
@@ -135,14 +135,15 @@ def test_button_click_state(app_test: AppTest, button_key: str, expected_states:
     [
         pytest.param(
             ["tab1_execute_text", "tab1_execute_markdown"],
-            id="テキスト実行ボタン→マークダウン実行ボタンの順にクリックすると状態が正しく切り替わる",
+            id="app_button_sequence_text_to_markdown",
         ),
         pytest.param(
             ["tab2_execute_visual", "tab2_execute_toml", "tab2_execute_yaml"],
-            id="ビジュアル→TOML→YAMLの順にクリックすると状態が正しく切り替わる",
+            id="app_button_sequence_visual_to_yaml",
         ),
         pytest.param(
-            ["tab1_execute_text", "tab2_execute_visual"], id="タブ1のボタン→タブ2のボタンの順にクリックすると状態が正しく切り替わる"
+            ["tab1_execute_text", "tab2_execute_visual"],
+            id="app_button_sequence_tab1_to_tab2",
         ),
     ],
 )
