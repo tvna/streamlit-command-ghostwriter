@@ -309,6 +309,90 @@ def test_main_tab1(
     assert at.success.len == expected_success_objects
 
 
+@pytest.fixture
+def base_text_area_len() -> int:
+    """Return base number of text areas in the app."""
+    return 6
+
+
+@pytest.fixture
+def config_file(config_file_content: Optional[bytes]) -> Optional[BytesIO]:
+    """Create a config file from content."""
+    if config_file_content is None:
+        return None
+    file = BytesIO(config_file_content)
+    file.name = "config.toml"
+    return file
+
+
+def verify_common_state(
+    at: AppTest,
+    config_file: Optional[BytesIO],
+    active_button: str,
+    expected_text_area_value: Optional[Dict[str, Any]],
+    expected_error_objects: int,
+    expected_warning_objects: int,
+    expected_success_objects: int,
+) -> None:
+    """Verify common test state and assertions."""
+    assert at.session_state["tab2_config_file"] == config_file
+    assert at.button(key=active_button).value is True
+
+    if expected_text_area_value is None:
+        assert at.session_state["tab2_result_content"] is None
+    else:
+        assert isinstance(at.session_state["tab2_result_content"], dict) is True
+        assert at.session_state["tab2_result_content"] == expected_text_area_value
+
+    assert at.error.len == expected_error_objects
+    assert at.warning.len == expected_warning_objects
+    assert at.success.len == expected_success_objects
+
+
+def verify_visual_output(
+    at: AppTest,
+    expected_text_area_value: Optional[Dict[str, Any]],
+    base_text_area_len: int,
+) -> None:
+    """Verify visual JSON output format."""
+    if expected_text_area_value is None:
+        assert at.json.len == 0
+    else:
+        assert at.json.len == 1
+        assert at.json[0].value == json.dumps(expected_text_area_value, ensure_ascii=False)
+    assert at.text_area.len == base_text_area_len
+
+
+def verify_toml_output(
+    at: AppTest,
+    expected_text_area_value: Optional[Dict[str, Any]],
+    base_text_area_len: int,
+) -> None:
+    """Verify TOML output format."""
+    assert at.json.len == 0
+    if expected_text_area_value is None:
+        assert at.text_area.len == base_text_area_len
+    else:
+        assert at.text_area.len == base_text_area_len + 1
+        assert at.text_area(key="tab2_result_textarea").value == toml.dumps(expected_text_area_value)
+
+
+def verify_yaml_output(
+    at: AppTest,
+    expected_text_area_value: Optional[Dict[str, Any]],
+    base_text_area_len: int,
+) -> None:
+    """Verify YAML output format."""
+    assert at.json.len == 0
+    if expected_text_area_value is None:
+        assert at.text_area.len == base_text_area_len
+    else:
+        assert at.text_area.len == base_text_area_len + 1
+        assert at.text_area(key="tab2_result_textarea").value == yaml.dump(
+            expected_text_area_value, default_flow_style=False, allow_unicode=True, indent=8
+        )
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize(
     (
@@ -410,57 +494,28 @@ def test_main_tab2(
     expected_error_objects: int,
     expected_warning_objects: int,
     expected_success_objects: int,
+    base_text_area_len: int,
+    config_file: Optional[BytesIO],
 ) -> None:
-    """Testcase for tab2."""
-
-    base_text_area_len = 6
-
-    if config_file_content is None:
-        config_file = None
-    else:
-        config_file = BytesIO(config_file_content)
-        config_file.name = "config.toml"
-
+    """Test tab2 functionality for different output formats."""
     at = AppTest.from_file("app.py")
     at.session_state["tab2_config_file"] = config_file
     at.session_state[active_button] = True
     at.run()
 
-    assert at.session_state["tab2_config_file"] == config_file
-    assert at.button(key=active_button).value is True
-
-    if expected_text_area_value is None:
-        assert at.session_state["tab2_result_content"] is None
-    else:
-        assert isinstance(at.session_state["tab2_result_content"], dict) is True
-        assert at.session_state["tab2_result_content"] == expected_text_area_value
+    verify_common_state(
+        at,
+        config_file,
+        active_button,
+        expected_text_area_value,
+        expected_error_objects,
+        expected_warning_objects,
+        expected_success_objects,
+    )
 
     if active_button == "tab2_execute_visual":
-        if expected_text_area_value is None:
-            assert at.json.len == 0
-        else:
-            assert at.json.len == 1
-            assert at.json[0].value == json.dumps(expected_text_area_value, ensure_ascii=False)
-        assert at.text_area.len == base_text_area_len
-
-    if active_button == "tab2_execute_toml":
-        assert at.json.len == 0
-        if expected_text_area_value is None:
-            assert at.text_area.len == base_text_area_len
-        else:
-            assert at.text_area.len == base_text_area_len + 1
-            assert at.text_area(key="tab2_result_textarea").value == toml.dumps(expected_text_area_value)
-
-    if active_button == "tab2_execute_yaml":
-        assert at.json.len == 0
-        if expected_text_area_value is None:
-            assert at.text_area.len == base_text_area_len
-        else:
-            assert at.text_area.len == base_text_area_len + 1
-            assert at.text_area(key="tab2_result_textarea").value == yaml.dump(
-                expected_text_area_value, default_flow_style=False, allow_unicode=True, indent=8
-            )
-
-    assert at.error.len == expected_error_objects
-    assert at.warning.len == expected_warning_objects
-    assert at.success.len == expected_success_objects
+        verify_visual_output(at, expected_text_area_value, base_text_area_len)
+    elif active_button == "tab2_execute_toml":
+        verify_toml_output(at, expected_text_area_value, base_text_area_len)
+    elif active_button == "tab2_execute_yaml":
+        verify_yaml_output(at, expected_text_area_value, base_text_area_len)
