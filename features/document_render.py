@@ -1,18 +1,10 @@
 """テンプレートのレンダリングと検証を行うモジュール。
 
-このモジュールは、テンプレートの検証、レンダリング、フォーマット処理を提供します。
-主な機能は以下の通りです：
-
-1. テンプレートの検証
-   - 構文チェック
-   - セキュリティチェック
-   - ファイルサイズの検証
-2. コンテキストの適用
-   - 変数の検証
-   - 型チェック
-3. 出力フォーマット
-   - 空白行の処理
-   - 改行の正規化
+このモジュールは、テンプレートファイルの検証、レンダリング、フォーマットを行う機能を提供します。
+主な機能:
+- テンプレートファイルの構文とセキュリティの検証
+- コンテキストデータの適用とレンダリング
+- レンダリング結果のフォーマット処理
 
 クラス階層：
 - DocumentRender: メインのレンダリングクラス
@@ -82,13 +74,13 @@ from features.validate_template import TemplateSecurityValidator, ValidationStat
 class ValidationResult(BaseModel):
     """検証結果を表すクラス。
 
-    検証の結果と、エラーメッセージを保持します。
-    pydanticのBaseModelを継承し、型の安全性とバリデーションを提供します。
+    pydanticのBaseModelを継承し、テンプレートの検証結果を管理します。
+    検証の成功/失敗、エラーメッセージ、検証済みコンテンツを保持します。
 
     Attributes:
-        is_valid (bool): 検証が成功したかどうか
-        error_message (str): エラーメッセージ（検証が失敗した場合のみ有効）
-        content (Optional[str]): 検証済みのコンテンツ（エンコーディング検証時のみ使用）
+        is_valid: 検証が成功したかどうか
+        error_message: エラーメッセージ [検証が失敗した場合のみ有効]
+        content: 検証済みのコンテンツ [エンコーディング検証時のみ使用]
     """
 
     is_valid: bool = Field(default=True, description="検証が成功したかどうか")
@@ -123,19 +115,14 @@ class ValidationResult(BaseModel):
 class FormatType(IntEnum):
     """フォーマットタイプを表す列挙型。
 
-    テンプレート出力のフォーマット方法を定義します。各タイプは以下の処理を行います：
-    - RAW: 生のテキストをそのまま出力
-    - REMOVE_SPACES: 連続する空白行を1行に圧縮
-    - NORMALIZE_BREAKS: 3つ以上の連続する改行を2つに圧縮
-    - REMOVE_AND_NORMALIZE: 空白行を削除し、改行を正規化
-    - COMPACT: 最も圧縮された形式（全ての空白行を削除）
+    テンプレート出力のフォーマット方法を定義します。
 
     Attributes:
-        RAW (int): 生のテキスト (= 0)
-        REMOVE_SPACES (int): 空白行を削除 (= 1)
-        NORMALIZE_BREAKS (int): 改行を正規化 (= 2)
-        REMOVE_AND_NORMALIZE (int): 空白行を削除し、改行を正規化 (= 3)
-        COMPACT (int): 最も圧縮されたフォーマット (= 4)
+        RAW: 生のテキストをそのまま出力 [= 0]
+        REMOVE_SPACES: 連続する空白行を1行に圧縮 [= 1]
+        NORMALIZE_BREAKS: 3つ以上の連続する改行を2つに圧縮 [= 2]
+        REMOVE_AND_NORMALIZE: 空白行を削除し、改行を正規化 [= 3]
+        COMPACT: 最も圧縮された形式 [全ての空白行を削除] [= 4]
     """
 
     RAW = 0
@@ -145,66 +132,20 @@ class FormatType(IntEnum):
     COMPACT = 4
 
 
-class TemplateContent(BaseModel):
-    """テンプレートの内容を表すモデル。
-
-    テンプレートの内容とファイルサイズを保持し、両者の整合性を検証します。
-    UTF-8エンコーディングを前提とし、コンテンツのバイトサイズとファイルサイズが
-    一致することを確認します。
-
-    Attributes:
-        content (str): テンプレートの内容
-        file_size (int): ファイルサイズ（バイト単位）
-
-    Raises:
-        ValueError: コンテンツのサイズがファイルサイズと一致しない場合
-    """
-
-    content: Annotated[
-        str,
-        Field(description="テンプレートの内容"),
-        BeforeValidator(lambda x: str(x) if x else ""),
-    ]
-    file_size: Annotated[
-        int,
-        Field(description="ファイルサイズ（バイト単位）"),
-        BeforeValidator(lambda x: int(x)),
-        AfterValidator(lambda x: x if x >= 0 else 0),
-    ]
-
-    model_config = ConfigDict(validate_assignment=True)
-
-    @model_validator(mode="after")
-    def validate_content_size(self) -> Self:
-        """コンテンツのサイズがファイルサイズと一致することを検証します。
-
-        Returns:
-            Self: 検証に成功した場合、自身を返します
-
-        Raises:
-            ValueError: コンテンツのサイズがファイルサイズと一致しない場合
-        """
-        if len(self.content.encode("utf-8")) != self.file_size:
-            raise ValueError("Content size does not match file size")
-        return self
-
-
 class ContextValidator(BaseModel):
     """コンテキストデータを検証するバリデータ。
 
     テンプレートに適用するコンテキストデータの構造と型を検証します。
-    以下の検証を行います：
-    1. コンテキストが辞書型であることの確認
-    2. フォーマットタイプの有効性チェック
-    3. 未定義変数の厳密チェック設定の管理
+
+    検証内容:
+        1. コンテキストが辞書型であることの確認
+        2. フォーマットタイプの有効性チェック
+        3. 未定義変数の厳密チェック設定の管理
 
     Attributes:
-        format_type (int): フォーマットタイプ（0-4の整数）
-        context (Dict[str, Any]): コンテキストデータ
-        is_strict_undefined (bool): 未定義変数を厳密にチェックするかどうか
-
-    Raises:
-        ValueError: コンテキストの構造が無効な場合
+        format_type: フォーマットタイプ [0-4の整数]
+        context: コンテキストデータ
+        is_strict_undefined: 未定義変数を厳密にチェックするかどうか
     """
 
     format_type: Annotated[
@@ -318,21 +259,12 @@ class ContentFormatter:
 class DocumentRender:
     """テンプレートのレンダリングと検証を行うクラス。
 
-    このクラスは、テンプレートファイルの検証、レンダリング、フォーマット処理を提供します。
-    検証は以下の2段階で実行されます：
-    1. 初期検証（静的解析）
-       - ファイルサイズの検証
-       - エンコーディングの検証
-       - 禁止タグのチェック
-       - 禁止属性のチェック
-       - リテラル値のループ範囲チェック
-    2. ランタイム検証
-       - 再帰的構造の検出
-       - ゼロ除算の検証
+    テンプレートファイルの検証、レンダリング、フォーマットを一貫して処理します。
+    セキュリティチェック、メモリ使用量の制限、出力フォーマットの制御を提供します。
 
     Attributes:
-        MAX_FILE_SIZE (int): 許可される最大ファイルサイズ（バイト）
-        MAX_MEMORY_SIZE (int): 許可される最大メモリ使用量（バイト）
+        MAX_FILE_SIZE: テンプレートファイルの最大サイズ [バイト]
+        MAX_MEMORY_SIZE: レンダリング結果の最大メモリ使用量 [バイト]
     """
 
     MAX_FILE_SIZE: ClassVar[int] = 1024 * 1024  # 1MB
@@ -396,8 +328,11 @@ class DocumentRender:
     def _validate_template_file(self) -> bool:
         """テンプレートファイルの検証を行う。
 
+        セキュリティバリデータを使用してテンプレートの構文とセキュリティを検証します。
+        検証に成功した場合、テンプレートの内容とASTを保持します。
+
         Returns:
-            bool: 検証が成功したかどうか
+            検証が成功したかどうか
         """
         template_content, ast = self._security_validator.validate_template_file(self._template_file, self._validation_state)
         if template_content is None or ast is None:
@@ -408,59 +343,14 @@ class DocumentRender:
         self._initial_validation_passed = True
         return True
 
-    def _validate_and_get_content(self) -> bool:
-        """エンコーディングを検証し、テンプレート内容を取得する。
-
-        Returns:
-            bool: 検証が成功したかどうか
-        """
-        template_content = self._validate_encoding()
-        if template_content is None:
-            return False
-
-        self._template_content = template_content
-        return True
-
-    def _validate_and_get_ast(self) -> bool:
-        """構文を検証し、ASTを取得する。
-
-        Returns:
-            bool: 検証が成功したかどうか
-        """
-        if self._template_content is None:
-            self._validation_state.set_error("Template content is not loaded")
-            return False
-
-        ast = self._validate_syntax(self._template_content)
-        if ast is None:
-            return False
-
-        self._ast = ast
-        return True
-
-    def _validate_security_static(self) -> bool:
-        """静的セキュリティチェックを実行する。
-
-        Returns:
-            bool: 検証が成功したかどうか
-        """
-        if self._ast is None:
-            self._validation_state.set_error("AST is not available")
-            return False
-
-        security_result = self._security_validator.validate_template(self._ast)
-        if not security_result.is_valid:
-            self._validation_state.set_error(security_result.error_message)
-            return False
-
-        self._initial_validation_passed = True
-        return True
-
     def _validate_file_size(self) -> bool:
         """ファイルサイズを検証する。
 
+        テンプレートファイルのサイズが制限値を超えていないかチェックします。
+        ファイルポインタの位置を保持したまま検証を行います。
+
         Returns:
-            bool: ファイルサイズが制限内の場合はTrue
+            ファイルサイズが制限内の場合はTrue
         """
         try:
             current_pos = self._template_file.tell()
@@ -476,90 +366,20 @@ class DocumentRender:
             self._validation_state.set_error(f"File size validation error: {e!s}")
             return False
 
-    def _validate_encoding(self) -> Optional[str]:
-        """エンコーディングを検証する。
-
-        Returns:
-            Optional[str]: デコードされたテンプレート内容（エラーの場合はNone）
-        """
-        try:
-            current_pos = self._template_file.tell()
-            content = self._template_file.read()
-            self._template_file.seek(current_pos)  # 元の位置に戻す
-
-            # バイナリデータのチェック
-            if b"\x00" in content:
-                self._validation_state.set_error("Template file contains invalid binary data")
-                return None
-
-            # UTF-8デコードのチェック
-            try:
-                return content.decode("utf-8", errors="strict")
-            except UnicodeDecodeError:
-                self._validation_state.set_error("Template file contains invalid UTF-8 bytes")
-                return None
-
-        except Exception as e:
-            self._validation_state.set_error(f"Encoding validation error: {e!s}")
-            return None
-
-    def _validate_syntax(self, template_content: str) -> Optional[nodes.Template]:
-        """テンプレートの構文を検証する。
-
-        Args:
-            template_content: テンプレートの内容
-
-        Returns:
-            Optional[nodes.Template]: 構文解析結果（エラーの場合はNone）
-        """
-        try:
-            env = Environment(autoescape=True)  # autoescapeを有効化
-            return env.parse(template_content)
-        except jinja2.TemplateSyntaxError as e:
-            self._validation_state.set_error(str(e))
-            return None
-        except Exception as e:
-            self._validation_state.set_error(f"Template syntax error: {e!s}")
-            return None
-
-    def _validate_security(self, ast: nodes.Template) -> bool:
-        """テンプレートのセキュリティを検証する。
-
-        Args:
-            ast: テンプレートのAST
-
-        Returns:
-            bool: セキュリティチェックに合格した場合はTrue
-        """
-        result = self._security_validator.validate_template(ast)
-        if not result.is_valid:
-            self._validation_state.set_error(result.error_message)
-            return False
-
-        # HTMLインジェクション対策の追加検証
-        try:
-            for node in ast.find_all((nodes.Filter,)):
-                if node.name in {"safe", "html_safe"}:
-                    # safeフィルターが使用されている場合、内容を検証
-                    result = self._security_validator.validate_safe_content(node)
-                    if not result.is_valid:
-                        self._validation_state.set_error(result.error_message)
-                        return False
-        except Exception as e:
-            self._validation_state.set_error(f"Template security error: {e!s}")
-            return False
-
-        return True
-
     def _validate_preconditions(self, context: Dict[str, Any], format_type: int) -> bool:
         """前提条件を検証する。
 
+        レンダリング処理の前提条件が満たされているかチェックします。
+        - 初期検証が完了していること
+        - フォーマットタイプが有効であること
+        - テンプレート内容とASTが利用可能であること
+
         Args:
             context: テンプレートに適用するコンテキスト
-            format_type: フォーマットタイプ（0-4の整数）
+            format_type: フォーマットタイプ [0-4の整数]
 
         Returns:
-            bool: 前提条件を満たす場合はTrue
+            前提条件を満たす場合はTrue
         """
         if not self._initial_validation_passed:
             return False
@@ -578,14 +398,32 @@ class DocumentRender:
 
         return True
 
+    def _validate_format_type(self, format_type: int) -> bool:
+        """フォーマットタイプを検証する。
+
+        指定されたフォーマットタイプが有効な範囲内かチェックします。
+
+        Args:
+            format_type: フォーマットタイプ [0-4の整数]
+
+        Returns:
+            フォーマットタイプが有効な場合はTrue
+        """
+        return isinstance(format_type, int) and 0 <= format_type <= 4
+
     def _handle_rendering_error(self, e: Exception) -> bool:
         """レンダリングエラーを処理する。
+
+        発生した例外の種類に応じて適切なエラーメッセージを設定します。
+        - Jinja2の未定義変数エラー
+        - Jinja2のテンプレートエラー
+        - その他の例外
 
         Args:
             e: 発生した例外
 
         Returns:
-            bool: 常にFalse
+            常にFalse
         """
         if isinstance(e, jinja2.UndefinedError):
             self._validation_state.set_error(str(e))
@@ -654,11 +492,14 @@ class DocumentRender:
     def _validate_memory_usage(self, content: str) -> bool:
         """メモリ使用量を検証する。
 
+        レンダリング結果のメモリ使用量が制限値を超えていないかチェックします。
+        バイナリデータの検出とUTF-8エンコードのサイズ計算を行います。
+
         Args:
             content: 検証対象のコンテンツ
 
         Returns:
-            bool: メモリ使用量が制限内の場合はTrue
+            メモリ使用量が制限内の場合はTrue
         """
         try:
             # バイナリデータの検出
@@ -682,69 +523,18 @@ class DocumentRender:
             self._validation_state.set_error(f"Memory usage validation error: {e!s}")
             return False
 
-    def _validate_format_type(self, format_type: int) -> bool:
-        """フォーマットタイプを検証する。
-
-        Args:
-            format_type: フォーマットタイプ（0-4の整数）
-
-        Returns:
-            bool: フォーマットタイプが有効な場合はTrue
-        """
-        return isinstance(format_type, int) and 0 <= format_type <= 4
-
-    def _render_template(self, template_content: str, context: Dict[str, Any], is_strict_undefined: bool) -> Optional[str]:
-        """テンプレートをレンダリングする。
-
-        Args:
-            template_content: テンプレートの内容
-            context: テンプレートに適用するコンテキスト
-            is_strict_undefined: 未定義変数を厳密にチェックするかどうか
-
-        Returns:
-            Optional[str]: レンダリング結果（エラーの場合はNone）
-        """
-        if not template_content:
-            self._validation_state.set_error("Template content is not loaded")
-            return None
-
-        try:
-            env = self._create_environment()
-            env.undefined = StrictUndefined if is_strict_undefined else Undefined
-            template = env.from_string(template_content)
-
-            # ランタイム検証の実行
-            if self._ast is None:
-                self._validation_state.set_error("AST is not available")
-                return None
-
-            security_result = self._security_validator.validate_runtime_security(self._ast, context)
-            if not security_result.is_valid:
-                self._validation_state.set_error(security_result.error_message)
-                return None
-
-            rendered = template.render(**context)
-            return rendered
-
-        except jinja2.UndefinedError as e:
-            self._validation_state.set_error(str(e))
-            return None
-        except jinja2.TemplateError as e:
-            self._validation_state.set_error(str(e))
-            return None
-        except Exception as e:
-            self._validation_state.set_error(f"Template rendering error: {e!s}")
-            return None
-
     def _format_content(self, content: str, format_type: int) -> bool:
         """レンダリング結果をフォーマットする。
 
+        指定されたフォーマットタイプに従ってコンテンツを整形します。
+        フォーマット結果は内部状態として保持されます。
+
         Args:
             content: フォーマット対象のコンテンツ
-            format_type: フォーマットタイプ（0-4の整数）
+            format_type: フォーマットタイプ [0-4の整数]
 
         Returns:
-            bool: フォーマットが成功したかどうか
+            フォーマットが成功したかどうか
         """
         try:
             self._render_content = self._formatter.format(content, format_type)
