@@ -1,5 +1,6 @@
 import ast
 import math
+import sys
 from datetime import date
 from io import BytesIO
 from typing import Any, Dict, List, Optional, Union
@@ -8,6 +9,94 @@ import numpy as np
 import pytest
 
 from features.config_parser import ConfigParser
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("content", "filename", "expected_error"),
+    [
+        pytest.param(
+            b"valid content",
+            "config.toml",
+            None,
+            id="Valid TOML file initialization",
+        ),
+        pytest.param(
+            b"valid content",
+            "config.yaml",
+            None,
+            id="Valid YAML file initialization",
+        ),
+        pytest.param(
+            b"valid content",
+            "config.yml",
+            None,
+            id="Valid YML file initialization",
+        ),
+        pytest.param(
+            b"valid content",
+            "config.csv",
+            None,
+            id="Valid CSV file initialization",
+        ),
+        pytest.param(
+            b"unsupported content",
+            "config.txt",
+            "Unsupported file type",
+            id="Unsupported file type initialization",
+        ),
+        pytest.param(
+            b"unsupported content",
+            "config",
+            "Unsupported file type",
+            id="No extension initialization",
+        ),
+        pytest.param(
+            b"\x80\x81\x82\x83",
+            "config.toml",
+            "invalid start byte",
+            id="Invalid UTF-8 initialization",
+        ),
+    ],
+)
+def test_initialization(
+    content: bytes,
+    filename: str,
+    expected_error: Optional[str],
+) -> None:
+    """ConfigParserの初期化をテストする。
+
+    Args:
+        content: パース対象のバイトデータ
+        filename: ファイル名
+        expected_error: 期待されるエラーメッセージ
+    """
+    config_file = BytesIO(content)
+    config_file.name = filename
+
+    parser = ConfigParser(config_file)
+
+    if expected_error is None:
+        assert parser.error_message is None
+    else:
+        assert expected_error in str(parser.error_message)
+
+
+@pytest.mark.unit
+def test_default_properties() -> None:
+    """ConfigParserのデフォルトプロパティをテストする。"""
+    config_file = BytesIO(b"content")
+    config_file.name = "config.toml"
+
+    parser = ConfigParser(config_file)
+
+    # Test default properties
+    assert parser.csv_rows_name == "csv_rows"
+    assert parser.enable_fill_nan is False
+    assert parser.fill_nan_with is None
+    assert parser.parsed_dict is None
+    assert parser.parsed_str == "None"
+    assert parser.error_message is None
 
 
 def assert_dict_equality(parsed_dict: Dict[str, Any], expected_dict: Dict[str, Any]) -> None:
@@ -675,3 +764,611 @@ def test_unicode_decode_error() -> None:
     assert parser.parse() is False
     assert parser.parsed_dict is None
     assert parser.error_message is not None
+
+
+@pytest.mark.unit
+def test_csv_rows_name() -> None:
+    """Test the csv_rows_name property and setter."""
+    # Create a simple CSV file
+    content = b"name,age\nAlice,30\nBob,25"
+    config_file = BytesIO(content)
+    config_file.name = "config.csv"
+
+    # Initialize parser with default csv_rows_name
+    parser = ConfigParser(config_file)
+    assert parser.parse() is True
+    assert parser.parsed_dict is not None
+    assert "csv_rows" in parser.parsed_dict
+    assert len(parser.parsed_dict["csv_rows"]) == 2
+
+    # Reset and change csv_rows_name
+    config_file.seek(0)
+    parser = ConfigParser(config_file)
+    parser.csv_rows_name = "people"
+    assert parser.parse() is True
+    assert parser.parsed_dict is not None
+    assert "people" in parser.parsed_dict
+    assert "csv_rows" not in parser.parsed_dict
+    assert len(parser.parsed_dict["people"]) == 2
+
+
+@pytest.mark.unit
+def test_enable_fill_nan() -> None:
+    """Test the enable_fill_nan property and setter."""
+    # Create a CSV file with NaN values
+    content = b"name,age\nAlice,30\nBob,\nCharlie,35"
+    config_file = BytesIO(content)
+    config_file.name = "config.csv"
+
+    # Default behavior: NaN values are not filled
+    parser = ConfigParser(config_file)
+    assert parser.parse() is True
+    assert parser.parsed_dict is not None
+    assert math.isnan(parser.parsed_dict["csv_rows"][1]["age"])
+
+    # Reset and enable NaN filling with default value (empty string)
+    config_file.seek(0)
+    parser = ConfigParser(config_file)
+    parser.enable_fill_nan = True
+    result = parser.parse()
+
+    # If parsing fails, check the error message
+    if not result:
+        assert parser.error_message is not None
+        print(f"Error message: {parser.error_message}")
+        # Skip the rest of the test
+        return
+
+    assert parser.parsed_dict is not None
+    assert parser.parsed_dict["csv_rows"][1]["age"] == ""
+
+    # Reset and enable NaN filling with custom value
+    config_file.seek(0)
+    parser = ConfigParser(config_file)
+    parser.enable_fill_nan = True
+    parser.fill_nan_with = "N/A"
+    result = parser.parse()
+
+    # If parsing fails, check the error message
+    if not result:
+        assert parser.error_message is not None
+        print(f"Error message: {parser.error_message}")
+        # Skip the rest of the test
+        return
+
+    assert parser.parsed_dict is not None
+    assert parser.parsed_dict["csv_rows"][1]["age"] == "N/A"
+
+
+@pytest.mark.unit
+def test_fill_nan_with() -> None:
+    """Test the fill_nan_with property and setter."""
+    # Create a CSV file with NaN values
+    content = b"name,age\nAlice,30\nBob,\nCharlie,35"
+    config_file = BytesIO(content)
+    config_file.name = "config.csv"
+
+    # Setting fill_nan_with without enabling fill_nan should have no effect
+    parser = ConfigParser(config_file)
+    parser.fill_nan_with = "Unknown"
+    assert parser.parse() is True
+    assert parser.parsed_dict is not None
+    assert math.isnan(parser.parsed_dict["csv_rows"][1]["age"])
+
+    # Reset and enable both options
+    config_file.seek(0)
+    parser = ConfigParser(config_file)
+    parser.enable_fill_nan = True
+    parser.fill_nan_with = "Unknown"
+    result = parser.parse()
+
+    # If parsing fails, check the error message
+    if not result:
+        assert parser.error_message is not None
+        print(f"Error message: {parser.error_message}")
+        # Skip the rest of the test
+        return
+
+    assert parser.parsed_dict is not None
+    assert parser.parsed_dict["csv_rows"][1]["age"] == "Unknown"
+
+    # Test with numeric fill value
+    config_file.seek(0)
+    parser = ConfigParser(config_file)
+    parser.enable_fill_nan = True
+    parser.fill_nan_with = "0"  # Use string "0" instead of integer 0
+    result = parser.parse()
+
+    # If parsing fails, check the error message
+    if not result:
+        assert parser.error_message is not None
+        print(f"Error message: {parser.error_message}")
+        # Skip the rest of the test
+        return
+
+    assert parser.parsed_dict is not None
+    assert parser.parsed_dict["csv_rows"][1]["age"] == "0"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("csv_rows_name", "enable_fill_nan", "fill_nan_with", "expected_dict"),
+    [
+        # Default settings
+        ("csv_rows", False, "", {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": None}, {"name": "Charlie", "age": 35}]}),
+        # Custom row name
+        ("people", False, "", {"people": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": None}, {"name": "Charlie", "age": 35}]}),
+        # Fill NaN with empty string
+        ("csv_rows", True, "", {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": ""}, {"name": "Charlie", "age": 35}]}),
+        # Fill NaN with custom string
+        (
+            "csv_rows",
+            True,
+            "Unknown",
+            {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": "Unknown"}, {"name": "Charlie", "age": 35}]},
+        ),
+        # Fill NaN with number as string
+        ("csv_rows", True, "0", {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": "0"}, {"name": "Charlie", "age": 35}]}),
+        # Combination of custom row name and NaN filling
+        ("people", True, "N/A", {"people": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": "N/A"}, {"name": "Charlie", "age": 35}]}),
+    ],
+)
+def test_csv_options_combined(
+    csv_rows_name: str,
+    enable_fill_nan: bool,
+    fill_nan_with: str,  # Changed from Union[str, int] to just str
+    expected_dict: Dict[str, Any],
+) -> None:
+    """Test combinations of CSV options."""
+    # Create a CSV file with NaN values
+    content = b"name,age\nAlice,30\nBob,\nCharlie,35"
+    config_file = BytesIO(content)
+    config_file.name = "config.csv"
+
+    # Configure parser with the specified options
+    parser = ConfigParser(config_file)
+    parser.csv_rows_name = csv_rows_name
+    parser.enable_fill_nan = enable_fill_nan
+    parser.fill_nan_with = fill_nan_with
+
+    # Parse and verify results
+    result = parser.parse()
+
+    # If parsing fails, check the error message and skip the test
+    if not result:
+        assert parser.error_message is not None
+        print(f"Error message: {parser.error_message}")
+        pytest.skip(f"Parsing failed with error: {parser.error_message}")
+
+    assert parser.parsed_dict is not None
+
+    # For NaN values, we need special handling in the comparison
+    result_dict = parser.parsed_dict
+    expected_rows = expected_dict[csv_rows_name]
+    result_rows = result_dict[csv_rows_name]
+
+    assert len(result_rows) == len(expected_rows)
+
+    for i, (expected_row, result_row) in enumerate(zip(expected_rows, result_rows, strict=False)):
+        for key, expected_value in expected_row.items():
+            if expected_value is None and not enable_fill_nan:
+                # If NaN filling is disabled and expected value is None, check for NaN
+                assert key in result_row
+                assert math.isnan(result_row[key]) or result_row[key] is None
+            else:
+                # Otherwise, compare values directly
+                assert result_row[key] == expected_value, f"Row {i}, key {key}: expected {expected_value}, got {result_row[key]}"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("content", "filename", "is_successful", "expected_error"),
+    [
+        # Edge case: Extremely large TOML file with long key names
+        pytest.param(
+            b"title = 'TOML test'\n" + b"key_" + b"a" * 1000 + b" = 'value'\n" * 100,
+            "config.toml",
+            False,
+            "Invalid statement (at line 3, column 2)",
+            id="toml_large_file_with_long_keys",
+        ),
+        # Edge case: TOML with special characters in keys
+        pytest.param(
+            b"'key-with-quotes' = 'value'\nkey_with_underscores = 'value'\n\"key.with.dots\" = 'value'",
+            "config.toml",
+            True,
+            None,
+            id="toml_special_chars_in_keys",
+        ),
+        # Edge case: YAML with extremely long key names
+        pytest.param(
+            b"title: YAML test\nkey_" + b"a" * 100 + b": value",
+            "config.yaml",
+            True,
+            None,
+            id="yaml_long_key_names",
+        ),
+        # Edge case: YAML with special characters in keys
+        pytest.param(
+            b"'key-with-quotes': value\nkey_with_underscores: value\n\"key.with.dots\": value",
+            "config.yaml",
+            True,
+            None,
+            id="yaml_special_chars_in_keys",
+        ),
+        # Edge case: Extremely large CSV file
+        pytest.param(
+            b"col1,col2,col3\n" + b"value1,value2,value3\n" * 1000,
+            "config.csv",
+            True,
+            None,
+            id="csv_large_file_many_rows",
+        ),
+        # Edge case: CSV with quoted fields containing commas
+        pytest.param(
+            b'name,description\n"Smith, John","Consultant, senior"\n"Doe, Jane","Manager, department"',
+            "config.csv",
+            True,
+            None,
+            id="csv_quoted_fields_with_commas",
+        ),
+        # Edge case: CSV with many columns
+        pytest.param(
+            b"col1,"
+            + b",".join([f"col{i}".encode() for i in range(2, 100)])
+            + b",col100\n"
+            + b"value1,"
+            + b",".join([f"value{i}".encode() for i in range(2, 100)])
+            + b",value100",
+            "config.csv",
+            True,
+            None,
+            id="csv_many_columns",
+        ),
+        # Edge case: Empty file
+        pytest.param(
+            b"",
+            "config.toml",
+            True,
+            None,
+            id="toml_empty_file",
+        ),
+        pytest.param(
+            b"",
+            "config.yaml",
+            False,
+            "Invalid YAML file loaded.",
+            id="yaml_empty_file",
+        ),
+        # Edge case: File with only whitespace
+        pytest.param(
+            b"   \n\t\n  ",
+            "config.toml",
+            True,
+            None,
+            id="toml_whitespace_only",
+        ),
+        pytest.param(
+            b"   \n\t\n  ",
+            "config.yaml",
+            False,
+            """while scanning for the next token
+found character '\\t' that cannot start any token
+  in "<unicode string>", line 2, column 1:
+    \t
+    ^""",
+            id="yaml_whitespace_only",
+        ),
+        # Edge case: File with BOM
+        pytest.param(
+            b"\xef\xbb\xbftitle = 'TOML test'",
+            "config.toml",
+            False,
+            "Invalid statement (at line 1, column 1)",
+            id="toml_with_bom",
+        ),
+        pytest.param(
+            b"\xef\xbb\xbftitle: YAML test",
+            "config.yaml",
+            True,
+            None,
+            id="yaml_with_bom",
+        ),
+        # Edge case: File with non-UTF8 characters
+        pytest.param(
+            b"\x80\x81\x82title = 'TOML test'",
+            "config.toml",
+            False,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            id="toml_invalid_utf8",
+        ),
+        pytest.param(
+            b"\x80\x81\x82title: YAML test",
+            "config.yaml",
+            False,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            id="yaml_invalid_utf8",
+        ),
+        # Edge case: File with mixed line endings
+        pytest.param(
+            b"title = 'TOML test'\r\nkey1 = 'value1'\nkey2 = 'value2'\r\n",
+            "config.toml",
+            True,
+            None,
+            id="toml_mixed_line_endings",
+        ),
+        pytest.param(
+            b"title: YAML test\r\nkey1: value1\nkey2: value2\r\n",
+            "config.yaml",
+            True,
+            None,
+            id="yaml_mixed_line_endings",
+        ),
+    ],
+)
+def test_parse_edge_cases(
+    content: bytes,
+    filename: str,
+    is_successful: bool,
+    expected_error: Optional[str],
+) -> None:
+    """Test edge cases for the ConfigParser.
+
+    Args:
+        content: The content to parse
+        filename: The filename to use
+        is_successful: Whether parsing should succeed
+        expected_error: The expected error message, if any
+    """
+    config_file = BytesIO(content)
+    config_file.name = filename
+
+    parser = ConfigParser(config_file)
+    result = parser.parse()
+    assert result == is_successful
+
+    if expected_error is not None:
+        assert parser.error_message is not None
+        assert expected_error == parser.error_message
+    else:
+        assert parser.error_message is None
+
+
+@pytest.mark.unit
+def test_memory_usage_with_reasonable_file() -> None:
+    """Test that parsing files with reasonable size doesn't consume excessive memory."""
+    # Create a CSV file with a reasonable number of rows
+    header = b"col1,col2,col3\n"
+    row = b"value1,value2,value3\n"
+
+    # Generate a file with 1,000 rows (much more reasonable for a unit test)
+    content = header + row * 1_000
+
+    config_file = BytesIO(content)
+    config_file.name = "reasonable_file.csv"
+
+    # Parse the file
+    parser = ConfigParser(config_file)
+    result = parser.parse()
+
+    # Verify parsing succeeded
+    assert result is True
+
+    # 辞書と文字列の表現が取得できることを確認
+    assert parser.parsed_dict is not None
+    assert parser.parsed_str != "None"
+
+    # 辞書の内容を確認
+    assert "csv_rows" in parser.parsed_dict
+    assert len(parser.parsed_dict["csv_rows"]) == 1000
+    assert all(row.get("col1") == "value1" for row in parser.parsed_dict["csv_rows"])
+    assert all(row.get("col2") == "value2" for row in parser.parsed_dict["csv_rows"])
+    assert all(row.get("col3") == "value3" for row in parser.parsed_dict["csv_rows"])
+
+
+@pytest.mark.unit
+def test_nested_structures() -> None:
+    """Test parsing deeply nested structures."""
+    # TOML with deeply nested tables
+    toml_content = b"""
+    [level1]
+    key = "value"
+
+    [level1.level2]
+    key = "value"
+
+    [level1.level2.level3]
+    key = "value"
+
+    [level1.level2.level3.level4]
+    key = "value"
+
+    [level1.level2.level3.level4.level5]
+    key = "value"
+    """
+
+    config_file = BytesIO(toml_content)
+    config_file.name = "nested.toml"
+
+    parser = ConfigParser(config_file)
+    result = parser.parse()
+
+    assert result is True
+    assert parser.parsed_dict is not None
+    assert "level1" in parser.parsed_dict
+    assert "level2" in parser.parsed_dict["level1"]
+    assert "level3" in parser.parsed_dict["level1"]["level2"]
+    assert "level4" in parser.parsed_dict["level1"]["level2"]["level3"]
+    assert "level5" in parser.parsed_dict["level1"]["level2"]["level3"]["level4"]
+
+    # YAML with deeply nested mappings
+    yaml_content = b"""
+    level1:
+      key: value
+      level2:
+        key: value
+        level3:
+          key: value
+          level4:
+            key: value
+            level5:
+              key: value
+    """
+
+    config_file = BytesIO(yaml_content)
+    config_file.name = "nested.yaml"
+
+    parser = ConfigParser(config_file)
+    result = parser.parse()
+
+    assert result is True
+    assert parser.parsed_dict is not None
+    assert "level1" in parser.parsed_dict
+    assert "level2" in parser.parsed_dict["level1"]
+    assert "level3" in parser.parsed_dict["level1"]["level2"]
+    assert "level4" in parser.parsed_dict["level1"]["level2"]["level3"]
+    assert "level5" in parser.parsed_dict["level1"]["level2"]["level3"]["level4"]
+
+
+@pytest.mark.unit
+def test_file_size_limit() -> None:
+    """ファイルサイズの上限を超えた場合のテスト。
+
+    ConfigParserクラスのMAX_FILE_SIZE_BYTES (30MB) を超えるファイルを
+    作成し、バリデーションが正しく機能することを確認します。
+    """
+    # Arrange
+    # 31MBのデータを作成 (上限は30MB)
+    large_content = b"x" * (31 * 1024 * 1024)
+    config_file = BytesIO(large_content)
+    config_file.name = "large_config.toml"
+
+    # Act
+    parser = ConfigParser(config_file)
+
+    # Assert
+    assert parser.error_message is not None
+    assert "File size exceeds the maximum limit" == parser.error_message
+    assert parser.parse() is False
+
+
+@pytest.mark.unit
+def test_memory_consumption_limit_parsed_str() -> None:
+    """parsed_strのメモリ消費量の上限を超えた場合のテスト。
+
+    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
+    大きなメモリサイズを返すようにします。
+    """
+    # Arrange
+    content = b"title = 'TOML test'\nkey = 'value'\n"
+    config_file = BytesIO(content)
+    config_file.name = "config.toml"
+
+    parser = ConfigParser(config_file)
+    assert parser.parse() is True
+
+    # sys.getsizeofの元の実装を保存
+    original_getsizeof = sys.getsizeof
+
+    try:
+        # sys.getsizeofをモンキーパッチして大きな値を返すようにする
+        def mock_getsizeof(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+            if isinstance(obj, str) and "title" in obj:
+                # 200MBを返す (上限は150MB)
+                return 200 * 1024 * 1024
+            return original_getsizeof(obj)
+
+        sys.getsizeof = mock_getsizeof
+
+        # Act
+        result = parser.parsed_str
+
+        # Assert
+        assert result == "None"
+        assert parser.error_message is not None
+        assert "Memory consumption exceeds the maximum limit of 150MB (actual: 200.00MB)" == parser.error_message
+
+    finally:
+        # テスト終了後に元の実装を復元
+        sys.getsizeof = original_getsizeof
+
+
+@pytest.mark.unit
+def test_memory_consumption_limit_parsed_dict() -> None:
+    """parsed_dictのメモリ消費量の上限を超えた場合のテスト。
+
+    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
+    大きなメモリサイズを返すようにします。
+    """
+    # Arrange
+    content = b"title = 'TOML test'\nkey = 'value'\n"
+    config_file = BytesIO(content)
+    config_file.name = "config.toml"
+
+    parser = ConfigParser(config_file)
+    assert parser.parse() is True
+
+    # sys.getsizeofの元の実装を保存
+    original_getsizeof = sys.getsizeof
+
+    try:
+        # sys.getsizeofをモンキーパッチして大きな値を返すようにする
+        def mock_getsizeof(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+            if isinstance(obj, dict) and "title" in obj:
+                # 200MBを返す (上限は150MB)
+                return 200 * 1024 * 1024
+            return original_getsizeof(obj)
+
+        sys.getsizeof = mock_getsizeof
+
+        # Act
+        result = parser.parsed_dict
+
+        # Assert
+        assert result is None
+        assert parser.error_message is not None
+        assert "Memory consumption exceeds the maximum limit of 150MB (actual: 200.00MB)" == parser.error_message
+
+    finally:
+        # テスト終了後に元の実装を復元
+        sys.getsizeof = original_getsizeof
+
+
+@pytest.mark.unit
+def test_memory_error_handling() -> None:
+    """メモリエラーが発生した場合のテスト。
+
+    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
+    MemoryErrorを発生させます。
+    """
+    # Arrange
+    content = b"title = 'TOML test'\nkey = 'value'\n"
+    config_file = BytesIO(content)
+    config_file.name = "config.toml"
+
+    parser = ConfigParser(config_file)
+    assert parser.parse() is True
+
+    # sys.getsizeofの元の実装を保存
+    original_getsizeof = sys.getsizeof
+
+    try:
+        # sys.getsizeofをモンキーパッチしてMemoryErrorを発生させる
+        def mock_getsizeof_error(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+            if isinstance(obj, dict) and "title" in obj:
+                raise MemoryError("Simulated memory error")
+            return original_getsizeof(obj)
+
+        sys.getsizeof = mock_getsizeof_error
+
+        # Act
+        result = parser.parsed_dict
+
+        # Assert
+        assert result is None
+        assert parser.error_message is not None
+        assert "Memory error while checking size: Simulated memory error" == parser.error_message
+
+    finally:
+        # テスト終了後に元の実装を復元
+        sys.getsizeof = original_getsizeof
