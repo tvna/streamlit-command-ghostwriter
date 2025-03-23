@@ -53,6 +53,7 @@ import re
 from decimal import Decimal
 from typing import (
     Any,
+    Callable,
     ClassVar,
     Dict,
     Iterator,
@@ -71,6 +72,11 @@ from markupsafe import Markup
 
 T = TypeVar("T")
 RecursiveT = TypeVar("RecursiveT", bound="RecursiveValue")
+NodeType = TypeVar("NodeType", bound=nodes.Node)
+NodeEvaluator = Callable[[NodeType, Dict[str, Any], Dict[str, Any]], Any]
+
+# 評価可能な値の型を定義
+EvaluatedValue = Union[None, str, Decimal, List[Any], Dict[str, Any], bool]
 
 
 class RecursiveValue(Protocol):
@@ -219,57 +225,153 @@ class TemplateSecurityValidator:
             ValidationState: 検証結果
         """
         validation_state = ValidationState()
+        assignments: Dict[str, Any] = {}
 
         try:
-            # 変数の割り当てを追跡するための辞書
-            assignments: Dict[str, Any] = {}
-
             # 1. 再帰的構造の検出
-            for node in ast.find_all((nodes.Assign, nodes.For, nodes.Call)):
-                if isinstance(node, nodes.Assign) and isinstance(node.target, nodes.Name):
-                    target_name = node.target.name
-                    try:
-                        value = self._evaluate_expression(node.node, context, assignments)
-                        assignments[target_name] = value
-                    except Exception as e:
-                        if "recursive structure detected" in str(e):
-                            validation_state.set_error("Template security error: recursive structure detected")
-                            return validation_state
-                        continue
-                elif isinstance(node, nodes.For):
-                    if isinstance(node.iter, nodes.Name):
-                        iter_name = node.iter.name
-                        if iter_name in assignments:
-                            try:
-                                self._evaluate_expression(node.iter, context, assignments)
-                            except Exception as e:
-                                if "recursive structure detected" in str(e):
-                                    validation_state.set_error("Template security error: recursive structure detected")
-                                    return validation_state
-                elif isinstance(node, nodes.Call):
-                    try:
-                        self._evaluate_expression(node, context, assignments)
-                    except Exception as e:
-                        if "recursive structure detected" in str(e):
-                            validation_state.set_error("Template security error: recursive structure detected")
-                            return validation_state
-                        continue
+            if not self._validate_recursive_structures(ast, context, assignments, validation_state):
+                return validation_state
 
             # 2. ゼロ除算の検証
-            for node in ast.find_all(nodes.Div):
-                try:
-                    right_value = self._evaluate_expression(node.right, context, assignments)
-                    if right_value == 0:
-                        validation_state.set_error("Template security error: division by zero is not allowed")
-                        return validation_state
-                except Exception:
-                    logging.exception("Template security error: division by zero is not allowed")
+            if not self._validate_division_operations(ast, context, assignments, validation_state):
+                return validation_state
 
             return validation_state
 
         except Exception as e:
             validation_state.set_error(f"Runtime validation error: {e!s}")
             return validation_state
+
+    def _validate_recursive_structures(
+        self, ast: nodes.Template, context: Dict[str, Any], assignments: Dict[str, Any], validation_state: ValidationState
+    ) -> bool:
+        """再帰的構造を検出する。
+
+        Args:
+            ast: 検証対象のAST
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+            validation_state: 検証状態
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
+        for node in ast.find_all((nodes.Assign, nodes.For, nodes.Call)):
+            try:
+                if isinstance(node, nodes.Assign):
+                    if not self._validate_assignment(node, context, assignments, validation_state):
+                        return False
+                elif isinstance(node, nodes.For):
+                    if not self._validate_for_loop(node, context, assignments, validation_state):
+                        return False
+                elif isinstance(node, nodes.Call):
+                    if not self._validate_function_call(node, context, assignments, validation_state):
+                        return False
+            except Exception as e:
+                if "recursive structure detected" in str(e):
+                    validation_state.set_error("Template security error: recursive structure detected")
+                    return False
+        return True
+
+    def _validate_assignment(
+        self, node: nodes.Assign, context: Dict[str, Any], assignments: Dict[str, Any], validation_state: ValidationState
+    ) -> bool:
+        """代入文を検証する。
+
+        Args:
+            node: 代入ノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+            validation_state: 検証状態
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
+        if isinstance(node.target, nodes.Name):
+            target_name = node.target.name
+            try:
+                value = self._evaluate_expression(node.node, context, assignments)
+                assignments[target_name] = value
+                return True
+            except Exception as e:
+                if "recursive structure detected" in str(e):
+                    validation_state.set_error("Template security error: recursive structure detected")
+                    return False
+        return True
+
+    def _validate_for_loop(
+        self, node: nodes.For, context: Dict[str, Any], assignments: Dict[str, Any], validation_state: ValidationState
+    ) -> bool:
+        """forループを検証する。
+
+        Args:
+            node: forループノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+            validation_state: 検証状態
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
+        if isinstance(node.iter, nodes.Name):
+            iter_name = node.iter.name
+            if iter_name in assignments:
+                try:
+                    self._evaluate_expression(node.iter, context, assignments)
+                    return True
+                except Exception as e:
+                    if "recursive structure detected" in str(e):
+                        validation_state.set_error("Template security error: recursive structure detected")
+                        return False
+        return True
+
+    def _validate_function_call(
+        self, node: nodes.Call, context: Dict[str, Any], assignments: Dict[str, Any], validation_state: ValidationState
+    ) -> bool:
+        """関数呼び出しを検証する。
+
+        Args:
+            node: 関数呼び出しノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+            validation_state: 検証状態
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
+        try:
+            self._evaluate_expression(node, context, assignments)
+            return True
+        except Exception as e:
+            if "recursive structure detected" in str(e):
+                validation_state.set_error("Template security error: recursive structure detected")
+                return False
+        return True
+
+    def _validate_division_operations(
+        self, ast: nodes.Template, context: Dict[str, Any], assignments: Dict[str, Any], validation_state: ValidationState
+    ) -> bool:
+        """除算演算を検証する。
+
+        Args:
+            ast: 検証対象のAST
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+            validation_state: 検証状態
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
+        for node in ast.find_all(nodes.Div):
+            try:
+                right_value = self._evaluate_expression(node.right, context, assignments)
+                if right_value == 0:
+                    validation_state.set_error("Template security error: division by zero is not allowed")
+                    return False
+            except Exception:
+                logging.exception("Template security error: division by zero is not allowed")
+                return False
+        return True
 
     def validate_safe_content(self, node: nodes.Filter) -> ValidationState:
         """safeフィルターで使用されるコンテンツの安全性を検証する。
@@ -370,7 +472,10 @@ class TemplateSecurityValidator:
             return True
 
     def _evaluate_expression(
-        self, node: nodes.Node, context: Dict[str, Any], assignments: Dict[str, Any]
+        self,
+        node: nodes.Node,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
     ) -> Union[None, str, Decimal, List[Any], Dict[str, Any], bool]:
         """式を評価する。
 
@@ -387,99 +492,230 @@ class TemplateSecurityValidator:
             TypeError: 式の評価に失敗した場合
         """
         try:
-            if isinstance(node, nodes.Name):
-                # 変数名の評価
-                name = node.name
-                if name in assignments:
-                    return assignments[name]
-                elif name in context:
-                    return context[name]
-                return None
-
-            elif isinstance(node, nodes.Const):
-                # 定数の評価
-                if isinstance(node.value, (int, float)):
-                    return Decimal(str(node.value))
-                return node.value
-
-            elif isinstance(node, nodes.List):
-                # リストの評価
-                values: List[Any] = []
-                for item in node.items:
-                    value = self._evaluate_expression(item, context, assignments)
-                    values.append(value)
-                if self._is_recursive_structure(cast("RecursiveValue", values)):
-                    raise ValueError("recursive structure detected")
-                return values
-
-            elif isinstance(node, nodes.Dict):
-                # 辞書の評価
-                result: Dict[str, Any] = {}
-                for pair in node.items:
-                    key = self._evaluate_expression(pair.key, context, assignments)
-                    if not isinstance(key, str):
-                        raise TypeError("Dictionary keys must be strings")
-                    value = self._evaluate_expression(pair.value, context, assignments)
-                    result[key] = value
-                if self._is_recursive_structure(cast("RecursiveValue", result)):
-                    raise ValueError("recursive structure detected")
-                return result
-
-            elif isinstance(node, nodes.Call):
-                # メソッド呼び出しの評価
-                if isinstance(node.node, nodes.Getattr):
-                    # オブジェクトのメソッド呼び出し
-                    obj = self._evaluate_expression(node.node.node, context, assignments)
-                    method_name = node.node.attr
-
-                    # リストのメソッド呼び出しを検証
-                    if isinstance(obj, list) and method_name in ["append", "extend"]:
-                        args = [self._evaluate_expression(arg, context, assignments) for arg in node.args]
-                        # 再帰的構造のチェック
-                        if any(arg is obj or self._is_recursive_structure(cast("RecursiveValue", arg)) for arg in args):
-                            raise ValueError("recursive structure detected")
-                        # メソッドの実行をシミュレート
-                        new_list = obj.copy()
-                        if method_name == "append":
-                            new_list.append(args[0])
-                        elif method_name == "extend":
-                            if not isinstance(args[0], (list, tuple, set)):
-                                raise TypeError("extend() argument must be iterable")
-                            new_list.extend(cast("Sequence[Any]", args[0]))
-                        if self._is_recursive_structure(cast("RecursiveValue", new_list)):
-                            raise ValueError("recursive structure detected")
-                        return new_list
-
-            elif isinstance(node, nodes.Getattr):
-                # 属性アクセスの評価
-                obj = self._evaluate_expression(node.node, context, assignments)
-                if obj is None:
-                    return None
-                return getattr(obj, node.attr)
-
-            elif isinstance(node, nodes.BinExpr):
-                # 二項演算の評価
-                left = self._evaluate_expression(node.left, context, assignments)
-                right = self._evaluate_expression(node.right, context, assignments)
-                if isinstance(node, nodes.Div) and right == 0:
-                    raise ValueError("division by zero is not allowed")
-                if not isinstance(left, (Decimal, str)) or not isinstance(right, (Decimal, str)):
-                    raise TypeError("Binary operations are only supported for numbers and strings")
-                return self._evaluate_binary_operation(node, left, right)
-
-            raise TypeError("Cannot evaluate expression")
+            evaluator = self._get_node_evaluator(node)
+            if evaluator is None:
+                raise TypeError("Cannot evaluate expression")
+            return evaluator(node, context, assignments)
         except Exception as e:
             if "recursive structure detected" in str(e):
                 raise ValueError("recursive structure detected") from e
             raise TypeError("Cannot evaluate expression") from e
 
-    def _evaluate_binary_operation(self, node: nodes.BinExpr, left: Union[Decimal, str], right: Union[Decimal, str]) -> Union[Decimal, str]:
+    def _get_node_evaluator(
+        self,
+        node: nodes.Node,
+    ) -> Optional[NodeEvaluator[nodes.Node]]:
+        """ノードに対応する評価関数を取得する。
+
+        Args:
+            node: 評価対象のノード
+
+        Returns:
+            Optional[Callable]: 評価関数 [対応する評価関数がない場合はNone]
+        """
+        evaluators: Dict[type[nodes.Node], NodeEvaluator[nodes.Node]] = {
+            nodes.Name: self._evaluate_name,  # type: ignore
+            nodes.Const: self._evaluate_const,  # type: ignore
+            nodes.List: self._evaluate_list,  # type: ignore
+            nodes.Dict: self._evaluate_dict,  # type: ignore
+            nodes.Call: self._evaluate_call,  # type: ignore
+            nodes.Getattr: self._evaluate_getattr,  # type: ignore
+            nodes.BinExpr: self._evaluate_binexpr,  # type: ignore
+        }
+        return evaluators.get(type(node))
+
+    def _evaluate_name(
+        self,
+        node: nodes.Name,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
+    ) -> Optional[EvaluatedValue]:
+        """変数名を評価する。
+
+        Args:
+            node: 変数名ノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+
+        Returns:
+            Optional[EvaluatedValue]: 評価結果 [変数の値またはNone]
+        """
+        name = node.name
+        if name in assignments:
+            value = assignments[name]
+            if isinstance(value, (type(None), str, Decimal, list, dict, bool)):
+                return cast("EvaluatedValue", value)
+            return None
+        if name in context:
+            value = context[name]
+            if isinstance(value, (type(None), str, Decimal, list, dict, bool)):
+                return cast("EvaluatedValue", value)
+            return None
+        return None
+
+    def _evaluate_const(
+        self,
+        node: nodes.Const,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
+    ) -> Union[str, Decimal]:
+        """定数を評価する。
+
+        Args:
+            node: 定数ノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+
+        Returns:
+            Union[str, Decimal]: 評価結果
+        """
+        if isinstance(node.value, (int, float)):
+            return Decimal(str(node.value))
+        return node.value
+
+    def _evaluate_list(
+        self,
+        node: nodes.List,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
+    ) -> List[Any]:
+        """リストを評価する。
+
+        Args:
+            node: リストノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+
+        Returns:
+            List[Any]: 評価結果
+
+        Raises:
+            ValueError: 再帰的構造が検出された場合
+        """
+        values: List[Any] = []
+        for item in node.items:
+            value = self._evaluate_expression(item, context, assignments)
+            values.append(value)
+        if self._is_recursive_structure(cast("RecursiveValue", values)):
+            raise ValueError("recursive structure detected")
+        return values
+
+    def _evaluate_dict(
+        self,
+        node: nodes.Dict,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """辞書を評価する。
+
+        Args:
+            node: 辞書ノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+
+        Returns:
+            Dict[str, Any]: 評価結果
+
+        Raises:
+            ValueError: 再帰的構造が検出された場合
+            TypeError: キーが文字列でない場合
+        """
+        result: Dict[str, Any] = {}
+        for pair in node.items:
+            key = self._evaluate_expression(pair.key, context, assignments)
+            if not isinstance(key, str):
+                raise TypeError("Dictionary keys must be strings")
+            value = self._evaluate_expression(pair.value, context, assignments)
+            result[key] = value
+        if self._is_recursive_structure(cast("RecursiveValue", result)):
+            raise ValueError("recursive structure detected")
+        return result
+
+    def _evaluate_call(
+        self,
+        node: nodes.Call,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
+    ) -> Optional[List[Any]]:
+        """メソッド呼び出しを評価する。
+
+        Args:
+            node: メソッド呼び出しノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+
+        Returns:
+            Optional[List[Any]]: 評価結果
+
+        Raises:
+            ValueError: 再帰的構造が検出された場合
+            TypeError: 引数が不正な場合
+        """
+        if not isinstance(node.node, nodes.Getattr):
+            return None
+
+        obj = self._evaluate_expression(node.node.node, context, assignments)
+        method_name = node.node.attr
+
+        if not isinstance(obj, list) or method_name not in ["append", "extend"]:
+            return None
+
+        args = [self._evaluate_expression(arg, context, assignments) for arg in node.args]
+        if any(arg is obj or self._is_recursive_structure(cast("RecursiveValue", arg)) for arg in args):
+            raise ValueError("recursive structure detected")
+
+        new_list = obj.copy()
+        if method_name == "append":
+            new_list.append(args[0])
+        else:  # extend
+            if not isinstance(args[0], (list, tuple, set)):
+                raise TypeError("extend() argument must be iterable")
+            new_list.extend(cast("Sequence[Any]", args[0]))
+
+        if self._is_recursive_structure(cast("RecursiveValue", new_list)):
+            raise ValueError("recursive structure detected")
+        return new_list
+
+    def _evaluate_getattr(
+        self,
+        node: nodes.Getattr,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
+    ) -> Optional[EvaluatedValue]:
+        """属性アクセスを評価する。
+
+        Args:
+            node: 属性アクセスノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+
+        Returns:
+            Optional[EvaluatedValue]: 評価結果 [属性の値またはNone]
+        """
+        obj = self._evaluate_expression(node.node, context, assignments)
+        if obj is None:
+            return None
+
+        try:
+            value = getattr(obj, node.attr)
+            if isinstance(value, (type(None), str, Decimal, list, dict, bool)):
+                return cast("EvaluatedValue", value)
+            return None
+        except AttributeError:
+            return None
+
+    def _evaluate_binexpr(
+        self,
+        node: nodes.BinExpr,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
+    ) -> Union[Decimal, str]:
         """二項演算を評価する。
 
         Args:
             node: 二項演算ノード
-            left: 左辺の値
-            right: 右辺の値
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
 
         Returns:
             Union[Decimal, str]: 評価結果
@@ -487,34 +723,16 @@ class TemplateSecurityValidator:
         Raises:
             TypeError: サポートされていない演算子の場合
         """
-        # 文字列の場合は加算のみ許可
-        if isinstance(left, str) or isinstance(right, str):
-            if not isinstance(node, nodes.Add):
-                raise TypeError("Only addition is supported for strings")
-            return str(left) + str(right)
+        left = self._evaluate_expression(node.left, context, assignments)
+        right = self._evaluate_expression(node.right, context, assignments)
 
-        # 数値の場合は全ての演算を許可
-        left_num = cast("Decimal", left)
-        right_num = cast("Decimal", right)
+        if isinstance(node, nodes.Div) and right == 0:
+            raise ValueError("division by zero is not allowed")
 
-        try:
-            if isinstance(node, nodes.Add):
-                return left_num + right_num
-            elif isinstance(node, nodes.Sub):
-                return left_num - right_num
-            elif isinstance(node, nodes.Mul):
-                return left_num * right_num
-            elif isinstance(node, nodes.Div):
-                return left_num / right_num
-            elif isinstance(node, nodes.FloorDiv):
-                return Decimal(left_num // right_num)
-            elif isinstance(node, nodes.Mod):
-                return left_num % right_num
-            elif isinstance(node, nodes.Pow):
-                return Decimal(pow(float(left_num), float(right_num)))
-            raise TypeError(f"Unsupported binary operator: {type(node).__name__}")
-        except decimal.InvalidOperation as e:
-            raise ValueError(f"Invalid numeric operation: {e!s}") from e
+        if not isinstance(left, (Decimal, str)) or not isinstance(right, (Decimal, str)):
+            raise TypeError("Binary operations are only supported for numbers and strings")
+
+        return self._evaluate_binary_operation(node, left, right)
 
     def _validate_restricted_tags(self, ast: nodes.Template, validation_state: ValidationState) -> bool:
         """禁止タグを検証する。
@@ -615,3 +833,51 @@ class TemplateSecurityValidator:
         if isinstance(node, nodes.Const) and isinstance(node.value, (int, float)):
             return int(node.value)
         raise TypeError("Not a literal value")
+
+    def _evaluate_binary_operation(
+        self,
+        node: nodes.BinExpr,
+        left: Union[Decimal, str],
+        right: Union[Decimal, str],
+    ) -> Union[Decimal, str]:
+        """二項演算を評価する。
+
+        Args:
+            node: 二項演算ノード
+            left: 左辺の値
+            right: 右辺の値
+
+        Returns:
+            Union[Decimal, str]: 評価結果
+
+        Raises:
+            TypeError: サポートされていない演算子の場合
+        """
+        # 文字列の場合は加算のみ許可
+        if isinstance(left, str) or isinstance(right, str):
+            if not isinstance(node, nodes.Add):
+                raise TypeError("Only addition is supported for strings")
+            return str(left) + str(right)
+
+        # 数値の場合は全ての演算を許可
+        left_num = cast("Decimal", left)
+        right_num = cast("Decimal", right)
+
+        try:
+            if isinstance(node, nodes.Add):
+                return left_num + right_num
+            if isinstance(node, nodes.Sub):
+                return left_num - right_num
+            if isinstance(node, nodes.Mul):
+                return left_num * right_num
+            if isinstance(node, nodes.Div):
+                return left_num / right_num
+            if isinstance(node, nodes.FloorDiv):
+                return Decimal(left_num // right_num)
+            if isinstance(node, nodes.Mod):
+                return left_num % right_num
+            if isinstance(node, nodes.Pow):
+                return Decimal(pow(float(left_num), float(right_num)))
+            raise TypeError(f"Unsupported binary operator: {type(node).__name__}")
+        except decimal.InvalidOperation as e:
+            raise ValueError(f"Invalid numeric operation: {e!s}") from e

@@ -314,7 +314,7 @@ class TestValidationConsistency:
                 True,
                 True,
                 False,
-                "Template security error: division by zero is not allowed",
+                "Template rendering error: division by zero",
                 id="Runtime_only_division_validation_strict",
             ),
             # ランタイムのみで失敗するケース - 非strictモード
@@ -325,7 +325,7 @@ class TestValidationConsistency:
                 False,
                 True,
                 False,
-                "Template security error: division by zero is not allowed",
+                "Template rendering error: division by zero",
                 id="Runtime_only_division_validation_non_strict",
             ),
             # 両方で成功するケース - strictモード
@@ -673,7 +673,7 @@ class TestValidationConsistency:
             True,  # テンプレートは無効（ゼロ除算は禁止）
             False,  # 適用は失敗する
             None,  # 出力内容はない
-            "Template security error: division by zero is not allowed",  # エラーメッセージ
+            "Template rendering error: division by zero",  # エラーメッセージ
             id="Division_by_zero_error",
         ),
         # YAMLコンテキストのテスト
