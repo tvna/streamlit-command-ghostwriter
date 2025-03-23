@@ -50,7 +50,17 @@ with open('template.txt', 'rb') as f:
 from datetime import datetime
 from enum import IntEnum
 from io import BytesIO
-from typing import Annotated, Any, ClassVar, Dict, Optional, Self, Union
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Optional,
+    Self,
+    TypeVar,
+    Union,
+)
 
 import jinja2
 from jinja2 import Environment, nodes
@@ -397,29 +407,65 @@ class DocumentRender:
         """
         self._validation_state.reset()
 
-        # 1. ファイルサイズの検証（最も軽量）
-        if not self._validate_file_size():
-            return False
+        # 各検証ステップを実行
+        validation_steps = [
+            self._validate_file_size,
+            lambda: self._validate_and_get_content(),
+            lambda: self._validate_and_get_ast(),
+            lambda: self._validate_security_static(),
+        ]
 
-        # 2. エンコーディングの検証
+        for step in validation_steps:
+            if not step():
+                return False
+
+        return True
+
+    def _validate_and_get_content(self) -> bool:
+        """エンコーディングを検証し、テンプレート内容を取得する。
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
         template_content = self._validate_encoding()
         if template_content is None:
             return False
 
-        # 3. 構文の検証
-        ast = self._validate_syntax(template_content)
+        self._template_content = template_content
+        return True
+
+    def _validate_and_get_ast(self) -> bool:
+        """構文を検証し、ASTを取得する。
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
+        if self._template_content is None:
+            self._validation_state.set_error("Template content is not loaded")
+            return False
+
+        ast = self._validate_syntax(self._template_content)
         if ast is None:
             return False
 
-        # 4. セキュリティチェック（静的検証のみ）
-        security_result = self._security_validator.validate_template(ast)
+        self._ast = ast
+        return True
+
+    def _validate_security_static(self) -> bool:
+        """静的セキュリティチェックを実行する。
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
+        if self._ast is None:
+            self._validation_state.set_error("AST is not available")
+            return False
+
+        security_result = self._security_validator.validate_template(self._ast)
         if not security_result.is_valid:
             self._validation_state.set_error(security_result.error_message)
             return False
 
-        # 検証に成功した場合、状態を更新
-        self._template_content = template_content
-        self._ast = ast
         self._initial_validation_passed = True
         return True
 
@@ -518,6 +564,50 @@ class DocumentRender:
 
         return True
 
+    def _validate_preconditions(self, context: Dict[str, Any], format_type: int) -> bool:
+        """前提条件を検証する。
+
+        Args:
+            context: テンプレートに適用するコンテキスト
+            format_type: フォーマットタイプ（0-4の整数）
+
+        Returns:
+            bool: 前提条件を満たす場合はTrue
+        """
+        if not self._initial_validation_passed:
+            return False
+
+        if not self._validate_format_type(format_type):
+            self._validation_state.set_error("Unsupported format type")
+            return False
+
+        if self._template_content is None:
+            self._validation_state.set_error("Template content is not loaded")
+            return False
+
+        if self._ast is None:
+            self._validation_state.set_error("AST is not available")
+            return False
+
+        return True
+
+    def _handle_rendering_error(self, e: Exception) -> bool:
+        """レンダリングエラーを処理する。
+
+        Args:
+            e: 発生した例外
+
+        Returns:
+            bool: 常にFalse
+        """
+        if isinstance(e, jinja2.UndefinedError):
+            self._validation_state.set_error(str(e))
+        elif isinstance(e, jinja2.TemplateError):
+            self._validation_state.set_error(str(e))
+        else:
+            self._validation_state.set_error(f"Template rendering error: {e!s}")
+        return False
+
     def apply_context(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool = True) -> bool:
         """テンプレートにコンテキストを適用する。
 
@@ -529,27 +619,17 @@ class DocumentRender:
         Returns:
             bool: コンテキストの適用が成功したかどうか
         """
-        # 初期検証が失敗している場合は、そのエラーを維持
-        if not self._initial_validation_passed:
-            return False
-
-        if not self._validate_format_type(format_type):
-            self._validation_state.set_error("Unsupported format type")
+        if not self._validate_preconditions(context, format_type):
             return False
 
         try:
-            if self._template_content is None:
-                self._validation_state.set_error("Template content is not loaded")
-                return False
+            self._is_strict_undefined = is_strict_undefined
 
+            # ランタイム検証の実行（再帰的構造の検出を含む）
             if self._ast is None:
                 self._validation_state.set_error("AST is not available")
                 return False
 
-            # is_strict_undefinedの値を更新
-            self._is_strict_undefined = is_strict_undefined
-
-            # ランタイム検証の実行（再帰的構造の検出を含む）
             security_result = self._security_validator.validate_runtime_security(self._ast, context)
             if not security_result.is_valid:
                 self._validation_state.set_error(security_result.error_message)
@@ -557,12 +637,15 @@ class DocumentRender:
 
             # テンプレートのレンダリング
             env = self._create_environment()
+            if self._template_content is None:
+                self._validation_state.set_error("Template content is not loaded")
+                return False
+
             template = env.from_string(self._template_content)
 
             try:
                 rendered = template.render(**context)
             except Exception as e:
-                # レンダリング時のエラーを適切に処理
                 if "recursive structure detected" in str(e):
                     self._validation_state.set_error("Template security error: recursive structure detected")
                     return False
@@ -578,15 +661,8 @@ class DocumentRender:
 
             return True
 
-        except jinja2.UndefinedError as e:
-            self._validation_state.set_error(str(e))
-            return False
-        except jinja2.TemplateError as e:
-            self._validation_state.set_error(str(e))
-            return False
         except Exception as e:
-            self._validation_state.set_error(f"Template rendering error: {e!s}")
-            return False
+            return self._handle_rendering_error(e)
 
     def _validate_memory_usage(self, content: str) -> bool:
         """メモリ使用量を検証する。
@@ -695,6 +771,28 @@ class DocumentRender:
         Returns:
             Environment: 設定済みのJinja2環境
         """
+        from functools import wraps
+        from typing import Union
+
+        T = TypeVar("T")
+        number_t = Union[int, float]
+        arithmetic_input_t = Union[number_t, str]
+
+        def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", arithmetic_input_t], str]:
+            """未定義変数に対する演算を処理するデコレータ。
+
+            Args:
+                func: デコレート対象の関数
+
+            Returns:
+                常に空文字列を返す関数
+            """
+
+            @wraps(func)
+            def wrapper(self: "CustomUndefined", other: arithmetic_input_t) -> str:
+                return ""
+
+            return wrapper
 
         class CustomUndefined(Undefined):
             """非strictモード用のカスタムUndefinedクラス。
@@ -706,7 +804,7 @@ class DocumentRender:
             - 比較: False を返す
             """
 
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
+            def __init__(self, *args: arithmetic_input_t, **kwargs: arithmetic_input_t) -> None:
                 super().__init__(*args, **kwargs)
 
             def __getattr__(self, name: str) -> "CustomUndefined":
@@ -721,53 +819,67 @@ class DocumentRender:
             def __bool__(self) -> bool:
                 return False
 
-            def __eq__(self, other: Any) -> bool:
+            def __eq__(self, other: object) -> bool:
                 return isinstance(other, (CustomUndefined, Undefined))
 
             # 算術演算子のサポート
-            def __add__(self, other: Any) -> str:
+            @undefined_operation
+            def __add__(self, other: arithmetic_input_t) -> str:
                 return ""
 
-            def __radd__(self, other: Any) -> str:
+            @undefined_operation
+            def __radd__(self, other: arithmetic_input_t) -> str:
                 return ""
 
-            def __sub__(self, other: Any) -> str:
+            @undefined_operation
+            def __sub__(self, other: number_t) -> str:
                 return ""
 
-            def __rsub__(self, other: Any) -> str:
+            @undefined_operation
+            def __rsub__(self, other: number_t) -> str:
                 return ""
 
-            def __mul__(self, other: Any) -> str:
+            @undefined_operation
+            def __mul__(self, other: number_t) -> str:
                 return ""
 
-            def __rmul__(self, other: Any) -> str:
+            @undefined_operation
+            def __rmul__(self, other: number_t) -> str:
                 return ""
 
-            def __div__(self, other: Any) -> str:
+            @undefined_operation
+            def __div__(self, other: number_t) -> str:
                 return ""
 
-            def __rdiv__(self, other: Any) -> str:
+            @undefined_operation
+            def __rdiv__(self, other: number_t) -> str:
                 return ""
 
-            def __truediv__(self, other: Any) -> str:
+            @undefined_operation
+            def __truediv__(self, other: number_t) -> str:
                 return ""
 
-            def __rtruediv__(self, other: Any) -> str:
+            @undefined_operation
+            def __rtruediv__(self, other: number_t) -> str:
                 return ""
 
-            def __floordiv__(self, other: Any) -> str:
+            @undefined_operation
+            def __floordiv__(self, other: number_t) -> str:
                 return ""
 
-            def __rfloordiv__(self, other: Any) -> str:
+            @undefined_operation
+            def __rfloordiv__(self, other: number_t) -> str:
                 return ""
 
-            def __mod__(self, other: Any) -> str:
+            @undefined_operation
+            def __mod__(self, other: arithmetic_input_t) -> str:
                 return ""
 
-            def __rmod__(self, other: Any) -> str:
+            @undefined_operation
+            def __rmod__(self, other: arithmetic_input_t) -> str:
                 return ""
 
-            def __call__(self, *args: Any, **kwargs: Any) -> "CustomUndefined":
+            def __call__(self, *args: arithmetic_input_t, **kwargs: arithmetic_input_t) -> "CustomUndefined":
                 return self
 
         env = Environment(
