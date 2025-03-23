@@ -25,31 +25,18 @@ TODO:
    - 改善案: seek()とtell()を使用したファイルサイズの事前チェック
 
 3. エラーメッセージの一貫性確保
-   - ValidationResultクラスのエラーメッセージフォーマットの統一
    - 各種バリデーションエラーの明確な区別
-
-典型的な使用方法:
-```python
-with open('template.txt', 'rb') as f:
-    template_file = BytesIO(f.read())
-    renderer = DocumentRender(template_file)
-    if renderer.is_valid_template:
-        renderer.apply_context({'name': 'World'}, format_type=FormatType.NORMALIZE_BREAKS)
-        result = renderer.render_content
 ```
 """
 
 from datetime import datetime
-from enum import IntEnum
 from io import BytesIO
 from typing import (
-    Annotated,
     Any,
     Callable,
     ClassVar,
     Dict,
     Optional,
-    Self,
     TypeVar,
     Union,
 )
@@ -57,135 +44,8 @@ from typing import (
 import jinja2
 from jinja2 import Environment, nodes
 from jinja2.runtime import StrictUndefined, Undefined
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    BeforeValidator,
-    ConfigDict,
-    Field,
-    ValidationInfo,
-    field_validator,
-    model_validator,
-)
 
 from features.validate_template import TemplateSecurityValidator, ValidationState  # type: ignore
-
-
-class ValidationResult(BaseModel):
-    """検証結果を表すクラス。
-
-    pydanticのBaseModelを継承し、テンプレートの検証結果を管理します。
-    検証の成功/失敗、エラーメッセージ、検証済みコンテンツを保持します。
-
-    Attributes:
-        is_valid: 検証が成功したかどうか
-        error_message: エラーメッセージ [検証が失敗した場合のみ有効]
-        content: 検証済みのコンテンツ [エンコーディング検証時のみ使用]
-    """
-
-    is_valid: bool = Field(default=True, description="検証が成功したかどうか")
-    error_message: str = Field(default="", description="エラーメッセージ（検証が失敗した場合のみ有効）")
-    content: Optional[str] = Field(default=None, description="検証済みのコンテンツ（エンコーディング検証時のみ使用）")
-
-    model_config = ConfigDict(frozen=True)
-
-    @field_validator("error_message")
-    @classmethod
-    def validate_error_message(cls, v: str, info: ValidationInfo) -> str:
-        """エラーメッセージのバリデーションを行う。
-
-        検証が失敗している場合は、エラーメッセージが必須です。
-
-        Args:
-            v (str): エラーメッセージ
-            info (ValidationInfo): バリデーション情報
-
-        Returns:
-            str: バリデーション済みのエラーメッセージ
-
-        Raises:
-            ValueError: 検証が失敗しているのにエラーメッセージが空の場合
-        """
-        is_valid = info.data.get("is_valid", True)
-        if not is_valid and not v:
-            raise ValueError("Error message is required when validation fails")
-        return v
-
-
-class FormatType(IntEnum):
-    """フォーマットタイプを表す列挙型。
-
-    テンプレート出力のフォーマット方法を定義します。
-
-    Attributes:
-        RAW: 生のテキストをそのまま出力 [= 0]
-        REMOVE_SPACES: 連続する空白行を1行に圧縮 [= 1]
-        NORMALIZE_BREAKS: 3つ以上の連続する改行を2つに圧縮 [= 2]
-        REMOVE_AND_NORMALIZE: 空白行を削除し、改行を正規化 [= 3]
-        COMPACT: 最も圧縮された形式 [全ての空白行を削除] [= 4]
-    """
-
-    RAW = 0
-    REMOVE_SPACES = 1
-    NORMALIZE_BREAKS = 2
-    REMOVE_AND_NORMALIZE = 3
-    COMPACT = 4
-
-
-class ContextValidator(BaseModel):
-    """コンテキストデータを検証するバリデータ。
-
-    テンプレートに適用するコンテキストデータの構造と型を検証します。
-
-    検証内容:
-        1. コンテキストが辞書型であることの確認
-        2. フォーマットタイプの有効性チェック
-        3. 未定義変数の厳密チェック設定の管理
-
-    Attributes:
-        format_type: フォーマットタイプ [0-4の整数]
-        context: コンテキストデータ
-        is_strict_undefined: 未定義変数を厳密にチェックするかどうか
-    """
-
-    format_type: Annotated[
-        int,
-        Field(description="フォーマットタイプ（0-4の整数）"),
-        BeforeValidator(lambda x: int(x)),
-        AfterValidator(lambda x: x if 0 <= x <= 4 else 0),
-    ]
-    context: Annotated[
-        Dict[str, Any],
-        Field(description="コンテキストデータ"),
-        BeforeValidator(lambda x: dict(x) if x else {}),
-    ]
-    is_strict_undefined: Annotated[
-        bool,
-        Field(default=True, description="未定義変数を厳密にチェックするかどうか"),
-        BeforeValidator(lambda x: bool(x)),
-    ]
-
-    @model_validator(mode="after")
-    def validate_context_structure(self) -> Self:
-        """コンテキストの構造を検証します。
-
-        以下の条件を確認します：
-        1. contextが辞書型であること
-        2. format_typeが0から4の範囲内であること
-
-        Returns:
-            Self: 検証に成功した場合、自身を返します
-
-        Raises:
-            ValueError: コンテキストの構造が無効な場合
-        """
-        if not isinstance(self.context, dict):
-            raise ValueError("Context must be a dictionary")
-
-        if self.format_type not in range(5):
-            raise ValueError("Unsupported format type")
-
-        return self
 
 
 class ContentFormatter:
@@ -280,10 +140,6 @@ class DocumentRender:
             初期検証に失敗した場合、エラー状態を保持します。
             エラー状態は is_valid_template と error_message プロパティで確認できます。
         """
-        if not isinstance(template_file, BytesIO):
-            self._validation_state = ValidationState()
-            self._validation_state.set_error("Template file must be a BytesIO object")
-            return
 
         self._template_file = template_file
         self._template_content: Optional[str] = None
@@ -292,11 +148,17 @@ class DocumentRender:
         self._formatter = ContentFormatter()
         self._security_validator = TemplateSecurityValidator()
         self._validation_state = ValidationState()
-        self._initial_validation_passed = False
+
         self._ast: Optional[nodes.Template] = None
 
         # 初期検証を実行
-        self._validate_template_file()
+        template_content, ast = self._security_validator.validate_template_file(self._template_file, self._validation_state)
+        if template_content is None or ast is None:
+            self._initial_validation_passed = False
+        else:
+            self._initial_validation_passed = True
+            self._template_content = template_content
+            self._ast = ast
 
     @property
     def is_valid_template(self) -> bool:
@@ -324,24 +186,6 @@ class DocumentRender:
             Optional[str]: レンダリング結果（レンダリングが行われていない場合はNone）
         """
         return self._render_content
-
-    def _validate_template_file(self) -> bool:
-        """テンプレートファイルの検証を行う。
-
-        セキュリティバリデータを使用してテンプレートの構文とセキュリティを検証します。
-        検証に成功した場合、テンプレートの内容とASTを保持します。
-
-        Returns:
-            検証が成功したかどうか
-        """
-        template_content, ast = self._security_validator.validate_template_file(self._template_file, self._validation_state)
-        if template_content is None or ast is None:
-            return False
-
-        self._template_content = template_content
-        self._ast = ast
-        self._initial_validation_passed = True
-        return True
 
     def _validate_file_size(self) -> bool:
         """ファイルサイズを検証する。
@@ -686,8 +530,6 @@ class DocumentRender:
         Raises:
             ValueError: 日付の解析に失敗した場合
         """
-        if value is None:
-            raise ValueError("Date value cannot be None")
 
         try:
             if isinstance(value, str):
