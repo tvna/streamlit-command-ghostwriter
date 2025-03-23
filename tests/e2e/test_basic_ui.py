@@ -126,10 +126,14 @@ def test_responsive_design(page: Page, streamlit_port: int) -> None:
 @pytest.mark.parametrize(
     ("tab_name", "expected_element"),
     [
-        pytest.param(f"📝 {texts.tab1.menu_title}", f"button:has-text('{texts.tab1.generate_text_button}')", id="コマンド生成タブ"),
-        pytest.param(f"📜 {texts.tab2.menu_title}", f"button:has-text('{texts.tab2.generate_visual_button}')", id="設定デバッグタブ"),
-        pytest.param(f"🛠️ {texts.tab3.menu_title}", f"h3:has-text('{texts.tab3.subheader_input_file}')", id="詳細設定タブ"),
-        pytest.param(f"💼 {texts.tab4.menu_title}", f"h3:has-text('{texts.tab4.subheader}')", id="サンプル集タブ"),
+        pytest.param(
+            f"📝 {texts.tab1.menu_title}", f"button:has-text('{texts.tab1.generate_text_button}')", id="e2e_tab_navigation_command_gen"
+        ),
+        pytest.param(
+            f"📜 {texts.tab2.menu_title}", f"button:has-text('{texts.tab2.generate_visual_button}')", id="e2e_tab_navigation_config_debug"
+        ),
+        pytest.param(f"🛠️ {texts.tab3.menu_title}", f"h3:has-text('{texts.tab3.subheader_input_file}')", id="e2e_tab_navigation_settings"),
+        pytest.param(f"💼 {texts.tab4.menu_title}", f"h3:has-text('{texts.tab4.subheader}')", id="e2e_tab_navigation_samples"),
     ],
 )
 def test_tab_navigation_parametrized(page: Page, streamlit_port: int, tab_name: str, expected_element: str) -> None:

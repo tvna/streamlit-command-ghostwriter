@@ -122,9 +122,9 @@ def test_config_debug_yaml(page: Page, streamlit_port: int) -> None:
 @pytest.mark.parametrize(
     ("file_name", "display_format", "expected_content"),
     [
-        pytest.param("cisco_config.toml", "visual", ["hostname", "router"], id="TOML_視覚的表示"),
-        pytest.param("success_config.yaml", "toml", ["url", "name"], id="YAML_TOML形式表示"),
-        pytest.param("dns_dig_config.csv", "yaml", ["resolver", "fqdn", "type"], id="CSV_YAML形式表示"),
+        pytest.param("cisco_config.toml", "visual", ["hostname", "router"], id="e2e_config_debug_toml_visual"),
+        pytest.param("success_config.yaml", "toml", ["url", "name"], id="e2e_config_debug_yaml_to_toml"),
+        pytest.param("dns_dig_config.csv", "yaml", ["resolver", "fqdn", "type"], id="e2e_config_debug_csv_to_yaml"),
     ],
 )
 def test_config_debug_parametrized(

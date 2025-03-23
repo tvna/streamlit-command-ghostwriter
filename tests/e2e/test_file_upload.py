@@ -124,9 +124,9 @@ def test_config_file_upload_tab2(page: Page, streamlit_port: int) -> None:
 @pytest.mark.parametrize(
     ("tab_name", "upload_index", "file_type", "file_name"),
     [
-        pytest.param(f"📝 {texts.tab1.menu_title}", 0, texts.tab1.upload_config, "dns_dig_config.csv", id="CSVファイルアップロード"),
-        pytest.param(f"📝 {texts.tab1.menu_title}", 1, texts.tab1.upload_template, "dns_dig_tmpl.j2", id="Jinjaテンプレートアップロード"),
-        pytest.param(f"📜 {texts.tab2.menu_title}", 0, texts.tab2.upload_debug_config, "cisco_config.toml", id="TOMLファイルアップロード"),
+        pytest.param(f"📝 {texts.tab1.menu_title}", 0, texts.tab1.upload_config, "dns_dig_config.csv", id="e2e_upload_csv_config"),
+        pytest.param(f"📝 {texts.tab1.menu_title}", 1, texts.tab1.upload_template, "dns_dig_tmpl.j2", id="e2e_upload_jinja_template"),
+        pytest.param(f"📜 {texts.tab2.menu_title}", 0, texts.tab2.upload_debug_config, "cisco_config.toml", id="e2e_upload_toml_config"),
     ],
 )
 def test_file_upload_parametrized(
