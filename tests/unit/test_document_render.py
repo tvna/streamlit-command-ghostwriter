@@ -425,7 +425,7 @@ class TestValidationConsistency:
 
 
 @pytest.mark.unit
-@pytest.mark.timeout(5)  # 5秒でタイムアウト
+@pytest.mark.timeout(5)
 @pytest.mark.parametrize(
     (
         "template_content",
@@ -776,7 +776,7 @@ def test_render(
 
 
 @pytest.mark.unit
-@pytest.mark.timeout(60)
+@pytest.mark.timeout(5)
 @pytest.mark.parametrize(
     (
         "template_content",
@@ -1062,7 +1062,7 @@ def test_render_edge_cases(
 
 
 @pytest.mark.unit
-@pytest.mark.timeout(5)  # 5秒でタイムアウト
+@pytest.mark.timeout(5)
 @pytest.mark.parametrize(
     (
         "template_content",
