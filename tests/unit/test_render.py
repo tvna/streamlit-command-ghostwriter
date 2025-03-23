@@ -110,7 +110,7 @@ class TestInitialValidation:
             pytest.param(
                 b"{% for i in range(0, 1000000) %}{{ i }}{% endfor %}",
                 False,
-                "Template security validation faile",
+                "Template security validation failed",
                 id="Security_large_loop_range",
             ),
         ],
@@ -140,7 +140,7 @@ class TestInitialValidation:
         assert renderer.is_valid_template == expected_valid
         if expected_error:
             assert renderer.error_message is not None
-            assert expected_error in renderer.error_message
+            assert expected_error == renderer.error_message
         else:
             assert renderer.error_message is None
 
@@ -259,7 +259,7 @@ class TestRuntimeValidation:
         if not expected_apply_succeeded and expected_error is not None:
             error_message = renderer.error_message
             assert error_message is not None
-            assert expected_error in error_message
+            assert expected_error == error_message
 
 
 class TestValidationConsistency:
@@ -407,7 +407,7 @@ class TestValidationConsistency:
         assert renderer.is_valid_template == expected_initial_valid
         if not expected_initial_valid and expected_error:
             assert renderer.error_message is not None
-            assert expected_error in renderer.error_message
+            assert expected_error == renderer.error_message
             return
 
         # ランタイム検証（初期検証が成功した場合のみ実行）
@@ -419,7 +419,7 @@ class TestValidationConsistency:
             assert apply_result == expected_runtime_valid
             if not expected_runtime_valid and expected_error:
                 assert renderer.error_message is not None
-                assert expected_error in renderer.error_message
+                assert expected_error == renderer.error_message
             elif expected_runtime_valid:
                 assert renderer.error_message is None
 
@@ -704,7 +704,7 @@ Next Review: June 20, 2024""",
             True,
             False,
             None,
-            "Invalid date format",
+            "Template rendering error: Invalid date format",
             id="Template_with_invalid_date",
         ),
         pytest.param(
@@ -715,7 +715,7 @@ Next Review: June 20, 2024""",
             True,
             False,
             None,
-            "Date value cannot be None",
+            "Template rendering error: Date value cannot be None",
             id="Template_with_null_date",
         ),
     ],
@@ -768,7 +768,7 @@ def test_render(
         actual_error_str = str(actual_error)
         assert isinstance(actual_error_str, str), "Error message must be convertible to string"
         assert actual_error_str != "", "Error message must not be empty"
-        assert expected_error in actual_error_str, (
+        assert expected_error == actual_error_str, (
             f"Expected error message '{expected_error}' not found in actual error message '{actual_error_str}'"
         )
     else:
