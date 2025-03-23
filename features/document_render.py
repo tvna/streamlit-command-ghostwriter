@@ -141,8 +141,8 @@ class DocumentRender:
         MAX_MEMORY_SIZE: レンダリング結果の最大メモリ使用量 [バイト]
     """
 
-    MAX_FILE_SIZE: ClassVar[int] = 1024 * 1024  # 1MB
-    MAX_MEMORY_SIZE: ClassVar[int] = 1024 * 1024 * 10  # 10MB
+    MAX_FILE_SIZE: ClassVar[int] = 30 * 1024 * 1024  # 30MB
+    MAX_MEMORY_SIZE: ClassVar[int] = 150 * 1024 * 1024  # 150MB
 
     def __init__(self, template_file: BytesIO) -> None:
         """DocumentRenderインスタンスを初期化する。
