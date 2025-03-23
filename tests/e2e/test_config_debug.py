@@ -12,7 +12,7 @@ Streamlit アプリケーションの設定デバッグ機能のテスト
 from typing import List
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 # test_utils から関数とテキストリソースをインポート
 from .test_utils import check_result_displayed, get_test_file_path, select_tab, texts
@@ -46,6 +46,79 @@ def upload_config_file(page: Page, file_name: str) -> None:
     # アップロード後の処理を待機
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1000)
+
+
+def _get_display_button(page: Page, display_format: str) -> Locator:
+    """表示形式に応じたボタンを取得する
+
+    Args:
+        page: Playwrightのページオブジェクト
+        display_format: 表示形式[visual, toml, yaml]
+
+    Returns:
+        Locator: ボタンのLocatorオブジェクト
+    """
+    format_button_map = {
+        "visual": texts.tab2.generate_visual_button,
+        "toml": texts.tab2.generate_toml_button,
+        "yaml": texts.tab2.generate_yaml_button,
+    }
+    button_text = format_button_map[display_format]
+    display_button = page.locator(f"button:has-text('{button_text}')").first
+    return display_button
+
+
+def _get_result_text(tab_panel: Locator, display_format: str) -> str:
+    """表示形式に応じた結果テキストを取得する
+
+    Args:
+        tab_panel: タブパネルのLocatorオブジェクト
+        display_format: 表示形式[visual, toml, yaml]
+
+    Returns:
+        str: 解析結果のテキスト
+    """
+    result_text = ""
+
+    # JSON表示の場合
+    if display_format == "visual":
+        json_container = tab_panel.locator("div[data-testid='stJson']").first
+        if json_container.count() > 0:
+            return json_container.inner_text()
+
+    # テキストエリアの場合 [tomlとyaml形式]
+    text_areas = tab_panel.locator("textarea").all()
+    for text_area in text_areas:
+        area_text = text_area.input_value()
+        if area_text:
+            result_text += area_text + "\n"
+
+    # テキストエリアやJSON表示が見つからない場合、マークダウン要素を確認
+    if not result_text:
+        markdown_areas = tab_panel.locator("div.stMarkdown").all()
+        for area in markdown_areas:
+            area_text = area.inner_text()
+            if area_text and not area_text.startswith(texts.tab2.upload_debug_config):
+                result_text += area_text + "\n"
+
+    return result_text
+
+
+def _verify_result_content(result_text: str, expected_content: List[str], display_format: str) -> None:
+    """解析結果の内容を検証する
+
+    Args:
+        result_text: 解析結果のテキスト
+        expected_content: 期待される内容のリスト
+        display_format: 表示形式[visual, toml, yaml]
+
+    Raises:
+        AssertionError: 検証に失敗した場合
+    """
+    assert len(result_text.strip()) > 0, f"解析結果が表示されていません({display_format}形式)"
+
+    for content in expected_content:
+        assert content.lower() in result_text.lower(), f"期待される内容 '{content}' が解析結果に含まれていません"
 
 
 @pytest.mark.e2e
@@ -144,24 +217,14 @@ def test_config_debug_parametrized(
     """
     # Arrange: 設定デバッグタブを選択
     select_tab(page, f"📜 {texts.tab2.menu_title}")
-
-    # 設定ファイルをアップロード
     upload_config_file(page, file_name)
 
     # Act: 解析結果の表示ボタンをクリック
-    button_text = ""
-    if display_format == "visual":
-        button_text = texts.tab2.generate_visual_button
-    elif display_format == "toml":
-        button_text = texts.tab2.generate_toml_button
-    elif display_format == "yaml":
-        button_text = texts.tab2.generate_yaml_button
-
-    display_button = page.locator(f"button:has-text('{button_text}')").first
+    display_button = _get_display_button(page, display_format)
     expect(display_button).to_be_visible()
     display_button.click()
 
-    # ページの読み込みを待機 - 待機時間を増やす
+    # ページの読み込みを待機
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(7000)
 
@@ -172,35 +235,6 @@ def test_config_debug_parametrized(
     success_message = tab_panel.locator(f"div:has-text('{texts.tab2.success_debug_config}')").first
     expect(success_message).to_be_visible(timeout=15000)
 
-    # Assert: 解析結果が表示されていることを確認
-    result_text = ""
-
-    # 表示形式に応じて適切なセレクタを使用
-    if display_format == "visual":
-        # JSON表示の場合
-        json_container = tab_panel.locator("div[data-testid='stJson']").first
-        if json_container.count() > 0:
-            result_text = json_container.inner_text()
-
-    # テキストエリアの場合 [tomlとyaml形式]
-    text_areas = tab_panel.locator("textarea").all()
-    for text_area in text_areas:
-        area_text = text_area.input_value()
-        if area_text:
-            result_text += area_text + "\n"
-
-    # テキストエリアやJSON表示が見つからない場合、他の表示方法を確認
-    if not result_text:
-        # マークダウン要素を確認
-        markdown_areas = tab_panel.locator("div.stMarkdown").all()
-        for area in markdown_areas:
-            area_text = area.inner_text()
-            if area_text and not area_text.startswith(texts.tab2.upload_debug_config):
-                result_text += area_text + "\n"
-
-    # 何らかの結果が表示されていることを確認
-    assert len(result_text.strip()) > 0, f"解析結果が表示されていません({display_format}形式)"
-
-    # 期待される内容が含まれていることを確認
-    for content in expected_content:
-        assert content.lower() in result_text.lower(), f"期待される内容 '{content}' が解析結果に含まれていません"
+    # Assert: 解析結果の検証
+    result_text = _get_result_text(tab_panel, display_format)
+    _verify_result_content(result_text, expected_content, display_format)
