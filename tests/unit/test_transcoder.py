@@ -157,6 +157,15 @@ def test_transcoder_non_string_data(
         pytest.param("\x00\x01\x02\x03\x04\x05Hello", "utf-8", None, "\x00\x01\x02\x03\x04\x05Hello", id="String_with_control_characters"),
         pytest.param("😀😁😂🤣😃😄😅", "utf-8", "utf-8", "😀😁😂🤣😃😄😅", id="String_with_emoji"),
         pytest.param("Hello 😀 World 🌍", "utf-8", "utf-8", "Hello 😀 World 🌍", id="String_with_mixed_emoji_and_text"),
+        pytest.param("", "utf-8", "ASCII", "", id="Empty_string"),
+        pytest.param("a", "utf-8", "ASCII", "a", id="Single_character"),
+        pytest.param("あ" * 1000, "utf-8", "utf-8", "あ" * 1000, id="Very_long_non_ASCII_string"),
+        pytest.param("\u0300\u0301\u0302", "utf-8", "utf-8", "\u0300\u0301\u0302", id="Combining_diacritical_marks"),
+        pytest.param("\u200b\u200c\u200d", "utf-8", "utf-8", "\u200b\u200c\u200d", id="Zero_width_characters"),
+        pytest.param("\u0009\u000a\u000d\u0020", "utf-8", "ASCII", "\u0009\u000a\u000d\u0020", id="Various_whitespace_characters"),
+        pytest.param("Hello\u0000World", "utf-8", None, "Hello\u0000World", id="String_with_null_character"),
+        pytest.param("\ufeff Hello World", "utf-8", "utf-8", "\ufeff Hello World", id="String_with_BOM"),
+        pytest.param("表\u309a", "utf-8", "utf-8", "表\u309a", id="String_with_combining_sound_marks"),
     ],
 )
 def test_transcoder_edge_cases(
@@ -206,6 +215,16 @@ def test_transcoder_edge_cases(
         pytest.param(b"GIF89a\x01\x00\x01\x00\x80\x00\x00", None, b"GIF89a\x01\x00\x01\x00\x80\x00\x00", id="Binary_data_with_GIF_header"),
         pytest.param(b"PK\x03\x04\x14\x00\x00\x00\x08\x00", None, b"PK\x03\x04\x14\x00\x00\x00\x08\x00", id="Binary_data_with_ZIP_header"),
         pytest.param(bytes([i % 256 for i in range(100)]), None, bytes([i % 256 for i in range(100)]), id="Binary_data_with_random_bytes"),
+        pytest.param(b"", "ASCII", b"", id="Empty_binary_data"),  # 空データはASCIIとして検出される
+        pytest.param(b"\x00", None, b"\x00", id="Single_null_byte"),
+        pytest.param(b"\xff" * 1000, "ISO-8859-1", b"\xff" * 1000, id="Large_binary_data"),  # ISO-8859-1として検出される
+        pytest.param(b"\xef\xbb\xbfHello", "utf-8", b"\xef\xbb\xbfHello", id="UTF8_BOM_binary_data"),
+        pytest.param(b"\xff\xfeH\x00e\x00l\x00l\x00o\x00", None, b"\xff\xfeH\x00e\x00l\x00l\x00o\x00", id="UTF16_LE_BOM_binary_data"),
+        pytest.param(b"\xfe\xff\x00H\x00e\x00l\x00l\x00o", None, b"\xfe\xff\x00H\x00e\x00l\x00l\x00o", id="UTF16_BE_BOM_binary_data"),
+        pytest.param(
+            b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00", None, b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00", id="GZIP_header_binary_data"
+        ),
+        pytest.param(b"\x7f\x45\x4c\x46\x02\x01\x01\x00", None, b"\x7f\x45\x4c\x46\x02\x01\x01\x00", id="ELF_header_binary_data"),
     ],
 )
 def test_transcoder_binary_edge_cases(
@@ -266,6 +285,42 @@ def test_transcoder_binary_edge_cases(
             "こんにちは世界", "shift_jis", True, b"\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd\x90\xa2\x8aE", id="Convert_to_Shift_JIS"
         ),
         pytest.param("こんにちは世界", "euc_jp", True, b"\xa4\xb3\xa4\xf3\xa4\xcb\xa4\xc1\xa4\xcf\xc0\xa4\xb3\xa6", id="Convert_to_EUC_JP"),
+        pytest.param("", "shift_jis", True, b"", id="Empty_string_to_Shift_JIS"),
+        pytest.param("\u3000", "shift_jis", True, b"\x81\x40", id="Fullwidth_space_to_Shift_JIS"),
+        # 丸数字は変換できないためスキップ
+        pytest.param(
+            "①②③",
+            "shift_jis",
+            True,
+            None,
+            marks=pytest.mark.skip(reason="丸数字はShift_JISで表現できないため"),
+            id="Circled_numbers_to_Shift_JIS",
+        ),
+        pytest.param("ｱｲｳｴｵ", "shift_jis", True, b"\xb1\xb2\xb3\xb4\xb5", id="Halfwidth_katakana_to_Shift_JIS"),
+        # 括弧付き漢字は変換できないためスキップ
+        pytest.param(
+            "㈱㈲㈹",
+            "shift_jis",
+            True,
+            None,
+            marks=pytest.mark.skip(reason="括弧付き漢字はShift_JISで表現できないため"),
+            id="Parenthesized_ideographs_to_Shift_JIS",
+        ),
+        pytest.param("Hello♪World", "shift_jis", True, b"Hello\xe2\x99\xaaWorld", id="ASCII_with_music_symbol_to_Shift_JIS"),
+        # 結合文字は変換できないためスキップ
+        pytest.param(
+            "表\u309a",
+            "shift_jis",
+            True,
+            None,
+            marks=pytest.mark.skip(reason="結合文字はShift_JISで表現できないため"),
+            id="Kanji_with_combining_mark_to_Shift_JIS",
+        ),
+        pytest.param("\u301c", "shift_jis", True, b"\x81\x60", id="Wave_dash_to_Shift_JIS"),
+        # 追加の基本的なテストケース
+        pytest.param("漢字", "shift_jis", True, b"\x8a\xbf\x8e\x9a", id="Basic_kanji_to_Shift_JIS"),
+        pytest.param("カタカナ", "shift_jis", True, b"\x83\x4a\x83\x5e\x83\x4a\x83\x69", id="Basic_katakana_to_Shift_JIS"),
+        pytest.param("ひらがな", "shift_jis", True, b"\x82\xd0\x82\xe7\x82\xaa\x82\xc8", id="Basic_hiragana_to_Shift_JIS"),
     ],
 )
 def test_transcoder_encoding_conversion(
@@ -297,28 +352,19 @@ def test_transcoder_encoding_conversion(
     else:
         assert isinstance(result, BytesIO)
         if isinstance(result, BytesIO):
-            if is_allow_fallback:
+            if input_str == "":  # 空文字列の場合の特別な処理
+                assert result.getvalue() == b""
+            else:
                 try:
-                    decoded = result.getvalue().decode(target_encoding)
                     if target_encoding.lower() == "ascii":
-                        # For ASCII, we expect ? for non-ASCII chars
-                        expected_decoded = (
-                            input_str.replace("世", "?")
-                            .replace("界", "?")
-                            .replace("こ", "?")
-                            .replace("ん", "?")
-                            .replace("に", "?")
-                            .replace("ち", "?")
-                            .replace("は", "?")
-                        )
-                        assert decoded == expected_decoded
+                        # ASCIIの場合、非ASCII文字は?に置換される
+                        expected_decoded = input_str.encode("ascii", errors="replace").decode("ascii")
+                        assert result.getvalue().decode("ascii") == expected_decoded
                     else:
-                        # For other encodings, we just check if it can be decoded back to something
-                        assert len(decoded) > 0
+                        # その他のエンコーディングの場合
+                        assert result.getvalue() == expected_result
                 except UnicodeDecodeError:
                     pytest.fail(f"Could not decode {result.getvalue()} with {target_encoding}")
-            else:
-                assert result.getvalue() == expected_result
 
 
 @pytest.mark.unit
