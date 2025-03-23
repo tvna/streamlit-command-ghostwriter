@@ -51,6 +51,7 @@ import decimal
 import logging
 import re
 from decimal import Decimal
+from io import BytesIO
 from typing import (
     Any,
     Callable,
@@ -62,12 +63,14 @@ from typing import (
     Protocol,
     Sequence,
     Set,
+    Tuple,
     TypeVar,
     Union,
     cast,
 )
 
-from jinja2 import nodes
+import jinja2
+from jinja2 import Environment, nodes
 from markupsafe import Markup
 
 T = TypeVar("T")
@@ -158,6 +161,8 @@ class TemplateSecurityValidator:
        - 動的なループ範囲の検証
 
     Attributes:
+        MAX_FILE_SIZE (int): 許可される最大ファイルサイズ（バイト）
+        MAX_MEMORY_SIZE (int): 許可される最大メモリ使用量（バイト）
         MAX_RANGE_SIZE (int): rangeで許容される最大サイズ（100,000）
         RESTRICTED_TAGS (Set[str]): 禁止されたタグのセット
         RESTRICTED_ATTRIBUTES (Set[str]): 禁止された属性のセット
@@ -188,6 +193,10 @@ class TemplateSecurityValidator:
 
     # 最大range値
     MAX_RANGE_SIZE: ClassVar[int] = 100000
+
+    # ファイルサイズの制限
+    MAX_FILE_SIZE: ClassVar[int] = 1024 * 1024  # 1MB
+    MAX_MEMORY_SIZE: ClassVar[int] = 1024 * 1024 * 10  # 10MB
 
     def validate_template(self, ast: nodes.Template) -> ValidationState:
         """テンプレートのセキュリティを検証する。
@@ -650,7 +659,7 @@ class TemplateSecurityValidator:
         if not self._is_valid_list_operation(node):
             return None
 
-        node_attr = cast(nodes.Getattr, node.node)
+        node_attr = cast("nodes.Getattr", node.node)
         obj = self._evaluate_expression(node_attr.node, context, assignments)
         if not isinstance(obj, list):
             return None
@@ -844,8 +853,8 @@ class TemplateSecurityValidator:
             TypeError: サポートされていない演算子の場合
             ValueError: 無効な数値演算の場合
         """
-        left_num = cast(Decimal, left)
-        right_num = cast(Decimal, right)
+        left_num = cast("Decimal", left)
+        right_num = cast("Decimal", right)
 
         operator_map: Dict[type[nodes.BinExpr], Callable[[Decimal, Decimal], Decimal]] = {
             nodes.Add: self._add,
@@ -944,7 +953,7 @@ class TemplateSecurityValidator:
                 continue
 
             try:
-                call_node = cast(nodes.Call, node.iter)
+                call_node = cast("nodes.Call", node.iter)
                 range_args = self._get_range_arguments(call_node)
                 iterations = self._calculate_range_iterations(*range_args)
 
@@ -1033,3 +1042,119 @@ class TemplateSecurityValidator:
         if isinstance(node, nodes.Const) and isinstance(node.value, (int, float)):
             return int(node.value)
         raise TypeError("Not a literal value")
+
+    def validate_template_file(
+        self, template_file: BytesIO, validation_state: ValidationState
+    ) -> Tuple[Optional[str], Optional[nodes.Template]]:
+        """テンプレートファイルの検証を行う。
+
+        以下の順序で検証を実行します：
+        1. ファイルサイズの検証（最も軽量）
+        2. エンコーディングの検証
+        3. 構文の検証
+        4. セキュリティチェック（静的検証のみ）
+
+        Args:
+            template_file: テンプレートファイル（BytesIO）
+            validation_state: 検証状態
+
+        Returns:
+            Tuple[Optional[str], Optional[nodes.Template]]: (テンプレート内容, AST)のタプル。エラー時はNoneを含む
+        """
+        validation_state.reset()
+
+        # ファイルサイズの検証
+        if not self._validate_file_size(template_file, validation_state):
+            return None, None
+
+        # エンコーディングの検証とコンテンツの取得
+        template_content = self._validate_encoding(template_file, validation_state)
+        if template_content is None:
+            return None, None
+
+        # 構文の検証とASTの取得
+        ast = self._validate_syntax(template_content, validation_state)
+        if ast is None:
+            return None, None
+
+        # セキュリティチェック（静的検証のみ）
+        if not self.validate_template(ast).is_valid:
+            validation_state.set_error("Template security validation failed")
+            return None, None
+
+        return template_content, ast
+
+    def _validate_file_size(self, template_file: BytesIO, validation_state: ValidationState) -> bool:
+        """ファイルサイズを検証する。
+
+        Args:
+            template_file: テンプレートファイル（BytesIO）
+            validation_state: 検証状態
+
+        Returns:
+            bool: ファイルサイズが制限内の場合はTrue
+        """
+        try:
+            current_pos = template_file.tell()
+            template_file.seek(0, 2)  # ファイルの末尾に移動
+            file_size = template_file.tell()
+            template_file.seek(current_pos)  # 元の位置に戻す
+
+            if file_size > self.MAX_FILE_SIZE:
+                validation_state.set_error(f"Template file size exceeds maximum limit of {self.MAX_FILE_SIZE} bytes")
+                return False
+            return True
+        except Exception as e:
+            validation_state.set_error(f"File size validation error: {e!s}")
+            return False
+
+    def _validate_encoding(self, template_file: BytesIO, validation_state: ValidationState) -> Optional[str]:
+        """エンコーディングを検証する。
+
+        Args:
+            template_file: テンプレートファイル（BytesIO）
+            validation_state: 検証状態
+
+        Returns:
+            Optional[str]: デコードされたテンプレート内容（エラーの場合はNone）
+        """
+        try:
+            current_pos = template_file.tell()
+            content = template_file.read()
+            template_file.seek(current_pos)  # 元の位置に戻す
+
+            # バイナリデータのチェック
+            if b"\x00" in content:
+                validation_state.set_error("Template file contains invalid binary data")
+                return None
+
+            # UTF-8デコードのチェック
+            try:
+                return content.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                validation_state.set_error("Template file contains invalid UTF-8 bytes")
+                return None
+
+        except Exception as e:
+            validation_state.set_error(f"Encoding validation error: {e!s}")
+            return None
+
+    def _validate_syntax(self, template_content: str, validation_state: ValidationState) -> Optional[nodes.Template]:
+        """テンプレートの構文を検証する。
+
+        Args:
+            template_content: テンプレートの内容
+            validation_state: 検証状態
+
+        Returns:
+            Optional[nodes.Template]: 構文解析結果（エラーの場合はNone）
+        """
+        try:
+            env = Environment(autoescape=True)
+            return env.parse(template_content)
+        except jinja2.TemplateSyntaxError as e:
+            validation_state.set_error(str(e))
+            return None
+        except Exception as e:
+            validation_state.set_error(f"Template syntax error: {e!s}")
+            return None

@@ -396,29 +396,16 @@ class DocumentRender:
     def _validate_template_file(self) -> bool:
         """テンプレートファイルの検証を行う。
 
-        以下の順序で検証を実行します：
-        1. ファイルサイズの検証（最も軽量）
-        2. エンコーディングの検証
-        3. 構文の検証
-        4. セキュリティチェック（静的検証のみ）
-
         Returns:
             bool: 検証が成功したかどうか
         """
-        self._validation_state.reset()
+        template_content, ast = self._security_validator.validate_template_file(self._template_file, self._validation_state)
+        if template_content is None or ast is None:
+            return False
 
-        # 各検証ステップを実行
-        validation_steps = [
-            self._validate_file_size,
-            lambda: self._validate_and_get_content(),
-            lambda: self._validate_and_get_ast(),
-            lambda: self._validate_security_static(),
-        ]
-
-        for step in validation_steps:
-            if not step():
-                return False
-
+        self._template_content = template_content
+        self._ast = ast
+        self._initial_validation_passed = True
         return True
 
     def _validate_and_get_content(self) -> bool:
@@ -526,7 +513,7 @@ class DocumentRender:
             Optional[nodes.Template]: 構文解析結果（エラーの場合はNone）
         """
         try:
-            env = self._create_environment()
+            env = Environment(autoescape=True)  # autoescapeを有効化
             return env.parse(template_content)
         except jinja2.TemplateSyntaxError as e:
             self._validation_state.set_error(str(e))
@@ -727,7 +714,11 @@ class DocumentRender:
             template = env.from_string(template_content)
 
             # ランタイム検証の実行
-            security_result = self._security_validator.validate_runtime_security(template, context)
+            if self._ast is None:
+                self._validation_state.set_error("AST is not available")
+                return None
+
+            security_result = self._security_validator.validate_runtime_security(self._ast, context)
             if not security_result.is_valid:
                 self._validation_state.set_error(security_result.error_message)
                 return None
@@ -772,13 +763,10 @@ class DocumentRender:
             Environment: 設定済みのJinja2環境
         """
         from functools import wraps
-        from typing import Union
 
         T = TypeVar("T")
-        number_t = Union[int, float]
-        arithmetic_input_t = Union[number_t, str]
 
-        def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", arithmetic_input_t], str]:
+        def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", Any], str]:
             """未定義変数に対する演算を処理するデコレータ。
 
             Args:
@@ -789,7 +777,7 @@ class DocumentRender:
             """
 
             @wraps(func)
-            def wrapper(self: "CustomUndefined", other: arithmetic_input_t) -> str:
+            def wrapper(self: "CustomUndefined", other: Any) -> str:
                 return ""
 
             return wrapper
@@ -804,7 +792,7 @@ class DocumentRender:
             - 比較: False を返す
             """
 
-            def __init__(self, *args: arithmetic_input_t, **kwargs: arithmetic_input_t) -> None:
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
                 super().__init__(*args, **kwargs)
 
             def __getattr__(self, name: str) -> "CustomUndefined":
@@ -824,62 +812,62 @@ class DocumentRender:
 
             # 算術演算子のサポート
             @undefined_operation
-            def __add__(self, other: arithmetic_input_t) -> str:
+            def __add__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __radd__(self, other: arithmetic_input_t) -> str:
+            def __radd__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __sub__(self, other: number_t) -> str:
+            def __sub__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __rsub__(self, other: number_t) -> str:
+            def __rsub__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __mul__(self, other: number_t) -> str:
+            def __mul__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __rmul__(self, other: number_t) -> str:
+            def __rmul__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __div__(self, other: number_t) -> str:
+            def __div__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __rdiv__(self, other: number_t) -> str:
+            def __rdiv__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __truediv__(self, other: number_t) -> str:
+            def __truediv__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __rtruediv__(self, other: number_t) -> str:
+            def __rtruediv__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __floordiv__(self, other: number_t) -> str:
+            def __floordiv__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __rfloordiv__(self, other: number_t) -> str:
+            def __rfloordiv__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __mod__(self, other: arithmetic_input_t) -> str:
+            def __mod__(self, other: Any) -> str:
                 return ""
 
             @undefined_operation
-            def __rmod__(self, other: arithmetic_input_t) -> str:
+            def __rmod__(self, other: Any) -> str:
                 return ""
 
-            def __call__(self, *args: arithmetic_input_t, **kwargs: arithmetic_input_t) -> "CustomUndefined":
+            def __call__(self, *args: Any, **kwargs: Any) -> "CustomUndefined":
                 return self
 
         env = Environment(

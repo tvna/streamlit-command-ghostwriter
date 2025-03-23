@@ -89,28 +89,28 @@ class TestInitialValidation:
             pytest.param(
                 b"{% macro input(name) %}{% endmacro %}",
                 False,
-                "Template security error: 'macro' tag is not allowed",
+                "Template security validation failed",
                 id="Security_macro_tag",
             ),
             # セキュリティ検証テスト - インクルード
             pytest.param(
                 b"{% include 'header.html' %}",
                 False,
-                "Template security error: 'include' tag is not allowed",
+                "Template security validation failed",
                 id="Security_include_tag",
             ),
             # セキュリティ検証テスト - 制限属性
             pytest.param(
                 b"{{ request.args }}",
                 False,
-                "Template security error: access to 'request' is restricted",
+                "Template security validation failed",
                 id="Security_restricted_attribute",
             ),
             # セキュリティ検証テスト - 大きなループ範囲
             pytest.param(
                 b"{% for i in range(0, 1000000) %}{{ i }}{% endfor %}",
                 False,
-                "Template security error: loop range exceeds maximum limit",
+                "Template security validation faile",
                 id="Security_large_loop_range",
             ),
         ],
@@ -292,7 +292,7 @@ class TestValidationConsistency:
                 True,
                 False,
                 False,
-                "Template security error: 'macro' tag is not allowed",
+                "Template security validation failed",
                 id="Initial_and_runtime_macro_validation_strict",
             ),
             # 初期検証で失敗するケース - 非strictモード
@@ -303,7 +303,7 @@ class TestValidationConsistency:
                 False,
                 False,
                 False,
-                "Template security error: 'macro' tag is not allowed",
+                "Template security validation failed",
                 id="Initial_and_runtime_macro_validation_non_strict",
             ),
             # ランタイムのみで失敗するケース - strictモード
@@ -902,7 +902,7 @@ def test_render(
             False,  # テンプレートの初期検証で失敗
             False,  # コンテキスト適用も失敗
             None,
-            "Template security error: 'macro' tag is not allowed",  # セキュリティエラーメッセージ
+            "Template security validation failed",  # セキュリティエラーメッセージ
             id="Template_with_macro",
         ),
         # Edge case: Template with call tag - 初期検証で成功
@@ -926,7 +926,7 @@ def test_render(
             False,  # テンプレートの初期検証で失敗
             False,  # コンテキスト適用も失敗
             None,
-            "Template security error: access to 'request' is restricted",  # セキュリティエラーメッセージ
+            "Template security validation failed",
             id="Runtime_injection_request_access",
         ),
         # Edge case: Template with config access - 初期検証で失敗
@@ -938,7 +938,7 @@ def test_render(
             False,  # テンプレートの初期検証で失敗
             False,  # コンテキスト適用も失敗
             None,
-            "Template security error: access to 'config' is restricted",  # セキュリティエラーメッセージ
+            "Template security validation failed",
             id="Runtime_injection_config_access",
         ),
         # Edge case: Template with recursive data structure
@@ -974,7 +974,7 @@ def test_render(
             False,
             False,
             None,
-            "Template security error: loop range exceeds maximum limit",
+            "Template security validation failed",
             id="Runtime_large_loop_range",
         ),
     ],

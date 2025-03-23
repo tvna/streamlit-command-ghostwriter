@@ -104,6 +104,9 @@ lint.ignore = [
   "RUF002",
   "RUF003",
 ]
+lint.per-file-ignores."features/document_render.py" = [
+  "ANN401",
+]
 lint.per-file-ignores."scripts/check_version.py" = [
   "S603",
 ]
