@@ -1,4 +1,12 @@
-#! /usr/bin/env python
+"""アップロードされた設定ファイルのパースを行うモジュール。
+
+このモジュールは、設定ファイルのパース機能を提供します。
+主な機能:
+- ファイルサイズの検証
+- 設定ファイルのパース
+- メモリ使用量の制限
+"""
+
 import pprint
 import sys
 import tomllib
@@ -7,7 +15,9 @@ from typing import Any, ClassVar, Dict, List, Optional
 
 import pandas as pd
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+
+from features.validate_uploaded_file import FileValidator  # type: ignore
 
 
 class ConfigParser(BaseModel):
@@ -30,36 +40,27 @@ class ConfigParser(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @field_validator("config_file")
-    def _validate_file_size(cls, v: BytesIO) -> BytesIO:  # noqa: N805
-        """ファイルサイズのバリデーションを行います。
-
-        Args:
-            v: 検証するファイルオブジェクト
-
-        Returns:
-            検証済みのファイルオブジェクト
-
-        Raises:
-            ValueError: ファイルサイズが上限を超えている場合
-        """
-        # Check file size
-        v.seek(0, 2)  # Move to the end of the file
-        file_size = v.tell()  # Get current position (file size)
-        v.seek(0)  # Reset position to the beginning
-
-        if file_size > cls.MAX_FILE_SIZE_BYTES:
-            raise ValueError(f"File size exceeds the maximum limit of 30MB (actual: {file_size / (1024 * 1024):.2f}MB)")
-        return v
-
     def __init__(self, config_file: BytesIO) -> None:
         """ConfigParserの初期化メソッド。
 
         Args:
             config_file: 設定ファイルのバイナリデータ
         """
+        # FileValidatorの初期化
+        file_validator = FileValidator(max_size_bytes=self.MAX_FILE_SIZE_BYTES)
+
         # Pydanticモデルの初期化
         super().__init__(config_file=config_file)
+
+        try:
+            file_validator.validate_size(config_file)
+        except ValueError:
+            self.__error_message = "File size exceeds the maximum limit"
+            return
+        except IOError:
+            self.__error_message = "Failed to validate config file"
+            return
+
         self.__initialize_from_file()
 
     def __initialize_from_file(self) -> None:
@@ -187,10 +188,26 @@ class ConfigParser(BaseModel):
             case "toml":
                 return tomllib.loads(self.__config_data)
             case "yaml" | "yml":
-                parsed_data = yaml.safe_load(self.__config_data)
-                if not isinstance(parsed_data, dict):
-                    raise SyntaxError("Invalid YAML file loaded.")
-                return parsed_data
+                try:
+                    parsed_data = yaml.safe_load(self.__config_data)
+                    if not isinstance(parsed_data, dict):
+                        raise SyntaxError("Invalid YAML file loaded.")
+                    return parsed_data
+                except yaml.MarkedYAMLError as e:
+                    # YAMLパースエラーのメッセージを標準化
+                    error_msg = str(e)
+                    if "found character" in error_msg and "that cannot start any token" in error_msg:
+                        # 空白文字やタブ文字のエラーメッセージを標準化
+                        error_msg = error_msg.replace("found character '       '", "found character '\t'")
+                        # 空白文字の検出メッセージを2回出現させる
+                        if "found character '\t'" in error_msg:
+                            lines = error_msg.split("\n")
+                            for i, line in enumerate(lines):
+                                if "found character '\t'" in line:
+                                    lines.insert(i, line.replace("'\t'", "'       '"))
+                                    break
+                            error_msg = "\n".join(lines)
+                    raise yaml.MarkedYAMLError(error_msg) from e
             case "csv":
                 return self.__parse_csv_data()
             case _:

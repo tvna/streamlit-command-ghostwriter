@@ -611,9 +611,11 @@ def test_file_size_validation() -> None:
         config_file = BytesIO(content)
         config_file.name = "config.toml"
 
-        # ファイルサイズが上限を超える場合、例外が発生することを確認
-        with pytest.raises(ValueError, match="File size exceeds the maximum limit"):
-            ConfigParser(config_file)
+        # ファイルサイズが上限を超える場合、error_messageが設定されることを確認
+        parser = ConfigParser(config_file)
+        assert parser.error_message is not None
+        assert "File size exceeds the maximum limit" in parser.error_message
+        assert parser.parse() is False
     finally:
         # テスト後に元の値に戻す
         ConfigParser.MAX_FILE_SIZE_BYTES = original_max_size

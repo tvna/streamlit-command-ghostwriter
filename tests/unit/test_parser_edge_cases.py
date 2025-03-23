@@ -3,7 +3,6 @@ from io import BytesIO
 from typing import Dict, Optional, Union
 
 import pytest
-from pydantic import ValidationError
 
 from features.config_parser import ConfigParser
 
@@ -17,8 +16,8 @@ from features.config_parser import ConfigParser
             b"title = 'TOML test'\n" + b"key_" + b"a" * 1000 + b" = 'value'\n" * 100,
             "config.toml",
             False,
-            "Invalid statement",
-            id="Edge case: Extremely large TOML file with long key names",
+            "Invalid statement (at line 3, column 2)",
+            id="toml_large_file_with_long_keys",
         ),
         # Edge case: TOML with special characters in keys
         pytest.param(
@@ -26,7 +25,7 @@ from features.config_parser import ConfigParser
             "config.toml",
             True,
             None,
-            id="Edge case: TOML with special characters in keys",
+            id="toml_special_chars_in_keys",
         ),
         # Edge case: YAML with extremely long key names
         pytest.param(
@@ -34,7 +33,7 @@ from features.config_parser import ConfigParser
             "config.yaml",
             True,
             None,
-            id="Edge case: YAML with extremely long key names",
+            id="yaml_long_key_names",
         ),
         # Edge case: YAML with special characters in keys
         pytest.param(
@@ -42,7 +41,7 @@ from features.config_parser import ConfigParser
             "config.yaml",
             True,
             None,
-            id="Edge case: YAML with special characters in keys",
+            id="yaml_special_chars_in_keys",
         ),
         # Edge case: Extremely large CSV file
         pytest.param(
@@ -50,7 +49,7 @@ from features.config_parser import ConfigParser
             "config.csv",
             True,
             None,
-            id="Edge case: Extremely large CSV file",
+            id="csv_large_file_many_rows",
         ),
         # Edge case: CSV with quoted fields containing commas
         pytest.param(
@@ -58,7 +57,7 @@ from features.config_parser import ConfigParser
             "config.csv",
             True,
             None,
-            id="Edge case: CSV with quoted fields containing commas",
+            id="csv_quoted_fields_with_commas",
         ),
         # Edge case: CSV with many columns
         pytest.param(
@@ -71,7 +70,7 @@ from features.config_parser import ConfigParser
             "config.csv",
             True,
             None,
-            id="Edge case: CSV with many columns",
+            id="csv_many_columns",
         ),
         # Edge case: Empty file
         pytest.param(
@@ -79,14 +78,14 @@ from features.config_parser import ConfigParser
             "config.toml",
             True,
             None,
-            id="Edge case: Empty TOML file",
+            id="toml_empty_file",
         ),
         pytest.param(
             b"",
             "config.yaml",
             False,
-            "Invalid YAML file loaded",
-            id="Edge case: Empty YAML file",
+            "Invalid YAML file loaded.",
+            id="yaml_empty_file",
         ),
         # Edge case: File with only whitespace
         pytest.param(
@@ -94,44 +93,48 @@ from features.config_parser import ConfigParser
             "config.toml",
             True,
             None,
-            id="Edge case: TOML file with only whitespace",
+            id="toml_whitespace_only",
         ),
         pytest.param(
             b"   \n\t\n  ",
             "config.yaml",
             False,
-            "while scanning for the next token",
-            id="Edge case: YAML file with only whitespace",
+            """while scanning for the next token
+found character '\\t' that cannot start any token
+  in "<unicode string>", line 2, column 1:
+    \t
+    ^""",
+            id="yaml_whitespace_only",
         ),
         # Edge case: File with BOM
         pytest.param(
             b"\xef\xbb\xbftitle = 'TOML test'",
             "config.toml",
             False,
-            "Invalid statement",
-            id="Edge case: TOML file with BOM",
+            "Invalid statement (at line 1, column 1)",
+            id="toml_with_bom",
         ),
         pytest.param(
             b"\xef\xbb\xbftitle: YAML test",
             "config.yaml",
             True,
             None,
-            id="Edge case: YAML file with BOM",
+            id="yaml_with_bom",
         ),
         # Edge case: File with non-UTF8 characters
         pytest.param(
             b"\x80\x81\x82title = 'TOML test'",
             "config.toml",
             False,
-            "codec can't decode",
-            id="Edge case: TOML file with non-UTF8 characters",
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            id="toml_invalid_utf8",
         ),
         pytest.param(
             b"\x80\x81\x82title: YAML test",
             "config.yaml",
             False,
-            "invalid start byte",
-            id="Edge case: YAML file with non-UTF8 characters",
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            id="yaml_invalid_utf8",
         ),
         # Edge case: File with mixed line endings
         pytest.param(
@@ -139,14 +142,14 @@ from features.config_parser import ConfigParser
             "config.toml",
             True,
             None,
-            id="Edge case: TOML file with mixed line endings",
+            id="toml_mixed_line_endings",
         ),
         pytest.param(
             b"title: YAML test\r\nkey1: value1\nkey2: value2\r\n",
             "config.yaml",
             True,
             None,
-            id="Edge case: YAML file with mixed line endings",
+            id="yaml_mixed_line_endings",
         ),
     ],
 )
@@ -173,7 +176,7 @@ def test_parse_edge_cases(
 
     if expected_error is not None:
         assert parser.error_message is not None
-        assert expected_error in str(parser.error_message)
+        assert expected_error == parser.error_message
     else:
         assert parser.error_message is None
 
@@ -287,13 +290,13 @@ def test_file_size_limit() -> None:
     config_file = BytesIO(large_content)
     config_file.name = "large_config.toml"
 
-    # Act & Assert
-    # Pydanticのバリデーションエラーが発生することを確認
-    with pytest.raises(ValidationError) as excinfo:
-        ConfigParser(config_file)
+    # Act
+    parser = ConfigParser(config_file)
 
-    # エラーメッセージを確認
-    assert "File size exceeds the maximum limit of 30MB" in str(excinfo.value)
+    # Assert
+    assert parser.error_message is not None
+    assert "File size exceeds the maximum limit" == parser.error_message
+    assert parser.parse() is False
 
 
 @pytest.mark.unit
@@ -330,7 +333,7 @@ def test_memory_consumption_limit_parsed_str() -> None:
         # Assert
         assert result == "None"
         assert parser.error_message is not None
-        assert "Memory consumption exceeds the maximum limit of 150MB" in parser.error_message
+        assert "Memory consumption exceeds the maximum limit of 150MB (actual: 200.00MB)" == parser.error_message
 
     finally:
         # テスト終了後に元の実装を復元
@@ -371,7 +374,7 @@ def test_memory_consumption_limit_parsed_dict() -> None:
         # Assert
         assert result is None
         assert parser.error_message is not None
-        assert "Memory consumption exceeds the maximum limit of 150MB" in parser.error_message
+        assert "Memory consumption exceeds the maximum limit of 150MB (actual: 200.00MB)" == parser.error_message
 
     finally:
         # テスト終了後に元の実装を復元
@@ -411,8 +414,7 @@ def test_memory_error_handling() -> None:
         # Assert
         assert result is None
         assert parser.error_message is not None
-        assert "Memory error while checking size" in parser.error_message
-        assert "Simulated memory error" in parser.error_message
+        assert "Memory error while checking size: Simulated memory error" == parser.error_message
 
     finally:
         # テスト終了後に元の実装を復元
