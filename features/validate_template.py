@@ -646,34 +646,96 @@ class TemplateSecurityValidator:
 
         Returns:
             Optional[List[Any]]: 評価結果
+        """
+        if not self._is_valid_list_operation(node):
+            return None
+
+        node_attr = cast(nodes.Getattr, node.node)
+        obj = self._evaluate_expression(node_attr.node, context, assignments)
+        if not isinstance(obj, list):
+            return None
+
+        method_name = node_attr.attr
+        args = self._evaluate_call_arguments(node, node_attr, context, assignments)
+
+        return self._execute_list_operation(obj, method_name, args)
+
+    def _is_valid_list_operation(self, node: nodes.Call) -> bool:
+        """リスト操作が有効かどうかを検証する。
+
+        Args:
+            node: メソッド呼び出しノード
+
+        Returns:
+            bool: 有効な場合はTrue
+        """
+        if not isinstance(node.node, nodes.Getattr):
+            return False
+
+        method_name = node.node.attr
+        return method_name in ["append", "extend"]
+
+    def _evaluate_call_arguments(
+        self,
+        node: nodes.Call,
+        node_attr: nodes.Getattr,
+        context: Dict[str, Any],
+        assignments: Dict[str, Any],
+    ) -> List[Any]:
+        """メソッド呼び出しの引数を評価する。
+
+        Args:
+            node: メソッド呼び出しノード
+            node_attr: 属性アクセスノード
+            context: テンプレートに適用するコンテキスト
+            assignments: 変数の割り当て状態
+
+        Returns:
+            List[Any]: 評価された引数のリスト
 
         Raises:
             ValueError: 再帰的構造が検出された場合
-            TypeError: 引数が不正な場合
         """
-        if not isinstance(node.node, nodes.Getattr):
-            return None
-
-        obj = self._evaluate_expression(node.node.node, context, assignments)
-        method_name = node.node.attr
-
-        if not isinstance(obj, list) or method_name not in ["append", "extend"]:
-            return None
-
         args = [self._evaluate_expression(arg, context, assignments) for arg in node.args]
+        obj = self._evaluate_expression(node_attr.node, context, assignments)
+
         if any(arg is obj or self._is_recursive_structure(cast("RecursiveValue", arg)) for arg in args):
             raise ValueError("recursive structure detected")
 
+        return args
+
+    def _execute_list_operation(
+        self,
+        obj: List[Any],
+        method_name: str,
+        args: List[Any],
+    ) -> List[Any]:
+        """リスト操作を実行する。
+
+        Args:
+            obj: 対象のリスト
+            method_name: メソッド名
+            args: 引数リスト
+
+        Returns:
+            List[Any]: 操作結果のリスト
+
+        Raises:
+            TypeError: 引数が不正な場合
+            ValueError: 再帰的構造が検出された場合
+        """
         new_list = obj.copy()
+
         if method_name == "append":
             new_list.append(args[0])
-        else:  # extend
+        elif method_name == "extend":
             if not isinstance(args[0], (list, tuple, set)):
                 raise TypeError("extend() argument must be iterable")
             new_list.extend(cast("Sequence[Any]", args[0]))
 
         if self._is_recursive_structure(cast("RecursiveValue", new_list)):
             raise ValueError("recursive structure detected")
+
         return new_list
 
     def _evaluate_getattr(
@@ -726,13 +788,111 @@ class TemplateSecurityValidator:
         left = self._evaluate_expression(node.left, context, assignments)
         right = self._evaluate_expression(node.right, context, assignments)
 
-        if isinstance(node, nodes.Div) and right == 0:
-            raise ValueError("division by zero is not allowed")
-
         if not isinstance(left, (Decimal, str)) or not isinstance(right, (Decimal, str)):
             raise TypeError("Binary operations are only supported for numbers and strings")
 
-        return self._evaluate_binary_operation(node, left, right)
+        if isinstance(node, nodes.Div) and right == 0:
+            raise ValueError("division by zero is not allowed")
+
+        # 文字列の場合は加算のみ許可
+        if isinstance(left, str) or isinstance(right, str):
+            return self._evaluate_string_operation(node, left, right)
+
+        # 数値の場合は全ての演算を許可
+        return self._evaluate_numeric_operation(node, left, right)
+
+    def _evaluate_string_operation(
+        self,
+        node: nodes.BinExpr,
+        left: Union[Decimal, str],
+        right: Union[Decimal, str],
+    ) -> str:
+        """文字列演算を評価する。
+
+        Args:
+            node: 二項演算ノード
+            left: 左辺の値
+            right: 右辺の値
+
+        Returns:
+            str: 評価結果
+
+        Raises:
+            TypeError: 加算以外の演算子が使用された場合
+        """
+        if not isinstance(node, nodes.Add):
+            raise TypeError("Only addition is supported for strings")
+        return str(left) + str(right)
+
+    def _evaluate_numeric_operation(
+        self,
+        node: nodes.BinExpr,
+        left: Union[Decimal, str],
+        right: Union[Decimal, str],
+    ) -> Decimal:
+        """数値演算を評価する。
+
+        Args:
+            node: 二項演算ノード
+            left: 左辺の値
+            right: 右辺の値
+
+        Returns:
+            Decimal: 評価結果
+
+        Raises:
+            TypeError: サポートされていない演算子の場合
+            ValueError: 無効な数値演算の場合
+        """
+        left_num = cast(Decimal, left)
+        right_num = cast(Decimal, right)
+
+        operator_map: Dict[type[nodes.BinExpr], Callable[[Decimal, Decimal], Decimal]] = {
+            nodes.Add: self._add,
+            nodes.Sub: self._subtract,
+            nodes.Mul: self._multiply,
+            nodes.Div: self._divide,
+            nodes.FloorDiv: self._floor_divide,
+            nodes.Mod: self._modulo,
+            nodes.Pow: self._power,
+        }
+
+        operator_func = operator_map.get(type(node))
+        if operator_func is None:
+            raise TypeError(f"Unsupported binary operator: {type(node).__name__}")
+
+        try:
+            return operator_func(left_num, right_num)
+        except decimal.InvalidOperation as e:
+            raise ValueError(f"Invalid numeric operation: {e!s}") from e
+
+    def _add(self, left: Decimal, right: Decimal) -> Decimal:
+        """加算を実行する。"""
+        return left + right
+
+    def _subtract(self, left: Decimal, right: Decimal) -> Decimal:
+        """減算を実行する。"""
+        return left - right
+
+    def _multiply(self, left: Decimal, right: Decimal) -> Decimal:
+        """乗算を実行する。"""
+        return left * right
+
+    def _divide(self, left: Decimal, right: Decimal) -> Decimal:
+        """除算を実行する。"""
+        return left / right
+
+    def _floor_divide(self, left: Decimal, right: Decimal) -> Decimal:
+        """床除算を実行する。"""
+        return Decimal(left // right)
+
+    def _modulo(self, left: Decimal, right: Decimal) -> Decimal:
+        """剰余を実行する。"""
+        return left % right
+
+    def _power(self, left: Decimal, right: Decimal) -> Decimal:
+        """べき乗を実行する。"""
+        return Decimal(pow(float(left), float(right)))
 
     def _validate_restricted_tags(self, ast: nodes.Template, validation_state: ValidationState) -> bool:
         """禁止タグを検証する。
@@ -780,42 +940,82 @@ class TemplateSecurityValidator:
             bool: 検証が成功したかどうか
         """
         for node in ast.find_all(nodes.For):
-            if isinstance(node.iter, nodes.Call) and isinstance(node.iter.node, nodes.Name) and node.iter.node.name == "range":
-                try:
-                    args = node.iter.args
-                    if len(args) == 1:  # range(stop)
-                        stop = self._evaluate_literal(args[0])
-                        if stop > self.MAX_RANGE_SIZE:
-                            validation_state.set_error(
-                                f"Template security error: loop range exceeds maximum limit of {self.MAX_RANGE_SIZE}"
-                            )
-                            return False
-                    elif len(args) >= 2:  # range(start, stop[, step])
-                        start = self._evaluate_literal(args[0])
-                        stop = self._evaluate_literal(args[1])
+            if not self._is_range_call(node.iter):
+                continue
 
-                        if len(args) > 2:  # step is provided
-                            step = self._evaluate_literal(args[2])
-                            if step == 0:
-                                validation_state.set_error("Template security error: loop step cannot be zero")
-                                return False
-                        else:
-                            step = 1
+            try:
+                call_node = cast(nodes.Call, node.iter)
+                range_args = self._get_range_arguments(call_node)
+                iterations = self._calculate_range_iterations(*range_args)
 
-                        # Calculate the number of iterations
-                        if step > 0:
-                            iterations = (stop - start + step - 1) // step
-                        else:
-                            iterations = (start - stop - step - 1) // -step
-                        if iterations > self.MAX_RANGE_SIZE:
-                            validation_state.set_error(
-                                f"Template security error: loop range exceeds maximum limit of {self.MAX_RANGE_SIZE}"
-                            )
-                            return False
-                except (TypeError, ValueError):
-                    # 動的な値の場合は、ランタイムでの検証に委ねる
-                    continue
+                if iterations > self.MAX_RANGE_SIZE:
+                    validation_state.set_error(f"Template security error: loop range exceeds maximum limit of {self.MAX_RANGE_SIZE}")
+                    return False
+
+            except ValueError as e:
+                validation_state.set_error(f"Template security error: {e}")
+                return False
+            except TypeError:
+                # 動的な値の場合は、ランタイムでの検証に委ねる
+                continue
+
         return True
+
+    def _is_range_call(self, node: nodes.Node) -> bool:
+        """ノードがrange関数の呼び出しかどうかを判定する。
+
+        Args:
+            node: 検証対象のノード
+
+        Returns:
+            bool: range関数の呼び出しの場合はTrue
+        """
+        return isinstance(node, nodes.Call) and isinstance(node.node, nodes.Name) and node.node.name == "range"
+
+    def _get_range_arguments(self, node: nodes.Call) -> tuple[int, int, int]:
+        """range関数の引数を取得する。
+
+        Args:
+            node: range関数の呼び出しノード
+
+        Returns:
+            tuple[int, int, int]: (start, stop, step)の組
+
+        Raises:
+            TypeError: リテラル値でない場合
+            ValueError: 引数が不正な場合
+        """
+        args = node.args
+        if len(args) == 1:  # range(stop)
+            stop = self._evaluate_literal(args[0])
+            return 0, stop, 1
+        elif len(args) >= 2:  # range(start, stop[, step])
+            start = self._evaluate_literal(args[0])
+            stop = self._evaluate_literal(args[1])
+            step = self._evaluate_literal(args[2]) if len(args) > 2 else 1
+
+            if step == 0:
+                raise ValueError("loop step cannot be zero")
+
+            return start, stop, step
+
+        raise ValueError("invalid number of arguments for range()")
+
+    def _calculate_range_iterations(self, start: int, stop: int, step: int) -> int:
+        """range関数の反復回数を計算する。
+
+        Args:
+            start: 開始値
+            stop: 終了値
+            step: ステップ値
+
+        Returns:
+            int: 反復回数
+        """
+        if step > 0:
+            return (stop - start + step - 1) // step
+        else:
+            return (start - stop - step - 1) // -step
 
     def _evaluate_literal(self, node: nodes.Node) -> int:
         """リテラル値を評価する。
@@ -833,51 +1033,3 @@ class TemplateSecurityValidator:
         if isinstance(node, nodes.Const) and isinstance(node.value, (int, float)):
             return int(node.value)
         raise TypeError("Not a literal value")
-
-    def _evaluate_binary_operation(
-        self,
-        node: nodes.BinExpr,
-        left: Union[Decimal, str],
-        right: Union[Decimal, str],
-    ) -> Union[Decimal, str]:
-        """二項演算を評価する。
-
-        Args:
-            node: 二項演算ノード
-            left: 左辺の値
-            right: 右辺の値
-
-        Returns:
-            Union[Decimal, str]: 評価結果
-
-        Raises:
-            TypeError: サポートされていない演算子の場合
-        """
-        # 文字列の場合は加算のみ許可
-        if isinstance(left, str) or isinstance(right, str):
-            if not isinstance(node, nodes.Add):
-                raise TypeError("Only addition is supported for strings")
-            return str(left) + str(right)
-
-        # 数値の場合は全ての演算を許可
-        left_num = cast("Decimal", left)
-        right_num = cast("Decimal", right)
-
-        try:
-            if isinstance(node, nodes.Add):
-                return left_num + right_num
-            if isinstance(node, nodes.Sub):
-                return left_num - right_num
-            if isinstance(node, nodes.Mul):
-                return left_num * right_num
-            if isinstance(node, nodes.Div):
-                return left_num / right_num
-            if isinstance(node, nodes.FloorDiv):
-                return Decimal(left_num // right_num)
-            if isinstance(node, nodes.Mod):
-                return left_num % right_num
-            if isinstance(node, nodes.Pow):
-                return Decimal(pow(float(left_num), float(right_num)))
-            raise TypeError(f"Unsupported binary operator: {type(node).__name__}")
-        except decimal.InvalidOperation as e:
-            raise ValueError(f"Invalid numeric operation: {e!s}") from e
