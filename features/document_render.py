@@ -45,6 +45,7 @@ with open('template.txt', 'rb') as f:
 from datetime import datetime
 from io import BytesIO
 from typing import (
+    Annotated,
     Any,
     Callable,
     ClassVar,
@@ -57,9 +58,64 @@ from typing import (
 import jinja2
 from jinja2 import Environment, nodes
 from jinja2.runtime import StrictUndefined, Undefined
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from features.validate_template import TemplateSecurityValidator, ValidationState  # type: ignore
 from features.validate_uploaded_file import FileValidator  # type: ignore
+
+
+class FormatConfig(BaseModel):
+    """フォーマット設定のバリデーションモデル。"""
+
+    model_config = ConfigDict(strict=True)
+
+    format_type: Annotated[int, Field(ge=0, le=4)]
+    is_strict_undefined: bool = Field(default=True)
+
+    @classmethod
+    @field_validator("format_type")
+    def validate_format_type(cls, v: int) -> int:
+        """フォーマットタイプの検証。
+
+        Args:
+            v: フォーマットタイプ
+
+        Returns:
+            検証済みのフォーマットタイプ
+
+        Raises:
+            ValueError: 無効なフォーマットタイプの場合
+        """
+        if not isinstance(v, int) or not 0 <= v <= 4:
+            raise ValueError("Unsupported format type")
+        return v
+
+
+class ContextConfig(BaseModel):
+    """コンテキスト設定のバリデーションモデル。"""
+
+    model_config = ConfigDict(strict=True)
+
+    context: Dict[str, Any] = Field(default_factory=dict)
+    format_config: FormatConfig
+
+    @classmethod
+    @field_validator("context")
+    def validate_context(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        """コンテキストの検証。
+
+        Args:
+            v: コンテキスト辞書
+
+        Returns:
+            検証済みのコンテキスト辞書
+
+        Raises:
+            ValueError: コンテキストが辞書でない場合
+        """
+        if not isinstance(v, dict):
+            raise ValueError("Context must be a dictionary")
+        return v
 
 
 class ContentFormatter:
@@ -303,6 +359,74 @@ class DocumentRender:
             self._validation_state.set_error(f"Template rendering error: {e!s}")
         return False
 
+    def _validate_input_config(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool) -> Optional[ContextConfig]:
+        """入力設定のバリデーションを行う。
+
+        Args:
+            context: テンプレートに適用するコンテキスト
+            format_type: フォーマットタイプ（0-4の整数）
+            is_strict_undefined: 未定義変数を厳密にチェックするかどうか
+
+        Returns:
+            Optional[ContextConfig]: バリデーション済みの設定（エラー時はNone）
+        """
+        try:
+            return ContextConfig(
+                context=context, format_config=FormatConfig(format_type=format_type, is_strict_undefined=is_strict_undefined)
+            )
+        except ValidationError as e:
+            if "format_type" in str(e):
+                self._validation_state.set_error("Unsupported format type")
+            else:
+                self._validation_state.set_error(str(e))
+            return None
+
+    def _validate_template_state(self, context: Dict[str, Any]) -> bool:
+        """テンプレートの状態を検証する。
+
+        Args:
+            context: テンプレートに適用するコンテキスト
+
+        Returns:
+            bool: 検証が成功したかどうか
+        """
+        if self._ast is None:
+            self._validation_state.set_error("AST is not available")
+            return False
+
+        security_result = self._security_validator.validate_runtime_security(self._ast, context)
+        if not security_result.is_valid:
+            self._validation_state.set_error(security_result.error_message)
+            return False
+
+        if self._template_content is None:
+            self._validation_state.set_error("Template content is not loaded")
+            return False
+
+        return True
+
+    def _render_template(self, context: Dict[str, Any]) -> Optional[str]:
+        """テンプレートをレンダリングする。
+
+        Args:
+            context: テンプレートに適用するコンテキスト
+
+        Returns:
+            Optional[str]: レンダリング結果（エラー時はNone）
+        """
+        try:
+            env = self._create_environment()
+            if self._template_content is None:  # 型チェックのため再確認
+                return None
+            template = env.from_string(self._template_content)
+            return template.render(**context)
+        except Exception as e:
+            if "recursive structure detected" in str(e):
+                self._validation_state.set_error("Template security error: recursive structure detected")
+            else:
+                self._handle_rendering_error(e)
+            return None
+
     def apply_context(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool = True) -> bool:
         """テンプレートにコンテキストを適用する。
 
@@ -314,50 +438,31 @@ class DocumentRender:
         Returns:
             bool: コンテキストの適用が成功したかどうか
         """
-        if not self._validate_preconditions(context, format_type):
+        # 入力設定のバリデーション
+        config = self._validate_input_config(context, format_type, is_strict_undefined)
+        if config is None:
             return False
 
-        try:
-            self._is_strict_undefined = is_strict_undefined
+        # 前提条件の検証
+        if not self._validate_preconditions(config.context, config.format_config.format_type):
+            return False
 
-            # ランタイム検証の実行（再帰的構造の検出を含む）
-            if self._ast is None:
-                self._validation_state.set_error("AST is not available")
-                return False
+        # テンプレートの状態検証
+        self._is_strict_undefined = config.format_config.is_strict_undefined
+        if not self._validate_template_state(config.context):
+            return False
 
-            security_result = self._security_validator.validate_runtime_security(self._ast, context)
-            if not security_result.is_valid:
-                self._validation_state.set_error(security_result.error_message)
-                return False
+        # テンプレートのレンダリング
+        rendered = self._render_template(config.context)
+        if rendered is None:
+            return False
 
-            # テンプレートのレンダリング
-            env = self._create_environment()
-            if self._template_content is None:
-                self._validation_state.set_error("Template content is not loaded")
-                return False
+        # メモリ使用量の検証
+        if not self._validate_memory_usage(rendered):
+            return False
 
-            template = env.from_string(self._template_content)
-
-            try:
-                rendered = template.render(**context)
-            except Exception as e:
-                if "recursive structure detected" in str(e):
-                    self._validation_state.set_error("Template security error: recursive structure detected")
-                    return False
-                raise
-
-            # メモリ使用量の検証
-            if not self._validate_memory_usage(rendered):
-                return False
-
-            # フォーマット処理
-            if not self._format_content(rendered, format_type):
-                return False
-
-            return True
-
-        except Exception as e:
-            return self._handle_rendering_error(e)
+        # フォーマット処理
+        return self._format_content(rendered, config.format_config.format_type)
 
     def _validate_memory_usage(self, content: str) -> bool:
         """メモリ使用量を検証する。
