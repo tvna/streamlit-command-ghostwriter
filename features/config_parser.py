@@ -2,9 +2,84 @@
 
 このモジュールは、設定ファイルのパース機能を提供します。
 主な機能:
-- ファイルサイズの検証
-- 設定ファイルのパース
+- 設定ファイルの検証とパース
 - メモリ使用量の制限
+- CSVデータの特殊処理
+
+クラス階層：
+- ConfigParser: メインのパースクラス（Pydanticモデル）
+  - FileValidator: ファイルサイズの検証
+  - pandas: CSVデータの処理
+
+検証プロセス:
+1. 入力検証
+   - Pydanticモデルによるバリデーション
+   - ファイルサイズの制限チェック
+   - サポートされているファイル形式の確認
+
+2. ファイル処理
+   - エンコーディングの検証（UTF-8）
+   - ファイル拡張子の抽出
+   - ファイル内容の読み込み
+
+3. パース処理
+   - ファイル形式に応じたパース（TOML/YAML/CSV）
+   - CSVデータの特殊処理（NaN値の処理）
+   - パース結果の辞書変換
+
+4. メモリ管理
+   - パース結果のメモリ使用量チェック
+   - 文字列変換時のメモリ制限
+   - エラー時のメモリ解放
+
+対応ファイル形式:
+- TOML (.toml)
+  - tomllibによるパース
+  - 厳密な構文チェック
+- YAML (.yaml, .yml)
+  - PyYAMLによる安全なパース
+  - 辞書形式の検証
+- CSV (.csv)
+  - pandasによるパース
+  - NaN値の柔軟な処理
+  - カスタム行名の設定
+
+エラー処理:
+- ValidationError: Pydanticによる検証エラー
+- ValueError: ファイルサイズ、形式、構文エラー
+- UnicodeError: エンコーディングエラー
+- MemoryError: メモリ制限超過
+- YAMLError: YAML構文エラー
+- TOMLDecodeError: TOML構文エラー
+- pandas.errors: CSVパースエラー
+
+メモリ管理:
+- ファイルサイズ制限: 30MB
+- メモリ使用量制限: 150MB
+- 大きなファイルの安全な処理
+- メモリリークの防止
+
+典型的な使用方法:
+```python
+with open('config.toml', 'rb') as f:
+    config_file = BytesIO(f.read())
+    parser = ConfigParser(config_file)
+    if parser.parse():
+        config_dict = parser.parsed_dict
+        config_str = parser.parsed_str
+```
+
+CSVファイルの特殊処理:
+```python
+with open('data.csv', 'rb') as f:
+    config_file = BytesIO(f.read())
+    parser = ConfigParser(config_file)
+    parser.csv_rows_name = 'items'      # カスタム行名の設定
+    parser.enable_fill_nan = True       # NaN値の処理を有効化
+    parser.fill_nan_with = ''          # NaN値を空文字列で置換
+    if parser.parse():
+        csv_data = parser.parsed_dict
+```
 """
 
 import pprint
@@ -21,6 +96,56 @@ from features.validate_uploaded_file import FileValidator  # type: ignore
 
 
 class ConfigParser(BaseModel):
+    """設定ファイルのパースを行うクラス。
+
+    設定ファイルの検証、パース、メモリ管理を一貫して処理します。
+    Pydanticモデルによる厳密な入力検証とメモリ使用量の制限を提供します。
+
+    主な機能:
+    1. ファイル処理
+       - サポートされている形式の検証
+       - ファイルサイズの制限
+       - UTF-8エンコーディングの確認
+
+    2. パース処理
+       - TOML: tomllibによる厳密なパース
+       - YAML: safe_loadによる安全なパース
+       - CSV: pandasによる高度なデータ処理
+         - NaN値の柔軟な処理
+         - カスタム行名の設定
+         - 型変換の自動処理
+
+    3. メモリ管理
+       - ファイルサイズの制限
+       - パース結果のメモリ監視
+       - 文字列変換時の制限
+
+    Attributes:
+        MAX_FILE_SIZE_BYTES: ファイルサイズの上限 [バイト]
+            デフォルト: 30MB
+        MAX_MEMORY_SIZE_BYTES: メモリ使用量の上限 [バイト]
+            デフォルト: 150MB
+        SUPPORTED_EXTENSIONS: サポートされているファイル拡張子
+            [toml, yaml, yml, csv]
+
+    Properties:
+        parsed_dict: パース結果の辞書（エラー時はNone）
+        parsed_str: パース結果の文字列表現（エラー時は"None"）
+        error_message: エラーメッセージ（エラーがない場合はNone）
+        csv_rows_name: CSV行のキー名（デフォルト: "csv_rows"）
+        enable_fill_nan: NaN値を置換するかどうか
+        fill_nan_with: NaN値の置換値
+
+    エラー処理:
+    - ValidationError: 入力値の検証エラー
+    - ValueError: ファイルサイズ、形式、構文エラー
+    - UnicodeError: エンコーディングエラー
+    - MemoryError: メモリ制限超過
+    - YAMLError: YAML構文エラー
+    - TOMLDecodeError: TOML構文エラー
+    - pandas.errors: CSVパースエラー
+    """
+
     # Constants for size limits as class variables
     MAX_FILE_SIZE_BYTES: ClassVar[int] = 30 * 1024 * 1024  # 30MB
     MAX_MEMORY_SIZE_BYTES: ClassVar[int] = 150 * 1024 * 1024  # 150MB
