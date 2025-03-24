@@ -38,7 +38,7 @@ jobs:
 
       - name: Dependabot metadata
         id: meta
-        uses: dependabot/fetch-metadata@v2.0.0
+        uses: dependabot/fetch-metadata@v2.3.0
 
       - name: Wait for Test & Build workflow
         timeout-minutes: 15
