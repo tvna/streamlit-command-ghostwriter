@@ -792,7 +792,7 @@ def test_file_size_validation() -> None:
         # ファイルサイズが上限を超える場合、error_messageが設定されることを確認
         parser = ConfigParser(config_file)
         assert parser.error_message is not None
-        assert "File size exceeds the maximum limit" in parser.error_message
+        assert "File size exceeds maximum limit of 10 bytes" in parser.error_message
         assert parser.parse() is False
     finally:
         # テスト後に元の値に戻す
@@ -1324,7 +1324,7 @@ def test_file_size_limit() -> None:
 
     # Assert
     assert parser.error_message is not None
-    assert "File size exceeds the maximum limit" == parser.error_message
+    assert "File size exceeds maximum limit of 31457280 bytes" == parser.error_message
     assert parser.parse() is False
 
 

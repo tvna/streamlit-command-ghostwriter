@@ -92,7 +92,7 @@ import pandas as pd
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from features.validate_uploaded_file import FileValidator  # type: ignore
+from features.validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
 
 
 class ConfigParser(BaseModel):
@@ -172,18 +172,15 @@ class ConfigParser(BaseModel):
             config_file: 設定ファイルのバイナリデータ
         """
         # FileValidatorの初期化
-        file_validator = FileValidator(max_size_bytes=self.MAX_FILE_SIZE_BYTES)
+        file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
 
         # Pydanticモデルの初期化
         super().__init__(config_file=config_file)
 
-        try:
-            file_validator.validate_size(config_file)
-        except ValueError:
-            self.__error_message = "File size exceeds the maximum limit"
-            return
-        except IOError:
-            self.__error_message = "Failed to validate config file"
+        # ファイルサイズの検証
+        file_validator.validate_size(config_file)
+        if not file_validator.is_valid:
+            self.__error_message = file_validator.error_message
             return
 
         self.__initialize_from_file()

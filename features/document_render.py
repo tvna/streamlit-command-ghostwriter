@@ -90,7 +90,7 @@ from jinja2.runtime import StrictUndefined, Undefined
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from features.validate_template import TemplateSecurityValidator, ValidationState  # type: ignore
-from features.validate_uploaded_file import FileValidator  # type: ignore
+from features.validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
 
 
 class FormatConfig(BaseModel):
@@ -272,7 +272,7 @@ class DocumentRender:
             エラー状態は is_valid_template と error_message プロパティで確認できます。
         """
         self._validation_state = ValidationState()
-        self._file_validator = FileValidator(max_size_bytes=self.MAX_FILE_SIZE)
+        self._file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE))
 
         try:
             self._file_validator.validate_size(template_file)
