@@ -7,29 +7,56 @@
 - レンダリング結果のフォーマット処理
 
 クラス階層：
+- ValidationModels: バリデーションモデル
+  - FormatConfig: フォーマット設定
+  - ContextConfig: コンテキスト設定
+  - ValidationState: 検証状態
 - DocumentRender: メインのレンダリングクラス
   - FileValidator: ファイルサイズの検証
   - ContentFormatter: フォーマット処理
   - TemplateSecurityValidator: テンプレートのセキュリティ検証
 
 検証プロセス:
-1. ファイルサイズの検証
-   - FileValidatorによるサイズ制限のチェック
-   - ファイルポインタの位置を保持したまま検証
+1. 入力検証
+   - Pydanticモデルによるバリデーション
+   - フォーマット設定の検証
+   - コンテキストデータの型チェック
 
-2. テンプレートの検証
-   - 構文チェック
+2. ファイル検証
+   - FileValidatorによるサイズ制限のチェック
+   - エンコーディングの検証（UTF-8）
+   - バイナリデータの検出
+
+3. テンプレートの検証
+   - 構文チェック（Jinja2 AST）
    - セキュリティチェック（禁止タグ、属性）
    - 再帰的構造の検出
+   - ループ範囲の制限
 
-3. コンテキストの適用
+4. コンテキストの適用
    - 変数の型チェック
-   - 未定義変数の検証
+   - 未定義変数の検証（strict/non-strictモード）
    - メモリ使用量の制限
+   - 再帰的構造の防止
 
-4. 出力フォーマット
+5. 出力フォーマット
    - 空白行の処理（保持/圧縮/削除）
    - 改行の正規化
+   - HTMLコンテンツの安全性確認
+
+エラー処理:
+- ValidationError: Pydanticによる検証エラー
+- ValueError: 値の検証エラー
+- TypeError: 型の不一致エラー
+- UnicodeError: エンコーディングエラー
+- TemplateError: テンプレート処理エラー
+
+セキュリティ機能:
+- HTMLエスケープのデフォルト有効化
+- 安全なフィルター実装（safe, html_safe）
+- 再帰的構造の検出と防止
+- メモリ使用量の制限
+- ループ回数の制限
 
 典型的な使用方法:
 ```python
@@ -37,8 +64,10 @@ with open('template.txt', 'rb') as f:
     template_file = BytesIO(f.read())
     renderer = DocumentRender(template_file)
     if renderer.is_valid_template:
-        renderer.apply_context({'name': 'World'}, format_type=2)  # NORMALIZE_BREAKS
-        result = renderer.render_content
+        context = {'name': 'World'}
+        format_config = FormatConfig(format_type=2)  # NORMALIZE_BREAKS
+        if renderer.apply_context(context, format_config.format_type):
+            result = renderer.render_content
 ```
 """
 
@@ -190,11 +219,43 @@ class DocumentRender:
     """テンプレートのレンダリングと検証を行うクラス。
 
     テンプレートファイルの検証、レンダリング、フォーマットを一貫して処理します。
-    セキュリティチェック、メモリ使用量の制限、出力フォーマットの制御を提供します。
+    Pydanticモデルによる厳密な入力検証、セキュリティチェック、メモリ使用量の制限を提供します。
+
+    主な機能:
+    1. 入力検証
+       - フォーマット設定の検証（FormatConfig）
+       - コンテキストデータの検証（ContextConfig）
+       - 検証状態の管理（ValidationState）
+
+    2. セキュリティ検証
+       - テンプレートの構文チェック
+       - 禁止タグ・属性の検出
+       - 再帰的構造の防止
+       - メモリ使用量の制限
+       - HTMLコンテンツの安全性確認
+
+    3. レンダリング処理
+       - 未定義変数の処理（strict/non-strictモード）
+       - エラー処理の一元管理
+       - メモリ使用量の監視
+       - 出力フォーマットの制御
 
     Attributes:
         MAX_FILE_SIZE: テンプレートファイルの最大サイズ [バイト]
+            デフォルト: 30MB
         MAX_MEMORY_SIZE: レンダリング結果の最大メモリ使用量 [バイト]
+            デフォルト: 150MB
+
+    Properties:
+        is_valid_template: テンプレートが有効かどうか
+        error_message: エラーメッセージ（エラーがない場合はNone）
+        render_content: レンダリング結果（レンダリングが行われていない場合はNone）
+
+    エラー処理:
+    - ValidationError: 入力値の検証エラー
+    - ValueError: ファイルサイズ、メモリ使用量などの制限超過
+    - UnicodeError: エンコーディングエラー
+    - TemplateError: テンプレート処理エラー
     """
 
     MAX_FILE_SIZE: ClassVar[int] = 30 * 1024 * 1024  # 30MB

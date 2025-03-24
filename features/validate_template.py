@@ -7,34 +7,92 @@
    - 構文チェック
    - セキュリティチェック
    - ファイルサイズの検証
+   - エンコーディングの検証
 2. コンテキストの適用
    - 変数の検証
    - 型チェック
-3. 出力フォーマット
+   - 再帰的構造の検出
+3. セキュリティ検証
+   - 禁止タグのチェック
+   - 禁止属性のチェック
+   - ループ範囲の制限
+   - テンプレートインジェクション対策
+4. 出力フォーマット
    - 空白行の処理
    - 改行の正規化
 
 クラス階層：
+- ValidationModels: バリデーションモデル
+  - TemplateConfig: テンプレート設定
+  - RangeConfig: rangeループの設定
+  - ValidationState: 検証状態
+  - HTMLContent: HTMLコンテンツ
+  - TemplateFile: テンプレートファイル
 - DocumentRender: メインのレンダリングクラス
   - TemplateValidator: テンプレート検証
   - ContentFormatter: フォーマット処理
   - TemplateSecurityValidator: テンプレートのセキュリティ検証
   - ContextValidator: コンテキスト検証
 
-TODO:
-1. セキュリティ検証の改善 [CWE-94]
-   - マクロの使用に関するセキュリティチェックの強化
-   - テンプレートインジェクション対策の見直し
-   - 再帰的な構造の検出精度の向上
+バリデーション階層：
+1. 静的解析（初期検証）
+   - ファイルサイズの検証
+   - エンコーディングの検証
+   - 禁止タグのチェック
+   - 禁止属性のチェック
+   - リテラル値のループ範囲チェック
+2. ランタイム検証
+   - 再帰的構造の検出
+   - ゼロ除算の検証
+   - 動的なループ範囲の検証
+3. セキュリティ検証
+   - HTMLコンテンツの安全性チェック
+   - テンプレートインジェクション対策
+   - 再帰的構造の検出
 
-2. ファイルサイズ制限の検証方法の改善
-   - 現在の実装: read()メソッドの戻り値のサイズをチェック
-   - 課題: メモリ効率が悪い（ファイル全体をメモリに読み込む）
-   - 改善案: seek()とtell()を使用したファイルサイズの事前チェック
+制限値：
+- ファイルサイズ: 1MB (1,048,576 bytes)
+- メモリ使用量: 10MB (10,485,760 bytes)
+- ループ範囲: 100,000回
+- 再帰の深さ: 100レベル
 
-3. エラーメッセージの一貫性確保
-   - ValidationResultクラスのエラーメッセージフォーマットの統一
-   - 各種バリデーションエラーの明確な区別
+セキュリティ対策：
+1. 禁止タグ
+   - macro: マクロ定義の禁止
+   - include: 外部ファイルの読み込み禁止
+   - import: モジュールのインポート禁止
+   - extends: テンプレートの継承禁止
+
+2. 禁止属性
+   - システム関連: os, sys, builtins
+   - 評価関連: eval, exec
+   - 属性操作: getattr, setattr, delattr
+   - スコープ関連: globals, locals
+   - クラス関連: __class__, __base__, __subclasses__, __mro__
+   - その他: request, config
+
+3. HTMLセキュリティ
+   - スクリプトタグの禁止
+   - JavaScriptプロトコルの禁止
+   - データURIスキームの禁止
+   - VBScriptプロトコルの禁止
+   - イベントハンドラ属性の禁止
+
+エラーハンドリング：
+1. バリデーションエラー
+   - Pydanticの`ValidationError`を使用
+   - エラーメッセージの標準化
+   - エラー状態の一元管理
+
+2. セキュリティエラー
+   - 明確なエラーメッセージ
+   - エラー原因の特定
+   - 適切なエラー伝播
+
+3. 構文エラー
+   - Jinja2の`TemplateSyntaxError`のハンドリング
+   - エラー位置の特定
+   - エラーメッセージの明確化
 
 典型的な使用方法:
 ```python
@@ -45,6 +103,22 @@ with open('template.txt', 'rb') as f:
         renderer.apply_context({'name': 'World'}, format_type=FormatType.NORMALIZE_BREAKS)
         result = renderer.render_content
 ```
+
+TODO:
+1. パフォーマンスの改善
+   - ファイルサイズの検証方法の最適化（seek/tellの活用）
+   - メモリ使用量の監視強化
+   - バリデーションの並列処理の検討
+
+2. セキュリティの強化
+   - テンプレートインジェクション対策の強化
+   - 再帰的構造の検出精度の向上
+   - セキュリティルールの動的更新機能の追加
+
+3. エラー処理の改善
+   - エラーメッセージの多言語対応
+   - エラーコードの体系化
+   - デバッグ情報の充実化
 """
 
 import decimal
@@ -53,9 +127,9 @@ import re
 from decimal import Decimal
 from io import BytesIO
 from typing import (
+    Annotated,
     Any,
     Callable,
-    ClassVar,
     Dict,
     Iterator,
     List,
@@ -72,6 +146,14 @@ from typing import (
 import jinja2
 from jinja2 import Environment, nodes
 from markupsafe import Markup
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+)
 
 T = TypeVar("T")
 RecursiveT = TypeVar("RecursiveT", bound="RecursiveValue")
@@ -92,33 +174,102 @@ class RecursiveValue(Protocol):
     def __iter__(self) -> Iterator[RecursiveT]: ...  # type: ignore
 
 
-class ValidationState:
-    """テンプレートの検証状態を表すクラス。"""
+class TemplateConfig(BaseModel):
+    """テンプレート設定のバリデーションモデル。"""
 
-    def __init__(self) -> None:
-        """初期化。"""
-        self._is_valid: bool = True
-        self._error_message: Optional[str] = None
-        self._content: Optional[str] = None
+    model_config = ConfigDict(strict=True, validate_assignment=True)
 
-    @property
-    def is_valid(self) -> bool:
-        """検証が成功したかどうかを返す。"""
-        return self._is_valid
+    max_file_size: Annotated[int, Field(gt=0)] = Field(default=1024 * 1024)  # 1MB
+    max_memory_size: Annotated[int, Field(gt=0)] = Field(default=1024 * 1024 * 10)  # 10MB
+    max_range_size: Annotated[int, Field(gt=0)] = Field(default=100000)
+    restricted_tags: Set[str] = Field(default_factory=lambda: {"macro", "include", "import", "extends"})
+    restricted_attributes: Set[str] = Field(
+        default_factory=lambda: {
+            "request",
+            "config",
+            "os",
+            "sys",
+            "builtins",
+            "eval",
+            "exec",
+            "getattr",
+            "setattr",
+            "delattr",
+            "globals",
+            "locals",
+            "__class__",
+            "__base__",
+            "__subclasses__",
+            "__mro__",
+        }
+    )
 
-    @property
-    def error_message(self) -> Optional[str]:
-        """エラーメッセージを返す。
+    @field_validator("max_file_size", "max_memory_size", "max_range_size")
+    @classmethod
+    def validate_positive_limits(cls, v: int) -> int:
+        """制限値が正の値であることを検証する。
+
+        Args:
+            v: 検証対象の値
 
         Returns:
-            Optional[str]: エラーメッセージ（エラーがない場合はNone）
-        """
-        return self._error_message if self._error_message else None
+            int: 検証済みの値
 
-    @property
-    def content(self) -> Optional[str]:
-        """テンプレート内容を返す。"""
-        return self._content
+        Raises:
+            ValueError: 値が0以下の場合
+        """
+        if v <= 0:
+            raise ValueError("Limit must be a positive integer")
+        return v
+
+
+class RangeConfig(BaseModel):
+    """rangeループの設定のバリデーションモデル。"""
+
+    model_config = ConfigDict(strict=True)
+
+    start: int = Field(default=0)
+    stop: int
+    step: int = Field(default=1)
+
+    @field_validator("step")
+    @classmethod
+    def validate_step(cls, v: int) -> int:
+        """ステップ値を検証する。
+
+        Args:
+            v: ステップ値
+
+        Returns:
+            int: 検証済みのステップ値
+
+        Raises:
+            ValueError: ステップ値が0の場合
+        """
+        if v == 0:
+            raise ValueError("Step cannot be zero")
+        return v
+
+    def calculate_iterations(self) -> int:
+        """反復回数を計算する。
+
+        Returns:
+            int: 反復回数
+        """
+        if self.step > 0:
+            return (self.stop - self.start + self.step - 1) // self.step
+        else:
+            return (self.start - self.stop - self.step - 1) // -self.step
+
+
+class ValidationState(BaseModel):
+    """テンプレートの検証状態を表すクラス。"""
+
+    model_config = ConfigDict(strict=True, validate_assignment=True)
+
+    is_valid: bool = Field(default=True)
+    error_message: Optional[str] = Field(default=None)
+    content: Optional[str] = Field(default=None)
 
     def set_error(self, message: Optional[str]) -> None:
         """エラーメッセージを設定する。
@@ -126,8 +277,8 @@ class ValidationState:
         Args:
             message: エラーメッセージ（Noneの場合は空文字列に変換）
         """
-        self._is_valid = False
-        self._error_message = str(message) if message is not None else ""
+        self.is_valid = False
+        self.error_message = str(message) if message is not None else ""
 
     def set_content(self, content: str) -> None:
         """テンプレート内容を設定する。
@@ -135,13 +286,93 @@ class ValidationState:
         Args:
             content: テンプレート内容
         """
-        self._content = content
+        self.content = content
 
     def reset(self) -> None:
         """状態をリセットする。"""
-        self._is_valid = True
-        self._error_message = None
-        self._content = None
+        self.is_valid = True
+        self.error_message = None
+        self.content = None
+
+
+class HTMLContent(BaseModel):
+    """HTMLコンテンツのバリデーションモデル。"""
+
+    model_config = ConfigDict(strict=True)
+
+    content: str = Field(...)
+
+    @field_validator("content")
+    @classmethod
+    def validate_html_content(cls, v: str) -> str:
+        """HTMLコンテンツを検証する。
+
+        Args:
+            v: 検証対象のコンテンツ
+
+        Returns:
+            str: 検証済みのコンテンツ
+
+        Raises:
+            ValueError: 安全でないHTML要素が含まれる場合
+        """
+        if not isinstance(v, str):
+            raise ValueError("HTML content must be a string")
+
+        # 安全でないHTMLパターンをチェック
+        unsafe_patterns = [
+            r"<script",  # スクリプトタグ
+            r"javascript:",  # JavaScriptプロトコル
+            r"data:",  # データURIスキーム
+            r"vbscript:",  # VBScriptプロトコル
+            r"on\w+\s*=",  # イベントハンドラ属性
+        ]
+
+        for pattern in unsafe_patterns:
+            if re.search(pattern, v, re.IGNORECASE):
+                raise ValueError("HTML content contains potentially unsafe elements")
+
+        return v
+
+
+class TemplateFile(BaseModel):
+    """テンプレートファイルのバリデーションモデル。"""
+
+    model_config = ConfigDict(strict=True)
+
+    content: bytes = Field(...)
+    max_size: int = Field(...)
+
+    @field_validator("content")
+    @classmethod
+    def validate_file_content(cls, v: bytes, info: ValidationInfo) -> bytes:
+        """ファイルコンテンツを検証する。
+
+        Args:
+            v: 検証対象のコンテンツ
+            info: バリデーション情報
+
+        Returns:
+            bytes: 検証済みのコンテンツ
+
+        Raises:
+            ValueError: ファイルサイズが制限を超える場合
+        """
+        max_size = info.data.get("max_size", 0)
+        if len(v) > max_size:
+            raise ValueError(f"Template file size exceeds maximum limit of {max_size} bytes")
+
+        # バイナリデータのチェック
+        if b"\x00" in v:
+            raise ValueError("Template file contains invalid binary data")
+
+        # UTF-8デコードのチェック
+        try:
+            v.decode("utf-8", errors="strict")
+        except UnicodeDecodeError as e:
+            raise ValueError("Template file contains invalid UTF-8 bytes") from e
+
+        return v
 
 
 class TemplateSecurityValidator:
@@ -161,42 +392,38 @@ class TemplateSecurityValidator:
        - 動的なループ範囲の検証
 
     Attributes:
-        MAX_FILE_SIZE (int): 許可される最大ファイルサイズ（バイト）
-        MAX_MEMORY_SIZE (int): 許可される最大メモリ使用量（バイト）
-        MAX_RANGE_SIZE (int): rangeで許容される最大サイズ（100,000）
-        RESTRICTED_TAGS (Set[str]): 禁止されたタグのセット
-        RESTRICTED_ATTRIBUTES (Set[str]): 禁止された属性のセット
+        config: テンプレート設定
     """
 
-    # 許可されない属性のリスト（静的検証）
-    RESTRICTED_ATTRIBUTES: ClassVar[set[str]] = {
-        "request",
-        "config",
-        "os",
-        "sys",
-        "builtins",
-        "eval",
-        "exec",
-        "getattr",
-        "setattr",
-        "delattr",
-        "globals",
-        "locals",
-        "__class__",
-        "__base__",
-        "__subclasses__",
-        "__mro__",
-    }
+    def __init__(self) -> None:
+        """初期化。"""
+        self.config = TemplateConfig()
+        self._validation_state = ValidationState()
 
-    # 許可されないタグのリスト（静的検証）
-    RESTRICTED_TAGS: ClassVar[set[str]] = {"macro", "include", "import", "extends"}
+    @property
+    def max_file_size(self) -> int:
+        """最大ファイルサイズを返す。"""
+        return self.config.max_file_size
 
-    # 最大range値
-    MAX_RANGE_SIZE: ClassVar[int] = 100000
+    @property
+    def max_memory_size(self) -> int:
+        """最大メモリ使用量を返す。"""
+        return self.config.max_memory_size
 
-    # ファイルサイズの制限
-    MAX_FILE_SIZE: ClassVar[int] = 1024 * 1024  # 1MB
-    MAX_MEMORY_SIZE: ClassVar[int] = 1024 * 1024 * 10  # 10MB
+    @property
+    def max_range_size(self) -> int:
+        """最大range値を返す。"""
+        return self.config.max_range_size
+
+    @property
+    def restricted_tags(self) -> Set[str]:
+        """禁止タグのセットを返す。"""
+        return self.config.restricted_tags
+
+    @property
+    def restricted_attributes(self) -> Set[str]:
+        """禁止属性のセットを返す。"""
+        return self.config.restricted_attributes
 
     def validate_template(self, ast: nodes.Template) -> ValidationState:
         """テンプレートのセキュリティを検証する。
@@ -207,21 +434,21 @@ class TemplateSecurityValidator:
         Returns:
             ValidationState: 検証結果
         """
-        validation_state = ValidationState()
+        self._validation_state.reset()
 
         # 1. 禁止タグの検証
-        if not self._validate_restricted_tags(ast, validation_state):
-            return validation_state
+        if not self._validate_restricted_tags(ast, self._validation_state):
+            return self._validation_state
 
         # 2. 属性アクセスの検証
-        if not self._validate_restricted_attributes(ast, validation_state):
-            return validation_state
+        if not self._validate_restricted_attributes(ast, self._validation_state):
+            return self._validation_state
 
         # 3. ループ範囲の検証（リテラル値のみ）
-        if not self._validate_loop_range(ast, validation_state):
-            return validation_state
+        if not self._validate_loop_range(ast, self._validation_state):
+            return self._validation_state
 
-        return validation_state
+        return self._validation_state
 
     def validate_runtime_security(self, ast: nodes.Template, context: Dict[str, Any]) -> ValidationState:
         """ランタイムセキュリティの検証を実行する。
@@ -395,14 +622,14 @@ class TemplateSecurityValidator:
         try:
             if isinstance(node.node, nodes.Const):
                 content = str(node.node.value)
-                self.html_safe_filter(content)  # 安全性チェックを実行
-            return validation_state
-        except ValueError as e:
+                HTMLContent(content=content)  # バリデーションのみ実行
+            else:
+                validation_state.set_error("Content validation error: node is not a constant")
+        except ValidationError as e:
             validation_state.set_error(f"HTML content validation error: {e!s}")
-            return validation_state
         except Exception as e:
             validation_state.set_error(f"Content validation error: {e!s}")
-            return validation_state
+        return validation_state
 
     def html_safe_filter(self, value: str) -> Markup:
         """HTMLをエスケープせずに出力する。
@@ -416,24 +643,11 @@ class TemplateSecurityValidator:
         Raises:
             ValueError: 安全でないHTML要素が含まれる場合
         """
-        if not isinstance(value, str):
-            raise ValueError("HTML content must be a string")
-
-        # 安全でないHTMLパターンをチェック
-        unsafe_patterns = [
-            r"<script",  # スクリプトタグ
-            r"javascript:",  # JavaScriptプロトコル
-            r"data:",  # データURIスキーム
-            r"vbscript:",  # VBScriptプロトコル
-            r"on\w+\s*=",  # イベントハンドラ属性
-        ]
-
-        for pattern in unsafe_patterns:
-            if re.search(pattern, value, re.IGNORECASE):
-                raise ValueError("HTML content contains potentially unsafe elements")
-
-        # 安全性が確認されたHTMLのみをMarkupとして返す
-        return Markup("").join(value)
+        try:
+            html_content = HTMLContent(content=value)
+            return Markup("").join(html_content.content)
+        except ValidationError as e:
+            raise ValueError(str(e)) from e
 
     def _is_recursive_structure(self, value: RecursiveValue) -> bool:
         """値が再帰的構造かどうかを判定する。
@@ -915,7 +1129,7 @@ class TemplateSecurityValidator:
         """
         for node in ast.find_all((nodes.Macro, nodes.Include, nodes.Import, nodes.Extends)):
             tag_name = node.__class__.__name__.lower()
-            if tag_name in self.RESTRICTED_TAGS:
+            if tag_name in self.restricted_tags:
                 validation_state.set_error(f"Template security error: '{tag_name}' tag is not allowed")
                 return False
         return True
@@ -933,7 +1147,7 @@ class TemplateSecurityValidator:
         for node in ast.find_all(nodes.Getattr):
             if isinstance(node.node, nodes.Name):
                 attr_name = node.node.name
-                if attr_name in self.RESTRICTED_ATTRIBUTES:
+                if attr_name in self.restricted_attributes:
                     validation_state.set_error(f"Template security error: access to '{attr_name}' is restricted")
                     return False
         return True
@@ -957,8 +1171,8 @@ class TemplateSecurityValidator:
                 range_args = self._get_range_arguments(call_node)
                 iterations = self._calculate_range_iterations(*range_args)
 
-                if iterations > self.MAX_RANGE_SIZE:
-                    validation_state.set_error(f"Template security error: loop range exceeds maximum limit of {self.MAX_RANGE_SIZE}")
+                if iterations > self.max_range_size:
+                    validation_state.set_error(f"Template security error: loop range exceeds maximum limit of {self.max_range_size}")
                     return False
 
             except ValueError as e:
@@ -995,20 +1209,21 @@ class TemplateSecurityValidator:
             ValueError: 引数が不正な場合
         """
         args = node.args
-        if len(args) == 1:  # range(stop)
-            stop = self._evaluate_literal(args[0])
-            return 0, stop, 1
-        elif len(args) >= 2:  # range(start, stop[, step])
-            start = self._evaluate_literal(args[0])
-            stop = self._evaluate_literal(args[1])
-            step = self._evaluate_literal(args[2]) if len(args) > 2 else 1
+        try:
+            if len(args) == 1:  # range(stop)
+                stop = self._evaluate_literal(args[0])
+                range_config = RangeConfig(stop=stop)
+                return range_config.start, range_config.stop, range_config.step
+            elif len(args) >= 2:  # range(start, stop[, step])
+                start = self._evaluate_literal(args[0])
+                stop = self._evaluate_literal(args[1])
+                step = self._evaluate_literal(args[2]) if len(args) > 2 else 1
+                range_config = RangeConfig(start=start, stop=stop, step=step)
+                return range_config.start, range_config.stop, range_config.step
 
-            if step == 0:
-                raise ValueError("loop step cannot be zero")
-
-            return start, stop, step
-
-        raise ValueError("invalid number of arguments for range()")
+            raise ValueError("invalid number of arguments for range()")
+        except ValidationError as e:
+            raise ValueError(str(e)) from e
 
     def _calculate_range_iterations(self, start: int, stop: int, step: int) -> int:
         """range関数の反復回数を計算する。
@@ -1044,100 +1259,59 @@ class TemplateSecurityValidator:
         raise TypeError("Not a literal value")
 
     def validate_template_file(
-        self, template_file: BytesIO, validation_state: ValidationState
+        self, template_file: BytesIO, validation_state: Optional[ValidationState] = None
     ) -> Tuple[Optional[str], Optional[nodes.Template]]:
         """テンプレートファイルの検証を行う。
 
-        以下の順序で検証を実行します：
-        1. ファイルサイズの検証（最も軽量）
-        2. エンコーディングの検証
-        3. 構文の検証
-        4. セキュリティチェック（静的検証のみ）
-
         Args:
             template_file: テンプレートファイル（BytesIO）
-            validation_state: 検証状態
+            validation_state: 検証状態（Noneの場合は新規作成）
 
         Returns:
             Tuple[Optional[str], Optional[nodes.Template]]: (テンプレート内容, AST)のタプル。エラー時はNoneを含む
         """
+        if validation_state is None:
+            validation_state = ValidationState()
         validation_state.reset()
 
-        # ファイルサイズの検証
-        if not self._validate_file_size(template_file, validation_state):
-            return None, None
-
-        # エンコーディングの検証とコンテンツの取得
-        template_content = self._validate_encoding(template_file, validation_state)
-        if template_content is None:
-            return None, None
-
-        # 構文の検証とASTの取得
-        ast = self._validate_syntax(template_content, validation_state)
-        if ast is None:
-            return None, None
-
-        # セキュリティチェック（静的検証のみ）
-        if not self.validate_template(ast).is_valid:
-            validation_state.set_error("Template security validation failed")
-            return None, None
-
-        return template_content, ast
-
-    def _validate_file_size(self, template_file: BytesIO, validation_state: ValidationState) -> bool:
-        """ファイルサイズを検証する。
-
-        Args:
-            template_file: テンプレートファイル（BytesIO）
-            validation_state: 検証状態
-
-        Returns:
-            bool: ファイルサイズが制限内の場合はTrue
-        """
         try:
-            current_pos = template_file.tell()
-            template_file.seek(0, 2)  # ファイルの末尾に移動
-            file_size = template_file.tell()
-            template_file.seek(current_pos)  # 元の位置に戻す
-
-            if file_size > self.MAX_FILE_SIZE:
-                validation_state.set_error(f"Template file size exceeds maximum limit of {self.MAX_FILE_SIZE} bytes")
-                return False
-            return True
-        except Exception as e:
-            validation_state.set_error(f"File size validation error: {e!s}")
-            return False
-
-    def _validate_encoding(self, template_file: BytesIO, validation_state: ValidationState) -> Optional[str]:
-        """エンコーディングを検証する。
-
-        Args:
-            template_file: テンプレートファイル（BytesIO）
-            validation_state: 検証状態
-
-        Returns:
-            Optional[str]: デコードされたテンプレート内容（エラーの場合はNone）
-        """
-        try:
+            # ファイルの内容を取得
             current_pos = template_file.tell()
             content = template_file.read()
             template_file.seek(current_pos)  # 元の位置に戻す
 
+            # ファイルサイズの検証
+            if len(content) > self.max_file_size:
+                validation_state.set_error(f"Template file size exceeds maximum limit of {self.max_file_size} bytes")
+                return None, None
+
             # バイナリデータのチェック
             if b"\x00" in content:
                 validation_state.set_error("Template file contains invalid binary data")
-                return None
+                return None, None
 
             # UTF-8デコードのチェック
             try:
-                return content.decode("utf-8", errors="strict")
+                template_content = content.decode("utf-8", errors="strict")
             except UnicodeDecodeError:
                 validation_state.set_error("Template file contains invalid UTF-8 bytes")
-                return None
+                return None, None
+
+            # 構文の検証とASTの取得
+            ast = self._validate_syntax(template_content, validation_state)
+            if ast is None:
+                return None, None
+
+            # セキュリティチェック（静的検証のみ）
+            if not self.validate_template(ast).is_valid:
+                validation_state.set_error("Template security validation failed")
+                return None, None
+
+            return template_content, ast
 
         except Exception as e:
-            validation_state.set_error(f"Encoding validation error: {e!s}")
-            return None
+            validation_state.set_error(f"Template file validation error: {e!s}")
+            return None, None
 
     def _validate_syntax(self, template_content: str, validation_state: ValidationState) -> Optional[nodes.Template]:
         """テンプレートの構文を検証する。

@@ -632,14 +632,14 @@ class TestValidationConsistency:
         ),
         # Test case for syntax error - 初期検証で失敗するように修正
         pytest.param(
-            b"Hello {{ name }!",  # 閉じ括弧が不足している構文エラー
+            b"Hello {{ name }!",
             3,
             True,
             {"name": "World"},
-            False,  # テンプレートの初期検証で失敗
-            False,  # ランタイムでも失敗
+            False,
+            False,
             None,
-            "unexpected '}'",  # 初期検証でのエラーメッセージ
+            "unexpected '}'",
             id="template_validate_syntax_error_missing_brace",
         ),
         pytest.param(
