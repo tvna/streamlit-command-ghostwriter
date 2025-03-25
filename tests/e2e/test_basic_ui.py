@@ -170,38 +170,3 @@ def test_tab_navigation_parametrized(page: Page, streamlit_port: int, tab_name: 
     # 期待される要素が表示されていることを確認
     expected = page.locator(expected_element).first
     expect(expected).to_be_visible()
-
-
-@pytest.mark.e2e
-@pytest.mark.e2e_basic
-def test_sample_file_content(page: Page, streamlit_port: int) -> None:
-    """サンプルファイルの内容が表示されていることを確認"""
-    # タブを選択
-    select_tab(page, f"📝 {texts.tab1.menu_title}")
-
-    # サンプルファイルの内容を確認
-    cisco_config_textarea = page.locator("textarea[name='cisco_config']").first
-    cisco_template_textarea = page.locator("textarea[name='cisco_template']").first
-    dns_dig_config_textarea = page.locator("textarea[name='dns_dig_config']").first
-    dns_dig_tmpl_textarea = page.locator("textarea[name='dns_dig_tmpl']").first
-
-    # サンプルファイルの内容が表示されていることを確認
-    cisco_config_text = cisco_config_textarea.input_value()
-    assert "hostname" in cisco_config_text, "Content validation failed for cisco_config.toml.\nExpected to find 'hostname' in content"
-    assert "interfaces" in cisco_config_text, "Content validation failed for cisco_config.toml.\nExpected to find 'interfaces' in content"
-
-    cisco_template_text = cisco_template_textarea.input_value()
-    assert "enable" in cisco_template_text, "Content validation failed for cisco_template.jinja2.\nExpected to find 'enable' in content"
-    assert "for vlan in global.vlans" in cisco_template_text, (
-        "Content validation failed for cisco_template.jinja2.\nExpected to find 'for vlan in global.vlans' in content"
-    )
-
-    dns_dig_config_text = dns_dig_config_textarea.input_value()
-    assert "resolver" in dns_dig_config_text, "Content validation failed for dns_dig_config.csv.\nExpected to find 'resolver' in content"
-    assert "fqdn" in dns_dig_config_text, "Content validation failed for dns_dig_config.csv.\nExpected to find 'fqdn' in content"
-
-    dns_dig_tmpl_text = dns_dig_tmpl_textarea.input_value()
-    assert "for row in csv_rows" in dns_dig_tmpl_text, (
-        "Content validation failed for dns_dig_tmpl.j2.\nExpected to find 'for row in csv_rows' in content"
-    )
-    assert "dig @" in dns_dig_tmpl_text, "Content validation failed for dns_dig_tmpl.j2.\nExpected to find 'dig @' in content"

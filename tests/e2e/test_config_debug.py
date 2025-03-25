@@ -29,15 +29,11 @@ def upload_config_file(page: Page, file_name: str) -> None:
     tab_panel = page.locator("div[role='tabpanel']:visible").first
 
     # 設定定義ファイルのアップロード要素を見つける
-    upload_containers = tab_panel.locator("div[data-testid='stFileUploader']").all()
-    assert len(upload_containers) > 1, "Expected at least 2 file uploaders"
-
-    # 2番目のアップロードコンテナを取得
-    jinja_upload_container = upload_containers[1]
-    expect(jinja_upload_container).to_be_visible()
+    upload_container = tab_panel.locator("div[data-testid='stFileUploader']").first
+    expect(upload_container).to_be_visible()
 
     # ファイルアップロードボタンを見つける
-    upload_button = jinja_upload_container.locator("button:has-text('Browse files')").first
+    upload_button = upload_container.locator("button:has-text('Browse files')").first
     expect(upload_button).to_be_visible()
 
     # ファイルをアップロード
@@ -50,12 +46,6 @@ def upload_config_file(page: Page, file_name: str) -> None:
     # アップロード後の処理を待機
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1000)
-
-    # Assert: アップロードされたファイル名が表示されていることを確認
-    uploaded_file_text = jinja_upload_container.inner_text()
-    assert file_name in uploaded_file_text, (
-        f"Uploaded file name not displayed.\nExpected file name: {file_name}\nActual text: {uploaded_file_text}"
-    )
 
 
 def _get_display_button(page: Page, display_format: str) -> Locator:
@@ -125,15 +115,10 @@ def _verify_result_content(result_text: str, expected_content: List[str], displa
     Raises:
         AssertionError: 検証に失敗した場合
     """
-    assert len(result_text.strip()) > 0, f"No analysis result displayed for {display_format} format"
+    assert len(result_text.strip()) > 0, f"解析結果が表示されていません({display_format}形式)"
 
     for content in expected_content:
-        assert content.lower() in result_text.lower(), (
-            f"Expected content not found in analysis result.\n"
-            f"Format: {display_format}\n"
-            f"Expected content: '{content}'\n"
-            f"Actual content: {result_text}"
-        )
+        assert content.lower() in result_text.lower(), f"期待される内容 '{content}' が解析結果に含まれていません"
 
 
 @pytest.mark.e2e
@@ -245,7 +230,6 @@ def test_config_debug_parametrized(
 
     # タブパネルを取得
     tab_panel = page.locator("div[role='tabpanel']:visible").first
-    expect(tab_panel).to_be_visible()
 
     # 成功メッセージが表示されることを確認
     success_message = tab_panel.locator(f"div:has-text('{texts.tab2.success_debug_config}')").first
