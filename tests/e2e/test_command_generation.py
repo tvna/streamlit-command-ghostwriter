@@ -14,6 +14,7 @@ from playwright.sync_api import Page, expect
 from pytest_benchmark.fixture import BenchmarkFixture
 
 # test_utils から関数とテキストリソースをインポート
+from .conftest import _wait_for_streamlit
 from .test_utils import check_result_displayed, select_tab, texts, upload_config_and_template
 
 
@@ -118,9 +119,8 @@ def test_command_generation_parametrized(
         button_text: クリックするボタンのテキスト
         benchmark: ベンチマーク実行用のフィクスチャ
     """
-    # conftest.pyの関数を直接インポートするのではなく、pytestのフィクスチャを利用する
     # Streamlitサーバーが応答することを確認
-    # assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test."
+    assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test"
 
     # Arrange: コマンド生成タブを選択
     select_tab(page, f"📝 {texts.tab1.menu_title}")

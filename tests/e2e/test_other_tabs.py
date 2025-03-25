@@ -69,17 +69,21 @@ def test_sample_collection(page: Page) -> None:
 
     # サンプルファイルの内容が表示されていることを確認
     cisco_config_text = cisco_config_textarea.input_value()
-    assert "hostname" in cisco_config_text, "cisco_config.tomlの内容が正しく表示されていません"
-    assert "interfaces" in cisco_config_text, "cisco_config.tomlの内容が正しく表示されていません"
+    assert "hostname" in cisco_config_text, "Content validation failed for cisco_config.toml.\nExpected to find 'hostname' in content"
+    assert "interfaces" in cisco_config_text, "Content validation failed for cisco_config.toml.\nExpected to find 'interfaces' in content"
 
     cisco_template_text = cisco_template_textarea.input_value()
-    assert "enable" in cisco_template_text, "cisco_template.jinja2の内容が正しく表示されていません"
-    assert "for vlan in global.vlans" in cisco_template_text, "cisco_template.jinja2の内容が正しく表示されていません"
+    assert "enable" in cisco_template_text, "Content validation failed for cisco_template.jinja2.\nExpected to find 'enable' in content"
+    assert "for vlan in global.vlans" in cisco_template_text, (
+        "Content validation failed for cisco_template.jinja2.\nExpected to find 'for vlan in global.vlans' in content"
+    )
 
     dns_dig_config_text = dns_dig_config_textarea.input_value()
-    assert "resolver" in dns_dig_config_text, "dns_dig_config.csvの内容が正しく表示されていません"
-    assert "fqdn" in dns_dig_config_text, "dns_dig_config.csvの内容が正しく表示されていません"
+    assert "resolver" in dns_dig_config_text, "Content validation failed for dns_dig_config.csv.\nExpected to find 'resolver' in content"
+    assert "fqdn" in dns_dig_config_text, "Content validation failed for dns_dig_config.csv.\nExpected to find 'fqdn' in content"
 
     dns_dig_tmpl_text = dns_dig_tmpl_textarea.input_value()
-    assert "for row in csv_rows" in dns_dig_tmpl_text, "dns_dig_tmpl.j2の内容が正しく表示されていません"
-    assert "dig @" in dns_dig_tmpl_text, "dns_dig_tmpl.j2の内容が正しく表示されていません"
+    assert "for row in csv_rows" in dns_dig_tmpl_text, (
+        "Content validation failed for dns_dig_tmpl.j2.\nExpected to find 'for row in csv_rows' in content"
+    )
+    assert "dig @" in dns_dig_tmpl_text, "Content validation failed for dns_dig_tmpl.j2.\nExpected to find 'dig @' in content"

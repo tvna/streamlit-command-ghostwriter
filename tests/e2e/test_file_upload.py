@@ -154,11 +154,12 @@ def test_file_upload_parametrized(
 
     # ファイルアップロード要素を取得 - タブパネル内で検索するように変更
     upload_containers = tab_panel.locator("div[data-testid='stFileUploader']").all()
-    assert len(upload_containers) > upload_index, f"ファイルアップローダーが{upload_index + 1}個以上見つかりません"
+    assert len(upload_containers) > upload_index, (
+        f"Not enough file uploaders found.\nExpected at least {upload_index + 1} uploaders\nFound: {len(upload_containers)}"
+    )
 
     upload_container = upload_containers[upload_index]
-    # 可視性チェックを削除し、存在チェックに変更
-    assert upload_container.count() > 0, "ファイルアップローダーが存在しません"
+    assert upload_container.count() > 0, "File uploader element not found"
 
     # ファイルアップロードボタンを見つける
     upload_button = upload_container.locator("button:has-text('Browse files')").first
@@ -179,4 +180,6 @@ def test_file_upload_parametrized(
 
     # Assert: アップロードされたファイル名が表示されていることを確認
     uploaded_file_text = upload_container.inner_text()
-    assert file_name in uploaded_file_text, f"アップロードされたファイル名 {file_name} が表示されていません"
+    assert file_name in uploaded_file_text, (
+        f"Uploaded file name not displayed.\nExpected file name: {file_name}\nActual text: {uploaded_file_text}"
+    )

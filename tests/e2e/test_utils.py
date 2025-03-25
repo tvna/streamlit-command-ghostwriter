@@ -328,12 +328,12 @@ class StreamlitTestHelper:
         result_text = result_area.inner_text()
 
         # 何らかの結果が表示されていることを確認
-        assert len(result_text) > 0, "生成された結果が表示されていません"
+        assert len(result_text) > 0, "No result content is displayed"
 
         # 期待される内容が含まれていることを確認
         if expected_contents:
             for content in expected_contents:
-                assert content in result_text, f"期待される内容 '{content}' が結果に含まれていません"
+                assert content in result_text, f"Expected content not found in result.\nExpected: {content}\nActual content: {result_text}"
 
         return result_text
 
@@ -346,7 +346,7 @@ class StreamlitTestHelper:
         """
         # ファイルアップロード要素を取得
         upload_containers = self.page.locator("div[data-testid='stFileUploader']").all()
-        assert len(upload_containers) > 1, "ファイルアップローダーが2つ以上見つかりません"
+        assert len(upload_containers) > 1, "Not enough file uploaders found (expected at least 2)"
 
         # 設定ファイルをアップロード
         config_upload_container = upload_containers[0]
@@ -375,6 +375,13 @@ class StreamlitTestHelper:
 
         # アップロード後の処理を待機
         self.wait_for_ui_stabilization()
+
+        # アップロードされたファイル名が表示されていることを確認
+        config_text = config_upload_container.inner_text()
+        assert config_file in config_text, f"Config file name not displayed.\nExpected: {config_file}\nActual text: {config_text}"
+
+        jinja_text = jinja_upload_container.inner_text()
+        assert template_file in jinja_text, f"Template file name not displayed.\nExpected: {template_file}\nActual text: {jinja_text}"
 
 
 # 後方互換性のための関数
