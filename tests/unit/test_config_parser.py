@@ -177,7 +177,9 @@ class TestHelpers:
             expected: 期待される辞書
             path: 現在のパス（エラーメッセージ用）
         """
-        assert set(actual.keys()) == set(expected.keys()), f"Keys do not match at {path}"
+        assert set(actual.keys()) == set(expected.keys()), (
+            f"Keys do not match at path: {path}. Expected: {set(expected.keys())}, Got: {set(actual.keys())}"
+        )
         for key in expected:
             current_path = f"{path}.{key}" if path else key
             TestHelpers._compare_values(actual[key], expected[key], key, current_path)
@@ -190,7 +192,7 @@ class TestHelpers:
             actual: 実際の行データ
             expected: 期待される行データ
         """
-        assert len(actual) == len(expected), "CSV row count does not match"
+        assert len(actual) == len(expected), f"CSV row count mismatch. Expected: {len(expected)}, Got: {len(actual)}"
         for i, (expected_row, actual_row) in enumerate(zip(expected, actual, strict=False)):
             TestHelpers.assert_csv_row_equality(actual_row, expected_row, i)
 
@@ -203,7 +205,9 @@ class TestHelpers:
             expected: 期待される行データ
             row_index: 行のインデックス
         """
-        assert set(actual.keys()) == set(expected.keys()), f"CSV row {row_index} keys do not match"
+        assert set(actual.keys()) == set(expected.keys()), (
+            f"CSV row {row_index} keys mismatch. Expected: {set(expected.keys())}, Got: {set(actual.keys())}"
+        )
         for col_key in expected:
             actual_value = actual[col_key]
             expected_value = expected[col_key]
@@ -220,27 +224,27 @@ class TestHelpers:
         """
         # NaN値の特別処理
         if TestHelpers.is_nan_value(actual):
-            assert TestHelpers.is_nan_value(expected), f"Value mismatch at {location}: NaN vs non-NaN"
+            assert TestHelpers.is_nan_value(expected), f"Value mismatch at {location}: Expected NaN, Got non-NaN value: {actual}"
             return
         if TestHelpers.is_nan_value(expected):
-            assert TestHelpers.is_nan_value(actual), f"Value mismatch at {location}: non-NaN vs NaN"
+            assert TestHelpers.is_nan_value(actual), f"Value mismatch at {location}: Expected non-NaN value, Got NaN: {actual}"
             return
 
         # 数値型とストリング型の相互変換対応
         if isinstance(actual, (int, float)) and not TestHelpers.is_nan_value(actual):
             if isinstance(expected, str):
-                assert str(actual) == expected, f"Value mismatch at {location}"
+                assert str(actual) == expected, f"Value mismatch at {location}: Expected string '{expected}', Got numeric {actual}"
                 return
         elif isinstance(actual, str) and isinstance(expected, (int, float)):
             try:
                 converted_actual = float(actual) if isinstance(expected, float) else int(actual)
-                assert converted_actual == expected, f"Value mismatch at {location}"
+                assert converted_actual == expected, f"Value mismatch at {location}: Expected numeric {expected}, Got string '{actual}'"
                 return
             except ValueError:
                 pass
 
         # 通常の比較
-        assert actual == expected, f"Value mismatch at {location}"
+        assert actual == expected, f"Value mismatch at {location}: Expected {expected}, Got {actual}"
 
     @staticmethod
     def is_nan_value(value: Optional[Union[float, str, int]]) -> bool:
@@ -719,15 +723,17 @@ def test_parse(
     if expected_dict is not None and parser.parsed_dict is not None:
         TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)
     else:
-        assert parser.parsed_dict == expected_dict
+        assert parser.parsed_dict == expected_dict, f"Parsed dict mismatch. Expected: {expected_dict}, Got: {parser.parsed_dict}"
 
     if expected_str is not None and parser.parsed_str is not None:
         TestHelpers.assert_string_representation(parser.parsed_dict, parser.parsed_str, expected_str)
 
     if expected_error is None:
-        assert parser.error_message is None
+        assert parser.error_message is None, f"Expected no error message, but got: {parser.error_message}"
     else:
-        assert expected_error in str(parser.error_message)
+        assert expected_error in str(parser.error_message), (
+            f"Error message mismatch. Expected to contain: '{expected_error}', Got: '{parser.error_message}'"
+        )
 
 
 @pytest.mark.unit

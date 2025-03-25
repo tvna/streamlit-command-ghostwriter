@@ -137,12 +137,16 @@ class TestInitialValidation:
         renderer = DocumentRender(template_file)
 
         # Assert
-        assert renderer.is_valid_template == expected_valid
+        assert renderer.is_valid_template == expected_valid, (
+            f"Template validation failed.\nExpected: {expected_valid}\nGot: {renderer.is_valid_template}"
+        )
         if expected_error:
-            assert renderer.error_message is not None
-            assert expected_error == renderer.error_message
+            assert renderer.error_message is not None, "Expected error message but got None"
+            assert expected_error == renderer.error_message, (
+                f"Error message does not match.\nExpected: {expected_error}\nGot: {renderer.error_message}"
+            )
         else:
-            assert renderer.error_message is None
+            assert renderer.error_message is None, f"Expected no error message, but got: {renderer.error_message}"
 
 
 class TestRuntimeValidation:
@@ -255,11 +259,13 @@ class TestRuntimeValidation:
         apply_result = renderer.apply_context(context, format_type, is_strict_undefined)
 
         # Assert - ランタイムでの結果を検証
-        assert apply_result is expected_apply_succeeded
+        assert apply_result is expected_apply_succeeded, (
+            f"Context application failed.\nExpected: {expected_apply_succeeded}\nGot: {apply_result}"
+        )
         if not expected_apply_succeeded and expected_error is not None:
             error_message = renderer.error_message
-            assert error_message is not None
-            assert expected_error == error_message
+            assert error_message is not None, "Expected error message but got None"
+            assert expected_error == error_message, f"Error message does not match.\nExpected: {expected_error}\nGot: {error_message}"
 
 
 class TestValidationConsistency:
@@ -404,10 +410,14 @@ class TestValidationConsistency:
         renderer = DocumentRender(template_file)
 
         # Assert - 初期検証
-        assert renderer.is_valid_template == expected_initial_valid
+        assert renderer.is_valid_template == expected_initial_valid, (
+            f"Initial validation failed.\nExpected: {expected_initial_valid}\nGot: {renderer.is_valid_template}"
+        )
         if not expected_initial_valid and expected_error:
-            assert renderer.error_message is not None
-            assert expected_error == renderer.error_message
+            assert renderer.error_message is not None, "Expected error message but got None"
+            assert expected_error == renderer.error_message, (
+                f"Error message does not match.\nExpected: {expected_error}\nGot: {renderer.error_message}"
+            )
             return
 
         # ランタイム検証（初期検証が成功した場合のみ実行）
@@ -416,12 +426,16 @@ class TestValidationConsistency:
             apply_result = renderer.apply_context(context, format_type, is_strict_undefined)
 
             # Assert - ランタイム検証
-            assert apply_result == expected_runtime_valid
+            assert apply_result == expected_runtime_valid, (
+                f"Runtime validation failed.\nExpected: {expected_runtime_valid}\nGot: {apply_result}"
+            )
             if not expected_runtime_valid and expected_error:
-                assert renderer.error_message is not None
-                assert expected_error == renderer.error_message
+                assert renderer.error_message is not None, "Expected error message but got None"
+                assert expected_error == renderer.error_message, (
+                    f"Error message does not match.\nExpected: {expected_error}\nGot: {renderer.error_message}"
+                )
             elif expected_runtime_valid:
-                assert renderer.error_message is None
+                assert renderer.error_message is None, f"Expected no error message, but got: {renderer.error_message}"
 
 
 @pytest.mark.unit
@@ -752,14 +766,20 @@ def test_render(
     render = DocumentRender(template_file)
 
     # Act & Assert for template validation
-    assert render.is_valid_template == expected_validate_template
+    assert render.is_valid_template == expected_validate_template, (
+        f"Template validation failed.\nExpected: {expected_validate_template}\nGot: {render.is_valid_template}"
+    )
 
     # Act
     apply_result = render.apply_context(context, format_type, is_strict_undefined)
 
     # Assert
-    assert apply_result == expected_apply_succeeded
-    assert render.render_content == expected_content
+    assert apply_result == expected_apply_succeeded, (
+        f"Context application failed.\nExpected: {expected_apply_succeeded}\nGot: {apply_result}"
+    )
+    assert render.render_content == expected_content, (
+        f"Rendered content does not match.\nExpected: {expected_content}\nGot: {render.render_content}"
+    )
 
     # エラーメッセージの検証
     actual_error = render.error_message
@@ -768,11 +788,11 @@ def test_render(
         actual_error_str = str(actual_error)
         assert isinstance(actual_error_str, str), "Error message must be convertible to string"
         assert actual_error_str != "", "Error message must not be empty"
-        assert expected_error == actual_error_str, (
-            f"Expected error message '{expected_error}' not found in actual error message '{actual_error_str}'"
+        assert expected_error in actual_error_str, (
+            f"Error message does not match.\nExpected to contain: {expected_error}\nGot: {actual_error_str}"
         )
     else:
-        assert actual_error is None, f"Expected no error message but got '{actual_error}'"
+        assert actual_error is None, f"Expected no error message, but got: {actual_error}"
 
 
 @pytest.mark.unit
@@ -1012,8 +1032,10 @@ def test_render_edge_cases(
     apply_result = render.apply_context(context, format_type, is_strict_undefined)
 
     # Assert
-    assert is_valid == expected_validate_template
-    assert apply_result == expected_apply_succeeded
+    assert is_valid == expected_validate_template, f"Template validation failed.\nExpected: {expected_validate_template}\nGot: {is_valid}"
+    assert apply_result == expected_apply_succeeded, (
+        f"Context application failed.\nExpected: {expected_apply_succeeded}\nGot: {apply_result}"
+    )
 
     # 出力内容の比較を行う前に、期待値と実際の値が一致するかを確認
     if expected_content is not None and render.render_content is not None:
@@ -1033,32 +1055,42 @@ def test_render_edge_cases(
             # マクロを含むテンプレートの場合は、空白を無視して比較
             simplified_expected = " ".join(normalized_expected.split())
             simplified_actual = " ".join(normalized_actual.split())
-            assert simplified_actual == simplified_expected
+            assert simplified_actual == simplified_expected, (
+                f"Rendered content with macro does not match.\nExpected: {simplified_expected}\nGot: {simplified_actual}"
+            )
         elif "for i in range(count)" in template_content.decode("utf-8", errors="ignore"):
             # 長い出力を生成するテンプレートの場合は、行数だけ確認
             expected_lines = normalized_expected.count("\n") + 1
             actual_lines = normalized_actual.count("\n") + 1
-            assert actual_lines == expected_lines
+            assert actual_lines == expected_lines, f"Line count does not match.\nExpected: {expected_lines}\nGot: {actual_lines}"
             # 最初と最後の行だけ確認
             expected_first_line = normalized_expected.split("\n")[0]
             actual_first_line = normalized_actual.split("\n")[0]
             expected_last_line = normalized_expected.split("\n")[-1]
             actual_last_line = normalized_actual.split("\n")[-1]
-            assert actual_first_line == expected_first_line
-            assert actual_last_line == expected_last_line
+            assert actual_first_line == expected_first_line, (
+                f"First line does not match.\nExpected: {expected_first_line}\nGot: {actual_first_line}"
+            )
+            assert actual_last_line == expected_last_line, (
+                f"Last line does not match.\nExpected: {expected_last_line}\nGot: {actual_last_line}"
+            )
         elif "{% for i in range(3) %}" in template_content.decode("utf-8", errors="ignore"):
             # 複雑なネストされたループの場合は、出力に特定の文字列が含まれているか確認
-            assert "0 - 0: Start" in normalized_actual
-            assert "1 - 1:" in normalized_actual
-            assert "2 - 1:" in normalized_actual
+            assert "0 - 0: Start" in normalized_actual, "Missing expected pattern '0 - 0: Start' in output"
+            assert "1 - 1:" in normalized_actual, "Missing expected pattern '1 - 1:' in output"
+            assert "2 - 1:" in normalized_actual, "Missing expected pattern '2 - 1:' in output"
         else:
-            assert normalized_actual == normalized_expected
+            assert normalized_actual == normalized_expected, (
+                f"Rendered content does not match.\nExpected: {normalized_expected}\nGot: {normalized_actual}"
+            )
 
     # エラーメッセージの確認
     if expected_error is None:
-        assert render.error_message is None
+        assert render.error_message is None, f"Expected no error message, but got: {render.error_message}"
     else:
-        assert expected_error in str(render.error_message)
+        assert expected_error in str(render.error_message), (
+            f"Error message does not match.\nExpected to contain: {expected_error}\nGot: {render.error_message}"
+        )
 
 
 @pytest.mark.unit

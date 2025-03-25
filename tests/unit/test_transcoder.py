@@ -90,17 +90,26 @@ def test_transcoder_basic_functionality(
     export_file_allow_fallback = transcoder.convert(is_allow_fallback=True)
 
     # Assert
-    assert detected_encoding == expected_encoding
+    assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
 
-    assert isinstance(export_file_deny_fallback, BytesIO)
+    assert isinstance(export_file_deny_fallback, BytesIO), "Export file with deny fallback should be BytesIO instance"
     if isinstance(export_file_deny_fallback, BytesIO):
-        assert export_file_deny_fallback.read().decode("utf-8") == expected_result
-        assert export_file_deny_fallback.name == import_file.name
+        assert export_file_deny_fallback.read().decode("utf-8") == expected_result, (
+            f"Content mismatch with deny fallback. Expected: {expected_result}, Got: {export_file_deny_fallback.read().decode('utf-8')}"
+        )
+        assert export_file_deny_fallback.name == import_file.name, (
+            f"Filename mismatch with deny fallback. Expected: {import_file.name}, Got: {export_file_deny_fallback.name}"
+        )
 
-    assert isinstance(export_file_allow_fallback, BytesIO)
+    assert isinstance(export_file_allow_fallback, BytesIO), "Export file with allow fallback should be BytesIO instance"
     if isinstance(export_file_allow_fallback, BytesIO):
-        assert export_file_allow_fallback.getvalue().decode("utf-8") == expected_result
-        assert export_file_allow_fallback.name == import_file.name
+        decoded_content = export_file_allow_fallback.getvalue().decode("utf-8")
+        assert decoded_content == expected_result, (
+            f"Content mismatch with allow fallback.\nExpected: {expected_result}\nGot: {decoded_content}"
+        )
+        assert export_file_allow_fallback.name == import_file.name, (
+            f"Filename mismatch with allow fallback.\nExpected: {import_file.name}\nGot: {export_file_allow_fallback.name}"
+        )
 
 
 @pytest.mark.unit
@@ -138,13 +147,17 @@ def test_transcoder_non_string_data(
     export_file_allow_fallback = transcoder.convert(is_allow_fallback=True)
 
     # Assert
-    assert detected_encoding == expected_encoding
-    assert export_file_deny_fallback is None
+    assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
+    assert export_file_deny_fallback is None, "Export file with deny fallback should be None for binary data"
 
-    assert isinstance(export_file_allow_fallback, BytesIO)
+    assert isinstance(export_file_allow_fallback, BytesIO), "Export file with allow fallback should be BytesIO instance"
     if isinstance(export_file_allow_fallback, BytesIO):
-        assert export_file_allow_fallback.getvalue() == expected_result
-        assert export_file_allow_fallback.name == import_file.name
+        assert export_file_allow_fallback.getvalue() == expected_result, (
+            f"Binary content mismatch with allow fallback.\nExpected: {expected_result}\nGot: {export_file_allow_fallback.getvalue()}"
+        )
+        assert export_file_allow_fallback.name == import_file.name, (
+            f"Filename mismatch with allow fallback.\nExpected: {import_file.name}\nGot: {export_file_allow_fallback.name}"
+        )
 
 
 @pytest.mark.unit
@@ -194,7 +207,7 @@ def test_transcoder_edge_cases(
     detected_encoding = transcoder.detect_encoding()
 
     # Assert
-    assert detected_encoding == expected_encoding
+    assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
 
     # 期待されるエンコーディングがNoneの場合は、変換結果のチェックをスキップ
     if expected_encoding is not None:
@@ -202,10 +215,12 @@ def test_transcoder_edge_cases(
         export_file = transcoder.convert(is_allow_fallback=True)
 
         # Assert
-        assert isinstance(export_file, BytesIO)
+        assert isinstance(export_file, BytesIO), "Export file should be BytesIO instance"
         if isinstance(export_file, BytesIO):
-            assert export_file.getvalue().decode("utf-8") == expected_result
-            assert export_file.name == import_file.name
+            assert export_file.getvalue().decode("utf-8") == expected_result, (
+                f"Content mismatch.\nExpected: {expected_result}\nGot: {export_file.getvalue().decode('utf-8')}"
+            )
+            assert export_file.name == import_file.name, f"Filename mismatch.\nExpected: {import_file.name}\nGot: {export_file.name}"
 
 
 @pytest.mark.unit
@@ -248,7 +263,7 @@ def test_transcoder_binary_edge_cases(
     detected_encoding = transcoder.detect_encoding()
 
     # Assert
-    assert detected_encoding == expected_encoding
+    assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
 
     # Act
     result = transcoder.convert()
@@ -256,11 +271,11 @@ def test_transcoder_binary_edge_cases(
     # Assert
     if expected_encoding is None:
         # エンコーディングが検出されない場合は、バイナリデータとして扱われる
-        assert isinstance(result, BytesIO)
-        assert result.getvalue() == expected_result
+        assert isinstance(result, BytesIO), "Result should be BytesIO instance for binary data"
+        assert result.getvalue() == expected_result, f"Binary content mismatch.\nExpected: {expected_result}\nGot: {result.getvalue()}"
     else:
         # エンコーディングが検出された場合は、テキストデータとして扱われる
-        assert result is not None
+        assert result is not None, "Result should not be None for text data"
 
 
 @pytest.mark.unit
@@ -395,9 +410,11 @@ def test_transcoder_missing_encoding(test_data: bytes, invalid_encoding: str, ex
     result_with_fallback = transcoder.convert(invalid_encoding, True)
 
     # Assert
-    assert detected_encoding == expected_encoding
-    assert result_without_fallback is None
+    assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
+    assert result_without_fallback is None, "Result without fallback should be None for invalid encoding"
 
-    assert isinstance(result_with_fallback, BytesIO)
+    assert isinstance(result_with_fallback, BytesIO), "Result with fallback should be BytesIO instance"
     if isinstance(result_with_fallback, BytesIO):
-        assert result_with_fallback.getvalue() == test_data
+        assert result_with_fallback.getvalue() == test_data, (
+            f"Content mismatch with fallback.\nExpected: {test_data}\nGot: {result_with_fallback.getvalue()}"
+        )

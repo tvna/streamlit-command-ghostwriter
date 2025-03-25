@@ -151,16 +151,18 @@ def test_mock_parser(
     parser = MockParser(config_file)
 
     # Assert
-    assert parser.csv_rows_name == "csv_rows"
-    assert parser.enable_fill_nan is False
-    assert parser.fill_nan_with is None
+    assert parser.csv_rows_name == "csv_rows", "Default csv_rows_name should be 'csv_rows'"
+    assert parser.enable_fill_nan is False, "Default enable_fill_nan should be False"
+    assert parser.fill_nan_with is None, "Default fill_nan_with should be None"
     assert parser.parse() == is_successful
-    assert parser.parsed_dict == expected_dict
-    assert parser.parsed_str == expected_text
+    assert parser.parsed_dict == expected_dict, f"Parsed dict mismatch. Expected: {expected_dict}, Got: {parser.parsed_dict}"
+    assert parser.parsed_str == expected_text, f"Parsed string mismatch. Expected: {expected_text}, Got: {parser.parsed_str}"
     if expected_error is None:
-        assert parser.error_message is None
+        assert parser.error_message is None, f"Expected no error message, but got: {parser.error_message}"
     else:
-        assert expected_error in str(parser.error_message)
+        assert expected_error in str(parser.error_message), (
+            f"Error message mismatch. Expected to contain: '{expected_error}', Got: '{parser.error_message}'"
+        )
 
 
 @pytest.mark.unit
@@ -205,10 +207,14 @@ def test_mock_render(
     render = MockRender(BytesIO(template_content))
 
     # Act & Assert
-    assert render.is_valid_template == expected_validate_template
-    assert render.apply_context(context, 3, is_strict_undefined) == expected_apply_succeeded
-    assert render.render_content == expected_content
-    assert render.error_message == expected_error
+    assert render.is_valid_template == expected_validate_template, (
+        f"Template validation mismatch. Expected: {expected_validate_template}, Got: {render.is_valid_template}"
+    )
+    assert render.apply_context(context, 3, is_strict_undefined) == expected_apply_succeeded, (
+        f"Context application mismatch. Expected: {expected_apply_succeeded}, Got: {render.apply_context(context, 3, is_strict_undefined)}"
+    )
+    assert render.render_content == expected_content, f"Render content mismatch. Expected: {expected_content}, Got: {render.render_content}"
+    assert render.error_message == expected_error, f"Error message mismatch. Expected: {expected_error}, Got: {render.error_message}"
 
 
 # テスト: AppCore.load_config_file メソッド
@@ -239,9 +245,11 @@ def test_app_core_load_config_file(
     result = model.load_config_file(config_file, "csv_rows", False)
 
     # Assert
-    assert result is model
-    assert model.config_dict == expected_dict
-    assert model.config_error_message == expected_error
+    assert result is model, "Method should return self for chaining"
+    assert model.config_dict == expected_dict, f"Config dict mismatch. Expected: {expected_dict}, Got: {model.config_dict}"
+    assert model.config_error_message == expected_error, (
+        f"Config error message mismatch. Expected: {expected_error}, Got: {model.config_error_message}"
+    )
 
 
 # テスト: AppCore.load_template_file メソッド
@@ -271,8 +279,10 @@ def test_app_core_load_template_file(
     result = model.load_template_file(template_file, False)
 
     # Assert
-    assert result is model
-    assert model.template_error_message == expected_error
+    assert result is model, "Method should return self for chaining"
+    assert model.template_error_message == expected_error, (
+        f"Template error message mismatch. Expected: {expected_error}, Got: {model.template_error_message}"
+    )
 
 
 # テスト: AppCore.apply メソッド
@@ -329,9 +339,11 @@ def test_app_core_apply(
     result = model.apply(3, is_strict_undefined)
 
     # Assert
-    assert result is model
-    assert model.formatted_text == expected_result
-    assert model.template_error_message == expected_error
+    assert result is model, "Method should return self for chaining"
+    assert model.formatted_text == expected_result, f"Formatted text mismatch. Expected: {expected_result}, Got: {model.formatted_text}"
+    assert model.template_error_message == expected_error, (
+        f"Template error message mismatch. Expected: {expected_error}, Got: {model.template_error_message}"
+    )
 
 
 # テスト: AppCore.get_download_filename メソッド
@@ -375,7 +387,7 @@ def test_app_core_get_download_filename(
 
     # Assert
     if expected_none:
-        assert filename is None, f"Expected None, got '{filename}'"
+        assert filename is None, f"Expected None filename, but got: {filename}"
     else:
         assert filename is not None, "Expected non-None filename"
         pattern = re.compile(f"^{expected_filename_pattern}$")

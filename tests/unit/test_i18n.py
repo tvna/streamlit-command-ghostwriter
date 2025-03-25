@@ -14,19 +14,19 @@ def test_i18n_japanese() -> None:
     japanese_key = "日本語"
 
     # Act & Assert
-    assert isinstance(LANGUAGES, dict)
-    assert japanese_key in LANGUAGES.keys()
+    assert isinstance(LANGUAGES, dict), "LANGUAGES should be a dictionary"
+    assert japanese_key in LANGUAGES.keys(), f"Japanese key '{japanese_key}' not found in LANGUAGES"
 
     for nest1_key, nest1_val in LANGUAGES[japanese_key].items():
-        assert isinstance(nest1_key, str)
-        assert isinstance(nest1_val, dict)
+        assert isinstance(nest1_key, str), f"First level key '{nest1_key}' should be a string"
+        assert isinstance(nest1_val, dict), f"First level value for key '{nest1_key}' should be a dictionary"
         for nest2_key, nest2_val in nest1_val.items():
-            assert isinstance(nest2_key, str)
-            assert isinstance(nest2_val, (str, dict))
+            assert isinstance(nest2_key, str), f"Second level key '{nest2_key}' should be a string"
+            assert isinstance(nest2_val, (str, dict)), f"Second level value for key '{nest2_key}' should be a string or dictionary"
             if isinstance(nest2_val, dict):
                 for nest3_key, nest3_val in nest2_val.items():
-                    assert isinstance(nest3_key, int)
-                    assert isinstance(nest3_val, str)
+                    assert isinstance(nest3_key, int), f"Third level key '{nest3_key}' should be an integer"
+                    assert isinstance(nest3_val, str), f"Third level value for key '{nest3_key}' should be a string"
 
 
 @pytest.mark.unit
