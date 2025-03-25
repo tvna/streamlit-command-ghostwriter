@@ -17,7 +17,6 @@ from .test_utils import get_test_file_path, select_tab, texts
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_file_upload(page: Page, streamlit_port: int) -> None:
     """ファイルアップロード機能が動作することを確認"""
     # タブを選択
@@ -46,7 +45,6 @@ def test_file_upload(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_jinja_template_upload(page: Page, streamlit_port: int) -> None:
     """Jinjaテンプレートファイルのアップロード機能が動作することを確認"""
     # タブを選択
@@ -85,7 +83,6 @@ def test_jinja_template_upload(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_config_file_upload_tab2(page: Page, streamlit_port: int) -> None:
     """タブ2の設定定義ファイルのアップロード機能が動作することを確認"""
     # タブ2を選択
@@ -120,7 +117,6 @@ def test_config_file_upload_tab2(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_parametrized
 @pytest.mark.parametrize(
     ("tab_name", "upload_index", "file_type", "file_name"),
     [

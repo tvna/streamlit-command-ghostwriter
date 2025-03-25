@@ -19,7 +19,6 @@ from .test_utils import check_result_displayed, select_tab, texts, upload_config
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 @pytest.mark.benchmark
 def test_cli_command_generation(page: Page, streamlit_port: int, benchmark: BenchmarkFixture) -> None:
     """CSVファイルとJinjaテンプレートを使用してCLIコマンドを生成する機能をテスト"""
@@ -46,7 +45,6 @@ def test_cli_command_generation(page: Page, streamlit_port: int, benchmark: Benc
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_markdown_generation(page: Page, streamlit_port: int) -> None:
     """YAMLファイルとJinjaテンプレートを使用してMarkdownを生成する機能をテスト"""
     # タブを選択
@@ -69,7 +67,6 @@ def test_markdown_generation(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_toml_config_processing(page: Page, streamlit_port: int) -> None:
     """TOMLファイルとJinjaテンプレートを使用してコマンドを生成する機能をテスト"""
     # タブを選択

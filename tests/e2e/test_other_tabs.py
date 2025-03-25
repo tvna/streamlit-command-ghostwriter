@@ -17,7 +17,6 @@ from .test_utils import select_tab, texts
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_advanced_settings(page: Page) -> None:
     """詳細設定タブでの設定変更機能をテスト"""
     # タブ3を選択
@@ -32,7 +31,6 @@ def test_advanced_settings(page: Page) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_sample_collection(page: Page) -> None:
     """サンプル集タブでのサンプルファイル表示機能をテスト"""
     # タブ4を選択

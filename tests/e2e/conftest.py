@@ -3,7 +3,12 @@
 
 """
 pytest の設定ファイル
-CI環境でのテスト実行をサポートするための設定を含みます。
+E2Eテスト実行のための設定を含みます。
+
+主な機能:
+- Playwrightのヘッドレスモード制御 (--disable-playwright-headlessオプションで制御可能)
+- Streamlitサーバーの自動起動 (常にヘッドレスモードで実行)
+- テストプロセスの安全な終了処理
 """
 
 import logging
@@ -27,27 +32,46 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
-# Playwrightのヘッドレスモード設定
-_PLAYWRIGHT_HEADLESS_FLAG = "true"
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """pytestのコマンドラインオプションを追加
+
+    Args:
+        parser: pytestのパーサーオブジェクト
+
+    Note:
+        --headed: Playwrightのヘッドレスモードを無効化します（ブラウザが表示されます）
+        このオプションはStreamlitのヘッドレスモードには影響しません
+    """
+    parser.addoption(
+        "--headed",
+        action="store_true",
+        default=False,
+        help="Run browser in headed mode (browser will be visible)",
+    )
 
 
 @pytest.fixture(scope="session")
-def browser_type_launch_args(browser_type_launch_args: Dict[str, Any]) -> Dict[str, Any]:
-    """ブラウザ起動時の引数を設定
+def browser_type_launch_args(browser_type_launch_args: Dict[str, Any], pytestconfig: PytestConfig) -> Dict[str, Any]:
+    """Playwrightブラウザの起動時の引数を設定
 
     Args:
         browser_type_launch_args: 既存のブラウザ起動引数
+        pytestconfig: pytestの設定オブジェクト
 
     Returns:
         Dict[str, Any]: 更新されたブラウザ起動引数
+
+    Note:
+        --headedオプションに基づいてヘッドレスモードを制御します
+        デフォルトではヘッドレスモードが有効です
     """
-    # CI環境かどうかを確認
-    is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+    # Playwrightのヘッドレスモードを制御
+    is_playwright_headless = not pytestconfig.getoption("--headed")
 
     return {
         **browser_type_launch_args,
-        # CI環境ではヘッドレスモードで実行
-        "headless": is_ci,
+        "headless": is_playwright_headless,
         "args": ["--no-sandbox", "--disable-dev-shm-usage"],
     }
 
@@ -181,7 +205,7 @@ def _get_validated_streamlit_executable() -> str:
     return streamlit_executable
 
 
-def _run_streamlit_safely(app_path: str, port: int) -> subprocess.Popen:
+def _run_streamlit_safely(app_path: str, port: int, pytestconfig: PytestConfig) -> subprocess.Popen:
     """安全にStreamlitを実行する関数
 
     検証済みのStreamlit実行ファイルを使用して、
@@ -190,9 +214,15 @@ def _run_streamlit_safely(app_path: str, port: int) -> subprocess.Popen:
     Args:
         app_path: Streamlitアプリケーションのパス
         port: Streamlitサーバーのポート番号
+        pytestconfig: pytestの設定オブジェクト（将来の拡張性のために保持）
 
     Returns:
         subprocess.Popen: 起動したStreamlitプロセス
+
+    Note:
+        Streamlitは常にヘッドレスモードで実行されます
+        pytestconfigは将来の拡張性のために引数として保持していますが、
+        現在はヘッドレスモードの制御には使用していません
     """
     # 検証済みの実行ファイルパスを取得
     executable = _get_validated_streamlit_executable()
@@ -200,12 +230,10 @@ def _run_streamlit_safely(app_path: str, port: int) -> subprocess.Popen:
     # 環境変数の設定
     env = os.environ.copy()
 
-    # 固定された引数リストを作成[ユーザー入力を含まない]
-    global _PLAYWRIGHT_HEADLESS_FLAG
-    headless_flag = _PLAYWRIGHT_HEADLESS_FLAG
-    args: List[str] = [executable, "run", app_path, f"--server.port={port}", f"--server.headless={headless_flag}"]
+    # Streamlitは常にヘッドレスモードで実行
+    args: List[str] = [executable, "run", app_path, f"--server.port={port}", "--server.headless=true"]
 
-    logger.info(f"Streamlitを起動します: port={port}, headless={headless_flag}")
+    logger.info(f"Streamlitを起動します: port={port}, headless=true")
 
     # S603を無視: これはテストコードであり、検証済みの引数のみを使用
     process = subprocess.Popen(
@@ -232,7 +260,7 @@ def streamlit_port() -> int:
 
 
 @pytest.fixture
-def streamlit_app(streamlit_port: int) -> Generator[subprocess.Popen, None, None]:
+def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[subprocess.Popen, None, None]:
     """テスト用のStreamlitアプリを起動するフィクスチャ
 
     各テストごとに独立したStreamlitアプリを起動し、
@@ -240,16 +268,21 @@ def streamlit_app(streamlit_port: int) -> Generator[subprocess.Popen, None, None
 
     Args:
         streamlit_port: テスト用のポート番号
+        pytestconfig: pytestの設定オブジェクト（将来の拡張性のために保持）
 
     Yields:
         subprocess.Popen: 起動したStreamlitプロセス
+
+    Note:
+        Streamlitは常にヘッドレスモードで実行されます
+        プロセスは各テスト終了時に自動的にクリーンアップされます
     """
     process = None
 
     try:
         # Streamlitアプリケーションを起動
         streamlit_path = _get_validated_streamlit_path()
-        process = _run_streamlit_safely(streamlit_path, port=streamlit_port)
+        process = _run_streamlit_safely(streamlit_path, port=streamlit_port, pytestconfig=pytestconfig)
 
         # アプリケーションの起動を待機
         if not _wait_for_streamlit(timeout=20, interval=2, port=streamlit_port):
@@ -342,6 +375,13 @@ def pytest_configure(config: PytestConfig) -> None:
     Args:
         config: pytestの設定オブジェクト
     """
+    # カスタムオプションを登録
+    config.addinivalue_line(
+        "markers",
+        "e2e: mark test as end-to-end test",
+    )
+
+    # ベンチマークの設定
     config.option.benchmark_autosave = True
     config.option.benchmark_save = ".benchmarks"
     config.option.benchmark_compare = "last"

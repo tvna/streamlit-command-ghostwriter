@@ -17,8 +17,6 @@ from .test_utils import click_button, select_tab, texts
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
-@pytest.mark.benchmark
 def test_app_title(page: Page, streamlit_port: int, benchmark: BenchmarkFixture) -> None:
     """アプリケーションのタイトルが正しく表示されることを確認"""
 
@@ -32,8 +30,6 @@ def test_app_title(page: Page, streamlit_port: int, benchmark: BenchmarkFixture)
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
-@pytest.mark.benchmark
 def test_input_field(page: Page, streamlit_port: int, benchmark: BenchmarkFixture) -> None:
     """入力フィールドが機能することを確認"""
     # タブを選択
@@ -52,7 +48,6 @@ def test_input_field(page: Page, streamlit_port: int, benchmark: BenchmarkFixtur
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_button_click(page: Page, streamlit_port: int) -> None:
     """ボタンクリックが機能することを確認"""
     # タブを選択
@@ -63,7 +58,6 @@ def test_button_click(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_sidebar_interaction(page: Page, streamlit_port: int) -> None:
     """サイドバーの操作が機能することを確認"""
     # サイドバーを開く - Streamlitの新しいUIでは、ハンバーガーメニューをクリックする必要がある
@@ -87,7 +81,6 @@ def test_sidebar_interaction(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_download_functionality(page: Page, streamlit_port: int) -> None:
     """ダウンロード機能が動作することを確認"""
     # タブを選択
@@ -102,7 +95,6 @@ def test_download_functionality(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_basic
 def test_responsive_design(page: Page, streamlit_port: int) -> None:
     """レスポンシブデザインが機能することを確認"""
     # モバイルビューに設定
@@ -122,7 +114,6 @@ def test_responsive_design(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_parametrized
 @pytest.mark.parametrize(
     ("tab_name", "expected_element"),
     [
