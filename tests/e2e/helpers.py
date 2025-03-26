@@ -11,7 +11,7 @@ import tempfile
 from typing import List, Optional
 
 from box import Box
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from i18n import LANGUAGES
@@ -457,3 +457,76 @@ def upload_config_and_template(page: Page, config_file: str, template_file: str)
     """
     helper = StreamlitTestHelper(page)
     helper.upload_config_and_template(config_file, template_file)
+
+
+def get_display_button(page: Page, display_format: str) -> Locator:
+    """表示形式に応じたボタンを取得する
+
+    Args:
+        page: Playwrightのページオブジェクト
+        display_format: 表示形式[visual, toml, yaml]
+
+    Returns:
+        Locator: ボタンのLocatorオブジェクト
+    """
+    format_button_map = {
+        "visual": texts.tab2.generate_visual_button,
+        "toml": texts.tab2.generate_toml_button,
+        "yaml": texts.tab2.generate_yaml_button,
+    }
+    button_text = format_button_map[display_format]
+    display_button = page.locator(f"button:has-text('{button_text}')").first
+    return display_button
+
+
+def get_result_text(tab_panel: Locator, display_format: str) -> str:
+    """表示形式に応じた結果テキストを取得する
+
+    Args:
+        tab_panel: タブパネルのLocatorオブジェクト
+        display_format: 表示形式[visual, toml, yaml]
+
+    Returns:
+        str: 解析結果のテキスト
+    """
+    result_text = ""
+
+    # JSON表示の場合
+    if display_format == "visual":
+        json_container = tab_panel.locator("div[data-testid='stJson']").first
+        if json_container.count() > 0:
+            return json_container.inner_text()
+
+    # テキストエリアの場合 [tomlとyaml形式]
+    text_areas = tab_panel.locator("textarea").all()
+    for text_area in text_areas:
+        area_text = text_area.input_value()
+        if area_text:
+            result_text += area_text + "\n"
+
+    # テキストエリアやJSON表示が見つからない場合、マークダウン要素を確認
+    if not result_text:
+        markdown_areas = tab_panel.locator("div.stMarkdown").all()
+        for area in markdown_areas:
+            area_text = area.inner_text()
+            if area_text and not area_text.startswith(texts.tab2.upload_debug_config):
+                result_text += area_text + "\n"
+
+    return result_text
+
+
+def verify_result_content(result_text: str, expected_content: List[str], display_format: str) -> None:
+    """解析結果の内容を検証する
+
+    Args:
+        result_text: 解析結果のテキスト
+        expected_content: 期待される内容のリスト
+        display_format: 表示形式[visual, toml, yaml]
+
+    Raises:
+        AssertionError: 検証に失敗した場合
+    """
+    assert len(result_text.strip()) > 0, f"解析結果が表示されていません({display_format}形式)"
+
+    for content in expected_content:
+        assert content.lower() in result_text.lower(), f"期待される内容 '{content}' が解析結果に含まれていません"
