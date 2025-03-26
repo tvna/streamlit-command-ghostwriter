@@ -15,13 +15,16 @@ from pytest_benchmark.fixture import BenchmarkFixture
 
 # test_utils から関数とテキストリソースをインポート
 from .conftest import _wait_for_streamlit
-from .test_utils import check_result_displayed, select_tab, texts, upload_config_and_template
+from .helpers import check_result_displayed, select_tab, texts, upload_config_and_template
 
 
 @pytest.mark.e2e
-@pytest.mark.benchmark
 def test_cli_command_generation(page: Page, streamlit_port: int, benchmark: BenchmarkFixture) -> None:
     """CSVファイルとJinjaテンプレートを使用してCLIコマンドを生成する機能をテスト"""
+
+    # Streamlitサーバーが応答することを確認
+    assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test"
+
     # タブを選択
     select_tab(page, f"📝 {texts.tab1.menu_title}")
 
@@ -89,8 +92,6 @@ def test_toml_config_processing(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.e2e_parametrized
-@pytest.mark.benchmark
 @pytest.mark.parametrize(
     ("config_file", "template_file", "button_text"),
     [
@@ -116,6 +117,7 @@ def test_command_generation_parametrized(
         button_text: クリックするボタンのテキスト
         benchmark: ベンチマーク実行用のフィクスチャ
     """
+
     # Streamlitサーバーが応答することを確認
     assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test"
 

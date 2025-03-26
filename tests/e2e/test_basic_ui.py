@@ -13,12 +13,16 @@ import pytest
 from playwright.sync_api import Page, expect
 from pytest_benchmark.fixture import BenchmarkFixture
 
-from .test_utils import click_button, select_tab, texts
+from .conftest import _wait_for_streamlit
+from .helpers import click_button, select_tab, texts
 
 
 @pytest.mark.e2e
 def test_app_title(page: Page, streamlit_port: int, benchmark: BenchmarkFixture) -> None:
     """アプリケーションのタイトルが正しく表示されることを確認"""
+
+    # Streamlitサーバーが応答することを確認
+    assert _wait_for_streamlit(timeout=5, interval=1, port=streamlit_port), "Streamlit server is not responding before test"
 
     def _check_title() -> None:
         # Streamlit アプリのタイトルを検証

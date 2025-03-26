@@ -13,7 +13,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 # test_utils から関数とテキストリソースをインポート
-from .test_utils import select_tab, texts
+from .helpers import select_tab, texts
 
 
 @pytest.mark.e2e

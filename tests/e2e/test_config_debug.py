@@ -15,11 +15,10 @@ import pytest
 from playwright.sync_api import Locator, Page, expect
 
 # test_utils から関数とテキストリソースをインポート
-from .test_utils import check_result_displayed, get_test_file_path, select_tab, texts
+from .helpers import check_result_displayed, get_test_file_path, select_tab, texts
 
 
 @pytest.mark.e2e
-@pytest.mark.benchmark
 def upload_config_file(page: Page, file_name: str) -> None:
     """設定ファイルをアップロードする
 
@@ -124,7 +123,6 @@ def _verify_result_content(result_text: str, expected_content: List[str], displa
 
 
 @pytest.mark.e2e
-@pytest.mark.benchmark
 def test_config_debug_visual(page: Page, streamlit_port: int) -> None:
     """設定デバッグタブでの視覚的デバッグ機能をテスト"""
     # タブ2を選択
@@ -147,7 +145,6 @@ def test_config_debug_visual(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.benchmark
 def test_config_debug_toml(page: Page, streamlit_port: int) -> None:
     """設定デバッグタブでのTOML形式での表示機能をテスト"""
     # タブ2を選択
@@ -170,7 +167,6 @@ def test_config_debug_toml(page: Page, streamlit_port: int) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.benchmark
 def test_config_debug_yaml(page: Page, streamlit_port: int) -> None:
     """設定デバッグタブでのYAML形式での表示機能をテスト"""
     # タブ2を選択
