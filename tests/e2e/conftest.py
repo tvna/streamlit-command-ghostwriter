@@ -285,7 +285,7 @@ def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[
         process = _run_streamlit_safely(streamlit_path, port=streamlit_port, pytestconfig=pytestconfig)
 
         # アプリケーションの起動を待機
-        if not _wait_for_streamlit(timeout=20, interval=2, port=streamlit_port):
+        if not _wait_for_streamlit(timeout=30, interval=3, port=streamlit_port):
             if process:
                 process.kill()
                 process.wait(timeout=5)  # プロセスの終了を待機
@@ -343,7 +343,7 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen, streamlit_port: 
             pytest.skip("Streamlitプロセスが実行されていません")
 
         # Streamlitサーバーが応答することを確認
-        if not _wait_for_streamlit(timeout=10, interval=1, port=streamlit_port):
+        if not _wait_for_streamlit(timeout=30, interval=3, port=streamlit_port):
             pytest.fail("Streamlit server is not responding before test.")
 
         # ページにアクセス

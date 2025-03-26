@@ -49,7 +49,7 @@ dig @{{ row["resolver"] }} {{ row["fqdn"] }} {{ row["type"] }} +short
 {% endfor %}"""
 
     # 成功設定ファイル (YAML)
-    SUCCESS_CONFIG_YAML = """url: "https://example.com/samplefile.txt"
+    WGET_CONFIG_YAML = """url: "https://example.com/samplefile.txt"
 date: 2024-04-01
 
 users:
@@ -59,7 +59,7 @@ users:
 """
 
     # 成功テンプレートファイル (Jinja2)
-    SUCCESS_TEMPLATE_J2 = """# wget operation
+    WGET_TEMPLATE_J2 = """# wget operation
 
 ```bash
 wget {{ url }}
@@ -218,8 +218,8 @@ show startup-config"""
             "sample.txt": cls.SAMPLE_TXT,
             "dns_dig_config.csv": cls.DNS_DIG_CONFIG_CSV,
             "dns_dig_tmpl.j2": cls.DNS_DIG_TMPL_J2,
-            "success_config.yaml": cls.SUCCESS_CONFIG_YAML,
-            "success_template.j2": cls.SUCCESS_TEMPLATE_J2,
+            "wget_config.yaml": cls.WGET_CONFIG_YAML,
+            "wget_template.j2": cls.WGET_TEMPLATE_J2,
             "cisco_config.toml": cls.CISCO_CONFIG_TOML,
             "cisco_template.jinja2": cls.CISCO_TEMPLATE_JINJA2,
         }
@@ -238,17 +238,6 @@ class StreamlitTestHelper:
         """
         self.page = page
         self.default_wait_time = 1000  # ミリ秒
-
-    def get_test_file_path(self, file_name: str) -> str:
-        """テスト用のファイルパスを取得する
-
-        Args:
-            file_name: ファイル名
-
-        Returns:
-            str: テスト用のファイルパス
-        """
-        return TestData.get_test_file_path(file_name)
 
     def wait_for_ui_stabilization(self) -> None:
         """UI要素が安定するまで待機する"""
@@ -271,7 +260,7 @@ class StreamlitTestHelper:
         expect(upload_button).to_be_visible()
 
         # ファイルをアップロード
-        test_file_path = self.get_test_file_path(file_name)
+        test_file_path = TestData.get_test_file_path(file_name)
         with self.page.expect_file_chooser() as fc_info:
             upload_button.click()
         file_chooser = fc_info.value
@@ -353,7 +342,7 @@ class StreamlitTestHelper:
         config_upload_button = config_upload_container.locator("button:has-text('Browse files')").first
         expect(config_upload_button).to_be_visible()
 
-        config_file_path = self.get_test_file_path(config_file)
+        config_file_path = TestData.get_test_file_path(config_file)
         with self.page.expect_file_chooser() as fc_info:
             config_upload_button.click()
         file_chooser = fc_info.value
@@ -367,7 +356,7 @@ class StreamlitTestHelper:
         jinja_upload_button = jinja_upload_container.locator("button:has-text('Browse files')").first
         expect(jinja_upload_button).to_be_visible()
 
-        jinja_file_path = self.get_test_file_path(template_file)
+        jinja_file_path = TestData.get_test_file_path(template_file)
         with self.page.expect_file_chooser() as fc_info:
             jinja_upload_button.click()
         file_chooser = fc_info.value
@@ -383,150 +372,101 @@ class StreamlitTestHelper:
         jinja_text = jinja_upload_container.inner_text()
         assert template_file in jinja_text, f"Template file name not displayed.\nExpected: {template_file}\nActual text: {jinja_text}"
 
+    def get_display_button(self, display_format: str) -> Locator:
+        """表示形式に応じたボタンを取得する
 
-# 後方互換性のための関数
+        Args:
+            page: Playwrightのページオブジェクト
+            display_format: 表示形式[visual, toml, yaml]
 
+        Returns:
+            Locator: ボタンのLocatorオブジェクト
+        """
+        format_button_map = {
+            "visual": texts.tab2.generate_visual_button,
+            "toml": texts.tab2.generate_toml_button,
+            "yaml": texts.tab2.generate_yaml_button,
+        }
+        button_text = format_button_map[display_format]
+        display_button = self.page.locator(f"button:has-text('{button_text}')").first
+        return display_button
 
-def get_test_file_path(file_name: str) -> str:
-    """テスト用のファイルパスを取得する
+    def get_result_text(self, tab_panel: Locator, display_format: str) -> str:
+        """表示形式に応じた結果テキストを取得する
 
-    Args:
-        file_name: ファイル名
+        Args:
+            tab_panel: タブパネルのLocatorオブジェクト
+            display_format: 表示形式[visual, toml, yaml]
 
-    Returns:
-        str: テスト用のファイルパス
-    """
-    return TestData.get_test_file_path(file_name)
+        Returns:
+            str: 解析結果のテキスト
+        """
+        result_text = ""
 
+        # JSON表示の場合
+        if display_format == "visual":
+            json_container = tab_panel.locator("div[data-testid='stJson']").first
+            if json_container.count() > 0:
+                return json_container.inner_text()
 
-def upload_file(page: Page, upload_container_selector: str, file_name: str) -> None:
-    """ファイルをアップロードする
-
-    Args:
-        page: Playwrightのページオブジェクト
-        upload_container_selector: アップロードコンテナのセレクタ
-        file_name: アップロードするファイル名
-    """
-    helper = StreamlitTestHelper(page)
-    helper.upload_file(upload_container_selector, file_name)
-
-
-def select_tab(page: Page, tab_name: str) -> None:
-    """タブを選択する
-
-    Args:
-        page: Playwrightのページオブジェクト
-        tab_name: タブ名
-    """
-    helper = StreamlitTestHelper(page)
-    helper.select_tab(tab_name)
-
-
-def click_button(page: Page, button_text: str) -> None:
-    """ボタンをクリックする
-
-    Args:
-        page: Playwrightのページオブジェクト
-        button_text: ボタンのテキスト
-    """
-    helper = StreamlitTestHelper(page)
-    helper.click_button(button_text)
-
-
-def check_result_displayed(page: Page, expected_contents: Optional[List[str]] = None) -> str:
-    """結果が表示されていることを確認する
-
-    Args:
-        page: Playwrightのページオブジェクト
-        expected_contents: 結果に含まれるべき内容のリスト
-
-    Returns:
-        str: 表示されている結果のテキスト
-    """
-    helper = StreamlitTestHelper(page)
-    return helper.check_result_displayed(expected_contents)
-
-
-def upload_config_and_template(page: Page, config_file: str, template_file: str) -> None:
-    """設定ファイルとテンプレートファイルをアップロードする
-
-    Args:
-        page: Playwrightのページオブジェクト
-        config_file: 設定ファイル名
-        template_file: テンプレートファイル名
-    """
-    helper = StreamlitTestHelper(page)
-    helper.upload_config_and_template(config_file, template_file)
-
-
-def get_display_button(page: Page, display_format: str) -> Locator:
-    """表示形式に応じたボタンを取得する
-
-    Args:
-        page: Playwrightのページオブジェクト
-        display_format: 表示形式[visual, toml, yaml]
-
-    Returns:
-        Locator: ボタンのLocatorオブジェクト
-    """
-    format_button_map = {
-        "visual": texts.tab2.generate_visual_button,
-        "toml": texts.tab2.generate_toml_button,
-        "yaml": texts.tab2.generate_yaml_button,
-    }
-    button_text = format_button_map[display_format]
-    display_button = page.locator(f"button:has-text('{button_text}')").first
-    return display_button
-
-
-def get_result_text(tab_panel: Locator, display_format: str) -> str:
-    """表示形式に応じた結果テキストを取得する
-
-    Args:
-        tab_panel: タブパネルのLocatorオブジェクト
-        display_format: 表示形式[visual, toml, yaml]
-
-    Returns:
-        str: 解析結果のテキスト
-    """
-    result_text = ""
-
-    # JSON表示の場合
-    if display_format == "visual":
-        json_container = tab_panel.locator("div[data-testid='stJson']").first
-        if json_container.count() > 0:
-            return json_container.inner_text()
-
-    # テキストエリアの場合 [tomlとyaml形式]
-    text_areas = tab_panel.locator("textarea").all()
-    for text_area in text_areas:
-        area_text = text_area.input_value()
-        if area_text:
-            result_text += area_text + "\n"
-
-    # テキストエリアやJSON表示が見つからない場合、マークダウン要素を確認
-    if not result_text:
-        markdown_areas = tab_panel.locator("div.stMarkdown").all()
-        for area in markdown_areas:
-            area_text = area.inner_text()
-            if area_text and not area_text.startswith(texts.tab2.upload_debug_config):
+        # テキストエリアの場合 [tomlとyaml形式]
+        text_areas = tab_panel.locator("textarea").all()
+        for text_area in text_areas:
+            area_text = text_area.input_value()
+            if area_text:
                 result_text += area_text + "\n"
 
-    return result_text
+        # テキストエリアやJSON表示が見つからない場合、マークダウン要素を確認
+        if not result_text:
+            markdown_areas = tab_panel.locator("div.stMarkdown").all()
+            for area in markdown_areas:
+                area_text = area.inner_text()
+                if area_text and not area_text.startswith(texts.tab2.upload_debug_config):
+                    result_text += area_text + "\n"
 
+        return result_text
 
-def verify_result_content(result_text: str, expected_content: List[str], display_format: str) -> None:
-    """解析結果の内容を検証する
+    def verify_result_content(self, result_text: str, expected_content: List[str], display_format: str) -> None:
+        """解析結果の内容を検証する
 
-    Args:
-        result_text: 解析結果のテキスト
-        expected_content: 期待される内容のリスト
-        display_format: 表示形式[visual, toml, yaml]
+        Args:
+            result_text: 解析結果のテキスト
+            expected_content: 期待される内容のリスト
+            display_format: 表示形式[visual, toml, yaml]
 
-    Raises:
-        AssertionError: 検証に失敗した場合
-    """
-    assert len(result_text.strip()) > 0, f"解析結果が表示されていません({display_format}形式)"
+        Raises:
+            AssertionError: 検証に失敗した場合
+        """
+        assert len(result_text.strip()) > 0, f"解析結果が表示されていません({display_format}形式)"
 
-    for content in expected_content:
-        assert content.lower() in result_text.lower(), f"期待される内容 '{content}' が解析結果に含まれていません"
+        for content in expected_content:
+            assert content.lower() in result_text.lower(), f"期待される内容 '{content}' が解析結果に含まれていません"
+
+    def upload_debug_config_file(self, file_name: str) -> None:
+        """設定ファイルをアップロードする
+
+        Args:
+            page: Playwrightのページオブジェクト
+            file_name: アップロードするファイル名
+        """
+        # タブパネルを取得
+        tab_panel = self.page.locator("div[role='tabpanel']:visible").first
+
+        # 設定定義ファイルのアップロード要素を見つける
+        upload_container = tab_panel.locator("div[data-testid='stFileUploader']").first
+        expect(upload_container).to_be_visible()
+
+        # ファイルアップロードボタンを見つける
+        upload_button = upload_container.locator("button:has-text('Browse files')").first
+        expect(upload_button).to_be_visible()
+
+        # ファイルをアップロード
+        test_file_path = TestData.get_test_file_path(file_name)
+        with self.page.expect_file_chooser() as fc_info:
+            upload_button.click()
+        file_chooser = fc_info.value
+        file_chooser.set_files(test_file_path)
+
+        # アップロード後の処理を待機
+        self.page.wait_for_load_state("networkidle")
+        self.page.wait_for_timeout(1000)
