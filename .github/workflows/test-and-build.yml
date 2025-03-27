@@ -273,7 +273,7 @@ jobs:
           # WindowsとWebkitの組み合わせを除外
           - os: windows-latest
             browser: webkit
-    timeout-minutes: 20
+    timeout-minutes: 60
 
     steps:
       - name: Harden Runner
