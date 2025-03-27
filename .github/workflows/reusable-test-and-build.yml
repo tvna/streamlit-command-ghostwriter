@@ -11,7 +11,7 @@
 # - Test the new version in a controlled environment first
 # - Update this policy comment with any changes
 ---
-name: Common Test & Build
+name: Reusable Test & Build
 
 on:
   workflow_call:
@@ -22,6 +22,9 @@ on:
       concurrency_cancel_in_progress:
         required: true
         type: boolean
+      workflow_summary_name:
+        required: true
+        type: string
 
 defaults:
   run:
@@ -265,7 +268,6 @@ jobs:
           # WindowsとWebkitの組み合わせを除外
           - os: windows-latest
             browser: webkit
-    timeout-minutes: 10
 
     steps:
       - name: Harden Runner
@@ -275,17 +277,20 @@ jobs:
           disable-sudo: false
           disable-file-monitoring: false
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 5
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+        timeout-minutes: 3
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
+        timeout-minutes: 10
 
       - name: Restore cache Playwright browsers
         uses: actions/cache@v4.2.3
@@ -298,11 +303,13 @@ jobs:
             /Users/runner/Library/Caches/ms-playwright
             %USERPROFILE%\AppData\Local\ms-playwright
           key: ${{ matrix.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
+        timeout-minutes: 10
 
       - name: Install Playwright Browser
         shell: bash
         run: |
           poetry run playwright install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 10
 
       - name: Configure Windows for UTF-8
         if: runner.os == 'Windows'
@@ -310,6 +317,7 @@ jobs:
           # Windows環境でUTF-8を使用するための設定
           chcp 65001
         shell: cmd
+        timeout-minutes: 1
 
       - name: E2E Tests (not chromium)
         if: matrix.browser != 'chromium'
@@ -321,6 +329,7 @@ jobs:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
         continue-on-error: true
+        timeout-minutes: 10
 
       - name: Retry E2E Tests (not chromium)
         if: matrix.browser != 'chromium' && steps.e2e-not-chromium.outcome == 'failure'
@@ -331,6 +340,7 @@ jobs:
         env:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
+        timeout-minutes: 10
 
       - name: E2E Tests with benchmark (Chromium only)
         if: matrix.browser == 'chromium'
@@ -363,6 +373,7 @@ jobs:
           path: .benchmarks/**/*
           retention-days: 90
           if-no-files-found: warn
+        timeout-minutes: 5
 
   # ============================================================
   # ANALYSIS GROUP
@@ -574,7 +585,7 @@ jobs:
   # ============================================================
 
   workflow-summary:
-    name: Workflow Summary (Test & Build)
+    name: ${{ inputs.workflow_summary_name }}
     if: always()
     needs:
       [

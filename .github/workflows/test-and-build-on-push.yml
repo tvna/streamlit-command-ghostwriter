@@ -1,5 +1,5 @@
 ---
-name: Test & Build on Push
+name: Test & Build (on push)
 
 on:
   push:
@@ -19,5 +19,6 @@ jobs:
   test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml
     with:
-      concurrency_group: push-${{ github.ref }}
+      concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: true
+      workflow_summary_name: "Workflow summary [Test & Build (on Push)]"
