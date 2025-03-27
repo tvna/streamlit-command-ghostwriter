@@ -1,0 +1,67 @@
+---
+description: Domain knowledges for this repo
+globs: *.py
+alwaysApply: true
+---
+# このリポジトリにおけるドメイン知識
+
+## フロントエンドの技術選定
+- streamlitを利用するWebアプリであること
+- Pythonのみのコード知識で保守できるよう、可能な限り独自のJavascript実装を作らないこと
+- 画面に表示する文字列は可能な限り各ファイルにハードコードせず、`i18n.py`に記述してからインポートして利用すること
+
+---
+
+## バックエンド構成の技術選定
+- featuresフォルダ内のPythonファイルは、インポートの利便性を考慮してクラス化を徹底すること
+- パース後のデータのメモリバリデーションを実装しないでください (修正ループバグの回避策検討中のため)
+
+### core.py
+- ビジネスロジックの中核を担います
+- MVVMモデルにおける、ViewModelに該当します
+
+### transcoder.py
+- アップロードされたファイルのデコード、ビジネスロジックで扱うためのエンコードを引き受けます
+
+### config_parser.py
+- ファイルサイズのバリデーションを、validate_uploaded_fileに分離します
+- エラーは例外ではなく、error_messageに出力します
+- ConfigParserは、TOMLファイル、YAMLファイル、CSVファイルを、辞書形式に変換します
+- ConfigParserは、CSVファイルの変換にあたり、引数として列名を決めるための値を取得します
+
+### document_render.py
+- ファイルサイズのバリデーションを、validate_uploaded_fileに分離します
+- テンプレートのバリデーションを、validate_uploaded_fileに分離します
+- エラーは例外ではなく、error_messageに出力します
+- DocumentRenderが引数として受け取るcontextは、tomlをパースした結果を想定すること
+- DocumentRenderのフォーマット処理はビジネスロジックであるため、勝手に修正したり破壊したりしないこと
+- DocumentRenderのerror_messageは、エラーがない場合はNoneとすること
+
+### validate_template.py
+- DocumentRenderに依存するJinjaテンプレートのバリデーションの全てを引き受けます。
+- 再起的構造を検査する静的解析は禁止、ランタイム処理で例外等を使い検査するものとします。
+- テンプレートインジェクション対策の検査は、計算量が多い検査のみランタイム処理で例外等を使い検査すること
+- テンプレートは、"macro", "include", "import", "extends"を禁止タグとして定義する
+- テンプレートは、"__class__","__base__","__subclasses__","__mro__","request","config", "os", "sys", "builtins", "eval", "exec","getattr", "setattr", "delattr", "globals", "locals"を禁止の属性として定義する
+- テンプレートにて、macroタグを呼び出さないと動作しない処理を個別に検査する必要はない
+- 大きなループ範囲の上限値として、100000を閾値として定義します
+
+#### validate_uploaded_file.py
+- BytesIOにおいては、30MBを上限として型バリデーションを適応します
+
+---
+
+## パッケージ管理
+- pythonにおいては、poetryを利用します
+- javascriptにおいては、npmを利用します
+
+### poetryの操作
+- pythonの依存パッケージを新規インストールする場合は、`pip install`ではなく`poetry add`を利用すること
+- テストコード専用の依存パッケージを新規インストールする場合は、`poetry add -G dev`を利用すること
+- pyproject.tomlにおいては、パッケージモードの有効化を禁止とします
+
+### npmの操作
+- package.jsonにおいては、常にパッケージモードを利用するものとします
+- 頻出するコマンドのエイリアスについては、package.jsonに全て定義します
+
+

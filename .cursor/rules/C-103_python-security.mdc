@@ -1,5 +1,5 @@
 ---
-description: Security rules for python
+description:
 globs: *.py
 alwaysApply: false
 ---

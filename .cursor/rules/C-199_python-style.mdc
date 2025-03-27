@@ -1,7 +1,7 @@
 ---
-description: Coding style rules for python
+description:
 globs: *.py
-alwaysApply: true
+alwaysApply: false
 ---
 # Pythonのコードスタイルの基本
 - このルールの適応は、コード回答の直前とします。
