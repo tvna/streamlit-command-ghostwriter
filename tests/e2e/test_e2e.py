@@ -1,12 +1,41 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Streamlit アプリケーションの基本的なUI要素のテスト
+"""StreamlitアプリケーションのE2Eテストモジュール.
+
+このモジュールは、StreamlitアプリケーションのUIコンポーネントとその機能を検証するE2Eテストを提供します:
+
+  - 基本的なUI要素のテスト
+    - アプリケーションタイトル
+    - 入力フィールド
+    - ボタン操作
+    - サイドバー操作
+    - ダウンロード機能
+    - レスポンシブデザイン
+
+  - タブ機能のテスト
+    - コマンド生成タブ
+    - 設定デバッグタブ
+    - 詳細設定タブ
+    - サンプル集タブ
+
+  - ファイル操作のテスト
+    - 各種設定ファイルのアップロード
+    - テンプレートファイルのアップロード
+    - 結果の検証
 
 実行方法:
-- すべてのテストを実行: python -m pytest tests/e2e/test_basic_ui.py -v
-- 特定のテストを実行: python -m pytest tests/e2e/test_basic_ui.py::test_app_title -v
+  すべてのテストを実行:
+    python -m pytest tests/e2e/test_e2e.py -v
+
+  特定のテストを実行:
+    python -m pytest tests/e2e/test_e2e.py::test_ui_app_title -v
+
+  ヘッドレスモードで実行:
+    python -m pytest tests/e2e/test_e2e.py
+
+  ブラウザを表示して実行:
+    python -m pytest tests/e2e/test_e2e.py --headed
 """
 
 from typing import List
@@ -20,7 +49,19 @@ from .helpers import StreamlitTestHelper, TestData, texts
 
 @pytest.mark.e2e
 def test_ui_app_title(page: Page, benchmark: BenchmarkFixture) -> None:
-    """アプリケーションのタイトルが正しく表示されることを確認"""
+    """アプリケーションのタイトル表示をテスト.
+
+    アプリケーションのタイトルが正しく表示され、期待される文字列を含んでいることを確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+        benchmark: ベンチマーク実行用のフィクスチャ
+
+    Note:
+        - タイトルの表示を確認
+        - タイトルのテキストを検証
+        - 処理時間をベンチマーク
+    """
 
     def _check_title() -> None:
         # Streamlit アプリのタイトルを検証
@@ -33,7 +74,19 @@ def test_ui_app_title(page: Page, benchmark: BenchmarkFixture) -> None:
 
 @pytest.mark.e2e
 def test_ui_input_field(page: Page, benchmark: BenchmarkFixture) -> None:
-    """入力フィールドが機能することを確認"""
+    """入力フィールドの機能をテスト.
+
+    コマンド生成タブの入力フィールドが正しく表示され、操作可能であることを確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+        benchmark: ベンチマーク実行用のフィクスチャ
+
+    Note:
+        - ファイルアップロードボタンの表示を確認
+        - CLIコマンド生成ボタンの表示を確認
+        - 処理時間をベンチマーク
+    """
 
     # タブを選択
     helper = StreamlitTestHelper(page)
@@ -53,7 +106,17 @@ def test_ui_input_field(page: Page, benchmark: BenchmarkFixture) -> None:
 
 @pytest.mark.e2e
 def test_ui_button_click(page: Page) -> None:
-    """ボタンクリックが機能することを確認"""
+    """ボタンクリック操作をテスト.
+
+    コマンド生成タブのボタンが正しくクリック操作に応答することを確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+
+    Note:
+        - タブの切り替えを確認
+        - ボタンのクリック操作を実行
+    """
 
     # タブを選択
     helper = StreamlitTestHelper(page)
@@ -65,7 +128,18 @@ def test_ui_button_click(page: Page) -> None:
 
 @pytest.mark.e2e
 def test_ui_sidebar_interaction(page: Page) -> None:
-    """サイドバーの操作が機能することを確認"""
+    """サイドバーの操作機能をテスト.
+
+    サイドバーの表示と各種操作が正しく機能することを確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+
+    Note:
+        - サイドバーの表示を確認
+        - エキスパンダーの操作を確認
+        - リンクの存在を確認
+    """
 
     # サイドバーを開く - Streamlitの新しいUIでは、ハンバーガーメニューをクリックする必要がある
     sidebar = page.locator("section[data-testid='stSidebar']")
@@ -89,7 +163,17 @@ def test_ui_sidebar_interaction(page: Page) -> None:
 
 @pytest.mark.e2e
 def test_ui_download_functionality(page: Page) -> None:
-    """ダウンロード機能が動作することを確認"""
+    """ダウンロード機能をテスト.
+
+    ダウンロードボタンの表示状態と初期状態での無効化を確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+
+    Note:
+        - ダウンロードボタンの表示を確認
+        - 初期状態での無効化を確認
+    """
 
     # タブを選択
     helper = StreamlitTestHelper(page)
@@ -105,7 +189,18 @@ def test_ui_download_functionality(page: Page) -> None:
 
 @pytest.mark.e2e
 def test_ui_responsive_design(page: Page) -> None:
-    """レスポンシブデザインが機能することを確認"""
+    """レスポンシブデザインをテスト.
+
+    異なる画面サイズでのUIの適応性を確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+
+    Note:
+        - モバイルビューでの表示を確認
+        - ハンバーガーメニューの表示を確認
+        - デスクトップビューでの表示を確認
+    """
 
     # モバイルビューに設定
     page.set_viewport_size({"width": 375, "height": 667})  # iPhone 8 サイズ
@@ -125,7 +220,18 @@ def test_ui_responsive_design(page: Page) -> None:
 
 @pytest.mark.e2e
 def test_ui_advanced_settings_in_tab3(page: Page) -> None:
-    """詳細設定タブでの設定変更機能をテスト"""
+    """詳細設定タブの機能をテスト.
+
+    詳細設定タブの表示と設定変更機能を確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+
+    Note:
+        - タブの切り替えを確認
+        - 設定セクションの表示を確認
+        - 元のタブへの復帰を確認
+    """
 
     helper = StreamlitTestHelper(page)
 
@@ -142,7 +248,18 @@ def test_ui_advanced_settings_in_tab3(page: Page) -> None:
 
 @pytest.mark.e2e
 def test_ui_sample_collection_in_tab4(page: Page) -> None:
-    """サンプル集タブでのサンプルファイル表示機能をテスト"""
+    """サンプル集タブの機能をテスト.
+
+    サンプル集タブでの各種サンプルファイルの表示と内容を確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+
+    Note:
+        - タブの切り替えを確認
+        - 各サンプルファイルの表示を確認
+        - サンプルファイルの内容を検証
+    """
 
     helper = StreamlitTestHelper(page)
 
@@ -216,15 +333,20 @@ def test_ui_sample_collection_in_tab4(page: Page) -> None:
     ],
 )
 def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element: str) -> None:
-    """パラメータ化されたタブナビゲーションのテスト
+    """タブナビゲーション機能をパラメータ化してテスト.
 
-    各タブに切り替えて、期待される要素が表示されることを確認します。
+    各タブへの切り替えと、タブ固有の要素の表示を確認します。
 
     Args:
         page: Playwrightのページオブジェクト
-        streamlit_port: テスト用のポート番号
         tab_name: テスト対象のタブ名
         expected_element: タブ内に表示されるべき要素のセレクタ
+
+    Note:
+        - タブボタンの表示を確認
+        - タブの切り替えを実行
+        - タブパネルの表示を確認
+        - 期待される要素の表示を確認
     """
 
     # Arrange: タブボタンを取得
@@ -292,11 +414,10 @@ def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element
 def test_command_generation_parametrized_in_tab1(
     page: Page, config_file: str, template_file: str, button_text: str, benchmark: BenchmarkFixture
 ) -> None:
-    """パラメータ化されたコマンド生成機能のテスト
+    """コマンド生成機能をパラメータ化してテスト.
 
-    コマンド生成タブで設定ファイルとテンプレートファイルをアップロードし、
-    指定されたボタンをクリックして結果が生成されることを確認します。
-    また、ダウンロードボタンが有効になることも確認します。
+    各種設定ファイルとテンプレートファイルの組み合わせで、
+    コマンド生成機能が正しく動作することを確認します。
 
     Args:
         page: Playwrightのページオブジェクト
@@ -304,6 +425,12 @@ def test_command_generation_parametrized_in_tab1(
         template_file: アップロードするテンプレートファイル名
         button_text: クリックするボタンのテキスト
         benchmark: ベンチマーク実行用のフィクスチャ
+
+    Note:
+        - ファイルのアップロードを確認
+        - コマンド生成ボタンの操作を確認
+        - 生成結果の表示を確認
+        - 処理時間をベンチマーク
     """
 
     # Arrange: コマンド生成タブを選択
@@ -331,7 +458,20 @@ def test_command_generation_parametrized_in_tab1(
 
 @pytest.mark.e2e
 def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
-    """ファイルアップロード機能が動作することを確認"""
+    """ファイルアップロード機能をテスト.
+
+    コマンド生成タブでのファイルアップロード機能が正しく動作することを確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+        benchmark: ベンチマーク実行用のフィクスチャ
+
+    Note:
+        - アップロード要素の表示を確認
+        - ファイル選択操作を実行
+        - アップロード完了を確認
+        - 処理時間をベンチマーク
+    """
 
     # タブを選択
     helper = StreamlitTestHelper(page)
@@ -364,7 +504,21 @@ def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
 
 @pytest.mark.e2e
 def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
-    """Jinjaテンプレートファイルのアップロード機能が動作することを確認"""
+    """Jinjaテンプレートファイルのアップロード機能をテスト.
+
+    コマンド生成タブでのJinjaテンプレートファイルのアップロード機能が
+    正しく動作することを確認します。
+
+    Args:
+        page: Playwrightのページオブジェクト
+        benchmark: ベンチマーク実行用のフィクスチャ
+
+    Note:
+        - テンプレートアップロード要素の表示を確認
+        - ファイル選択操作を実行
+        - アップロード完了を確認
+        - 処理時間をベンチマーク
+    """
 
     # タブを選択
     helper = StreamlitTestHelper(page)
@@ -417,10 +571,10 @@ def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) 
 def test_file_upload_parametrized_in_tab1(
     page: Page, tab_name: str, upload_index: int, file_type: str, file_name: str, benchmark: BenchmarkFixture
 ) -> None:
-    """パラメータ化されたファイルアップロードのテスト
+    """ファイルアップロード機能をパラメータ化してテスト.
 
-    各タブで指定されたインデックスのファイルアップローダーにファイルをアップロードし、
-    アップロードが成功することを確認します。
+    各タブの各アップロード要素で、ファイルアップロード機能が
+    正しく動作することを確認します。
 
     Args:
         page: Playwrightのページオブジェクト
@@ -428,6 +582,14 @@ def test_file_upload_parametrized_in_tab1(
         upload_index: ファイルアップローダーのインデックス
         file_type: アップロードするファイルの種類[表示用]
         file_name: アップロードするファイル名
+        benchmark: ベンチマーク実行用のフィクスチャ
+
+    Note:
+        - タブの切り替えを確認
+        - アップロード要素の表示を確認
+        - ファイル選択操作を実行
+        - アップロード完了を確認
+        - 処理時間をベンチマーク
     """
 
     # Arrange: タブを選択
@@ -492,16 +654,24 @@ def test_file_upload_parametrized_in_tab1(
 def test_config_debug_parametrized_in_tab2(
     page: Page, file_name: str, display_format: str, expected_content: List[str], benchmark: BenchmarkFixture
 ) -> None:
-    """パラメータ化された設定デバッグ機能のテスト
+    """設定デバッグ機能をパラメータ化してテスト.
 
-    設定デバッグタブで各種ファイルをアップロードし、指定された形式で解析結果を表示して、
-    期待される内容が含まれていることを確認します。
+    各種設定ファイルを異なる表示形式で解析し、
+    結果が正しく表示されることを確認します。
 
     Args:
         page: Playwrightのページオブジェクト
         file_name: アップロードするファイル名
         display_format: 表示形式[visual, toml, yaml]
         expected_content: 解析結果に含まれるべき内容のリスト
+        benchmark: ベンチマーク実行用のフィクスチャ
+
+    Note:
+        - ファイルのアップロードを確認
+        - 表示形式の切り替えを確認
+        - 解析結果の表示を確認
+        - 結果の内容を検証
+        - 処理時間をベンチマーク
     """
 
     # Arrange: 設定デバッグタブを選択

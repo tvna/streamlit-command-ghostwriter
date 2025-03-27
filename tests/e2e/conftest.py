@@ -1,14 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-pytest の設定ファイル
-E2Eテスト実行のための設定を含みます。
+"""E2Eテスト実行のための設定モジュール.
 
-主な機能:
-- Playwrightのヘッドレスモード制御 (--disable-playwright-headlessオプションで制御可能)
-- Streamlitサーバーの自動起動 (常にヘッドレスモードで実行)
-- テストプロセスの安全な終了処理
+このモジュールは、E2Eテストの実行環境を設定し、以下の機能を提供します:
+
+  - Playwrightのブラウザ制御
+    - ヘッドレスモード/ヘッドフルモードの切り替え (--headedオプション)
+    - ブラウザのコンテキスト設定 (locale, timezone, viewport等)
+  - Streamlitサーバーの制御
+    - 自動起動 (常にヘッドレスモードで実行)
+    - 動的ポート割り当て
+    - プロセス監視と安全な終了処理
+  - テスト実行環境の管理
+    - セッションスコープのフィクスチャ提供
+    - テストごとのセットアップ/クリーンアップ
+    - ベンチマーク設定
+
+Typical usage example:
+
+  pytest --headed tests/e2e/test_*.py  # ブラウザを表示してテスト実行
+  pytest tests/e2e/test_*.py          # ヘッドレスモードでテスト実行
 """
 
 import logging
@@ -34,14 +46,14 @@ logger = logging.getLogger(__name__)
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """pytestのコマンドラインオプションを追加
+    """pytestのコマンドラインオプションを追加.
 
     Args:
         parser: pytestのパーサーオブジェクト
 
     Note:
-        --headed: Playwrightのヘッドレスモードを無効化します（ブラウザが表示されます）
-        このオプションはStreamlitのヘッドレスモードには影響しません
+        追加されるオプション:
+          --headed: ブラウザを表示モードで実行 [デフォルト: False]
     """
     parser.addoption(
         "--headed",
@@ -53,20 +65,17 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 @pytest.fixture(scope="session")
 def browser_type_launch_args(browser_type_launch_args: Dict[str, Any], pytestconfig: PytestConfig) -> Dict[str, Any]:
-    """Playwrightブラウザの起動時の引数を設定
+    """Playwrightブラウザの起動オプションを設定.
 
     Args:
-        browser_type_launch_args: 既存のブラウザ起動引数
+        browser_type_launch_args: 既存のブラウザ起動オプション
         pytestconfig: pytestの設定オブジェクト
 
     Returns:
-        Dict[str, Any]: 更新されたブラウザ起動引数
-
-    Note:
-        --headedオプションに基づいてヘッドレスモードを制御します
-        デフォルトではヘッドレスモードが有効です
+        Dict[str, Any]: 更新されたブラウザ起動オプション
+          - headless: ヘッドレスモードの有効/無効
+          - args: ブラウザ起動時の追加引数
     """
-    # Playwrightのヘッドレスモードを制御
     is_playwright_headless = not pytestconfig.getoption("--headed")
 
     return {
@@ -78,23 +87,24 @@ def browser_type_launch_args(browser_type_launch_args: Dict[str, Any], pytestcon
 
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args: Dict[str, Any]) -> Dict[str, Any]:
-    """ブラウザコンテキストの引数を設定
+    """ブラウザコンテキストのオプションを設定.
 
     Args:
-        browser_context_args: 既存のブラウザコンテキスト引数
+        browser_context_args: 既存のブラウザコンテキストオプション
 
     Returns:
-        Dict[str, Any]: 更新されたブラウザコンテキスト引数
+        Dict[str, Any]: 更新されたブラウザコンテキストオプション
+          - locale: ブラウザの言語設定
+          - timezone_id: タイムゾーン設定
+          - permissions: ブラウザの権限設定
+          - viewport: 画面サイズ設定
+          - その他: HTTPS/JavaScriptの設定
     """
     return {
         **browser_context_args,
-        # ブラウザの言語設定
         "locale": "ja-JP",
-        # ブラウザのタイムゾーン設定
         "timezone_id": "Asia/Tokyo",
-        # ブラウザの権限設定
         "permissions": ["geolocation"],
-        # ブラウザの viewport 設定
         "viewport": {
             "width": 1280,
             "height": 720,
@@ -105,32 +115,37 @@ def browser_context_args(browser_context_args: Dict[str, Any]) -> Dict[str, Any]
 
 
 def _find_free_port() -> int:
-    """使用可能なポート番号を見つける
+    """使用可能なポート番号を動的に取得.
 
     Returns:
         int: 使用可能なポート番号
+
+    Note:
+        OSに空きポートを割り当ててもらうことで、ポート競合を回避します
     """
-    # ポートが使用可能かソケットで確認
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("localhost", 0))  # OSに空きポートを割り当ててもらう
+        s.bind(("localhost", 0))
         _, port = s.getsockname()
         logger.info(f"使用可能なポート {port} を割り当てました")
         return port
 
 
 def _wait_for_streamlit(timeout: int = 30, interval: int = 1, port: int = 8503) -> bool:
-    """Streamlitが起動するまでHTTPリクエストで確認
+    """Streamlitサーバーの起動完了を待機.
 
-    指定された回数だけ、Streamlitサーバーにリクエストを送信して
-    起動が完了したかどうかを確認します。
+    指定された時間内にサーバーが応答を返すまで待機します。
 
     Args:
-        timeout: 最大待機時間（秒）
-        interval: 試行間隔（秒）
+        timeout: 最大待機時間 [秒]
+        interval: 試行間隔 [秒]
         port: Streamlitサーバーのポート番号
 
     Returns:
-        bool: Streamlitサーバーが起動していればTrue、そうでなければFalse
+        bool: サーバーが起動完了した場合はTrue、タイムアウトした場合はFalse
+
+    Note:
+        HTTPリクエストを定期的に送信し、200レスポンスを待機します
+        プロセスの終了も監視し、異常終了を検知します
     """
     url = f"http://localhost:{port}"
     logger.info(f"Streamlitサーバーの起動を確認中: {url}")
@@ -142,7 +157,6 @@ def _wait_for_streamlit(timeout: int = 30, interval: int = 1, port: int = 8503) 
     while time.time() < end_time:
         attempt += 1
         try:
-            # S113: Added timeout parameter to requests.get call
             logger.info(f"試行 {attempt}/{timeout}... (経過時間: {time.time() - start_time:.1f}秒)")
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -151,7 +165,6 @@ def _wait_for_streamlit(timeout: int = 30, interval: int = 1, port: int = 8503) 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             logger.info(f"接続エラー: {e}")
 
-        # プロセスが終了していないか確認
         if hasattr(psutil, "pid_exists") and not psutil.pid_exists(os.getpid()):
             logger.warning("テストプロセスが終了しています")
             return False
@@ -163,22 +176,21 @@ def _wait_for_streamlit(timeout: int = 30, interval: int = 1, port: int = 8503) 
 
 
 def _get_validated_streamlit_path() -> str:
-    """安全に検証されたStreamlitアプリのパスを取得
-
-    テスト対象のStreamlitアプリケーションのパスを取得し、
-    そのパスが存在することを検証します。
+    """Streamlitアプリケーションの検証済みパスを取得.
 
     Returns:
-        str: 検証済みのStreamlitアプリケーションのパス
+        str: 検証済みのStreamlitアプリケーションの絶対パス
 
     Raises:
-        FileNotFoundError: Streamlitアプリケーションが見つからない場合
+        FileNotFoundError: アプリケーションファイルが存在しない場合
+
+    Note:
+        セキュリティ対策として、相対パスを固定値で指定し、
+        絶対パスに変換後に存在確認を行います
     """
-    # 固定された相対パスを使用[ハードコードされた安全なパス]
     app_relative_path = os.path.join("..", "..", "app.py")
     streamlit_path = os.path.abspath(os.path.join(os.path.dirname(__file__), app_relative_path))
 
-    # パスの存在を検証
     if not os.path.exists(streamlit_path):
         raise FileNotFoundError(f"Streamlit app not found at {streamlit_path}")
 
@@ -186,18 +198,18 @@ def _get_validated_streamlit_path() -> str:
 
 
 def _get_validated_streamlit_executable() -> str:
-    """安全に検証されたStreamlit実行ファイルのパスを取得
-
-    Streamlit実行ファイルのパスをPATHから取得し、
-    そのパスが存在することを検証します。
+    """Streamlit実行ファイルの検証済みパスを取得.
 
     Returns:
-        str: 検証済みのStreamlit実行ファイルのパス
+        str: 検証済みのStreamlit実行ファイルの絶対パス
 
     Raises:
-        FileNotFoundError: Streamlit実行ファイルが見つからない場合
+        FileNotFoundError: 実行ファイルがPATHに存在しない場合
+
+    Note:
+        セキュリティ対策として、PATHからの実行ファイル検索を
+        shutil.whichを使用して行います
     """
-    # shutil.whichを使用して実行ファイルの完全パスを取得
     streamlit_executable: Optional[str] = shutil.which("streamlit")
     if streamlit_executable is None:
         raise FileNotFoundError("Streamlit executable not found in PATH")
@@ -206,44 +218,36 @@ def _get_validated_streamlit_executable() -> str:
 
 
 def _run_streamlit_safely(app_path: str, port: int, pytestconfig: PytestConfig) -> subprocess.Popen:
-    """安全にStreamlitを実行する関数
-
-    検証済みのStreamlit実行ファイルを使用して、
-    指定されたアプリケーションを安全に実行します。
+    """Streamlitサーバーを安全に起動.
 
     Args:
         app_path: Streamlitアプリケーションのパス
-        port: Streamlitサーバーのポート番号
-        pytestconfig: pytestの設定オブジェクト（将来の拡張性のために保持）
+        port: 使用するポート番号
+        pytestconfig: pytestの設定オブジェクト
 
     Returns:
         subprocess.Popen: 起動したStreamlitプロセス
 
     Note:
-        Streamlitは常にヘッドレスモードで実行されます
-        pytestconfigは将来の拡張性のために引数として保持していますが、
-        現在はヘッドレスモードの制御には使用していません
+        セキュリティ対策:
+          - 検証済みの実行ファイルを使用
+          - 環境変数を明示的にコピー
+          - 作業ディレクトリを明示的に設定
+          - シェル実行を無効化
     """
-    # 検証済みの実行ファイルパスを取得
     executable = _get_validated_streamlit_executable()
-
-    # 環境変数の設定
     env = os.environ.copy()
-
-    # Streamlitは常にヘッドレスモードで実行
     args: List[str] = [executable, "run", app_path, f"--server.port={port}", "--server.headless=true"]
 
     logger.info(f"Streamlitを起動します: port={port}, headless=true")
 
-    # S603を無視: これはテストコードであり、検証済みの引数のみを使用
     process = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=False,
-        # 追加のセキュリティ対策
-        env=env,  # 環境変数を明示的にコピー
-        cwd=os.path.dirname(app_path),  # 作業ディレクトリを明示的に設定
+        env=env,
+        cwd=os.path.dirname(app_path),
     )
 
     return process
@@ -251,60 +255,56 @@ def _run_streamlit_safely(app_path: str, port: int, pytestconfig: PytestConfig) 
 
 @pytest.fixture
 def streamlit_port() -> int:
-    """テスト用の一意のポート番号を提供するフィクスチャ
+    """テスト用の一意のポート番号を提供.
 
     Returns:
         int: 使用可能なポート番号
+
+    Note:
+        動的にポートを割り当てることで、テスト間の競合を防ぎます
     """
     return _find_free_port()
 
 
 @pytest.fixture
 def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[subprocess.Popen, None, None]:
-    """テスト用のStreamlitアプリを起動するフィクスチャ
-
-    各テストごとに独立したStreamlitアプリを起動し、
-    テスト終了時にプロセスをクリーンアップします。
+    """テスト用のStreamlitサーバーを提供.
 
     Args:
-        streamlit_port: テスト用のポート番号
-        pytestconfig: pytestの設定オブジェクト（将来の拡張性のために保持）
+        streamlit_port: 使用するポート番号
+        pytestconfig: pytestの設定オブジェクト
 
     Yields:
         subprocess.Popen: 起動したStreamlitプロセス
 
     Note:
-        Streamlitは常にヘッドレスモードで実行されます
-        プロセスは各テスト終了時に自動的にクリーンアップされます
+        - 各テストごとに独立したサーバーを起動
+        - 常にヘッドレスモードで実行
+        - テスト終了時に自動的にプロセスを終了
     """
     process = None
 
     try:
-        # Streamlitアプリケーションを起動
         streamlit_path = _get_validated_streamlit_path()
         process = _run_streamlit_safely(streamlit_path, port=streamlit_port, pytestconfig=pytestconfig)
 
-        # アプリケーションの起動を待機
         if not _wait_for_streamlit(timeout=30, interval=3, port=streamlit_port):
             if process:
                 process.kill()
-                process.wait(timeout=5)  # プロセスの終了を待機
+                process.wait(timeout=5)
             pytest.fail("Streamlit did not start in time.")
 
-        # テスト実行中はプロセスを維持
         yield process
 
     finally:
-        # Cleanup: Streamlit プロセスを終了
         if process:
             try:
                 process.kill()
-                process.wait(timeout=5)  # プロセスの終了を待機
+                process.wait(timeout=5)
                 logger.info(f"Streamlitプロセス (PID: {process.pid}) を終了しました")
             except Exception as e:
                 logger.warning(f"プロセスの終了中にエラーが発生しました: {e}")
 
-                # プロセスが終了していない場合は強制終了を試みる
                 try:
                     if process.poll() is None:
                         import signal
@@ -317,71 +317,71 @@ def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[
 
 @pytest.fixture(autouse=True)
 def setup_teardown(page: Page, streamlit_app: subprocess.Popen, streamlit_port: int) -> Generator[None, None, None]:
-    """各テスト前後の共通処理
-
-    テスト実行前にページを初期化し、
-    テスト実行後にページをリセットします。
+    """各テストの前後処理を実行.
 
     Args:
         page: Playwrightのページオブジェクト
         streamlit_app: 起動済みのStreamlitプロセス
-        streamlit_port: テスト用のポート番号
+        streamlit_port: 使用中のポート番号
 
     Yields:
-        None: テスト実行中のコンテキスト
+        None: テスト実行のコンテキスト
+
+    Note:
+        テスト前:
+          - Streamlitプロセスの状態確認
+          - サーバーの応答確認
+          - ページの初期化と読み込み待機
+        テスト後:
+          - ページのリセットと再読み込み
     """
     try:
-        # Streamlitプロセスの状態を確認
         is_running = streamlit_app and streamlit_app.poll() is None
         logger.info(
             f"Streamlitプロセス (PID: {streamlit_app.pid if streamlit_app else 'None'}) の状態: "
             f"{'実行中' if is_running else f'終了 (コード: {streamlit_app.returncode if streamlit_app else None})'}"
         )
 
-        # プロセスが実行されていない場合はテストをスキップ
         if not is_running:
             pytest.skip("Streamlitプロセスが実行されていません")
 
-        # Streamlitサーバーが応答することを確認
         if not _wait_for_streamlit(timeout=30, interval=3, port=streamlit_port):
             pytest.fail("Streamlit server is not responding before test.")
 
-        # ページにアクセス
         page.goto(f"http://localhost:{streamlit_port}/")
-
-        # Streamlit アプリの読み込みを待機
         page.wait_for_load_state("networkidle")
-
-        # ヘッドレスモードでは追加の待機時間が必要な場合がある
         page.wait_for_timeout(3000)
 
-        # Act & Assert: テストを実行
         yield
 
     finally:
-        # ページをリセット
         try:
             page.reload()
             page.wait_for_load_state("networkidle")
-            page.wait_for_timeout(1000)  # 待機時間を追加
+            page.wait_for_timeout(1000)
         except Exception as e:
             logger.warning(f"ページのリセット中にエラーが発生しました: {e}")
 
 
-# pytest-benchmark プラグインの設定を追加
 def pytest_configure(config: PytestConfig) -> None:
-    """pytestの設定を構成する
+    """pytestの設定を構成.
 
     Args:
         config: pytestの設定オブジェクト
+
+    Note:
+        - カスタムマーカー (e2e) の登録
+        - ベンチマーク設定の構成
+          - 自動保存の有効化
+          - 保存先ディレクトリの設定
+          - 比較対象の設定
+          - ヒストグラム出力の設定
     """
-    # カスタムオプションを登録
     config.addinivalue_line(
         "markers",
         "e2e: mark test as end-to-end test",
     )
 
-    # ベンチマークの設定
     config.option.benchmark_autosave = True
     config.option.benchmark_save = ".benchmarks"
     config.option.benchmark_compare = "last"
