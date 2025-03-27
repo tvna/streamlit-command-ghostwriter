@@ -1,0 +1,15 @@
+---
+name: Test & Build on Pull request
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  test-and-build:
+    uses: ./.github/workflows/reusable-test-and-build.yml
+    with:
+      concurrency_group: push-${{ github.ref }}
+      concurrency_cancel_in_progress: false
