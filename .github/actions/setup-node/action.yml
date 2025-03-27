@@ -1,0 +1,30 @@
+name: 'Setup Node.js Environment'
+description: 'Setup Node.js with npm and cache'
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: true
+  os:
+    description: 'Operating system'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Node.js
+      uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 # v4.0.1
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Restore cache node-electron dependencies
+      id: cache-deps
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      with:
+        path: |
+          **/node_modules
+        key: ${{ inputs.os }}-node${{ inputs.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
+
+    - name: Install stlite
+      shell: bash
+      run: |
+        npm install

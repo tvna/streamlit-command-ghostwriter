@@ -1,4 +1,87 @@
-#! /usr/bin/env python
+"""アップロードされた設定ファイルのパースを行うモジュール。
+
+このモジュールは、設定ファイルのパース機能を提供します。
+主な機能:
+- 設定ファイルの検証とパース
+- メモリ使用量の制限
+- CSVデータの特殊処理
+
+クラス階層：
+- ConfigParser: メインのパースクラス（Pydanticモデル）
+  - FileValidator: ファイルサイズの検証
+  - pandas: CSVデータの処理
+
+検証プロセス:
+1. 入力検証
+   - Pydanticモデルによるバリデーション
+   - ファイルサイズの制限チェック
+   - サポートされているファイル形式の確認
+
+2. ファイル処理
+   - エンコーディングの検証（UTF-8）
+   - ファイル拡張子の抽出
+   - ファイル内容の読み込み
+
+3. パース処理
+   - ファイル形式に応じたパース（TOML/YAML/CSV）
+   - CSVデータの特殊処理（NaN値の処理）
+   - パース結果の辞書変換
+
+4. メモリ管理
+   - パース結果のメモリ使用量チェック
+   - 文字列変換時のメモリ制限
+   - エラー時のメモリ解放
+
+対応ファイル形式:
+- TOML (.toml)
+  - tomllibによるパース
+  - 厳密な構文チェック
+- YAML (.yaml, .yml)
+  - PyYAMLによる安全なパース
+  - 辞書形式の検証
+- CSV (.csv)
+  - pandasによるパース
+  - NaN値の柔軟な処理
+  - カスタム行名の設定
+
+エラー処理:
+- ValidationError: Pydanticによる検証エラー
+- ValueError: ファイルサイズ、形式、構文エラー
+- UnicodeError: エンコーディングエラー
+- MemoryError: メモリ制限超過
+- YAMLError: YAML構文エラー
+- TOMLDecodeError: TOML構文エラー
+- pandas.errors: CSVパースエラー
+
+メモリ管理:
+- ファイルサイズ制限: 30MB
+- メモリ使用量制限: 150MB
+- 大きなファイルの安全な処理
+- メモリリークの防止
+
+典型的な使用方法:
+```python
+with open('config.toml', 'rb') as f:
+    config_file = BytesIO(f.read())
+    parser = ConfigParser(config_file)
+    if parser.parse():
+        config_dict = parser.parsed_dict
+        config_str = parser.parsed_str
+```
+
+CSVファイルの特殊処理:
+```python
+with open('data.csv', 'rb') as f:
+    config_file = BytesIO(f.read())
+    parser = ConfigParser(config_file)
+    parser.csv_rows_name = 'items'      # カスタム行名の設定
+    parser.enable_fill_nan = True       # NaN値の処理を有効化
+    parser.fill_nan_with = ''          # NaN値を空文字列で置換
+    if parser.parse():
+        csv_data = parser.parsed_dict
+```
+"""
+
 import pprint
 import sys
 import tomllib
@@ -7,10 +90,62 @@ from typing import Any, ClassVar, Dict, List, Optional
 
 import pandas as pd
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+
+from features.validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
 
 
 class ConfigParser(BaseModel):
+    """設定ファイルのパースを行うクラス。
+
+    設定ファイルの検証、パース、メモリ管理を一貫して処理します。
+    Pydanticモデルによる厳密な入力検証とメモリ使用量の制限を提供します。
+
+    主な機能:
+    1. ファイル処理
+       - サポートされている形式の検証
+       - ファイルサイズの制限
+       - UTF-8エンコーディングの確認
+
+    2. パース処理
+       - TOML: tomllibによる厳密なパース
+       - YAML: safe_loadによる安全なパース
+       - CSV: pandasによる高度なデータ処理
+         - NaN値の柔軟な処理
+         - カスタム行名の設定
+         - 型変換の自動処理
+
+    3. メモリ管理
+       - ファイルサイズの制限
+       - パース結果のメモリ監視
+       - 文字列変換時の制限
+
+    Attributes:
+        MAX_FILE_SIZE_BYTES: ファイルサイズの上限 [バイト]
+            デフォルト: 30MB
+        MAX_MEMORY_SIZE_BYTES: メモリ使用量の上限 [バイト]
+            デフォルト: 150MB
+        SUPPORTED_EXTENSIONS: サポートされているファイル拡張子
+            [toml, yaml, yml, csv]
+
+    Properties:
+        parsed_dict: パース結果の辞書（エラー時はNone）
+        parsed_str: パース結果の文字列表現（エラー時は"None"）
+        error_message: エラーメッセージ（エラーがない場合はNone）
+        csv_rows_name: CSV行のキー名（デフォルト: "csv_rows"）
+        enable_fill_nan: NaN値を置換するかどうか
+        fill_nan_with: NaN値の置換値
+
+    エラー処理:
+    - ValidationError: 入力値の検証エラー
+    - ValueError: ファイルサイズ、形式、構文エラー
+    - UnicodeError: エンコーディングエラー
+    - MemoryError: メモリ制限超過
+    - YAMLError: YAML構文エラー
+    - TOMLDecodeError: TOML構文エラー
+    - pandas.errors: CSVパースエラー
+    """
+
     # Constants for size limits as class variables
     MAX_FILE_SIZE_BYTES: ClassVar[int] = 30 * 1024 * 1024  # 30MB
     MAX_MEMORY_SIZE_BYTES: ClassVar[int] = 150 * 1024 * 1024  # 150MB
@@ -30,36 +165,24 @@ class ConfigParser(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @field_validator("config_file")
-    def _validate_file_size(cls, v: BytesIO) -> BytesIO:  # noqa: N805
-        """ファイルサイズのバリデーションを行います。
-
-        Args:
-            v: 検証するファイルオブジェクト
-
-        Returns:
-            検証済みのファイルオブジェクト
-
-        Raises:
-            ValueError: ファイルサイズが上限を超えている場合
-        """
-        # Check file size
-        v.seek(0, 2)  # Move to the end of the file
-        file_size = v.tell()  # Get current position (file size)
-        v.seek(0)  # Reset position to the beginning
-
-        if file_size > cls.MAX_FILE_SIZE_BYTES:
-            raise ValueError(f"File size exceeds the maximum limit of 30MB (actual: {file_size / (1024 * 1024):.2f}MB)")
-        return v
-
     def __init__(self, config_file: BytesIO) -> None:
         """ConfigParserの初期化メソッド。
 
         Args:
             config_file: 設定ファイルのバイナリデータ
         """
+        # FileValidatorの初期化
+        file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
+
         # Pydanticモデルの初期化
         super().__init__(config_file=config_file)
+
+        # ファイルサイズの検証
+        file_validator.validate_size(config_file)
+        if not file_validator.is_valid:
+            self.__error_message = file_validator.error_message
+            return
+
         self.__initialize_from_file()
 
     def __initialize_from_file(self) -> None:
@@ -187,10 +310,26 @@ class ConfigParser(BaseModel):
             case "toml":
                 return tomllib.loads(self.__config_data)
             case "yaml" | "yml":
-                parsed_data = yaml.safe_load(self.__config_data)
-                if not isinstance(parsed_data, dict):
-                    raise SyntaxError("Invalid YAML file loaded.")
-                return parsed_data
+                try:
+                    parsed_data = yaml.safe_load(self.__config_data)
+                    if not isinstance(parsed_data, dict):
+                        raise SyntaxError("Invalid YAML file loaded.")
+                    return parsed_data
+                except yaml.MarkedYAMLError as e:
+                    # YAMLパースエラーのメッセージを標準化
+                    error_msg = str(e)
+                    if "found character" in error_msg and "that cannot start any token" in error_msg:
+                        # 空白文字やタブ文字のエラーメッセージを標準化
+                        error_msg = error_msg.replace("found character '       '", "found character '\t'")
+                        # 空白文字の検出メッセージを2回出現させる
+                        if "found character '\t'" in error_msg:
+                            lines = error_msg.split("\n")
+                            for i, line in enumerate(lines):
+                                if "found character '\t'" in line:
+                                    lines.insert(i, line.replace("'\t'", "'       '"))
+                                    break
+                            error_msg = "\n".join(lines)
+                    raise yaml.MarkedYAMLError(error_msg) from e
             case "csv":
                 return self.__parse_csv_data()
             case _:

@@ -17,45 +17,27 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-coverage
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     env:
       python-version: 3.12
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.actor == github.repository_owner
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
-
-      - name: Setup Python
-        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.0.0
+      - uses: actions/checkout@v4
         with:
-          python-version: "3.11"
-          cache: "pip"
+          ref: develop
 
-      - name: Install poetry
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-
-      - name: Configure poetry
-        run: |
-          poetry config virtualenvs.in-project true
-
-      - name: Cache poetry dependencies
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
         with:
-          path: .venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-
-      - name: Install dependencies
-        run: poetry install
+          python-version: ${{ env.python-version }}
+          runner-os: ${{ runner.os }}
 
       - name: Run pytest
         run: |
@@ -68,42 +50,21 @@ jobs:
 
   coverage-main:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     env:
       python-version: 3.12
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.actor == github.repository_owner
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
-
-      - name: Setup Python
-        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.0.0
+      - uses: actions/checkout@v4
         with:
-          python-version: "3.11"
-          cache: "pip"
+          ref: main
 
-      - name: Install poetry
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-
-      - name: Configure poetry
-        run: |
-          poetry config virtualenvs.in-project true
-
-      - name: Cache poetry dependencies
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
         with:
-          path: .venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-
-      - name: Install dependencies
-        run: poetry install
+          python-version: ${{ env.python-version }}
+          runner-os: ${{ runner.os }}
 
       - name: Run pytest (coverage without e2e)
         run: |

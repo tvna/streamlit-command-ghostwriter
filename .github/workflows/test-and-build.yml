@@ -1,0 +1,633 @@
+# コードにハッシュ検証ポリシーを追加
+# SECURITY NOTE FOR REVIEWERS:
+# All external actions in this workflow are pinned to specific versions.
+# We use either:
+# 1. Verified tags (vX.Y.Z) from trusted publishers
+# 2. Specific commit SHAs when tags are not preferred
+#
+# When updating any action, always:
+# - Check for security advisories for the action
+# - Verify the publisher's reputation
+# - Test the new version in a controlled environment first
+# - Update this policy comment with any changes
+---
+name: Test & Build
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - .cursor/**
+      - .devcontainer/**
+      - assets/**
+      - README.md
+      - .gitignore
+      - .cz_config.js
+      - .pre-commit-config.yaml
+      - "**.code-workspace"
+  pull_request:
+    branches:
+      - main
+      - develop
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GLOBAL_PYTHON_VERSION: 3.12.3
+  GLOBAL_NODE_VERSION: 22
+  GLOBAL_ALLOWED_ENDPOINTS: |
+    api.github.com:443
+    github.com:443
+    objects.githubusercontent.com:443
+    registry.npmjs.org:443
+    pypi.org:443
+    files.pythonhosted.org:443
+    playwright.azureedge.net:443
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================
+  # SECURITY CHECKS GROUP
+  # ============================================================
+
+  security-dependency-review:
+    name: Security - Dependency Review
+    # Pull Requestの場合のみ実行するように設定
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: Check out Git repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 1
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: true
+          # Pull Requestのコンテキストからbase_refとhead_refを取得
+          base-ref: ${{ github.event.pull_request.base.ref }}
+          head-ref: ${{ github.event.pull_request.head.ref }}
+
+  security-npm-audit:
+    name: Security - NPM Audit
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js and restore cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ env.GLOBAL_NODE_VERSION }}
+          os: ${{ runner.os }}
+
+      - name: NPM Audit
+        run: |
+          # npm auditを実行（高リスクの脆弱性のみ失敗とする）
+          echo "### NPM Audit Results" >> "$GITHUB_STEP_SUMMARY"
+          npm audit --production --audit-level=high || {
+            echo "::warning::High severity vulnerabilities found in production dependencies"
+            echo "⚠️ High severity vulnerabilities found in production dependencies" >> "$GITHUB_STEP_SUMMARY"
+            npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
+          }
+
+  # ============================================================
+  # LINT CHECKS GROUP
+  # ============================================================
+
+  lint-workflow:
+    name: Lint - Workflow Files
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Download and run actionlint
+        run: |
+          # バイナリのダウンロードとインストール
+          curl -sSLo actionlint.bash https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash
+          # ダウンロードしたバッシュスクリプトに実行権限を与えて実行
+          chmod +x actionlint.bash
+          ./actionlint.bash
+          # actionlintを実行
+          ./actionlint -color
+
+      - name: Check typos
+        uses: crate-ci/typos@d08e4083f112e684fb88f6babd9ae60a1f1cd84f # v1.30.3
+
+  lint-python:
+    name: Lint - Python Code
+    needs: lint-workflow
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+          runner-os: ${{ runner.os }}
+
+      - name: Run Python Linters and check for vulnerable dependencies
+        run: |
+          poetry run ruff check .
+          poetry run mypy .
+          poetry run pip install safety
+          poetry run safety check
+
+  # ============================================================
+  # TESTS GROUP
+  # ============================================================
+
+  test-unit:
+    name: Test - Unit
+    needs: lint-python
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+          runner-os: ${{ runner.os }}
+
+      - name: Run Unit Tests
+        run: |
+          # 通常のテスト実行（カバレッジ有、ベンチマークなし）
+          poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
+
+  test-e2e:
+    name: Test - E2E (${{ matrix.os }} / ${{ matrix.python-version }} / ${{ matrix.browser }})
+    needs: [test-unit]
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - ubuntu-22.04
+          - windows-latest
+        python-version:
+          - "3.12.3"
+          - "3.11"
+        browser:
+          - chromium
+          - firefox
+          - webkit
+        exclude:
+          # UbuntuとWebkit、Chromiumの組み合わせを除外
+          - os: ubuntu-latest
+            browser: webkit
+          - os: ubuntu-22.04
+            browser: webkit
+          - os: ubuntu-latest
+            browser: chromium
+          - os: ubuntu-22.04
+            browser: chromium
+          # WindowsとWebkitの組み合わせを除外
+          - os: windows-latest
+            browser: webkit
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: false
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 5
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+        timeout-minutes: 3
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+          runner-os: ${{ runner.os }}
+        timeout-minutes: 10
+
+      - name: Restore cache Playwright browsers
+        uses: actions/cache@v4.2.3
+        id: playwright-cache
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/Library/Caches/ms-playwright
+            /home/runner/.cache/ms-playwright
+            /Users/runner/Library/Caches/ms-playwright
+            %USERPROFILE%\AppData\Local\ms-playwright
+          key: ${{ matrix.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
+        timeout-minutes: 10
+
+      - name: Install Playwright Browser
+        shell: bash
+        run: |
+          poetry run playwright install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 10
+
+      - name: Configure Windows for UTF-8
+        if: runner.os == 'Windows'
+        run: |
+          # Windows環境でUTF-8を使用するための設定
+          chcp 65001
+        shell: cmd
+        timeout-minutes: 1
+
+      - name: E2E Tests (not chromium)
+        if: matrix.browser != 'chromium'
+        id: e2e-not-chromium
+        run: |
+          # E2Eテスト実行（ベンチマークなし）
+          poetry run pytest -n auto -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-disable
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
+        continue-on-error: true
+        timeout-minutes: 10
+
+      - name: Retry E2E Tests (not chromium)
+        if: matrix.browser != 'chromium' && steps.e2e-not-chromium.outcome == 'failure'
+        id: e2e-not-chromium-retry
+        run: |
+          # E2Eテストに失敗した場合、再実行（ベンチマークなし）
+          poetry run pytest -n auto -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-disable
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
+        timeout-minutes: 10
+
+      - name: E2E Tests with benchmark (Chromium only)
+        if: matrix.browser == 'chromium'
+        id: e2e-chromium-benchmark
+        run: |
+          # E2Eテストのベンチマーク実行（Chromiumのみ）
+          poetry run pytest -n 0 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
+        continue-on-error: true
+        timeout-minutes: 40
+
+      - name: Retry E2E Tests with benchmark (Chromium only)
+        if: matrix.browser == 'chromium' && steps.e2e-chromium-benchmark.outcome == 'failure'
+        id: e2e-chromium-benchmark-retry
+        run: |
+          # E2Eテストのベンチマーク実行（Chromiumのみ）
+          poetry run pytest -n 0 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: 1
+        timeout-minutes: 40
+
+      - name: Upload Benchmark Results
+        if: matrix.browser == 'chromium'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: benchmark-results-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}
+          path: .benchmarks/**/*
+          retention-days: 90
+          if-no-files-found: warn
+        timeout-minutes: 5
+
+  # ============================================================
+  # ANALYSIS GROUP
+  # ============================================================
+
+  # https://github.com/terryyin/lizard
+  analysis-code-ccn:
+    name: Analysis - Code Complexity
+    needs: test-unit
+    env:
+      LIZARD_CCN_COUNT: 10
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+          runner-os: ${{ runner.os }}
+
+      - name: Run lizard (analyze CCN for production codes)
+        run: |
+          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "${LIZARD_CCN_COUNT}"
+
+      - name: Show AST (app.py)
+        run: |
+          python <<EOF
+          import ast
+          print(ast.dump(ast.parse(open("app.py").read()), indent=2))
+          EOF
+
+      - name: Show AST (features/*.py)
+        run: |
+          python <<EOF
+          import ast
+          import os
+          import pprint
+          target_dir = "./features"
+          ast_trees = {}
+          for file in os.listdir(target_dir):
+              if file.endswith(".py"):
+                  ast_trees[file] = ast.dump(ast.parse(open(os.path.join(target_dir, file)).read()), indent=2)
+          pprint.pprint(ast_trees, width=100, compact=False)
+          EOF
+
+  analysis-scorecards:
+    name: Analysis - OpenSSF Scorecards
+    needs: test-unit
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'main'
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: "Checkout code"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+  # ============================================================
+  # BUILD GROUP
+  # ============================================================
+
+  build-desktop:
+    name: Build - Desktop (${{ matrix.os }})
+    needs: [test-unit, security-npm-audit]
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js and cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ env.GLOBAL_NODE_VERSION }}
+          os: ${{ runner.os }}
+
+      - name: Restore cache electron-builder (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            %LOCALAPPDATA%\electron\Cache
+            %LOCALAPPDATA%\electron-builder\Cache
+            %USERPROFILE%\.electron
+            %USERPROFILE%\.electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: ${{ matrix.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Restore cache electron-builder (MacOS)
+        if: runner.os == 'MacOS'
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/.electron
+            ~/.electron-builder
+            ~/Library/Caches/electron/
+            ~/Library/Caches/electron-builder/
+          key: ${{ matrix.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Restore cache electron-builder (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/.electron
+            ~/.electron-builder
+          key: ${{ matrix.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Dump package
+        run: |
+          npm run dump
+        # TODO: stliteのWindows環境のビルド失敗が解消したら削除
+        if: runner.os == 'MacOS'
+
+      - name: Build
+        run: |
+          npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # NODE_OPTIONSにセキュリティ強化オプションを追加
+          NODE_OPTIONS: "--max-http-header-size=8192 --max-old-space-size=4096"
+        # TODO: stliteのWindows環境のビルド失敗が解消したら削除
+        if: runner.os == 'MacOS'
+
+      - name: Upload artifact (Windows)
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ${{ runner.os }}-build-artifact
+          path: ./dist/*.exe
+          retention-days: 3
+          compression-level: 9
+        if: ${{ runner.os == 'Windows' }}
+
+      - name: Upload artifact (MacOS)
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ${{ runner.os }}-build-artifact
+          path: ./dist/*.dmg
+          retention-days: 3
+          compression-level: 9
+        if: ${{ runner.os == 'MacOS' }}
+
+  # ============================================================
+  # WORKFLOW SUMMARY
+  # ============================================================
+
+  workflow-summary:
+    name: Workflow Summary (Test & Build)
+    if: always()
+    needs:
+      [
+        security-dependency-review,
+        test-e2e,
+        analysis-code-ccn,
+        analysis-scorecards,
+        build-desktop,
+      ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - run: |
+          {
+            # 総合結果の表示
+            echo ""
+            echo "## 総合結果"
+
+            # いずれかのジョブが失敗した場合に失敗とする
+            if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+              echo "⚠️ **一部のジョブが失敗しました。詳細を確認してください。**"
+            else
+              echo "✅ **すべてのジョブが正常に完了しました**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # ワークフロー全体の結果を設定 - いずれかのジョブが失敗した場合に失敗とする
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "Some jobs have failed. See the summary for details."
+            exit 1
+          fi

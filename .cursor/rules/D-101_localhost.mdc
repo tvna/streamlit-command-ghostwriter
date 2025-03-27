@@ -1,0 +1,18 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# ローカル環境のCI活動の基本ルール
+
+## ソースコード管理
+- 変更管理のため、ソースコード管理ツールとしてgitを導入すること
+- 仮想環境やテスト成果物、ビルド成果物を管理対象外にして、gitignoreファイルを活用すること
+
+## pre-commitの活用
+- コミット確定前に自動テストやフォーマット実施するpre-commitを導入して、壊れた変更の反映を防ぐこと
+- mainブランチにはコミットできないようにすること
+
+## commitlintの活用
+- コミットログに一貫性を持たせるため、commitlintを活用すること
+- commitlintのコンフィグは、config-conventionalを標準とすること

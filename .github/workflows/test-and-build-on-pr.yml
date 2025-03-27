@@ -1,0 +1,25 @@
+---
+name: Test & Build (on Pull request)
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - .cursor/**
+      - .devcontainer/**
+      - assets/**
+      - README.md
+      - .gitignore
+      - .cz_config.js
+      - .pre-commit-config.yaml
+      - "**.code-workspace"
+
+jobs:
+  test-and-build:
+    uses: ./.github/workflows/reusable-test-and-build.yml
+    with:
+      concurrency_group: pr-${{ github.workflow }}-${{ github.ref }}
+      concurrency_cancel_in_progress: false
+      workflow_summary_name: "Workflow summary [Test & Build (on Pull request)]"

@@ -30,22 +30,22 @@ def test_main_layout(app_test: AppTest) -> None:
     - 警告、エラー、成功メッセージの表示状態
     """
     # Arrange - 初期状態の検証
-    assert app_test.title.len == 1, "タイトルが表示されていません"
-    assert len(app_test.tabs) == 4, "4つのタブが表示されていません"
-    assert len(app_test.columns) >= 5, "少なくとも5つのカラムが必要です"
-    assert app_test.subheader.len >= 1, "サブヘッダーが表示されていません"
-    assert len(app_test.sidebar) >= 1, "サイドバーが表示されていません"
-    assert app_test.markdown.len >= 1, "マークダウン要素が表示されていません"
-    assert app_test.button.len >= 5, "少なくとも5つのボタンが必要です"
+    assert app_test.title.len == 1, "Title is not displayed"
+    assert len(app_test.tabs) == 4, "Four tabs are not displayed"
+    assert len(app_test.columns) >= 5, "At least 5 columns are required"
+    assert app_test.subheader.len >= 1, "Subheader is not displayed"
+    assert len(app_test.sidebar) >= 1, "Sidebar is not displayed"
+    assert app_test.markdown.len >= 1, "Markdown element is not displayed"
+    assert app_test.button.len >= 5, "At least 5 buttons are required"
 
     # 初期状態ではすべてのボタンが未クリック状態
     for button_key in ["tab1_execute_text", "tab1_execute_markdown", "tab2_execute_visual", "tab2_execute_toml", "tab2_execute_yaml"]:
-        assert app_test.button(key=button_key).value is False, f"{button_key}ボタンの初期状態が不正です"
+        assert app_test.button(key=button_key).value is False, f"Button '{button_key}' should be in initial unclicked state"
 
     # 初期状態ではエラーや警告メッセージは表示されていない
-    assert app_test.error.len == 0, "初期状態でエラーメッセージが表示されています"
-    assert app_test.warning.len == 0, "初期状態で警告メッセージが表示されています"
-    assert app_test.success.len == 0, "初期状態で成功メッセージが表示されています"
+    assert app_test.error.len == 0, "Error message should not be displayed in initial state"
+    assert app_test.warning.len == 0, "Warning message should not be displayed in initial state"
+    assert app_test.success.len == 0, "Success message should not be displayed in initial state"
 
 
 @pytest.mark.unit
@@ -61,7 +61,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": False,
                 "tab2_execute_yaml": False,
             },
-            id="テキスト実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_text_active_only",
         ),
         pytest.param(
             "tab1_execute_markdown",
@@ -72,7 +72,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": False,
                 "tab2_execute_yaml": False,
             },
-            id="マークダウン実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_markdown_active_only",
         ),
         pytest.param(
             "tab2_execute_visual",
@@ -83,7 +83,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": False,
                 "tab2_execute_yaml": False,
             },
-            id="ビジュアル実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_visual_active_only",
         ),
         pytest.param(
             "tab2_execute_toml",
@@ -94,7 +94,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": True,
                 "tab2_execute_yaml": False,
             },
-            id="TOML実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_toml_active_only",
         ),
         pytest.param(
             "tab2_execute_yaml",
@@ -105,7 +105,7 @@ def test_main_layout(app_test: AppTest) -> None:
                 "tab2_execute_toml": False,
                 "tab2_execute_yaml": True,
             },
-            id="YAML実行ボタンをクリックすると、そのボタンのみがアクティブになる",
+            id="app_button_yaml_active_only",
         ),
     ],
 )
@@ -123,10 +123,12 @@ def test_button_click_state(app_test: AppTest, button_key: str, expected_states:
 
     # Assert - 各ボタンの状態を検証
     for key, expected_value in expected_states.items():
-        assert app_test.button(key=key).value is expected_value, f"{key}ボタンの状態が期待値と異なります"
+        assert app_test.button(key=key).value is expected_value, (
+            f"Button state does not match.\nButton: {key}\nExpected: {expected_value}\nGot: {app_test.button(key=key).value}"
+        )
 
     # 警告メッセージが表示されることを確認
-    assert app_test.warning.len >= 1, "警告メッセージが表示されていません"
+    assert app_test.warning.len >= 1, "Warning message should be displayed"
 
 
 @pytest.mark.unit
@@ -135,14 +137,15 @@ def test_button_click_state(app_test: AppTest, button_key: str, expected_states:
     [
         pytest.param(
             ["tab1_execute_text", "tab1_execute_markdown"],
-            id="テキスト実行ボタン→マークダウン実行ボタンの順にクリックすると状態が正しく切り替わる",
+            id="app_button_sequence_text_to_markdown",
         ),
         pytest.param(
             ["tab2_execute_visual", "tab2_execute_toml", "tab2_execute_yaml"],
-            id="ビジュアル→TOML→YAMLの順にクリックすると状態が正しく切り替わる",
+            id="app_button_sequence_visual_to_yaml",
         ),
         pytest.param(
-            ["tab1_execute_text", "tab2_execute_visual"], id="タブ1のボタン→タブ2のボタンの順にクリックすると状態が正しく切り替わる"
+            ["tab1_execute_text", "tab2_execute_visual"],
+            id="app_button_sequence_tab1_to_tab2",
         ),
     ],
 )
@@ -163,15 +166,15 @@ def test_button_sequence(app_test: AppTest, button_sequence: List[str]) -> None:
         app_test.button(key=current_button).click().run()
 
         # 現在のボタンがアクティブになっていることを確認
-        assert app_test.button(key=current_button).value is True, f"{current_button}ボタンがアクティブになっていません"
+        assert app_test.button(key=current_button).value is True, f"Button '{current_button}' should be active"
 
         # 他のボタンは非アクティブであることを確認
         for other_button in all_button_keys:
             if other_button != current_button:
-                assert app_test.button(key=other_button).value is False, f"{other_button}ボタンが非アクティブになっていません"
+                assert app_test.button(key=other_button).value is False, f"Button '{other_button}' should be inactive"
 
         # 警告メッセージが表示されることを確認
-        assert app_test.warning.len >= 1, "警告メッセージが表示されていません"
+        assert app_test.warning.len >= 1, "Warning message should be displayed"
 
 
 @pytest.mark.unit
@@ -186,12 +189,12 @@ def test_app_edge_cases(app_test: AppTest) -> None:
     - 異なるボタンの状態変化
     """
     # Arrange - 初期状態の確認
-    assert app_test.warning.len == 0, "初期状態で警告メッセージが表示されています"
+    assert app_test.warning.len == 0, "Warning message should not be displayed in initial state"
 
     # Act & Assert - 空の入力でボタンをクリックすると警告が表示される
     app_test.button(key="tab1_execute_text").click().run()
-    assert app_test.warning.len >= 1, "警告メッセージが表示されていません"
-    assert app_test.button(key="tab1_execute_text").value is True, "ボタンがアクティブになっていません"
+    assert app_test.warning.len >= 1, "Warning message should be displayed"
+    assert app_test.button(key="tab1_execute_text").value is True, "Button should be active"
 
 
 # Note: We're not testing tab navigation directly because the Streamlit testing API

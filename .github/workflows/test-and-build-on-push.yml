@@ -1,0 +1,24 @@
+---
+name: Test & Build (on push)
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - .cursor/**
+      - .devcontainer/**
+      - assets/**
+      - README.md
+      - .gitignore
+      - .cz_config.js
+      - .pre-commit-config.yaml
+      - "**.code-workspace"
+
+jobs:
+  test-and-build:
+    uses: ./.github/workflows/reusable-test-and-build.yml
+    with:
+      concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
+      concurrency_cancel_in_progress: true
+      workflow_summary_name: "Workflow summary [Test & Build (on Push)]"

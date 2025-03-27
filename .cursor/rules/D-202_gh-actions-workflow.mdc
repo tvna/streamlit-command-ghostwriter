@@ -1,9 +1,9 @@
 ---
 description: Rules for GitHub Actions workflow
-globs: **/.github/workflows/*.{yml,yaml}
+globs: **/.github/workflows/*.yml
 alwaysApply: false
 ---
-# GitHub Actionsの基本
+# GitHub Actions ワークフローの基本
 
 ## トップレベルキーのチェック
 - ワークフローファイルに必要なトップレベルキー（name, on, jobs）が欠けている場合、エラーを出します。
@@ -20,15 +20,6 @@ alwaysApply: false
 
 ## pull_requestトリガーの制限
 - pull_requestトリガーはセキュリティのために特定のブランチに制限されるべきです。
-
-## write permissionsの使用
-- 過剰な権限が付与されています。write-allの代わりにより制限された権限を使用してください。
-
-## 環境変数の管理
-- 環境変数は、GitHub Secretsを使用して安全に管理するべきです。ハードコーディングされた値は避けてください。
-
-## キャッシュの使用
-- ビルドや依存関係のキャッシュを使用することで、ワークフローの実行時間を短縮することを検討してください。
 
 ## ステップの依存関係
 - ステップ間の依存関係を明確にし、必要なステップが完了してから次のステップを実行するようにしてください。

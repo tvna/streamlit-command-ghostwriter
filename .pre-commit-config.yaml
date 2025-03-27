@@ -26,7 +26,7 @@ repos:
   - id: check-shebang-scripts-are-executable
     description: "checking shebang scripts are executable"
     name: check-shebang-scripts-are-executable (only for github actions)
-    files: /\.github\/scripts\/.*\.py$/
+    files: \/scripts\/.*\.py$/
   - id: check-symlinks
   - id: check-illegal-windows-names
   - id: pretty-format-json
@@ -61,6 +61,16 @@ repos:
       description: "Run 'ruff format' for extremely fast Python formatting"
       name: ruff (format)
       types: [python]
+
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.16.3
+  hooks:
+  - id: gitleaks
+
+- repo: https://github.com/pre-commit/mirrors-eslint
+  rev: v8.38.0
+  hooks:
+  - id: eslint
 
 # - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
 #   rev: v9.22.0
