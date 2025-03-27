@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   create-pr:
     runs-on: ubuntu-latest
@@ -29,7 +32,13 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      # デバッグログの強化
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+
       - name: Dump GitHub context
         id: github_context_step
         env:

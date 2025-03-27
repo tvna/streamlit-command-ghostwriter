@@ -17,11 +17,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-coverage
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     env:
       python-version: 3.12
     if: >-
@@ -49,8 +50,6 @@ jobs:
 
   coverage-main:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     env:
       python-version: 3.12
     if: >-
