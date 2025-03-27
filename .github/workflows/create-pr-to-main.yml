@@ -16,21 +16,68 @@ permissions:
   contents: read
 
 jobs:
-  create-pr:
+  get-npm-version-from-main:
+    outputs:
+      version: ${{ steps.package-version-from-main.outputs.current-version }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version:
-          - 3.13
-    timeout-minutes: 10
-    # テスト成功時のみ実行
-    if: |
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'develop'
-    # 必要最小限の権限のみを付与
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Get version from main
+        id: package-version-from-main
+        uses: step-security/npm-get-version-action@v1
+
+      - run: |
+          echo "The current version is '${{ steps.package-version-from-main.outputs.current-version }}'."
+          echo "version='${{ steps.package-version-from-main.outputs.current-version }}'" >> "$GITHUB_OUTPUT"
+
+  get-npm-version-from-develop:
+    outputs:
+      version: ${{ steps.package-version-from-develop.outputs.current-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Get version from develop
+        id: package-version-from-develop
+        uses: step-security/npm-get-version-action@v1
+
+      - name: Display the version
+        run: |
+          echo "The current version is '${{ steps.package-version-from-develop.outputs.current-version }}'."
+          echo "version='${{ steps.package-version-from-develop.outputs.current-version }}'" >> "$GITHUB_OUTPUT"
+
+  create-pr-to-main:
+    needs:
+      - get-npm-version-from-main
+      - get-npm-version-from-develop
     permissions:
       contents: read
       pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
@@ -45,32 +92,34 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT" | jq -r '. | {event_name, workflow_ref, repository, run_id, run_number}'
 
-      - uses: actions/checkout@v4
+      - uses: step-security/semver-utils@v4
+        id: compare-versions
         with:
-          ref: develop
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ needs.get-npm-version-from-develop.outputs.version }}
+          compare-to: ${{ needs.get-npm-version-from-main.outputs.version }}
+          satisfies: 1.x
 
-      - name: Set up Python
-        uses: actions/setup-python@v5.5.0
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install packaging gitpython semver mock pytest pytest-cov
-
-      - name: Check version change
-        id: check-version
-        run: |
-          python scripts/check_version.py
-        env:
-          GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
+      - run: |
+          echo "${{ steps.compare-versions.outputs.release }}"
+          echo "${{ steps.compare-versions.outputs.major }}"
+          echo "${{ steps.compare-versions.outputs.minor }}"
+          echo "${{ steps.compare-versions.outputs.patch }}"
+          echo "${{ steps.compare-versions.outputs.build }}"
+          echo "${{ steps.compare-versions.outputs.build-parts }}"
+          echo "${{ steps.compare-versions.outputs.comparison-result }}"
+          echo "${{ steps.compare-versions.outputs.satisfies }}"
+          echo "${{ steps.compare-versions.outputs.inc-major }}"
+          echo "${{ steps.compare-versions.outputs.inc-premajor }}"
+          echo "${{ steps.compare-versions.outputs.inc-minor }}"
+          echo "${{ steps.compare-versions.outputs.inc-preminor }}"
+          echo "${{ steps.compare-versions.outputs.inc-patch }}"
+          echo "${{ steps.compare-versions.outputs.inc-prepatch }}"
+          echo "${{ steps.compare-versions.outputs.inc-prerelease }}"
 
       - name: Check if PR already exists
         id: check-pr
-        if: steps.check-version.outputs.version_changed == 'true'
+        if: |
+          steps.compare-versions.outputs.comparison-result == '<'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -118,11 +167,12 @@ jobs:
 
       - name: Create Pull Request
         id: create-pr
-        if: steps.check-version.outputs.version_changed == 'true' && steps.check-version.outputs.status == 'success'
+        if: |
+          steps.compare-versions.outputs.comparison-result == '<'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_VERSION: ${{ steps.check-version.outputs.main_version }}
-          OLD_VERSION: ${{ steps.check-version.outputs.develop_version }}
+          NEW_VERSION: ${{ needs.get-npm-version-from-main.outputs.version }}
+          OLD_VERSION: ${{ needs.get-npm-version-from-develop.outputs.version }}
           GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
         run: |
           python scripts/create_pr.py
@@ -133,25 +183,6 @@ jobs:
         if: steps.create-pr.outcome == 'success' && steps.create-pr.outputs.pr_url != ''
         run: |
           echo "::notice::PR作成成功: ${{ steps.create-pr.outputs.pr_url }}"
-
-      - name: Notify version change issues
-        id: notify-version-issues
-        if: steps.check-version.outputs.version_changed == 'false'
-        run: |
-          case "${{ steps.check-version.outputs.reason }}" in
-            lockfile_not_updated|version_mismatch|lockfile_outdated)
-              echo "::error::package-lock.json の更新が必要です"
-              ;;
-            version_not_newer)
-              echo "::error::既存タグ ${{ steps.check-version.outputs.latest_tag }} (バージョン: ${{ steps.check-version.outputs.latest_tag_version }}) と同じかそれより古いバージョンです。より新しいバージョンが必要です。"
-              ;;
-            no_version_change)
-              echo "::notice::バージョン変更なし - PRは作成されませんでした"
-              ;;
-            *)
-              echo "::notice::理由: ${{ steps.check-version.outputs.reason }} - PRは作成されませんでした"
-              ;;
-          esac
 
       - name: Notify existing PR
         id: notify-existing-pr
