@@ -273,7 +273,7 @@ jobs:
           # WindowsとWebkitの組み合わせを除外
           - os: windows-latest
             browser: webkit
-    timeout-minutes: 60
+    timeout-minutes: 10
 
     steps:
       - name: Harden Runner
@@ -350,6 +350,8 @@ jobs:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
         continue-on-error: true
+        timeout-minutes: 40
+
       - name: Retry E2E Tests with benchmark (Chromium only)
         if: matrix.browser == 'chromium' && steps.e2e-chromium-benchmark.outcome == 'failure'
         id: e2e-chromium-benchmark-retry
@@ -359,6 +361,7 @@ jobs:
         env:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
+        timeout-minutes: 40
 
       - name: Upload Benchmark Results
         if: matrix.browser == 'chromium'
