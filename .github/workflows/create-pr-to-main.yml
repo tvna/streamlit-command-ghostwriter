@@ -121,8 +121,8 @@ jobs:
         if: steps.check-version.outputs.version_changed == 'true' && steps.check-version.outputs.status == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_VERSION: ${{ steps.check-version.outputs.new_version }}
-          OLD_VERSION: ${{ steps.check-version.outputs.old_version }}
+          NEW_VERSION: ${{ steps.check-version.outputs.main_version }}
+          OLD_VERSION: ${{ steps.check-version.outputs.develop_version }}
           GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
         run: |
           python scripts/create_pr.py
