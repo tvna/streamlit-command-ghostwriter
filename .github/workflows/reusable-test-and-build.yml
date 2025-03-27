@@ -319,8 +319,7 @@ jobs:
         shell: cmd
         timeout-minutes: 1
 
-      - name: E2E Tests (not chromium)
-        if: matrix.browser != 'chromium'
+      - name: E2E Tests
         id: e2e-not-chromium
         run: |
           # E2Eテスト実行（ベンチマークなし）
@@ -331,8 +330,8 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
 
-      - name: Retry E2E Tests (not chromium)
-        if: matrix.browser != 'chromium' && steps.e2e-not-chromium.outcome == 'failure'
+      - name: Retry E2E Tests
+        if: steps.e2e-not-chromium.outcome == 'failure'
         id: e2e-not-chromium-retry
         run: |
           # E2Eテストに失敗した場合、再実行（ベンチマークなし）
@@ -342,28 +341,95 @@ jobs:
           PYTHONUTF8: 1
         timeout-minutes: 10
 
-      - name: E2E Tests with benchmark (Chromium only)
+  test-e2e-benchmark:
+    name: Test - E2E Benchmark (${{ matrix.os }} / ${{ matrix.python-version }} / ${{ matrix.browser }})
+    needs: [test-unit]
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        python-version:
+          - "3.12.3"
+        browser:
+          - chromium
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: false
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 5
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+        timeout-minutes: 3
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+          runner-os: ${{ runner.os }}
+        timeout-minutes: 10
+
+      - name: Restore cache Playwright browsers
+        uses: actions/cache@v4.2.3
+        id: playwright-cache
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/Library/Caches/ms-playwright
+            /home/runner/.cache/ms-playwright
+            /Users/runner/Library/Caches/ms-playwright
+            %USERPROFILE%\AppData\Local\ms-playwright
+          key: ${{ matrix.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('**/poetry.lock') }}
+        timeout-minutes: 10
+
+      - name: Install Playwright Browser
+        shell: bash
+        run: |
+          poetry run playwright install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 10
+
+      - name: Configure Windows for UTF-8
+        if: runner.os == 'Windows'
+        run: |
+          # Windows環境でUTF-8を使用するための設定
+          chcp 65001
+        shell: cmd
+        timeout-minutes: 1
+
+      - name: E2E benchmark (Chromium)
         if: matrix.browser == 'chromium'
         id: e2e-chromium-benchmark
         run: |
-          # E2Eテストのベンチマーク実行（Chromiumのみ）
-          poetry run pytest -n 0 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+          # E2Eテストのベンチマーク実行（Chromiumのみ)
+          poetry run pytest -n 0 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
         env:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
         continue-on-error: true
-        timeout-minutes: 40
+        timeout-minutes: 30
 
-      - name: Retry E2E Tests with benchmark (Chromium only)
+      - name: Retry E2E Tests with benchmark (Chromium without test-e2e)
         if: matrix.browser == 'chromium' && steps.e2e-chromium-benchmark.outcome == 'failure'
         id: e2e-chromium-benchmark-retry
         run: |
-          # E2Eテストのベンチマーク実行（Chromiumのみ）
-          poetry run pytest -n 0 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+          # E2Eテストのベンチマーク実行（Chromiumのみ)
+          poetry run pytest -n 0 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
         env:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: 1
-        timeout-minutes: 40
+        timeout-minutes: 30
 
       - name: Upload Benchmark Results
         if: matrix.browser == 'chromium'
