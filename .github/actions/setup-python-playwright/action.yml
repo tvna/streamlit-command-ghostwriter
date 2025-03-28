@@ -1,0 +1,30 @@
+name: 'Setup Playwright by Python'
+description: 'Setup playwright with cache'
+inputs:
+  browser:
+    description: 'Browser to use'
+    required: true
+  os:
+    description: 'Operating system'
+    required: true
+
+runs:
+  using: "composite"
+  timeout-minutes: 10
+  steps:
+    - name: Restore cache Playwright browsers
+      uses: actions/cache@v4.2.3
+      id: playwright-cache
+      with:
+        path: |
+          ~/.cache/ms-playwright
+          ~/Library/Caches/ms-playwright
+          /home/runner/.cache/ms-playwright
+          /Users/runner/Library/Caches/ms-playwright
+          %USERPROFILE%\AppData\Local\ms-playwright
+        key: ${{ inputs.os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install Playwright Browser
+      shell: bash
+      run: |
+        poetry run playwright install --with-deps ${{ inputs.browser }}
