@@ -84,7 +84,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: true
+          disable-file-monitoring: false
 
       - name: Dump GitHub context
         id: github_context_step
@@ -92,14 +92,16 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT" | jq -r '. | {event_name, workflow_ref, repository, run_id, run_number}'
 
-      - uses: step-security/semver-utils@v4
+      - name: Compare versions (Semver)
+        uses: step-security/semver-utils@v4
         id: compare-versions
         with:
           version: ${{ needs.get-npm-version-from-develop.outputs.version }}
           compare-to: ${{ needs.get-npm-version-from-main.outputs.version }}
           satisfies: 1.x
 
-      - run: |
+      - name: Display version information
+        run: |
           echo "${{ steps.compare-versions.outputs.release }}"
           echo "${{ steps.compare-versions.outputs.major }}"
           echo "${{ steps.compare-versions.outputs.minor }}"
@@ -189,8 +191,3 @@ jobs:
         if: steps.check-pr.outputs.exists != '0'
         run: |
           echo "::notice::既存のPRが見つかりました - 新規PRは作成されませんでした"
-
-      - name: Notify general issues
-        if: always()
-        run: |
-          echo "::warning::PRの作成に問題が発生しました - ワークフロー実行詳細を確認してください"
