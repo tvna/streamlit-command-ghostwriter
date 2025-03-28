@@ -40,16 +40,16 @@
         }
     },
     "devDependencies": {
-        "@commitlint/cli": "^19.3.0",
-        "@commitlint/config-conventional": "^19.2.2",
-        "@commitlint/cz-commitlint": "^19.2.0",
+        "@commitlint/cli": "^19.8.0",
+        "@commitlint/config-conventional": "^19.8.0",
+        "@commitlint/cz-commitlint": "^19.8.0",
         "@stlite/desktop": "^0.80.5",
-        "commitizen": "^4.3.0",
+        "commitizen": "^4.3.1",
         "cross-env": "^7.0.3",
         "electron": "^35.1.2",
         "electron-builder": "^26.0.12",
-        "husky": "^9.0.11",
-        "lint-staged": "^15.2.7",
+        "husky": "^9.1.7",
+        "lint-staged": "^15.5.0",
         "rimraf": "^6.0.1"
     },
     "stlite": {
