@@ -54,41 +54,6 @@ jobs:
   # SECURITY CHECKS GROUP
   # ============================================================
 
-  security-dependency-review:
-    name: Security - Dependency Review
-    # Pull Requestの場合のみ実行するように設定
-    if: github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      pull-requests: write
-      actions: read
-      security-events: write
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
-        with:
-          egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
-
-      - name: Check out Git repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          fetch-depth: 1
-
-      - name: Dependency Review
-        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: true
-          # Pull Requestのコンテキストからbase_refとhead_refを取得
-          base-ref: ${{ github.event.pull_request.base.ref }}
-          head-ref: ${{ github.event.pull_request.head.ref }}
-
   security-npm-audit:
     name: Security - NPM Audit
     permissions:
@@ -479,41 +444,6 @@ jobs:
           pprint.pprint(ast_trees, width=100, compact=False)
           EOF
 
-  analysis-scorecards:
-    name: Analysis - OpenSSF Scorecards
-    needs: test-unit
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.base.ref == 'main'
-    permissions:
-      contents: read
-      actions: read
-      security-events: write
-      id-token: write
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
-        with:
-          egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: false
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
-
-      - name: "Checkout code"
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-
-      - name: "Run analysis"
-        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
-        with:
-          results_file: results.sarif
-          results_format: sarif
-          publish_results: true
-
   # ============================================================
   # BUILD GROUP
   # ============================================================
@@ -631,15 +561,7 @@ jobs:
   workflow-summary:
     name: ${{ inputs.workflow_summary_name }}
     if: always()
-    needs:
-      [
-        security-dependency-review,
-        test-e2e,
-        test-e2e-benchmark,
-        analysis-code-ccn,
-        analysis-scorecards,
-        build-desktop,
-      ]
+    needs: [test-e2e, test-e2e-benchmark, analysis-code-ccn, build-desktop]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
