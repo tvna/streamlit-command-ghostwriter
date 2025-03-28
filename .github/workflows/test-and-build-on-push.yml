@@ -15,6 +15,13 @@ on:
       - .pre-commit-config.yaml
       - "**.code-workspace"
 
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+  pull-requests: write
+  security-events: write
+
 jobs:
   test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml

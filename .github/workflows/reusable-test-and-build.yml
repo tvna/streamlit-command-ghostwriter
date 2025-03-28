@@ -61,6 +61,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      actions: read
+      security-events: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -482,10 +484,10 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.pull_request.base.ref == 'main'
     permissions:
-      security-events: write
-      id-token: write
       contents: read
       actions: read
+      security-events: write
+      id-token: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -631,6 +633,7 @@ jobs:
       [
         security-dependency-review,
         test-e2e,
+        test-e2e-benchmark,
         analysis-code-ccn,
         analysis-scorecards,
         build-desktop,
