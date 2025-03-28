@@ -1020,14 +1020,14 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-ena
 
 [[package]]
 name = "lizard"
-version = "1.17.22"
+version = "1.17.23"
 description = "A code analyzer without caring the C/C++ header files. It works with Java, C/C++, JavaScript, Python, Ruby, Swift, Objective C. Metrics includes cyclomatic complexity number etc."
 optional = false
 python-versions = "*"
 groups = ["dev"]
 files = [
-    {file = "lizard-1.17.22-py2.py3-none-any.whl", hash = "sha256:56924e9defe3cb382a3e98d1799ed0f6e61cb608e7604a91905e8f45a5877ce3"},
-    {file = "lizard-1.17.22.tar.gz", hash = "sha256:fefd8f55f3f3dcde965576e24fc5bfb3e21d7ebd291181b79872f075ab152353"},
+    {file = "lizard-1.17.23-py2.py3-none-any.whl", hash = "sha256:2a1560fcb3fc6cf013d3055afd9ef287e18afabc48b888b2110076417ead7883"},
+    {file = "lizard-1.17.23.tar.gz", hash = "sha256:78083d27c7d92bcb493f52f5c268061d3d4c9fba98bcab6282b99825b609d1b1"},
 ]
 
 [package.dependencies]
@@ -3400,4 +3400,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "5a5d40529f047b6e53cda55c0b583a74683af859e92675554f217b14ce4135db"
+content-hash = "1e2a1e109450d815e1851219de2cb00ac93f70e35476e2af6da140aca7024194"
