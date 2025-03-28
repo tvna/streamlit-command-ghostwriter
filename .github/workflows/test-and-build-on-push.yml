@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 jobs:
-  test-and-build:
+  main:
     uses: ./.github/workflows/reusable-test-and-build.yml
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}

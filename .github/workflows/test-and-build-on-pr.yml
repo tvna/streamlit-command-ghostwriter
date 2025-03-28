@@ -31,7 +31,7 @@ env:
     github.com:443
 
 jobs:
-  test-and-build:
+  main:
     uses: ./.github/workflows/reusable-test-and-build.yml
     with:
       concurrency_group: pr-${{ github.workflow }}-${{ github.ref }}
