@@ -299,6 +299,7 @@ jobs:
         with:
           browser: ${{ matrix.browser }}
           os: ${{ matrix.os }}
+        timeout-minutes: 10
 
       - name: Configure Windows for UTF-8
         if: runner.os == 'Windows'
@@ -375,6 +376,7 @@ jobs:
         with:
           browser: ${{ matrix.browser }}
           os: ${{ matrix.os }}
+        timeout-minutes: 10
 
       - name: Configure Windows for UTF-8
         if: runner.os == 'Windows'
