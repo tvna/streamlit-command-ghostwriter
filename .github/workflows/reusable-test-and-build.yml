@@ -215,8 +215,8 @@ jobs:
           poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
 
   test-e2e:
-    name: Test - E2E (${{ matrix.os }} / ${{ matrix.browser }})
-    needs: [test-unit]
+    name: Test - E2E by ${{ matrix.os }}
+    needs: test-unit
     permissions:
       contents: read
     runs-on: ${{ matrix.os }}
@@ -226,22 +226,11 @@ jobs:
         os:
           - macos-latest
           - windows-latest
-        python-version:
-          - "3.13"
         browser:
           - chromium
           - firefox
           - webkit
         exclude:
-          # UbuntuとWebkit、Chromiumの組み合わせを除外
-          - os: ubuntu-latest
-            browser: webkit
-          - os: ubuntu-22.04
-            browser: webkit
-          - os: ubuntu-latest
-            browser: chromium
-          - os: ubuntu-22.04
-            browser: chromium
           # WindowsとWebkitの組み合わせを除外
           - os: windows-latest
             browser: webkit
@@ -285,7 +274,7 @@ jobs:
         shell: cmd
         timeout-minutes: 1
 
-      - name: E2E Tests (${{ matrix.os }} / ${{ matrix.python-version }} / ${{ matrix.browser }})
+      - name: E2E Tests (${{ matrix.os }} / ${{ matrix.browser }})
         id: e2e-not-chromium
         run: |
           # E2Eテスト実行（ベンチマークなし）
@@ -308,7 +297,7 @@ jobs:
         timeout-minutes: 10
 
   test-e2e-benchmark:
-    name: Test - E2E Benchmark (${{ matrix.os }} / ${{ matrix.python-version }} / ${{ matrix.browser }})
+    name: Test - E2E Benchmark by ${{ matrix.os }})
     needs: [test-unit]
     permissions:
       contents: read
@@ -318,10 +307,7 @@ jobs:
       matrix:
         os:
           - macos-latest
-          - ubuntu-latest
           - windows-latest
-        python-version:
-          - "3.12.3"
         browser:
           - chromium
     steps:
@@ -389,7 +375,7 @@ jobs:
         if: matrix.browser == 'chromium'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: benchmark-results-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.browser }}
+          name: benchmark-results-${{ matrix.os }}-${{ env.GLOBAL_PYTHON_VERSION }}-${{ matrix.browser }}
           path: .benchmarks/**/*
           retention-days: 90
           if-no-files-found: warn
