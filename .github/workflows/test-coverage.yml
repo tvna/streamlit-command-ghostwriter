@@ -8,7 +8,6 @@ on:
       - completed
     branches:
       - main
-      - develop
   schedule:
     # UTC 21:00 -> JST 06:00
     - cron: "00 21 * * 6"
@@ -23,8 +22,7 @@ permissions:
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
-    env:
-      python-version: 3.12
+    timeout-minutes: 10
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.actor == github.repository_owner
@@ -36,22 +34,16 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.python-version }}
-          runner-os: ${{ runner.os }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
 
-      - name: Run pytest
-        run: |
-          poetry run pytest --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term -n 2 --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e"
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.4.0
+      - name: Test coverage
+        uses: ./.github/workflows/test-coverage.yml
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          github-branch-name: develop
 
   coverage-main:
     runs-on: ubuntu-latest
-    env:
-      python-version: 3.12
+    timeout-minutes: 10
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.actor == github.repository_owner
@@ -63,25 +55,9 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.python-version }}
-          runner-os: ${{ runner.os }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
 
-      - name: Run pytest (coverage without e2e)
-        run: |
-          poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile -k "not e2e" --benchmark-disable
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.4.0
+      - name: Test coverage
+        uses: ./.github/workflows/test-coverage.yml
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Setup Code Climate
-        uses: remarkablemark/setup-codeclimate@v2
-
-      - name: Upload coverage reports to code climate
-        run: |
-          cc-test-reporter before-build
-
-          cc-test-reporter after-build --exit-code $?
-        env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}
+          github-branch-name: main

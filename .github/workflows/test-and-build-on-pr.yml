@@ -24,8 +24,6 @@ permissions:
   security-events: write
 
 env:
-  GLOBAL_PYTHON_VERSION: 3.12.3
-  GLOBAL_NODE_VERSION: 22
   GLOBAL_ALLOWED_ENDPOINTS: |
     api.github.com:443
     github.com:443

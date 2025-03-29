@@ -1,9 +1,6 @@
 name: 'Setup Playwright by Python'
 description: 'Setup playwright with cache'
 inputs:
-  runner-os:
-    description: 'Operating system'
-    required: true
   browser:
     description: 'Browser to use'
     required: true
@@ -21,9 +18,9 @@ runs:
           /home/runner/.cache/ms-playwright
           /Users/runner/Library/Caches/ms-playwright
           %USERPROFILE%\AppData\Local\ms-playwright
-        key: ${{ inputs.os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
+        key: ${{ runner-os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
-          ${{ inputs.runner-os }}-playwright-${{ inputs.browser }}-
+          ${{ runner-os }}-playwright-${{ inputs.browser }}-
 
     - name: Install Playwright Browser
       shell: bash
