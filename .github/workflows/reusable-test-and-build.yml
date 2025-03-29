@@ -268,8 +268,8 @@ jobs:
       - name: Setup Playwright by Python
         uses: ./.github/actions/setup-python-playwright
         with:
+          runner-os: ${{ runner.os }}
           browser: ${{ matrix.browser }}
-          os: ${{ matrix.os }}
         timeout-minutes: 10
 
       - name: Configure Windows for UTF-8
@@ -342,8 +342,8 @@ jobs:
       - name: Setup Playwright by Python
         uses: ./.github/actions/setup-python-playwright
         with:
+          runner-os: ${{ runner.os }}
           browser: ${{ matrix.browser }}
-          os: ${{ matrix.os }}
         timeout-minutes: 10
 
       - name: Configure Windows for UTF-8
