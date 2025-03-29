@@ -131,7 +131,6 @@ jobs:
 
   lint-python:
     name: Lint - Python Code
-    needs: lint-workflow
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -170,7 +169,10 @@ jobs:
 
   test-unit:
     name: Test - Unit
-    needs: lint-python
+    needs:
+      - security-npm-audit
+      - lint-workflow
+      - lint-python
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -202,7 +204,7 @@ jobs:
           poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
 
   test-e2e:
-    name: Test - E2E (${{ matrix.os }} / ${{ matrix.python-version }} / ${{ matrix.browser }})
+    name: Test - E2E (${{ matrix.os }} / ${{ matrix.browser }})
     needs: [test-unit]
     permissions:
       contents: read
@@ -216,7 +218,8 @@ jobs:
           - ubuntu-22.04
           - windows-latest
         python-version:
-          - "3.12.3"
+          - "3.13"
+          - "3.12"
           - "3.11"
         browser:
           - chromium
@@ -235,6 +238,7 @@ jobs:
           # WindowsとWebkitの組み合わせを除外
           - os: windows-latest
             browser: webkit
+      max-parallel: 10
 
     steps:
       - name: Harden Runner
@@ -274,7 +278,7 @@ jobs:
         shell: cmd
         timeout-minutes: 1
 
-      - name: E2E Tests
+      - name: E2E Tests (${{ matrix.os }} / ${{ matrix.python-version }} / ${{ matrix.browser }})
         id: e2e-not-chromium
         run: |
           # E2Eテスト実行（ベンチマークなし）
@@ -450,7 +454,7 @@ jobs:
 
   build-desktop:
     name: Build - Desktop (${{ matrix.os }})
-    needs: [test-unit, security-npm-audit]
+    needs: test-unit
     continue-on-error: ${{ matrix.os == 'windows-latest' }}
     permissions:
       contents: read
