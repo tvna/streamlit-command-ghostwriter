@@ -90,8 +90,8 @@ jobs:
 
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2.3.7
-        with:
-          config-path: .github/gitleaks.toml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   guard-python:
     name: Guard Python
