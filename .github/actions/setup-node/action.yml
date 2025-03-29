@@ -4,7 +4,7 @@ inputs:
   node-version:
     description: 'Node.js version to use'
     required: true
-  os:
+  runner-os:
     description: 'Operating system'
     required: true
 
@@ -22,7 +22,9 @@ runs:
       with:
         path: |
           **/node_modules
-        key: ${{ inputs.os }}-node${{ inputs.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
+        key: ${{ inputs.runner-os }}-node${{ inputs.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ inputs.runner-os }}-node${{ inputs.node-version }}-electron-deps-
 
     - name: Install stlite
       shell: bash

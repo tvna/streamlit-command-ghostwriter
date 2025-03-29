@@ -119,8 +119,9 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
 
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
@@ -153,8 +154,9 @@ jobs:
       - name: Setup Node.js and restore cache
         uses: ./.github/actions/setup-node
         with:
+          runner-os: ${{ runner.os }}
           node-version: ${{ env.GLOBAL_NODE_VERSION }}
-          os: ${{ runner.os }}
+        timeout-minutes: 10
 
       - name: NPM Audit
         run: |
@@ -209,8 +211,9 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
 
       - name: Run Unit Tests
         run: |
@@ -258,8 +261,8 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Setup Playwright by Python
@@ -332,8 +335,8 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Setup Playwright by Python
@@ -416,8 +419,9 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
 
       - name: Run lizard (analyze CCN for production codes)
         run: |
@@ -480,8 +484,9 @@ jobs:
       - name: Setup Node.js and cache
         uses: ./.github/actions/setup-node
         with:
+          runner-os: ${{ runner.os }}
           node-version: ${{ env.GLOBAL_NODE_VERSION }}
-          os: ${{ runner.os }}
+        timeout-minutes: 10
 
       - name: Build by stlite
         uses: ./.github/actions/build-stlite
