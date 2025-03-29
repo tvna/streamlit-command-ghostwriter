@@ -131,6 +131,7 @@ jobs:
         run: |
           echo "SAFETY_API_KEY=${{ secrets.SAFETY_API_KEY }}" >> "$GITHUB_ENV"
           poetry run pip install safety
+          poetry run safety auth login --headless
           poetry run safety scan
 
   guard-npm:
