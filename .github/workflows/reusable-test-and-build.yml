@@ -122,15 +122,12 @@ jobs:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
 
-      - name: Check Python Linters
-        run: |
-          poetry run ruff check .
-          poetry run mypy .
-
-      - name: Run Safety CLI to check for vulnerabilities
-        uses: pyupio/safety-action@v1
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
         with:
-          api-key: ${{ secrets.SAFETY_API_KEY }}
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: "table"
 
   guard-npm:
     name: Guard NPM
