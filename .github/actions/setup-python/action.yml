@@ -26,7 +26,6 @@ runs:
           ~/.cache/pip
           .venv
           .ruff_cache
-          .mypy_cache
           .pytest_cache
           %LOCALAPPDATA%\pypoetry\Cache
           %USERPROFILE%\.cache\pypoetry
