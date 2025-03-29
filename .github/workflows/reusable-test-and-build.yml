@@ -88,6 +88,23 @@ jobs:
       - name: Check typos
         uses: crate-ci/typos@d08e4083f112e684fb88f6babd9ae60a1f1cd84f # v1.30.3
 
+  guard-api-key:
+    name: Guard API Key
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - name: Set GITHUB_TOKEN
         run: |
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
@@ -122,6 +139,11 @@ jobs:
           runner-os: ${{ runner.os }}
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
+
+      - name: Lint Python and check types
+        run: |
+          poetry run ruff check .
+          poetry run mypy .
 
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
@@ -176,6 +198,7 @@ jobs:
     name: Test - Unit
     needs:
       - guard-workflow
+      - guard-api-key
       - guard-python
       - guard-npm
     permissions:
