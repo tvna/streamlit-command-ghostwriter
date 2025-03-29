@@ -1,9 +1,5 @@
 name: 'Build by stlite'
 description: 'Setup playwright with cache'
-inputs:
-  os:
-    description: 'Operating system'
-    required: true
 
 runs:
   using: "composite"
@@ -19,7 +15,9 @@ runs:
         %USERPROFILE%\.electron-builder
         ~/AppData/Local/electron/Cache
         ~/AppData/Local/electron-builder/Cache
-      key: ${{ inputs.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+      key: ${{ runner-os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+      restore-keys: |
+        ${{ runner-os }}-node-electron-builder-
 
   - name: Restore cache electron-builder (MacOS)
     if: runner.os == 'MacOS'
@@ -32,7 +30,9 @@ runs:
         ~/.electron-builder
         ~/Library/Caches/electron/
         ~/Library/Caches/electron-builder/
-      key: ${{ inputs.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+      key: ${{ runner-os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+      restore-keys: |
+        ${{ runner-os }}-node-electron-builder-
 
   - name: Restore cache electron-builder (Linux)
     if: runner.os == 'Linux'
@@ -43,7 +43,9 @@ runs:
         ~/.cache/electron-builder
         ~/.electron
         ~/.electron-builder
-      key: ${{ inputs.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+      key: ${{ runner-os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+      restore-keys: |
+        ${{ runner-os }}-node-electron-builder-
 
   - name: Dump package
     run: |
