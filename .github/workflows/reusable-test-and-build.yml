@@ -127,12 +127,10 @@ jobs:
           poetry run ruff check .
           poetry run mypy .
 
-      - name: Check for vulnerable dependencies
-        run: |
-          echo "SAFETY_API_KEY=${{ secrets.SAFETY_API_KEY }}" >> "$GITHUB_ENV"
-          poetry run pip install safety
-          poetry run safety auth login --headless
-          poetry run safety scan
+      - name: Run Safety CLI to check for vulnerabilities
+        uses: pyupio/safety-action@v1
+        with:
+          api-key: ${{ secrets.SAFETY_API_KEY }}
 
   guard-npm:
     name: Guard NPM
