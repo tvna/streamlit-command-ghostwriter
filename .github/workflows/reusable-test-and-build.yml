@@ -243,6 +243,37 @@ jobs:
           # 通常のテスト実行（カバレッジ有、ベンチマークなし）
           poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
 
+  test-coverage:
+    name: Test - Coverage
+    needs: test-unit
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
+
+      - name: Test coverage
+        uses: ./.github/workflows/test-coverage.yml
+        with:
+          github-branch-name: ${{ github.ref }}
+
   test-e2e:
     name: Test - E2E by ${{ matrix.os }}
     needs: test-unit
@@ -513,8 +544,6 @@ jobs:
 
       - name: Build by stlite
         uses: ./.github/actions/build-stlite
-        with:
-          os: ${{ matrix.os }}
 
   # ============================================================
   # WORKFLOW SUMMARY
@@ -523,7 +552,14 @@ jobs:
   workflow-summary:
     name: ${{ inputs.workflow_summary_name }}
     if: always()
-    needs: [test-e2e, test-e2e-benchmark, analysis-code-ccn, build-desktop]
+    needs:
+      [
+        test-coverage,
+        test-e2e,
+        test-e2e-benchmark,
+        analysis-code-ccn,
+        build-desktop,
+      ]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
