@@ -18,9 +18,9 @@ runs:
           /home/runner/.cache/ms-playwright
           /Users/runner/Library/Caches/ms-playwright
           %USERPROFILE%\AppData\Local\ms-playwright
-        key: ${{ runner-os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
+        key: ${{ runner.os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
-          ${{ runner-os }}-playwright-${{ inputs.browser }}-
+          ${{ runner.os }}-playwright-${{ inputs.browser }}-
 
     - name: Install Playwright Browser
       shell: bash

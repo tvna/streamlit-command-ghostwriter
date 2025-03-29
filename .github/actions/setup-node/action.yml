@@ -19,9 +19,9 @@ runs:
       with:
         path: |
           **/node_modules
-        key: ${{ runner-os }}-node${{ inputs.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
+        key: ${{ runner.os }}-node${{ inputs.node-version }}-electron-deps-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
-          ${{ runner-os }}-node${{ inputs.node-version }}-electron-deps-
+          ${{ runner.os }}-node${{ inputs.node-version }}-electron-deps-
 
     - name: Install stlite
       shell: bash
