@@ -127,8 +127,8 @@ jobs:
 
       - name: Check for vulnerable dependencies
         uses: pyupio/safety-action@v1
-        with:
-          api-key: ${{ secrets.SAFETY_API_KEY }}
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
 
   guard-npm:
     name: Guard NPM
