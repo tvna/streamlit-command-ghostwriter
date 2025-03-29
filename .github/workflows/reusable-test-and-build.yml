@@ -176,6 +176,17 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - ubuntu-22.04
+          - windows-latest
+        python-version:
+          - "3.13"
+          - "3.12"
+          - "3.11"
     timeout-minutes: 5
 
     steps:
@@ -214,13 +225,9 @@ jobs:
       matrix:
         os:
           - macos-latest
-          - ubuntu-latest
-          - ubuntu-22.04
           - windows-latest
         python-version:
           - "3.13"
-          - "3.12"
-          - "3.11"
         browser:
           - chromium
           - firefox
