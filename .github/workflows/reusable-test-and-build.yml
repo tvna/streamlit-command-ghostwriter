@@ -120,12 +120,15 @@ jobs:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
           runner-os: ${{ runner.os }}
 
-      - name: Run Python Linters and check for vulnerable dependencies
+      - name: Check Python Linters
         run: |
           poetry run ruff check .
           poetry run mypy .
-          poetry run pip install safety
-          poetry run safety scan
+
+      - name: Check for vulnerable dependencies
+        uses: pyupio/safety-action@v1
+        with:
+          api-key: ${{ secrets.SAFETY_API_KEY }}
 
   guard-npm:
     name: Guard NPM
