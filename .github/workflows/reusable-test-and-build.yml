@@ -90,7 +90,7 @@ jobs:
 
       - name: Set GITHUB_TOKEN
         run: |
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
 
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2.3.7
@@ -129,7 +129,7 @@ jobs:
 
       - name: Check for vulnerable dependencies
         run: |
-          echo "SAFETY_API_KEY=${{ secrets.SAFETY_API_KEY }}" >> $GITHUB_ENV
+          echo "SAFETY_API_KEY=${{ secrets.SAFETY_API_KEY }}" >> "$GITHUB_ENV"
           poetry run pip install safety
           poetry run safety scan
 
