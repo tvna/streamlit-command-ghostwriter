@@ -25,6 +25,9 @@ runs:
           ~/.cache/pypoetry
           ~/.cache/pip
           .venv
+          .ruff_cache
+          .mypy_cache
+          .pytest_cache
           %LOCALAPPDATA%\pypoetry\Cache
           %USERPROFILE%\.cache\pypoetry
         key: ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
@@ -41,6 +44,9 @@ runs:
           ~/.cache/pypoetry
           ~/.cache/pip
           .venv
+          .ruff_cache
+          .mypy_cache
+          .pytest_cache
           %LOCALAPPDATA%\pypoetry\Cache
           %USERPROFILE%\.cache\pypoetry
         key: ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
