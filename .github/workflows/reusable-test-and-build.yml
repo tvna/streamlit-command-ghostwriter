@@ -136,6 +136,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
+          runner-os: ${{ runner.os }}
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
@@ -175,6 +176,7 @@ jobs:
       - name: Setup Node.js and restore cache
         uses: ./.github/actions/setup-node
         with:
+          runner-os: ${{ runner.os }}
           node-version: ${{ env.GLOBAL_NODE_VERSION }}
         timeout-minutes: 10
 
@@ -232,6 +234,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
+          runner-os: ${{ runner.os }}
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
@@ -281,12 +284,14 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
+          runner-os: ${{ runner.os }}
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Setup Playwright by Python
         uses: ./.github/actions/setup-python-playwright
         with:
+          runner-os: ${{ runner.os }}
           browser: ${{ matrix.browser }}
         timeout-minutes: 10
 
@@ -353,12 +358,14 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
+          runner-os: ${{ runner.os }}
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Setup Playwright by Python
         uses: ./.github/actions/setup-python-playwright
         with:
+          runner-os: ${{ runner.os }}
           browser: ${{ matrix.browser }}
         timeout-minutes: 10
 
@@ -435,6 +442,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
+          runner-os: ${{ runner.os }}
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
@@ -499,6 +507,7 @@ jobs:
       - name: Setup Node.js and cache
         uses: ./.github/actions/setup-node
         with:
+          runner-os: ${{ runner.os }}
           node-version: ${{ env.GLOBAL_NODE_VERSION }}
         timeout-minutes: 10
 

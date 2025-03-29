@@ -1,6 +1,9 @@
 name: 'Setup Python Environment'
 description: 'Setup Python with Poetry and cache pip dependencies'
 inputs:
+  runner-os:
+    description: 'Operating system'
+    required: true
   python-version:
     description: 'Python version to use'
     required: true
@@ -16,7 +19,7 @@ runs:
     # 非Windows環境用のキャッシュ復元
     - name: Restore cache pip dependencies (without Windows)
       uses: actions/cache@v4.2.2
-      if: runner-os != 'Windows'
+      if: inputs.runner-os != 'Windows'
       with:
         path: |
           ~/.cache/pypoetry
@@ -26,15 +29,15 @@ runs:
           .pytest_cache
           %LOCALAPPDATA%\pypoetry\Cache
           %USERPROFILE%\.cache\pypoetry
-        key: ${{ runner-os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        key: ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
-          ${{ runner-os }}-python${{ inputs.python-version }}-poetry
+          ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry
 
     # Windowsのみキャッシュ障害に備えてリトライロジックを追加
     - name: Restore cache pip dependencies (Windows with retry)
       uses: actions/cache@v4.2.2
       id: pip-cache-windows
-      if: runner-os == 'Windows'
+      if: inputs.runner-os == 'Windows'
       with:
         path: |
           ~/.cache/pypoetry
@@ -44,9 +47,9 @@ runs:
           .pytest_cache
           %LOCALAPPDATA%\pypoetry\Cache
           %USERPROFILE%\.cache\pypoetry
-        key: ${{ runner-os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        key: ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
-          ${{ runner-os }}-python${{ inputs.python-version }}-poetry
+          ${{ inputs.runner-os }}-python${{ inputs.python-version }}-poetry
 
     - name: Bootstrap poetry
       shell: bash
