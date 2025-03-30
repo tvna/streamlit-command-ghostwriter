@@ -1,7 +1,12 @@
-name: Reusable create PR to main
+name: Create PR to main
 
 on:
-  workflow_call:
+  workflow_run:
+    workflows: ["Test & Build"]
+    types:
+      - completed
+    branches:
+      - develop
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}

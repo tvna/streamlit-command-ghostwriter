@@ -27,7 +27,3 @@ jobs:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: true
       workflow_summary_name: "Workflow summary [Test & Build (on Push)]"
-
-  create-pr-to-main-branch:
-    needs: main
-    uses: ./.github/workflows/reusable-create-pr-to-main.yml
