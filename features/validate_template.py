@@ -250,17 +250,6 @@ class RangeConfig(BaseModel):
             raise ValueError("Step cannot be zero")
         return v
 
-    def calculate_iterations(self) -> int:
-        """反復回数を計算する。
-
-        Returns:
-            int: 反復回数
-        """
-        if self.step > 0:
-            return (self.stop - self.start + self.step - 1) // self.step
-        else:
-            return (self.start - self.stop - self.step - 1) // -self.step
-
 
 class ValidationState(BaseModel):
     """テンプレートの検証状態を表すクラス。"""
@@ -1134,22 +1123,100 @@ class TemplateSecurityValidator:
                 return False
         return True
 
+    def _check_getattr(self, node: nodes.Getattr, validation_state: ValidationState) -> bool:
+        """Getattrノードを検証する。"""
+        attribute_name = node.attr
+        if attribute_name in self.restricted_attributes:
+            validation_state.set_error(
+                f"Template security validation failed: Access to restricted attribute '{attribute_name}' is forbidden."
+            )
+            return False
+        return True
+
+    def _check_getitem(self, node: nodes.Getitem, validation_state: ValidationState) -> bool:
+        """Getitemノードを検証する。"""
+        if isinstance(node.arg, nodes.Const) and isinstance(node.arg.value, str):
+            attribute_name = node.arg.value
+            if attribute_name in self.restricted_attributes:
+                validation_state.set_error(
+                    f"Template security validation failed: Access to restricted item '{attribute_name}' is forbidden."
+                )
+                return False
+        return True
+
+    def _check_name(self, node: nodes.Name, validation_state: ValidationState) -> bool:
+        """Nameノードを検証する。"""
+        variable_name = node.name
+        if variable_name in self.restricted_attributes:
+            validation_state.set_error(f"Template security validation failed: Use of restricted variable '{variable_name}' is forbidden.")
+            return False
+        return True
+
+    def _check_call(self, node: nodes.Call, validation_state: ValidationState) -> bool:
+        """Callノードを検証する。"""
+        if isinstance(node.node, nodes.Name):
+            function_name = node.node.name
+            if function_name in self.restricted_attributes:
+                validation_state.set_error(
+                    f"Template security validation failed: Call to restricted function '{function_name}()' is forbidden."
+                )
+                return False
+        return True
+
+    def _check_assign(self, node: nodes.Assign, validation_state: ValidationState) -> bool:
+        """Assignノードを検証する。"""
+        # Check if the assigned value is a restricted name
+        if isinstance(node.node, nodes.Name) and node.node.name in self.restricted_attributes:
+            variable_name = node.node.name
+            validation_state.set_error(
+                f"Template security validation failed: Assignment of restricted variable '{variable_name}' is forbidden."
+            )
+            return False
+        # Check if the assigned value is a call to a restricted function
+        elif (
+            isinstance(node.node, nodes.Call)
+            and isinstance(node.node.node, nodes.Name)
+            and node.node.node.name in self.restricted_attributes
+        ):
+            function_name = node.node.node.name
+            validation_state.set_error(
+                f"Template security validation failed: Assignment involving restricted function '{function_name}()' is forbidden."
+            )
+            return False
+        return True
+
     def _validate_restricted_attributes(self, ast: nodes.Template, validation_state: ValidationState) -> bool:
-        """禁止属性を検証する。
+        """テンプレート内で制限された属性や変数へのアクセスがないか検証する (ディスパッチ辞書使用)。
 
         Args:
-            ast: 検証対象のAST
-            validation_state: 検証状態
+            ast: 検証対象のテンプレートAST
+            validation_state: 検証状態オブジェクト
 
         Returns:
-            bool: 検証が成功したかどうか
+            bool: 検証が成功した場合はTrue、失敗した場合はFalse
         """
-        for node in ast.find_all(nodes.Getattr):
-            if isinstance(node.node, nodes.Name):
-                attr_name = node.node.name
-                if attr_name in self.restricted_attributes:
-                    validation_state.set_error(f"Template security error: access to '{attr_name}' is restricted")
+        # マッピング: Node Type -> Validation Handler Function
+        handler_map: Dict[type[nodes.Node], Callable[[Any, ValidationState], bool]] = {
+            nodes.Getattr: self._check_getattr,  # type: ignore
+            nodes.Getitem: self._check_getitem,  # type: ignore
+            nodes.Name: self._check_name,
+            nodes.Call: self._check_call,
+            nodes.Assign: self._check_assign,  # type: ignore
+        }
+
+        nodes_to_check = list(ast.find_all(tuple(handler_map.keys())))
+
+        for node in nodes_to_check:
+            node_type = type(node)
+            handler = handler_map.get(node_type)
+
+            if handler:
+                # Note: We pass the specific node type expected by the handler.
+                # The type ignore comments are necessary because the map values have a broader type hint.
+                if not handler(node, validation_state):
                     return False
+            # If no handler is found for the node type, it's ignored (as intended).
+
         return True
 
     def _validate_loop_range(self, ast: nodes.Template, validation_state: ValidationState) -> bool:
