@@ -1,0 +1,231 @@
+---
+name: 'Create pull request to main'
+description: 'Compares develop and main versions and creates a PR if develop is newer and no open PR exists.'
+
+inputs:
+  github_token:
+    description: 'GitHub token for API calls'
+    required: true
+  develop_version:
+    description: 'Version from the develop branch (e.g., package.json)'
+    required: true
+  main_version:
+    description: 'Version from the main branch (e.g., package.json)'
+    required: true
+
+outputs:
+  pr_url:
+    description: 'URL of the created Pull Request, if any.'
+    value: ${{ steps.create-pr.outputs.pr_url }}
+  status:
+    description: 'Outcome status: created, exists, skipped_version_compare, skipped_label_fail, error_check_pr, error_ensure_label, error_create_pr'
+    value: ${{ steps.set-status.outputs.status }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Dump GitHub context # Keep for potential debugging/context needs within the action
+      id: github_context_step
+      shell: bash
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT" | jq -r '. | {event_name, workflow_ref, repository, run_id, run_number}'
+
+    - name: Compare versions (Semver)
+      uses: step-security/semver-utils@v4
+      id: compare-versions
+      shell: bash
+      with:
+        version: ${{ inputs.develop_version }}
+        compare-to: ${{ inputs.main_version }}
+        # satisfies: 1.x # Removed satisfies check as it might be too specific for a reusable action
+
+    - name: Display version comparison result # Optional: for debugging
+      shell: bash
+      run: |
+        echo "Comparison Result: ${{ steps.compare-versions.outputs.comparison-result }}"
+
+    - name: Check if PR already exists
+      id: check-pr
+      if: steps.compare-versions.outputs.comparison-result == '<'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github_token }}
+        script: |
+          try {
+            const pulls = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:develop`, // Assuming develop is always the head
+              base: 'main',                       // Assuming main is always the base
+              state: 'open'
+            });
+
+            const prExists = pulls.data.length;
+            console.log(`Existing open PRs from develop to main: ${prExists}`);
+            core.setOutput('exists', prExists.toString());
+            core.setOutput('success', 'true');
+          } catch (error) {
+            console.error(`Error checking for existing PRs: ${error.message}`);
+            core.setOutput('exists', ''); // Indicate failure
+            core.setOutput('success', 'false');
+            core.setFailed(`Error checking for existing PRs: ${error.message}`);
+          }
+
+    - name: Ensure labels exist
+      id: ensure-labels
+      if: |
+        steps.compare-versions.outputs.comparison-result == '<' &&
+        steps.check-pr.outputs.success == 'true' &&
+        steps.check-pr.outputs.exists == '0'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github_token }}
+        script: |
+          let allLabelsEnsured = true;
+          const requiredLabels = [
+            { name: "automated-pr", description: "Automatically generated PR", color: "0E8A16" },
+            { name: "release", description: "PR for automated release", color: "1D76DB" }
+          ];
+
+          async function ensureLabel(labelInfo) {
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: labelInfo.name
+              });
+              console.log(`Label '${labelInfo.name}' already exists.`);
+              return true;
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`Label '${labelInfo.name}' does not exist. Creating...`);
+                try {
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: labelInfo.name,
+                    description: labelInfo.description,
+                    color: labelInfo.color
+                  });
+                  console.log(`Label '${labelInfo.name}' created successfully.`);
+                  return true;
+                } catch (createError) {
+                  console.error(`Failed to create label '${labelInfo.name}': ${createError.message}`);
+                  allLabelsEnsured = false;
+                  return false;
+                }
+              } else {
+                console.error(`Error checking label '${labelInfo.name}': ${error.message}`);
+                allLabelsEnsured = false;
+                return false;
+              }
+            }
+          }
+
+          console.log("::notice::Ensuring required labels exist...");
+          for (const label of requiredLabels) {
+            await ensureLabel(label);
+          }
+
+          if (allLabelsEnsured) {
+            console.log("All required labels exist or were created.");
+            core.setOutput('success', 'true');
+          } else {
+            console.error("Failed to ensure one or more required labels.");
+            core.setOutput('success', 'false');
+            core.setFailed("Failed to ensure one or more required labels.");
+          }
+
+    # Setup Python required by the create_pr.py script
+    - name: Set up Python
+      if: |
+        steps.compare-versions.outputs.comparison-result == '<' &&
+        steps.check-pr.outputs.success == 'true' &&
+        steps.check-pr.outputs.exists == '0' &&
+        steps.ensure-labels.outputs.success == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x' # Or specify a more precise version if needed
+
+    - name: Create Pull Request
+      id: create-pr
+      # Run only if develop version < main version, PR check succeeded, no PR exists, and labels were ensured
+      if: |
+        steps.compare-versions.outputs.comparison-result == '<' &&
+        steps.check-pr.outputs.success == 'true' &&
+        steps.check-pr.outputs.exists == '0' &&
+        steps.ensure-labels.outputs.success == 'true'
+      shell: bash
+      env:
+        # Pass versions and token to the script environment
+        # Assuming create_pr.py reads these env vars
+        # Also needs GITHUB_TOKEN for potential API calls within script
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        NEW_VERSION: ${{ inputs.main_version }}
+        OLD_VERSION: ${{ inputs.develop_version }}
+      run: |
+        echo "Attempting to run python scripts/create_pr.py"
+        # Add install dependencies step here if create_pr.py needs any non-stdlib packages
+        # pip install -r scripts/requirements.txt # Example
+        python scripts/create_pr.py
+        # Assuming the script outputs the PR URL like: echo "::set-output name=pr_url::https://github.com/..."
+        # If the script fails, this step will fail, and subsequent steps can check outcome
+
+    - name: Set Final Status
+      id: set-status
+      shell: bash
+      run: |
+        # Default status assuming no PR needed or conditions not met initially
+        STATUS="skipped_version_compare"
+        PR_URL=""
+
+        # Check comparison result
+        if [[ "${{ steps.compare-versions.outputs.comparison-result }}" == '<' ]]; then
+          # Check PR check step success
+          if [[ "${{ steps.check-pr.outputs.success }}" == 'true' ]]; then
+            # Check if PR exists
+            if [[ "${{ steps.check-pr.outputs.exists }}" != '0' ]]; then
+              STATUS="exists"
+            else
+              # Check label ensure step success
+              if [[ "${{ steps.ensure-labels.outputs.success }}" == 'true' ]]; then
+                 # Check create PR step outcome
+                 if [[ "${{ steps.create-pr.outcome }}" == 'success' ]]; then
+                   STATUS="created"
+                   # Try to get PR URL - handle if empty/not set
+                   PR_URL_TEMP="${{ steps.create-pr.outputs.pr_url }}"
+                   if [[ -n "$PR_URL_TEMP" ]]; then
+                      PR_URL="$PR_URL_TEMP"
+                   else
+                      echo "::warning::create-pr step succeeded but did not output pr_url."
+                      # Consider setting status to an error/warning state if URL is expected
+                   fi
+                 else
+                   STATUS="error_create_pr"
+                   echo "::error::Create PR step failed."
+                 fi
+              else
+                STATUS="skipped_label_fail"
+                echo "::error::Ensure Labels step failed."
+              fi
+            fi
+          else
+            STATUS="error_check_pr"
+            echo "::error::Check PR step failed."
+          fi
+        else
+          echo "Skipping PR creation: develop version (${{ inputs.develop_version }}) is not less than main version (${{ inputs.main_version }}). Comparison result: ${{ steps.compare-versions.outputs.comparison-result }}"
+          STATUS="skipped_version_compare" # Already set, but explicit
+        fi
+
+        echo "Final Status: $STATUS"
+        echo "status=$STATUS" >> $GITHUB_OUTPUT
+        # Ensure pr_url output is set even if empty
+        echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+        # Optional: Fail the action step if a critical error occurred
+        if [[ "$STATUS" == error* ]]; then
+          # exit 1 # Uncomment to make the action fail on error states
+          echo "::error::Workflow action encountered an error: $STATUS"
+        fi

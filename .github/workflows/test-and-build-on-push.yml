@@ -28,11 +28,79 @@ jobs:
       concurrency_cancel_in_progress: true
       workflow_summary_name: "Workflow summary [Test & Build (on Push)]"
 
+  get-npm-version-from-main:
+    outputs:
+      version: ${{ steps.package-version-from-main.outputs.current-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Get version from main
+        id: package-version-from-main
+        uses: step-security/npm-get-version-action@v1
+
+      - run: |
+          echo "The current version is '${{ steps.package-version-from-main.outputs.current-version }}'."
+          echo "version='${{ steps.package-version-from-main.outputs.current-version }}'" >> "$GITHUB_OUTPUT"
+
+  get-npm-version-from-develop:
+    outputs:
+      version: ${{ steps.package-version-from-develop.outputs.current-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Get version from develop
+        id: package-version-from-develop
+        uses: step-security/npm-get-version-action@v1
+
+      - name: Display the version
+        run: |
+          echo "The current version is '${{ steps.package-version-from-develop.outputs.current-version }}'."
+          echo "version='${{ steps.package-version-from-develop.outputs.current-version }}'" >> "$GITHUB_OUTPUT"
+
   create-pr-to-main:
-    uses: ./.github/workflows/reusable-create-pr.yml
-    if: |
-      github.event.ref == 'refs/heads/develop'
-    needs: main
+    needs:
+      - main
+      - get-npm-version-from-main
+      - get-npm-version-from-develop
     permissions:
       contents: read
       pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+
+      - uses: ./.github/actions/create-pr-to-main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          develop_version: ${{ needs.get-npm-version-from-develop.outputs.version }}
+          main_version: ${{ needs.get-npm-version-from-main.outputs.version }}

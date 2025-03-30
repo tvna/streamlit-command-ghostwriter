@@ -247,15 +247,6 @@ jobs:
           # 通常のテスト実行（カバレッジ有、ベンチマークなし）
           poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
 
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-results-${{ matrix.os }}-${{ matrix.python-version }}
-          path: |
-            .coverage
-            coverage.xml
-          retention-days: 5
-
   test-coverage:
     name: Coverage
     needs: small-unit-test
