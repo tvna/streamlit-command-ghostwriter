@@ -34,7 +34,6 @@ runs:
     - name: Compare versions (Semver)
       uses: step-security/semver-utils@v4
       id: compare-versions
-      shell: bash
       with:
         version: ${{ inputs.develop_version }}
         compare-to: ${{ inputs.main_version }}
@@ -174,58 +173,67 @@ runs:
 
     - name: Set Final Status
       id: set-status
-      shell: bash
-      run: |
-        # Default status assuming no PR needed or conditions not met initially
-        STATUS="skipped_version_compare"
-        PR_URL=""
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github_token }} # Not strictly needed for this script, but good practice if future logic needs it
+        script: |
+          const compareResult = "${{ steps.compare-versions.outputs.comparison-result }}";
+          const checkPrSuccess = "${{ steps.check-pr.outputs.success }}";
+          const checkPrExists = "${{ steps.check-pr.outputs.exists }}";
+          const ensureLabelsSuccess = "${{ steps.ensure-labels.outputs.success }}";
+          const createPrOutcome = "${{ steps.create-pr.outcome }}";
+          const createPrUrl = "${{ steps.create-pr.outputs.pr_url }}";
+          const developVersion = "${{ inputs.develop_version }}";
+          const mainVersion = "${{ inputs.main_version }}";
 
-        # Check comparison result
-        if [[ "${{ steps.compare-versions.outputs.comparison-result }}" == '<' ]]; then
-          # Check PR check step success
-          if [[ "${{ steps.check-pr.outputs.success }}" == 'true' ]]; then
-            # Check if PR exists
-            if [[ "${{ steps.check-pr.outputs.exists }}" != '0' ]]; then
-              STATUS="exists"
-            else
-              # Check label ensure step success
-              if [[ "${{ steps.ensure-labels.outputs.success }}" == 'true' ]]; then
-                 # Check create PR step outcome
-                 if [[ "${{ steps.create-pr.outcome }}" == 'success' ]]; then
-                   STATUS="created"
-                   # Try to get PR URL - handle if empty/not set
-                   PR_URL_TEMP="${{ steps.create-pr.outputs.pr_url }}"
-                   if [[ -n "$PR_URL_TEMP" ]]; then
-                      PR_URL="$PR_URL_TEMP"
-                   else
-                      echo "::warning::create-pr step succeeded but did not output pr_url."
-                      # Consider setting status to an error/warning state if URL is expected
-                   fi
-                 else
-                   STATUS="error_create_pr"
-                   echo "::error::Create PR step failed."
-                 fi
-              else
-                STATUS="skipped_label_fail"
-                echo "::error::Ensure Labels step failed."
-              fi
-            fi
-          else
-            STATUS="error_check_pr"
-            echo "::error::Check PR step failed."
-          fi
-        else
-          echo "Skipping PR creation: develop version (${{ inputs.develop_version }}) is not less than main version (${{ inputs.main_version }}). Comparison result: ${{ steps.compare-versions.outputs.comparison-result }}"
-          STATUS="skipped_version_compare" # Already set, but explicit
-        fi
+          let status = "skipped_version_compare";
+          let prUrl = "";
 
-        echo "Final Status: $STATUS"
-        echo "status=$STATUS" >> $GITHUB_OUTPUT
-        # Ensure pr_url output is set even if empty
-        echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          core.info(`Initial evaluation: compareResult='${compareResult}', checkPrSuccess='${checkPrSuccess}', checkPrExists='${checkPrExists}', ensureLabelsSuccess='${ensureLabelsSuccess}', createPrOutcome='${createPrOutcome}'`);
 
-        # Optional: Fail the action step if a critical error occurred
-        if [[ "$STATUS" == error* ]]; then
-          # exit 1 # Uncomment to make the action fail on error states
-          echo "::error::Workflow action encountered an error: $STATUS"
-        fi
+          if (compareResult === '<') {
+            if (checkPrSuccess === 'true') {
+              if (checkPrExists !== '0') {
+                status = "exists";
+                core.info(`Status update: PR already exists (checkPrExists=${checkPrExists}). Setting status to '${status}'.`);
+              } else { // No existing PR
+                if (ensureLabelsSuccess === 'true') {
+                  if (createPrOutcome === 'success') {
+                    status = "created";
+                    if (createPrUrl) {
+                      prUrl = createPrUrl;
+                      core.info(`Status update: PR creation successful (createPrOutcome=${createPrOutcome}). Setting status to '${status}' and pr_url.`);
+                    } else {
+                      core.warning("create-pr step succeeded but did not output pr_url.");
+                      core.info(`Status update: PR creation successful but no URL output. Setting status to '${status}'.`);
+                    }
+                  } else { // create-pr failed
+                    status = "error_create_pr";
+                    core.error(`Create PR step failed (outcome: ${createPrOutcome}). Setting status to '${status}'.`);
+                  }
+                } else { // ensure-labels failed
+                  status = "skipped_label_fail"; // Match bash script status
+                  core.error(`Ensure Labels step failed (success: ${ensureLabelsSuccess}). Setting status to '${status}'.`);
+                }
+              }
+            } else { // check-pr failed
+              status = "error_check_pr";
+              core.error(`Check PR step failed (success: ${checkPrSuccess}). Setting status to '${status}'.`);
+            }
+          } else { // Version comparison did not result in '<'
+            core.info(`Skipping PR creation: develop version (${developVersion}) is not less than main version (${mainVersion}). Comparison result: ${compareResult}`);
+            status = "skipped_version_compare"; // Explicitly set, though it's the default
+          }
+
+          core.info(`Final Status determined: ${status}`);
+          core.setOutput('status', status);
+          core.setOutput('pr_url', prUrl);
+
+          // Optional: Fail the action step if a critical error occurred - matching commented-out bash behavior (log error, don't fail)
+          if (status.startsWith('error_')) {
+            core.error(`Workflow action encountered an error state: ${status}`);
+            // core.setFailed(`Workflow action encountered an error: ${status}`); // Would fail the step
+          } else if (status === 'skipped_label_fail') {
+              // The original bash script logged an error here too.
+              core.error(`Workflow action skipped PR due to label failure: ${status}`);
+          }
