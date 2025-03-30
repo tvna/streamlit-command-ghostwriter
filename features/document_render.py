@@ -350,9 +350,9 @@ class DocumentRender:
        - 出力フォーマットの制御
 
     Attributes:
-        MAX_FILE_SIZE: テンプレートファイルの最大サイズ [バイト]
+        MAX_FILE_SIZE_BYTES: テンプレートファイルの最大サイズ [バイト]
             デフォルト: 30MB
-        MAX_MEMORY_SIZE: レンダリング結果の最大メモリ使用量 [バイト]
+        MAX_MEMORY_SIZE_BYTES: レンダリング結果の最大メモリ使用量 [バイト]
             デフォルト: 150MB
 
     Properties:
@@ -367,8 +367,8 @@ class DocumentRender:
     - TemplateError: テンプレート処理エラー
     """
 
-    MAX_FILE_SIZE: ClassVar[int] = 30 * 1024 * 1024  # 30MB
-    MAX_MEMORY_SIZE: ClassVar[int] = 150 * 1024 * 1024  # 150MB
+    MAX_FILE_SIZE_BYTES: ClassVar[int] = 30 * 1024 * 1024  # 30MB
+    MAX_MEMORY_SIZE_BYTES: ClassVar[int] = 150 * 1024 * 1024  # 150MB
 
     def __init__(self, template_file: BytesIO) -> None:
         """DocumentRenderインスタンスを初期化する。
@@ -381,7 +381,7 @@ class DocumentRender:
             エラー状態は is_valid_template と error_message プロパティで確認できます。
         """
         self._validation_state = ValidationState()
-        self._file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE))
+        self._file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
 
         try:
             self._file_validator.validate_size(template_file)
@@ -454,45 +454,13 @@ class DocumentRender:
             file_size = self._template_file.tell()
             self._template_file.seek(current_pos)  # 元の位置に戻す
 
-            if file_size > self.MAX_FILE_SIZE:
-                self._validation_state.set_error(f"Template file size exceeds maximum limit of {self.MAX_FILE_SIZE} bytes")
+            if file_size > self.MAX_FILE_SIZE_BYTES:
+                self._validation_state.set_error(f"Template file size exceeds maximum limit of {self.MAX_FILE_SIZE_BYTES} bytes")
                 return False
             return True
         except Exception as e:
             self._validation_state.set_error(f"File size validation error: {e!s}")
             return False
-
-    def _validate_preconditions(self, context: Dict[str, Any], format_type: int) -> bool:
-        """前提条件を検証する。
-
-        レンダリング処理の前提条件が満たされているかチェックします。
-        - 初期検証が完了していること
-        - フォーマットタイプが有効であること
-        - テンプレート内容とASTが利用可能であること
-
-        Args:
-            context: テンプレートに適用するコンテキスト
-            format_type: フォーマットタイプ [0-4の整数]
-
-        Returns:
-            前提条件を満たす場合はTrue
-        """
-        if not self._initial_validation_passed:
-            return False
-
-        if not self._validate_format_type(format_type):
-            self._validation_state.set_error("Unsupported format type")
-            return False
-
-        if self._template_content is None:
-            self._validation_state.set_error("Template content is not loaded")
-            return False
-
-        if self._ast is None:
-            self._validation_state.set_error("AST is not available")
-            return False
-
-        return True
 
     def _validate_format_type(self, format_type: int) -> bool:
         """フォーマットタイプを検証する。
@@ -614,7 +582,7 @@ class DocumentRender:
             return False
 
         # 前提条件の検証
-        if not self._validate_preconditions(config.context, config.format_config.format_type):
+        if not self._initial_validation_passed:
             return False
 
         # テンプレートの状態検証
@@ -654,14 +622,14 @@ class DocumentRender:
 
             # メモリ使用量の検証
             content_size = len(content.encode("utf-8"))
-            if content_size > self.MAX_MEMORY_SIZE:
-                self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE} bytes")
+            if content_size > self.MAX_MEMORY_SIZE_BYTES:
+                self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
                 return False
             return True
         except UnicodeEncodeError:
             # UTF-8エンコードに失敗した場合は、文字数で概算
-            if len(content) * 4 > self.MAX_MEMORY_SIZE:  # 最大4バイト/文字と仮定
-                self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE} bytes")
+            if len(content) * 4 > self.MAX_MEMORY_SIZE_BYTES:  # 最大4バイト/文字と仮定
+                self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
                 return False
             return True
         except Exception as e:
