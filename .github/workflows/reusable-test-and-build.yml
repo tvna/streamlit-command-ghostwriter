@@ -241,7 +241,7 @@ jobs:
           poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
 
   test-coverage:
-    name: Test - Coverage
+    name: Coverage
     needs: test-unit
     permissions:
       contents: read
@@ -270,6 +270,8 @@ jobs:
         uses: ./.github/actions/test-coverage
         with:
           github-branch-name: ${{ github.ref }}
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
+          codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
 
   test-e2e:
     name: Test - E2E by ${{ matrix.os }}
@@ -424,7 +426,7 @@ jobs:
 
   # https://github.com/terryyin/lizard
   analysis-code-ccn:
-    name: Analysis - Code Complexity
+    name: Code Complexity
     needs: test-unit
     permissions:
       contents: read

@@ -40,6 +40,8 @@ jobs:
         uses: ./.github/workflows/test-coverage.yml
         with:
           github-branch-name: develop
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
+          codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
 
   coverage-main:
     runs-on: ubuntu-latest
@@ -61,3 +63,5 @@ jobs:
         uses: ./.github/workflows/test-coverage.yml
         with:
           github-branch-name: main
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
+          codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
