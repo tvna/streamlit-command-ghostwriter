@@ -12,7 +12,7 @@ import math
 import sys
 from datetime import date
 from io import BytesIO
-from typing import Dict, List, Mapping, Optional, Sequence, Union, cast
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Union, cast
 
 import numpy as np
 import pytest
@@ -331,6 +331,51 @@ class TestHelpers:
             f"Actual normalized:\n{actual_normalized}\n"
             f"Expected normalized:\n{expected_normalized}"
         )
+
+    @staticmethod
+    def assert_parsing_result(
+        content: bytes,
+        filename: str,
+        is_successful: bool,
+        expected_dict: Optional[ParsedDictType],
+        expected_error: Optional[str],
+        csv_options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """ファイル内容をパースし、結果をアサートするヘルパー関数。
+
+        Args:
+            content: パース対象のバイトデータ
+            filename: ファイル名
+            is_successful: パースが成功するかどうか
+            expected_dict: 期待される辞書 (Noneの場合は辞書比較をスキップ)
+            expected_error: 期待されるエラーメッセージ (Noneの場合はエラーがないことを期待)
+            csv_options: CSVパース用の追加オプション (例: {'csv_rows_name': 'items'})
+        """
+        config_file = TestHelpers.create_test_file(content, filename)
+        parser = ConfigParser(config_file)
+
+        # Apply CSV options if provided
+        if csv_options:
+            for key, value in csv_options.items():
+                setattr(parser, key, value)
+
+        # Perform parsing
+        actual_successful = parser.parse()
+        assert actual_successful == is_successful, f"Parsing success status mismatch. Expected: {is_successful}, Got: {actual_successful}"
+
+        # Assert error message
+        if expected_error is None:
+            assert parser.error_message is None, f"Expected no error message, but got: {parser.error_message}"
+        else:
+            assert parser.error_message is not None, f"Expected an error message containing '{expected_error}', but got None"
+            assert expected_error in str(parser.error_message), (
+                f"Error message mismatch. Expected to contain: '{expected_error}', Got: '{parser.error_message}'"
+            )
+
+        # Assert parsed dictionary (skip if expected_dict is explicitly None)
+        if expected_dict is not None:
+            assert parser.parsed_dict is not None, f"Expected a parsed dictionary, but got None. Error: {parser.error_message}"
+            TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)
 
 
 @pytest.mark.unit
@@ -958,25 +1003,14 @@ def test_parse(
         expected_error: 期待されるエラーメッセージ
         request: pytest fixture for accessing test metadata
     """
-    config_file = TestHelpers.create_test_file(content, filename)
-    parser = ConfigParser(config_file)
-    assert parser.parse() == is_successful
-
-    # Skip dict/str assertions for the circular reference test case
-    if "parser_yaml_circular_reference" in str(request.node.callspec.id):
-        pass  # Skip assertions
-    else:
-        if expected_dict is not None and parser.parsed_dict is not None:
-            TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)
-        else:
-            assert parser.parsed_dict == expected_dict, f"Parsed dict mismatch. Expected: {expected_dict}, Got: {parser.parsed_dict}"
-
-    if expected_error is None:
-        assert parser.error_message is None, f"Expected no error message, but got: {parser.error_message}"
-    else:
-        assert expected_error in str(parser.error_message), (
-            f"Error message mismatch. Expected to contain: '{expected_error}', Got: '{parser.error_message}'"
-        )
+    # Use the helper function to perform parsing and assertions
+    TestHelpers.assert_parsing_result(
+        content,
+        filename,
+        is_successful,
+        expected_dict,
+        expected_error,
+    )
 
 
 @pytest.mark.unit
