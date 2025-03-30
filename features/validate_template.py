@@ -51,7 +51,7 @@ NodeType = TypeVar("NodeType", bound=nodes.Node)
 NodeEvaluator = Callable[[NodeType, Dict[str, Any], Dict[str, Any]], Any]
 
 # 評価可能な値の型を定義
-EvaluatedValue = Union[None, str, Decimal, List[Any], Dict[str, Any], bool]
+EvaluatedValue = Union[str, Decimal, List[Any], Dict[str, Any], bool, None]
 
 
 class RecursiveValue(Protocol):
@@ -530,7 +530,7 @@ class TemplateSecurityValidator:
         node: nodes.Node,
         context: Dict[str, Any],
         assignments: Dict[str, Any],
-    ) -> Union[None, str, Decimal, List[Any], Dict[str, Any], bool]:
+    ) -> Union[str, Decimal, List[Any], Dict[str, Any], bool, None]:
         """式を評価する。
 
         Args:
