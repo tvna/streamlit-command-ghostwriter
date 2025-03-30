@@ -151,7 +151,6 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
-    ValidationInfo,
     field_validator,
 )
 
@@ -269,14 +268,6 @@ class ValidationState(BaseModel):
         self.is_valid = False
         self.error_message = str(message) if message is not None else ""
 
-    def set_content(self, content: str) -> None:
-        """テンプレート内容を設定する。
-
-        Args:
-            content: テンプレート内容
-        """
-        self.content = content
-
     def reset(self) -> None:
         """状態をリセットする。"""
         self.is_valid = True
@@ -320,46 +311,6 @@ class HTMLContent(BaseModel):
         for pattern in unsafe_patterns:
             if re.search(pattern, v, re.IGNORECASE):
                 raise ValueError("HTML content contains potentially unsafe elements")
-
-        return v
-
-
-class TemplateFile(BaseModel):
-    """テンプレートファイルのバリデーションモデル。"""
-
-    model_config = ConfigDict(strict=True)
-
-    content: bytes = Field(...)
-    max_size: int = Field(...)
-
-    @field_validator("content")
-    @classmethod
-    def validate_file_content(cls, v: bytes, info: ValidationInfo) -> bytes:
-        """ファイルコンテンツを検証する。
-
-        Args:
-            v: 検証対象のコンテンツ
-            info: バリデーション情報
-
-        Returns:
-            bytes: 検証済みのコンテンツ
-
-        Raises:
-            ValueError: ファイルサイズが制限を超える場合
-        """
-        max_size = info.data.get("max_size", 0)
-        if len(v) > max_size:
-            raise ValueError(f"Template file size exceeds maximum limit of {max_size} bytes")
-
-        # バイナリデータのチェック
-        if b"\x00" in v:
-            raise ValueError("Template file contains invalid binary data")
-
-        # UTF-8デコードのチェック
-        try:
-            v.decode("utf-8", errors="strict")
-        except UnicodeDecodeError as e:
-            raise ValueError("Template file contains invalid UTF-8 bytes") from e
 
         return v
 
@@ -1326,7 +1277,7 @@ class TemplateSecurityValidator:
         raise TypeError("Not a literal value")
 
     def validate_template_file(
-        self, template_file: BytesIO, validation_state: Optional[ValidationState] = None
+        self, template_file: BytesIO, validation_state: ValidationState
     ) -> Tuple[Optional[str], Optional[nodes.Template]]:
         """テンプレートファイルの検証を行う。
 
@@ -1337,8 +1288,6 @@ class TemplateSecurityValidator:
         Returns:
             Tuple[Optional[str], Optional[nodes.Template]]: (テンプレート内容, AST)のタプル。エラー時はNoneを含む
         """
-        if validation_state is None:
-            validation_state = ValidationState()
         validation_state.reset()
 
         try:
