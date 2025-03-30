@@ -187,15 +187,13 @@ class ConfigParser(BaseModel):
 
     def __initialize_from_file(self) -> None:
         """ファイルから初期化処理を行います。"""
-        try:
-            self.__file_extension = self.__extract_file_extension()
-            if self.__file_extension not in self.SUPPORTED_EXTENSIONS:
-                self.__error_message = "Unsupported file type"
-                return
 
-            self.__read_file_content()
-        except Exception as e:
-            self.__error_message = str(e)
+        self.__file_extension = self.__extract_file_extension()
+        if self.__file_extension not in self.SUPPORTED_EXTENSIONS:
+            self.__error_message = "Unsupported file type"
+            return
+
+        self.__read_file_content()
 
     def __extract_file_extension(self) -> str:
         """ファイル名から拡張子を抽出します。
@@ -239,35 +237,6 @@ class ConfigParser(BaseModel):
             self.__parsed_dict = None
             return False
 
-    def _format_yaml_error_message(self, error: yaml.MarkedYAMLError) -> str:
-        """Formats YAML parsing errors string for better readability.
-
-        Specifically handles errors related to unexpected characters (like tabs vs spaces)
-
-        Args:
-            error: The original MarkedYAMLError exception.
-
-        Returns:
-            A formatted string representation of the error.
-        """
-        error_msg = str(error)
-        # Standardize messages for errors caused by unexpected characters (e.g., tabs)
-        if "found character" in error_msg and "that cannot start any token" in error_msg:
-            # Replace multiple spaces representation with tab representation for clarity
-            error_msg = error_msg.replace("found character '       '", "found character '\\t'")
-            # If a tab was indeed found, duplicate the line showing the original space representation
-            # for comparison, as sometimes the error context might involve mixed spacing.
-            if "found character '\\t'" in error_msg:
-                lines = error_msg.split("\n")
-                for i, line in enumerate(lines):
-                    if "found character '\\t'" in line:
-                        # Insert the original space version before the tab version
-                        lines.insert(i, line.replace("'\\t'", "'       '"))
-                        break
-                error_msg = "\n".join(lines)
-        # Return the potentially modified error string
-        return error_msg
-
     def __parse_by_file_type(self, config_data: str) -> Dict[str, Any]:
         """ファイルタイプに応じたパース処理を行います。
 
@@ -289,16 +258,13 @@ class ConfigParser(BaseModel):
                         raise SyntaxError("Invalid YAML file loaded.")
                     return parsed_data
                 except yaml.MarkedYAMLError as e:
-                    # Format the YAML error message (e.g., for logging if needed)
-                    # formatted_msg = self._format_yaml_error_message(e)
-                    # print(formatted_msg) # Example of logging
                     # Re-raise the original exception to preserve marks for tests
                     raise e from e
             case "csv":
                 return self.__parse_csv_data(config_data)
             # The 'case _:' is used here to satisfy the type checker and catch unexpected states.
             # Validation in __initialize_from_file should prevent reaching this point.
-            case _:
+            case _:  # type: ignore
                 raise RuntimeError(
                     f"Internal error: Reached __parse_by_file_type with unexpected extension '{self.__file_extension}'. "
                     "Validation should have caught this."
@@ -311,22 +277,42 @@ class ConfigParser(BaseModel):
             パースされたCSVデータを含む辞書
 
         Raises:
-            ValueError: CSV行名が1文字未満の場合または設定データがNoneの場合
+            ValueError: CSV行名が1文字未満の場合、設定データがNoneの場合、またはCSV内容が不正な場合
+            pd.errors.ParserError: CSVのパースに失敗した場合
         """
+        # --- Check for null bytes before parsing ---
+        if "\x00" in config_data:
+            raise pd.errors.ParserError("Failed to parse CSV: Null byte detected in input data.")
+        # --- End Check ---
 
-        csv_data = pd.read_csv(StringIO(config_data), index_col=None)
+        try:
+            # 1. Attempt to read CSV
+            csv_data = pd.read_csv(StringIO(config_data), index_col=None, low_memory=False)
 
-        if self.__is_enable_fill_nan:
-            csv_data = self.__handle_csv_nan_values(csv_data)
+            # 2. Handle NaN filling if enabled
+            if self.__is_enable_fill_nan:
+                csv_data = self.__handle_csv_nan_values(csv_data)
 
-        if isinstance(csv_data, pd.DataFrame):
+            # 3. Convert DataFrame rows to a list of dictionaries
             mapped_list = [row.to_dict() for _, row in csv_data.iterrows()]
-            # Add check for empty data rows
-            if not mapped_list:
+
+            # 4. Early exit for header-only files (columns exist, but no data rows)
+            if not mapped_list and csv_data.columns.size > 0:
                 raise ValueError("CSV file must contain at least one data row.")
+
+            # 5. Return the successful result
             return {self.csv_rows_name: mapped_list}
 
-        return {}
+        # 6. Exception Handling (slightly adjusted comments/structure)
+        except (pd.errors.ParserError, pd.errors.EmptyDataError) as e:
+            # Re-raise specific pandas parsing/empty errors
+            raise e from e
+        except ValueError as e:
+            # Re-raise our specific ValueError (header-only check)
+            raise e from e
+        except Exception as e:
+            # Wrap any other unexpected exceptions during pandas processing in ParserError
+            raise pd.errors.ParserError(f"Failed to process CSV data due to an unexpected error: {e!s}") from e
 
     def __handle_csv_nan_values(self, csv_data: pd.DataFrame) -> pd.DataFrame:
         """CSVデータのNaN値を処理します。

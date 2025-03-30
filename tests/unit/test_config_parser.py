@@ -165,8 +165,9 @@ class TestHelpers:
             TestHelpers._assert_sequence_equality(actual_value, expected_value, current_path)
             return
 
-        # その他の場合 (date, ScalarValueType等)
-        assert actual_value == expected_value, f"Value mismatch at {current_path}"
+        # スカラー型または日付型の場合 (ScalarValueType or DateValueType)
+        # This explicitly calls the helper designed for scalar/NaN/type comparison logic.
+        TestHelpers.assert_value_equality(cast(ScalarValueType, actual_value), cast(ScalarValueType, expected_value), current_path)
 
     @staticmethod
     def assert_dict_equality(actual: Mapping[str, ValueType], expected: Mapping[str, ValueType], path: str = "") -> None:
@@ -224,13 +225,28 @@ class TestHelpers:
         """
         # NaN値の特別処理
         if TestHelpers.is_nan_value(actual):
-            assert TestHelpers.is_nan_value(expected), f"Value mismatch at {location}: Expected NaN, Got non-NaN value: {actual}"
+            assert TestHelpers.is_nan_value(expected), f"Value mismatch at {location}: Expected NaN, Got non-NaN value: {actual!r}"
             return
         if TestHelpers.is_nan_value(expected):
-            assert TestHelpers.is_nan_value(actual), f"Value mismatch at {location}: Expected non-NaN value, Got NaN: {actual}"
-            return
+            # If expected is NaN, actual must also be NaN (handled by the block above).
+            # This assertion ensures we don't incorrectly compare a non-NaN actual to an expected NaN.
+            assert TestHelpers.is_nan_value(actual), (
+                f"Value mismatch at {location}: Expected non-NaN value {expected!r}, Got NaN: {actual!r}"
+            )
+            return  # No further comparison needed if both are NaN
 
-        # 数値型とストリング型の相互変換対応
+        # --- Start: Prioritized Robust Boolean Comparison ---
+        is_actual_bool = isinstance(actual, (bool, np.bool_))
+        is_expected_bool = isinstance(expected, (bool, np.bool_))
+
+        if is_actual_bool and is_expected_bool:
+            assert bool(actual) == bool(expected), f"Boolean value mismatch at {location}: Expected {expected}, Got {actual}"
+            return  # Boolean comparison done
+        else:
+            pass  # Continue to other checks
+        # --- End: Prioritized Robust Boolean Comparison ---
+
+        # 数値型とストリング型の相互変換対応 (Booleans already handled)
         if isinstance(actual, (int, float)) and not TestHelpers.is_nan_value(actual):
             if isinstance(expected, str):
                 assert str(actual) == expected, f"Value mismatch at {location}: Expected string '{expected}', Got numeric {actual}"
@@ -243,7 +259,7 @@ class TestHelpers:
             except ValueError:
                 pass
 
-        # 通常の比較
+        # Fallback to standard comparison for other types
         assert actual == expected, f"Value mismatch at {location}: Expected {expected}, Got {actual}"
 
     @staticmethod
@@ -258,9 +274,10 @@ class TestHelpers:
         """
         if isinstance(value, float) and math.isnan(value):
             return True
-        if value is None:
-            return True
-        if hasattr(value, "dtype") and np.isnan(value):  # type: ignore
+        # Removed incorrect check: `if value is None: return True`
+        # Check for numpy NaN specifically, as it might be present from CSV parsing
+        # Use isinstance to avoid errors if value doesn't have 'dtype'
+        if isinstance(value, np.generic) and np.isnan(value):
             return True
         return False
 
@@ -715,6 +732,140 @@ def test_default_properties() -> None:
             "Error tokenizing data",  # Expect pandas ParserError
             id="parser_csv_malformed_header",
         ),
+        pytest.param(
+            b"\x00\x01\x02\x03\x04",  # Add test for .csv
+            "config.csv",
+            False,
+            None,
+            "None",
+            "Failed to parse CSV: Null byte detected in input data.",  # Expect specific null byte error
+            id="parser_csv_invalid_binary",
+        ),
+        # --- Start: New CSV Edge Case Tests ---
+        pytest.param(
+            b" col1 , col2 \n val1 , val2 \n",  # Leading/trailing whitespace
+            "config.csv",
+            True,
+            {"csv_rows": [{" col1 ": " val1 ", " col2 ": " val2 "}]},  # pandas preserves whitespace
+            "{ 'csv_rows': [{' col1 ': ' val1 ', ' col2 ': ' val2 '}]}",
+            None,
+            id="parser_csv_leading_trailing_whitespace",
+        ),
+        pytest.param(
+            b"col1,col2\r\nval1,val2\nval3,val4\rval5,val6",  # Mixed line endings
+            "config.csv",
+            True,
+            {"csv_rows": [{"col1": "val1", "col2": "val2"}, {"col1": "val3", "col2": "val4"}, {"col1": "val5", "col2": "val6"}]},
+            "{ 'csv_rows': [{'col1': 'val1', 'col2': 'val2'}, {'col1': 'val3', 'col2': 'val4'}, {'col1': 'val5', 'col2': 'val6'}]}",
+            None,
+            id="parser_csv_mixed_line_endings",
+        ),
+        pytest.param(
+            b"col1,col2\n123,abc\n456.7,True\nxyz,False\n,999",  # Highly mixed types
+            "config.csv",
+            True,
+            {
+                "csv_rows": [
+                    {"col1": "123", "col2": "abc"},
+                    {"col1": "456.7", "col2": "True"},
+                    {"col1": "xyz", "col2": "False"},
+                    {"col1": np.nan, "col2": "999"},
+                ]
+            },
+            # Ensure expected_str matches the actual pprint output with strings
+            (
+                "{ 'csv_rows': [{'col1': '123', 'col2': 'abc'}, {'col1': '456.7', 'col2': 'True'}, "
+                "{'col1': 'xyz', 'col2': 'False'}, {'col1': nan, 'col2': '999'}]}"
+            ),
+            None,
+            id="parser_csv_highly_mixed_types",
+        ),
+        pytest.param(
+            b" \t \n \n \t\t ",  # Whitespace only lines
+            "config.csv",
+            False,
+            None,
+            "None",
+            "No columns to parse from file",  # pandas reads it as empty
+            id="parser_csv_whitespace_only_lines",
+        ),
+        pytest.param(
+            b"col1,col2\n \t \n \n",  # Header then whitespace lines
+            "config.csv",
+            False,
+            None,
+            "None",
+            "CSV file must contain at least one data row.",  # Should be treated as header only
+            id="parser_csv_header_with_whitespace_lines",
+        ),
+        pytest.param(
+            b'col1,col2\n"line1\nline2",value2',  # Quoted newlines
+            "config.csv",
+            True,
+            {"csv_rows": [{"col1": "line1\nline2", "col2": "value2"}]},
+            "{ 'csv_rows': [{'col1': 'line1\\nline2', 'col2': 'value2'}]}",
+            None,
+            id="parser_csv_quoted_newlines",
+        ),
+        # --- End: New CSV Edge Case Tests ---
+        # --- Start: New TOML Edge Case Tests ---
+        pytest.param(
+            b"float_val = 3.14\ninf_val = inf\nnan_val = nan",
+            "config.toml",
+            True,
+            {"float_val": 3.14, "inf_val": float("inf"), "nan_val": float("nan")},
+            "{ 'float_val': 3.14, 'inf_val': inf, 'nan_val': nan}",  # Remove extra parens
+            None,
+            id="parser_toml_float_inf_nan",
+        ),
+        pytest.param(
+            b"bool_true = true\nbool_false = false",
+            "config.toml",
+            True,
+            {"bool_true": True, "bool_false": False},
+            "{ 'bool_true': True, 'bool_false': False}",
+            None,
+            id="parser_toml_booleans",
+        ),
+        pytest.param(
+            b'inline_table = { key1 = "val1", key2 = 123 }',
+            "config.toml",
+            True,
+            {"inline_table": {"key1": "val1", "key2": 123}},
+            "{ 'inline_table': {'key1': 'val1', 'key2': 123}}",
+            None,
+            id="parser_toml_inline_table",
+        ),
+        pytest.param(
+            b"[[points]]\nx = 1\ny = 2\n[[points]]\nx = 3\ny = 4",
+            "config.toml",
+            True,
+            {"points": [{"x": 1, "y": 2}, {"x": 3, "y": 4}]},
+            "{ 'points': [{'x': 1, 'y': 2}, {'x': 3, 'y': 4}]}",
+            None,
+            id="parser_toml_array_of_tables",
+        ),
+        pytest.param(
+            b"""
+            [table]\nkey = "val"\n[table.subtable]\nkey = "subval"\n[table]\nother_key = "redefined?"
+            """,
+            "config.toml",
+            False,
+            None,
+            "None",
+            "Cannot declare ('table',) twice (at line 6, column 7)",
+            id="parser_toml_redefine_table",
+        ),
+        pytest.param(
+            b"array = [1, 2, 3,]",  # Trailing comma is valid in TOML v1.0.0
+            "config.toml",
+            True,  # Should parse successfully
+            {"array": [1, 2, 3]},  # Expected dictionary
+            "{'array': [1, 2, 3]}",  # Expected string representation
+            None,  # No error expected
+            id="parser_toml_trailing_comma_array",
+        ),
+        # --- End: New TOML Edge Case Tests ---
     ],
 )
 def test_parse(
