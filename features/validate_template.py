@@ -96,7 +96,7 @@ class TemplateConfig(BaseModel):
 
     @field_validator("max_range_size")
     @classmethod
-    def validate_positive_limits(cls, v: int) -> int:
+    def _validate_positive_limits(cls, v: int) -> int:
         """制限値が正の値であることを検証する。
 
         Args:
@@ -124,7 +124,7 @@ class RangeConfig(BaseModel):
 
     @field_validator("step")
     @classmethod
-    def validate_step(cls, v: int) -> int:
+    def _validate_step(cls, v: int) -> int:
         """ステップ値を検証する。
 
         Args:
@@ -175,7 +175,7 @@ class HTMLContent(BaseModel):
 
     @field_validator("content")
     @classmethod
-    def validate_html_content(cls, v: str) -> str:
+    def _validate_html_content(cls, v: str) -> str:
         """HTMLコンテンツを検証する。
 
         Args:
@@ -232,16 +232,6 @@ class TemplateSecurityValidator:
         self._validation_state = ValidationState()
         self._max_file_size_bytes = max_file_size_bytes
         self._max_memory_size_bytes = max_memory_size_bytes
-
-    @property
-    def max_file_size(self) -> int:
-        """最大ファイルサイズを返す。"""
-        return self._max_file_size_bytes
-
-    @property
-    def max_memory_size(self) -> int:
-        """最大メモリ使用量を返す。"""
-        return self._max_memory_size_bytes
 
     @property
     def max_range_size(self) -> int:
@@ -441,28 +431,6 @@ class TemplateSecurityValidator:
                 logging.exception("Template security error: division by zero is not allowed")
                 return False
         return True
-
-    def validate_safe_content(self, node: nodes.Filter) -> ValidationState:
-        """safeフィルターで使用されるコンテンツの安全性を検証する。
-
-        Args:
-            node: フィルターノード
-
-        Returns:
-            ValidationState: 検証結果
-        """
-        validation_state = ValidationState()
-        try:
-            if isinstance(node.node, nodes.Const):
-                content = str(node.node.value)
-                HTMLContent(content=content)  # バリデーションのみ実行
-            else:
-                validation_state.set_error("Content validation error: node is not a constant")
-        except ValidationError as e:
-            validation_state.set_error(f"HTML content validation error: {e!s}")
-        except Exception as e:
-            validation_state.set_error(f"Content validation error: {e!s}")
-        return validation_state
 
     def html_safe_filter(self, value: str) -> Markup:
         """HTMLをエスケープせずに出力する。
