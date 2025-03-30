@@ -113,6 +113,38 @@ class TestInitialValidation:
                 "Template security validation failed",
                 id="template_security_large_loop_range",
             ),
+            # ファイルサイズ検証テスト
+            pytest.param(
+                b"",  # 空ファイル
+                True,
+                None,
+                id="template_validate_empty_file",
+            ),
+            pytest.param(
+                b"a" * (30 * 1024 * 1024),  # 制限値ちょうど
+                True,
+                None,
+                id="template_validate_max_size_exact",
+            ),
+            pytest.param(
+                b"a" * (30 * 1024 * 1024 + 1),  # 制限値オーバー
+                False,
+                f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
+                id="template_validate_max_size_exceeded",
+            ),
+            # バイナリデータ (Nullバイト) 検証テスト
+            pytest.param(
+                b"\x00",  # Nullバイトのみ
+                False,
+                "Template file contains invalid binary data",
+                id="template_validate_null_byte_only",
+            ),
+            pytest.param(
+                b"Hello\x00World",  # 有効なテキスト + Nullバイト
+                False,
+                "Template file contains invalid binary data",
+                id="template_validate_null_byte_in_text",
+            ),
         ],
     )
     def test_initial_validation(
