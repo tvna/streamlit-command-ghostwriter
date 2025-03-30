@@ -56,10 +56,10 @@ runs:
     run: |
       npm run dump
 
-  - name: Set GH_TOKEN
-    shell: bash
+  - name: Set GITHUB_TOKEN
     run: |
-      echo "::add-mask::${{ inputs.github-token }}" && export GH_TOKEN="${{ inputs.github-token }}"
+      echo "GITHUB_TOKEN=${{ inputs.github-token }}" >> "$GITHUB_ENV"
+      echo "GH_TOKEN=${{ inputs.github-token }}" >> "$GITHUB_ENV"
 
   - name: Build
     # TODO: stliteのWindows環境のビルド失敗が解消したら削除
