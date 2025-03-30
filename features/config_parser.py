@@ -171,40 +171,22 @@ class ConfigParser(BaseModel):
         Args:
             config_file: 設定ファイルのバイナリデータ
         """
-        # FileValidatorの初期化
-        file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
 
         # Pydanticモデルの初期化
         super().__init__(config_file=config_file)
 
         # ファイルサイズの検証
-        file_validator.validate_size(config_file)
-        if not file_validator.is_valid:
+        file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
+        if not file_validator.validate_size(config_file):
             self.__error_message = file_validator.error_message
             return
 
-        self.__initialize_from_file()
-
-    def __initialize_from_file(self) -> None:
-        """ファイルから初期化処理を行います。"""
-
-        self.__file_extension = self.__extract_file_extension()
+        # ファイル拡張子の抽出
+        self.__file_extension = self.config_file.name.split(".")[-1]
         if self.__file_extension not in self.SUPPORTED_EXTENSIONS:
             self.__error_message = "Unsupported file type"
             return
 
-        self.__read_file_content()
-
-    def __extract_file_extension(self) -> str:
-        """ファイル名から拡張子を抽出します。
-
-        Returns:
-            ファイルの拡張子
-        """
-        return self.config_file.name.split(".")[-1]
-
-    def __read_file_content(self) -> None:
-        """ファイルの内容を読み込みます。"""
         try:
             self.__config_data = self.config_file.read().decode("utf-8")
         except UnicodeDecodeError as e:
