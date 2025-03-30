@@ -1,0 +1,10 @@
+---
+description:
+globs: **/.github/actions/**/action.yml
+alwaysApply: false
+---
+# GitHub Actions composite actionの基本ルール
+
+## トップレベルキー検査
+- ファイルに必要なトップレベルキー (name, description inputs, outputs, run)が欠けている場合、追記します
+- env等の通常のワークフローにのみ有効で、composite actionで反応しない設定値は、全てジョブ内で処理するように記載すること
