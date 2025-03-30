@@ -15,6 +15,11 @@ on:
       - .cz_config.js
       - .pre-commit-config.yaml
       - "**.code-workspace"
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
 
 permissions:
   actions: read
