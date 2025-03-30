@@ -187,7 +187,7 @@ jobs:
 
       - name: NPM Audit
         run: |
-          # npm auditを実行（高リスクの脆弱性のみ失敗とする）
+          # npm auditを実行 (高リスクの脆弱性のみ失敗とする)
           echo "### NPM Audit Results" >> "$GITHUB_STEP_SUMMARY"
           npm audit --production --audit-level=high || {
             echo "::warning::High severity vulnerabilities found in production dependencies"
@@ -244,7 +244,7 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          # 通常のテスト実行（カバレッジ有、ベンチマークなし）
+          # 通常のテスト実行 (カバレッジ有、ベンチマークなし)
           poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
 
   test-coverage:
@@ -338,15 +338,6 @@ jobs:
         with:
           browser: ${{ matrix.browser }}
         timeout-minutes: 10
-
-      - name: Upload E2E Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-test-results-${{ matrix.os }}-${{ matrix.browser }}
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 5
 
   # ============================================================
   # ANALYSIS GROUP

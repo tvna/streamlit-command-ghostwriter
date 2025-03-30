@@ -6,8 +6,8 @@
 - メモリ使用量の制限
 - CSVデータの特殊処理
 
-クラス階層：
-- ConfigParser: メインのパースクラス（Pydanticモデル）
+クラス階層:
+- ConfigParser: メインのパースクラス (Pydanticモデル)
   - FileValidator: ファイルサイズの検証
   - pandas: CSVデータの処理
 
@@ -18,13 +18,13 @@
    - サポートされているファイル形式の確認
 
 2. ファイル処理
-   - エンコーディングの検証（UTF-8）
+   - エンコーディングの検証 (UTF-8)
    - ファイル拡張子の抽出
    - ファイル内容の読み込み
 
 3. パース処理
-   - ファイル形式に応じたパース（TOML/YAML/CSV）
-   - CSVデータの特殊処理（NaN値の処理）
+   - ファイル形式に応じたパース (TOML/YAML/CSV)
+   - CSVデータの特殊処理 (NaN値の処理)
    - パース結果の辞書変換
 
 4. メモリ管理
@@ -129,10 +129,10 @@ class ConfigParser(BaseModel):
             [toml, yaml, yml, csv]
 
     Properties:
-        parsed_dict: パース結果の辞書（エラー時はNone）
-        parsed_str: パース結果の文字列表現（エラー時は"None"）
-        error_message: エラーメッセージ（エラーがない場合はNone）
-        csv_rows_name: CSV行のキー名（デフォルト: "csv_rows"）
+        parsed_dict: パース結果の辞書 (エラー時はNone)
+        parsed_str: パース結果の文字列表現 (エラー時は"None")
+        error_message: エラーメッセージ (エラーがない場合はNone)
+        csv_rows_name: CSV行のキー名 (デフォルト: "csv_rows")
         enable_fill_nan: NaN値を置換するかどうか
         fill_nan_with: NaN値の置換値
 

@@ -6,7 +6,7 @@
 - コンテキストデータの適用とレンダリング
 - レンダリング結果のフォーマット処理
 
-クラス階層：
+クラス階層:
 - ValidationModels: バリデーションモデル
   - FormatConfig: フォーマット設定
   - ContextConfig: コンテキスト設定
@@ -24,23 +24,23 @@
 
 2. ファイル検証
    - FileValidatorによるサイズ制限のチェック
-   - エンコーディングの検証（UTF-8）
+   - エンコーディングの検証 (UTF-8)
    - バイナリデータの検出
 
 3. テンプレートの検証
-   - 構文チェック（Jinja2 AST）
-   - セキュリティチェック（禁止タグ、属性）
+   - 構文チェック (Jinja2 AST)
+   - セキュリティチェック (禁止タグ、属性)
    - 再帰的構造の検出
    - ループ範囲の制限
 
 4. コンテキストの適用
    - 変数の型チェック
-   - 未定義変数の検証（strict/non-strictモード）
+   - 未定義変数の検証 (strict/non-strictモード)
    - メモリ使用量の制限
    - 再帰的構造の防止
 
 5. 出力フォーマット
-   - 空白行の処理（保持/圧縮/削除）
+   - 空白行の処理 (保持/圧縮/削除)
    - 改行の正規化
    - HTMLコンテンツの安全性確認
 
@@ -53,7 +53,7 @@
 
 セキュリティ機能:
 - HTMLエスケープのデフォルト有効化
-- 安全なフィルター実装（safe, html_safe）
+- 安全なフィルター実装 (safe, html_safe)
 - 再帰的構造の検出と防止
 - メモリ使用量の制限
 - ループ回数の制限
@@ -91,6 +91,115 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from features.validate_template import TemplateSecurityValidator, ValidationState  # type: ignore
 from features.validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
+
+# --- Helper Types and Functions for CustomUndefined (moved to module level) ---
+
+T = TypeVar("T")
+
+
+def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", "OperandType"], str]:
+    """未定義変数に対する演算を処理するデコレータ。
+
+    Args:
+        func: デコレート対象の関数
+
+    Returns:
+        常に空文字列を返す関数
+    """
+    from functools import wraps
+
+    @wraps(func)
+    def wrapper(self: "CustomUndefined", other: "OperandType") -> str:
+        return ""
+
+    return wrapper
+
+
+class CustomUndefined(Undefined):
+    """非strictモード用のカスタムUndefinedクラス。
+
+    未定義変数に対して以下の動作を提供します:
+    - 属性アクセス: 空文字列を返す
+    - 文字列化: 空文字列を返す
+    - 演算: 空文字列を返す
+    - 比較: False を返す
+    """
+
+    # __init__ uses parent Undefined.__init__
+
+    def __getattr__(self, name: str) -> "CustomUndefined":
+        return self
+
+    def __str__(self) -> str:
+        return ""
+
+    def __html__(self) -> str:
+        return ""
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __eq__(self, other: object) -> bool:
+        # Allow comparison with Undefined and CustomUndefined itself
+        return isinstance(other, (Undefined, CustomUndefined))
+
+    # 算術演算子のサポート
+    @undefined_operation
+    def __add__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __radd__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __sub__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __rsub__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __mul__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __rmul__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __truediv__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __rtruediv__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __floordiv__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __rfloordiv__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __mod__(self, other: "OperandType") -> str:
+        return ""
+
+    @undefined_operation
+    def __rmod__(self, other: "OperandType") -> str:
+        return ""
+
+    def __call__(self, *args: object, **kwargs: object) -> "CustomUndefined":
+        return self
+
+
+# OperandType referencing the now module-level CustomUndefined
+OperandType = Union[str, int, float, bool, Undefined, CustomUndefined]
+
+# ---------------------------------------------------------------------------
 
 
 class FormatConfig(BaseModel):
@@ -153,8 +262,8 @@ class ContentFormatter:
     フォーマットタイプ:
         0: 空白行を保持
         1: 連続する空白行を1行に圧縮
-        2: 空白行を保持（タイプ0と同じ）
-        3: 連続する空白行を1行に圧縮（タイプ1と同じ）
+        2: 空白行を保持 (タイプ0と同じ)
+        3: 連続する空白行を1行に圧縮 (タイプ1と同じ)
         4: すべての空白行を削除
     """
 
@@ -223,9 +332,9 @@ class DocumentRender:
 
     主な機能:
     1. 入力検証
-       - フォーマット設定の検証（FormatConfig）
-       - コンテキストデータの検証（ContextConfig）
-       - 検証状態の管理（ValidationState）
+       - フォーマット設定の検証 (FormatConfig)
+       - コンテキストデータの検証 (ContextConfig)
+       - 検証状態の管理 (ValidationState)
 
     2. セキュリティ検証
        - テンプレートの構文チェック
@@ -235,7 +344,7 @@ class DocumentRender:
        - HTMLコンテンツの安全性確認
 
     3. レンダリング処理
-       - 未定義変数の処理（strict/non-strictモード）
+       - 未定義変数の処理 (strict/non-strictモード)
        - エラー処理の一元管理
        - メモリ使用量の監視
        - 出力フォーマットの制御
@@ -248,8 +357,8 @@ class DocumentRender:
 
     Properties:
         is_valid_template: テンプレートが有効かどうか
-        error_message: エラーメッセージ（エラーがない場合はNone）
-        render_content: レンダリング結果（レンダリングが行われていない場合はNone）
+        error_message: エラーメッセージ (エラーがない場合はNone)
+        render_content: レンダリング結果 (レンダリングが行われていない場合はNone)
 
     エラー処理:
     - ValidationError: 入力値の検証エラー
@@ -265,7 +374,7 @@ class DocumentRender:
         """DocumentRenderインスタンスを初期化する。
 
         Args:
-            template_file: テンプレートファイル（BytesIO）
+            template_file: テンプレートファイル (BytesIO)
 
         Note:
             初期検証に失敗した場合、エラー状態を保持します。
@@ -317,7 +426,7 @@ class DocumentRender:
         """エラーメッセージを返す。
 
         Returns:
-            Optional[str]: エラーメッセージ（エラーがない場合はNone）
+            Optional[str]: エラーメッセージ (エラーがない場合はNone)
         """
         return self._validation_state.error_message
 
@@ -326,7 +435,7 @@ class DocumentRender:
         """レンダリング結果を返す。
 
         Returns:
-            Optional[str]: レンダリング結果（レンダリングが行われていない場合はNone）
+            Optional[str]: レンダリング結果 (レンダリングが行われていない場合はNone)
         """
         return self._render_content
 
@@ -425,11 +534,11 @@ class DocumentRender:
 
         Args:
             context: テンプレートに適用するコンテキスト
-            format_type: フォーマットタイプ（0-4の整数）
+            format_type: フォーマットタイプ (0-4の整数)
             is_strict_undefined: 未定義変数を厳密にチェックするかどうか
 
         Returns:
-            Optional[ContextConfig]: バリデーション済みの設定（エラー時はNone）
+            Optional[ContextConfig]: バリデーション済みの設定 (エラー時はNone)
         """
         try:
             return ContextConfig(
@@ -473,7 +582,7 @@ class DocumentRender:
             context: テンプレートに適用するコンテキスト
 
         Returns:
-            Optional[str]: レンダリング結果（エラー時はNone）
+            Optional[str]: レンダリング結果 (エラー時はNone)
         """
         try:
             env = self._create_environment()
@@ -493,7 +602,7 @@ class DocumentRender:
 
         Args:
             context: テンプレートに適用するコンテキスト
-            format_type: フォーマットタイプ（0-4の整数）
+            format_type: フォーマットタイプ (0-4の整数)
             is_strict_undefined: 未定義変数を厳密にチェックするかどうか
 
         Returns:
@@ -588,114 +697,6 @@ class DocumentRender:
         Returns:
             Environment: 設定済みのJinja2環境
         """
-        from functools import wraps
-
-        T = TypeVar("T")
-
-        def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", Any], str]:
-            """未定義変数に対する演算を処理するデコレータ。
-
-            Args:
-                func: デコレート対象の関数
-
-            Returns:
-                常に空文字列を返す関数
-            """
-
-            @wraps(func)
-            def wrapper(self: "CustomUndefined", other: Any) -> str:
-                return ""
-
-            return wrapper
-
-        class CustomUndefined(Undefined):
-            """非strictモード用のカスタムUndefinedクラス。
-
-            未定義変数に対して以下の動作を提供します：
-            - 属性アクセス: 空文字列を返す
-            - 文字列化: 空文字列を返す
-            - 演算: 空文字列を返す
-            - 比較: False を返す
-            """
-
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                super().__init__(*args, **kwargs)
-
-            def __getattr__(self, name: str) -> "CustomUndefined":
-                return self
-
-            def __str__(self) -> str:
-                return ""
-
-            def __html__(self) -> str:
-                return ""
-
-            def __bool__(self) -> bool:
-                return False
-
-            def __eq__(self, other: object) -> bool:
-                return isinstance(other, (CustomUndefined, Undefined))
-
-            # 算術演算子のサポート
-            @undefined_operation
-            def __add__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __radd__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __sub__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __rsub__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __mul__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __rmul__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __div__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __rdiv__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __truediv__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __rtruediv__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __floordiv__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __rfloordiv__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __mod__(self, other: Any) -> str:
-                return ""
-
-            @undefined_operation
-            def __rmod__(self, other: Any) -> str:
-                return ""
-
-            def __call__(self, *args: Any, **kwargs: Any) -> "CustomUndefined":
-                return self
-
         env = Environment(
             autoescape=True,  # HTMLエスケープをデフォルトで有効化
             undefined=StrictUndefined if self._is_strict_undefined else CustomUndefined,

@@ -1,7 +1,7 @@
 """ConfigParserのテストモジュール。
 
 このモジュールは、ConfigParserクラスの機能をテストします。
-テストは以下のカテゴリに分類されます：
+テストは以下のカテゴリに分類されます:
 1. 初期化テスト
 2. パース機能テスト
 3. エッジケーステスト
@@ -26,7 +26,7 @@ ScalarValueType = Union[str, int, float, bool, None]
 # 日付型の値の型を定義
 DateValueType = date
 
-# 全ての値の型を定義（前方参照）
+# 全ての値の型を定義 (前方参照)
 ValueType = Union[
     ScalarValueType,
     "ArrayValueType",
@@ -77,7 +77,7 @@ class TestHelpers:
         Args:
             actual: 実際の辞書
             expected: 期待される辞書
-            current_path: 現在のパス（エラーメッセージ用）
+            current_path: 現在のパス (エラーメッセージ用)
         """
         TestHelpers.assert_dict_equality(actual, expected, current_path)
 
@@ -92,7 +92,7 @@ class TestHelpers:
         Args:
             actual: 実際のCSV行データ
             expected: 期待されるCSV行データ
-            current_path: 現在のパス（エラーメッセージ用）
+            current_path: 現在のパス (エラーメッセージ用)
         """
         TestHelpers.assert_csv_rows_equality(actual, expected)  # type: ignore
 
@@ -107,7 +107,7 @@ class TestHelpers:
         Args:
             actual: 実際のシーケンス
             expected: 期待されるシーケンス
-            current_path: 現在のパス（エラーメッセージ用）
+            current_path: 現在のパス (エラーメッセージ用)
         """
         assert len(actual) == len(expected), f"Length mismatch at {current_path}"
         for a, e in zip(actual, expected, strict=False):
@@ -144,7 +144,7 @@ class TestHelpers:
             actual_value: 実際の値
             expected_value: 期待される値
             key: キー
-            current_path: 現在のパス（エラーメッセージ用）
+            current_path: 現在のパス (エラーメッセージ用)
         """
         # マッピング型の場合
         if isinstance(expected_value, Mapping) and isinstance(actual_value, Mapping):
@@ -165,7 +165,7 @@ class TestHelpers:
             TestHelpers._assert_sequence_equality(actual_value, expected_value, current_path)
             return
 
-        # その他の場合（date, ScalarValueType等）
+        # その他の場合 (date, ScalarValueType等)
         assert actual_value == expected_value, f"Value mismatch at {current_path}"
 
     @staticmethod
@@ -175,7 +175,7 @@ class TestHelpers:
         Args:
             actual: 実際の辞書
             expected: 期待される辞書
-            path: 現在のパス（エラーメッセージ用）
+            path: 現在のパス (エラーメッセージ用)
         """
         assert set(actual.keys()) == set(expected.keys()), (
             f"Keys do not match at path: {path}. Expected: {set(expected.keys())}, Got: {set(actual.keys())}"
@@ -220,7 +220,7 @@ class TestHelpers:
         Args:
             actual: 実際の値
             expected: 期待される値
-            location: 値の場所（エラーメッセージ用）
+            location: 値の場所 (エラーメッセージ用)
         """
         # NaN値の特別処理
         if TestHelpers.is_nan_value(actual):

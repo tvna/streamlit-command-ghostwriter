@@ -1,13 +1,13 @@
 """テンプレートのレンダリングと検証のテストモジュール。
 
 このモジュールは、DocumentRenderクラスのテストを提供します。
-テストは以下の3つの主要なカテゴリに分かれています：
+テストは以下の3つの主要なカテゴリに分かれています:
 
 1. 初期検証テスト
    - ファイルサイズ
    - エンコーディング
    - 構文
-   - セキュリティ（静的解析）
+   - セキュリティ (静的解析)
 
 2. ランタイム検証テスト
    - 再帰的構造
@@ -272,7 +272,7 @@ class TestValidationConsistency:
     """検証の一貫性テストクラス。
 
     このクラスは、初期検証とランタイム検証の結果の一貫性をテストします。
-    特に、以下の点を確認します：
+    特に、以下の点を確認します:
     1. 初期検証で失敗する場合、ランタイム検証も失敗すること
     2. 初期検証で成功する場合、ランタイム検証の結果が一貫していること
     """
@@ -420,7 +420,7 @@ class TestValidationConsistency:
             )
             return
 
-        # ランタイム検証（初期検証が成功した場合のみ実行）
+        # ランタイム検証 (初期検証が成功した場合のみ実行)
         if expected_initial_valid:
             # Act - ランタイム検証
             apply_result = renderer.apply_context(context, format_type, is_strict_undefined)
@@ -584,7 +584,7 @@ class TestValidationConsistency:
             "'undefined_var' is undefined",
             id="template_render_undefined_in_condition_strict",
         ),
-        # 定義済み変数のチェック - is_definedフィルター（非strictモード）
+        # 定義済み変数のチェック - is_definedフィルター (非strictモード)
         pytest.param(
             b"{{ name if name is defined else 'Anonymous' }}",
             3,
@@ -596,7 +596,7 @@ class TestValidationConsistency:
             None,
             id="template_render_defined_check_non_strict",
         ),
-        # 定義済み変数のチェック - is_definedフィルター（strictモード）
+        # 定義済み変数のチェック - is_definedフィルター (strictモード)
         pytest.param(
             b"{{ name if name is defined else 'Anonymous' }}",
             3,
@@ -684,7 +684,7 @@ class TestValidationConsistency:
             3,
             True,
             {"value": 0},
-            True,  # テンプレートは無効（ゼロ除算は禁止）
+            True,  # テンプレートは無効 (ゼロ除算は禁止)
             False,  # 適用は失敗する
             None,  # 出力内容はない
             "Template rendering error: division by zero",  # エラーメッセージ
@@ -1113,7 +1113,7 @@ def test_render_edge_cases(
             3,
             True,
             {},
-            True,  # 初期検証では成功（静的解析では検出しない）
+            True,  # 初期検証では成功 (静的解析では検出しない)
             False,  # ランタイム検証で失敗
             None,  # 出力なし
             "Template security error: recursive structure detected",  # ランタイムエラー
@@ -1125,7 +1125,7 @@ def test_render_edge_cases(
             3,
             False,
             {},
-            True,  # 初期検証では成功（静的解析では検出しない）
+            True,  # 初期検証では成功 (静的解析では検出しない)
             False,  # ランタイム検証で失敗
             None,  # 出力なし
             "Template security error: recursive structure detected",  # ランタイムエラー
@@ -1137,7 +1137,7 @@ def test_render_edge_cases(
             3,
             True,
             {},
-            True,  # 初期検証では成功（静的解析では検出しない）
+            True,  # 初期検証では成功 (静的解析では検出しない)
             False,  # ランタイム検証で失敗
             None,  # 出力なし
             "Template security error: recursive structure detected",  # ランタイムエラー
@@ -1149,7 +1149,7 @@ def test_render_edge_cases(
             3,
             False,
             {},
-            True,  # 初期検証では成功（静的解析では検出しない）
+            True,  # 初期検証では成功 (静的解析では検出しない)
             False,  # ランタイム検証で失敗
             None,  # 出力なし
             "Template security error: recursive structure detected",  # ランタイムエラー
@@ -1194,9 +1194,9 @@ def test_recursive_structure_detection(
 ) -> None:
     """再帰的構造の検出をテストする。
 
-    このテストは以下の2つの段階を検証します：
-    1. 初期検証段階：静的解析は行わず、構文的な正当性のみを確認
-    2. ランタイム検証段階：実行時に再帰的構造を検出
+    このテストは以下の2つの段階を検証します:
+    1. 初期検証段階: 静的解析は行わず、構文的な正当性のみを確認
+    2. ランタイム検証段階: 実行時に再帰的構造を検出
 
     Args:
         create_template_file: テンプレートファイル作成用フィクスチャ

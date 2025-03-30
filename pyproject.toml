@@ -104,15 +104,7 @@ lint.select = [
   "TCH",
 ]
 lint.ignore = [
-  "RUF001",
   "RUF002",
-  "RUF003",
-]
-lint.per-file-ignores."features/document_render.py" = [
-  "ANN401",
-]
-lint.per-file-ignores."scripts/check_version.py" = [
-  "S603",
 ]
 lint.per-file-ignores."scripts/create_pr.py" = [
   "S603",
@@ -122,6 +114,9 @@ lint.per-file-ignores."tests/*" = [
   "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
   "S101",  # Use of assert detected
   "S603",  # `subprocess` call: check for execution of untrusted input
+]
+lint.per-file-ignores."tests/e2e/conftest.py" = [
+  "S404",
 ]
 lint.per-file-ignores."tests/workflow/*" = [
   "S105", # Possible hardcoded password assigned to: "{}"

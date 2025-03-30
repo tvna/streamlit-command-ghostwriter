@@ -1,7 +1,7 @@
 """テンプレートのレンダリングと検証を行うモジュール。
 
 このモジュールは、テンプレートの検証、レンダリング、フォーマット処理を提供します。
-主な機能は以下の通りです：
+主な機能は以下の通りです:
 
 1. テンプレートの検証
    - 構文チェック
@@ -21,7 +21,7 @@
    - 空白行の処理
    - 改行の正規化
 
-クラス階層：
+クラス階層:
 - ValidationModels: バリデーションモデル
   - TemplateConfig: テンプレート設定
   - RangeConfig: rangeループの設定
@@ -34,8 +34,8 @@
   - TemplateSecurityValidator: テンプレートのセキュリティ検証
   - ContextValidator: コンテキスト検証
 
-バリデーション階層：
-1. 静的解析（初期検証）
+バリデーション階層:
+1. 静的解析 (初期検証)
    - ファイルサイズの検証
    - エンコーディングの検証
    - 禁止タグのチェック
@@ -50,13 +50,13 @@
    - テンプレートインジェクション対策
    - 再帰的構造の検出
 
-制限値：
+制限値:
 - ファイルサイズ: 1MB (1,048,576 bytes)
 - メモリ使用量: 10MB (10,485,760 bytes)
 - ループ範囲: 100,000回
 - 再帰の深さ: 100レベル
 
-セキュリティ対策：
+セキュリティ対策:
 1. 禁止タグ
    - macro: マクロ定義の禁止
    - include: 外部ファイルの読み込み禁止
@@ -78,7 +78,7 @@
    - VBScriptプロトコルの禁止
    - イベントハンドラ属性の禁止
 
-エラーハンドリング：
+エラーハンドリング:
 1. バリデーションエラー
    - Pydanticの`ValidationError`を使用
    - エラーメッセージの標準化
@@ -106,7 +106,7 @@ with open('template.txt', 'rb') as f:
 
 TODO:
 1. パフォーマンスの改善
-   - ファイルサイズの検証方法の最適化（seek/tellの活用）
+   - ファイルサイズの検証方法の最適化 (seek/tellの活用)
    - メモリ使用量の監視強化
    - バリデーションの並列処理の検討
 
@@ -167,7 +167,7 @@ EvaluatedValue = Union[None, str, Decimal, List[Any], Dict[str, Any], bool]
 class RecursiveValue(Protocol):
     """再帰的な構造を持つ値の型プロトコル。
 
-    このプロトコルは、再帰的な構造（リスト、辞書、セットなど）を持つ値の型を定義します。
+    このプロトコルは、再帰的な構造 (リスト、辞書、セットなど)を持つ値の型を定義します。
     再帰的な構造は、自身の要素として同じ型の値を含むことができます。
     """
 
@@ -275,7 +275,7 @@ class ValidationState(BaseModel):
         """エラーメッセージを設定する。
 
         Args:
-            message: エラーメッセージ（Noneの場合は空文字列に変換）
+            message: エラーメッセージ (Noneの場合は空文字列に変換)
         """
         self.is_valid = False
         self.error_message = str(message) if message is not None else ""
@@ -379,8 +379,8 @@ class TemplateSecurityValidator:
     """テンプレートのセキュリティ検証を行うクラス。
 
     テンプレートの構文、セキュリティ、および構造を検証します。
-    検証は以下の2段階で実行されます：
-    1. 静的解析（初期検証）
+    検証は以下の2段階で実行されます:
+    1. 静的解析 (初期検証)
        - ファイルサイズの検証
        - エンコーディングの検証
        - 禁止タグのチェック
@@ -444,7 +444,7 @@ class TemplateSecurityValidator:
         if not self._validate_restricted_attributes(ast, self._validation_state):
             return self._validation_state
 
-        # 3. ループ範囲の検証（リテラル値のみ）
+        # 3. ループ範囲の検証 (リテラル値のみ)
         if not self._validate_loop_range(ast, self._validation_state):
             return self._validation_state
 
@@ -1264,8 +1264,8 @@ class TemplateSecurityValidator:
         """テンプレートファイルの検証を行う。
 
         Args:
-            template_file: テンプレートファイル（BytesIO）
-            validation_state: 検証状態（Noneの場合は新規作成）
+            template_file: テンプレートファイル (BytesIO)
+            validation_state: 検証状態 (Noneの場合は新規作成)
 
         Returns:
             Tuple[Optional[str], Optional[nodes.Template]]: (テンプレート内容, AST)のタプル。エラー時はNoneを含む
@@ -1302,7 +1302,7 @@ class TemplateSecurityValidator:
             if ast is None:
                 return None, None
 
-            # セキュリティチェック（静的検証のみ）
+            # セキュリティチェック (静的検証のみ)
             if not self.validate_template(ast).is_valid:
                 validation_state.set_error("Template security validation failed")
                 return None, None
@@ -1321,7 +1321,7 @@ class TemplateSecurityValidator:
             validation_state: 検証状態
 
         Returns:
-            Optional[nodes.Template]: 構文解析結果（エラーの場合はNone）
+            Optional[nodes.Template]: 構文解析結果 (エラーの場合はNone)
         """
         try:
             env = Environment(autoescape=True)

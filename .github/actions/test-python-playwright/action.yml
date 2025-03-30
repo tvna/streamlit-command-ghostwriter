@@ -45,7 +45,7 @@ runs:
     id: e2e-tests-non-windows
     shell: bash
     run: |
-      # E2Eテスト実行（ベンチマークなし）
+      # E2Eテスト実行 (ベンチマークなし)
       poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
 
   - name: E2E Tests (${{ matrix.os }} / ${{ inputs.browser }})
@@ -58,7 +58,7 @@ runs:
       # Windows環境でUTF-8を使用するための設定
       chcp 65001
 
-      # E2Eテスト実行（ベンチマークなし）
+      # E2Eテスト実行 (ベンチマークなし)
       poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
 
   - name: E2E benchmark (non-Windows)
