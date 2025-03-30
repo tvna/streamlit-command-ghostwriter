@@ -277,7 +277,7 @@ jobs:
           codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
 
   test-e2e:
-    name: E2E Tests by ${{ matrix.os }}
+    name: E2E Tests (${{ matrix.os }} & ${{ matrix.browser }})
     needs: small-unit-test
     permissions:
       contents: read
@@ -327,7 +327,7 @@ jobs:
         timeout-minutes: 10
 
   test-e2e-benchmark:
-    name: E2E Benchmark by ${{ matrix.os }})
+    name: E2E Benchmark (${{ matrix.os }})
     needs: [small-unit-test]
     permissions:
       contents: read

@@ -65,6 +65,7 @@ runs:
     if: |
       inputs.is-benchmark == 'true'
     id: e2e-benchmark
+    shell: bash
     run: |
       # E2Eテストのベンチマーク実行
       poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
@@ -75,6 +76,7 @@ runs:
       inputs.is-benchmark == 'true'
       steps.e2e-benchmark.outcome == 'failure'
     id: e2e-benchmark-retry
+    shell: bash
     run: |
       # E2Eテストのベンチマーク実行
       poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
