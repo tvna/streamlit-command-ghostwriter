@@ -696,6 +696,25 @@ def test_default_properties() -> None:
             "Invalid statement",
             id="parser_toml_bom_marker",
         ),
+        # Add new CSV edge cases
+        pytest.param(
+            b"col1,col2\n",  # Header only, no data rows
+            "config.csv",
+            False,  # Parsing should now fail
+            None,  # Expect no dictionary
+            "None",  # Expect "None" string
+            "CSV file must contain at least one data row.",  # Expect the new ValueError
+            id="parser_csv_header_only",
+        ),
+        pytest.param(
+            b'col1,col2\nval1,"unclosed_val2',  # Malformed data row with unclosed quote
+            "config.csv",
+            False,  # Parsing fails
+            None,
+            "None",
+            "Error tokenizing data",  # Expect pandas ParserError
+            id="parser_csv_malformed_header",
+        ),
     ],
 )
 def test_parse(
