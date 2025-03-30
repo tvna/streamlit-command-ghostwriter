@@ -1,124 +1,13 @@
-"""テンプレートのレンダリングと検証を行うモジュール。
+"""テンプレートの検証と関連するPydanticモデルを提供するモジュール。
 
-このモジュールは、テンプレートの検証、レンダリング、フォーマット処理を提供します。
-主な機能は以下の通りです:
+主な機能:
+- テンプレート設定、検証状態などのPydanticモデル定義
+- TemplateSecurityValidator: Jinja2テンプレートのセキュリティ検証
+  - ファイルサイズ、構文、エンコーディング、禁止タグ・属性、ループ範囲などの静的検証
+  - 再帰構造、ゼロ除算、動的ループ範囲などのランタイム検証 (コンテキスト適用後)
 
-1. テンプレートの検証
-   - 構文チェック
-   - セキュリティチェック
-   - ファイルサイズの検証
-   - エンコーディングの検証
-2. コンテキストの適用
-   - 変数の検証
-   - 型チェック
-   - 再帰的構造の検出
-3. セキュリティ検証
-   - 禁止タグのチェック
-   - 禁止属性のチェック
-   - ループ範囲の制限
-   - テンプレートインジェクション対策
-4. 出力フォーマット
-   - 空白行の処理
-   - 改行の正規化
-
-クラス階層:
-- ValidationModels: バリデーションモデル
-  - TemplateConfig: テンプレート設定
-  - RangeConfig: rangeループの設定
-  - ValidationState: 検証状態
-  - HTMLContent: HTMLコンテンツ
-  - TemplateFile: テンプレートファイル
-- DocumentRender: メインのレンダリングクラス
-  - TemplateValidator: テンプレート検証
-  - ContentFormatter: フォーマット処理
-  - TemplateSecurityValidator: テンプレートのセキュリティ検証
-  - ContextValidator: コンテキスト検証
-
-バリデーション階層:
-1. 静的解析 (初期検証)
-   - ファイルサイズの検証
-   - エンコーディングの検証
-   - 禁止タグのチェック
-   - 禁止属性のチェック
-   - リテラル値のループ範囲チェック
-2. ランタイム検証
-   - 再帰的構造の検出
-   - ゼロ除算の検証
-   - 動的なループ範囲の検証
-3. セキュリティ検証
-   - HTMLコンテンツの安全性チェック
-   - テンプレートインジェクション対策
-   - 再帰的構造の検出
-
-制限値:
-- ファイルサイズ: 1MB (1,048,576 bytes)
-- メモリ使用量: 10MB (10,485,760 bytes)
-- ループ範囲: 100,000回
-- 再帰の深さ: 100レベル
-
-セキュリティ対策:
-1. 禁止タグ
-   - macro: マクロ定義の禁止
-   - include: 外部ファイルの読み込み禁止
-   - import: モジュールのインポート禁止
-   - extends: テンプレートの継承禁止
-
-2. 禁止属性
-   - システム関連: os, sys, builtins
-   - 評価関連: eval, exec
-   - 属性操作: getattr, setattr, delattr
-   - スコープ関連: globals, locals
-   - クラス関連: __class__, __base__, __subclasses__, __mro__
-   - その他: request, config
-
-3. HTMLセキュリティ
-   - スクリプトタグの禁止
-   - JavaScriptプロトコルの禁止
-   - データURIスキームの禁止
-   - VBScriptプロトコルの禁止
-   - イベントハンドラ属性の禁止
-
-エラーハンドリング:
-1. バリデーションエラー
-   - Pydanticの`ValidationError`を使用
-   - エラーメッセージの標準化
-   - エラー状態の一元管理
-
-2. セキュリティエラー
-   - 明確なエラーメッセージ
-   - エラー原因の特定
-   - 適切なエラー伝播
-
-3. 構文エラー
-   - Jinja2の`TemplateSyntaxError`のハンドリング
-   - エラー位置の特定
-   - エラーメッセージの明確化
-
-典型的な使用方法:
-```python
-with open('template.txt', 'rb') as f:
-    template_file = BytesIO(f.read())
-    renderer = DocumentRender(template_file)
-    if renderer.is_valid_template:
-        renderer.apply_context({'name': 'World'}, format_type=FormatType.NORMALIZE_BREAKS)
-        result = renderer.render_content
-```
-
-TODO:
-1. パフォーマンスの改善
-   - ファイルサイズの検証方法の最適化 (seek/tellの活用)
-   - メモリ使用量の監視強化
-   - バリデーションの並列処理の検討
-
-2. セキュリティの強化
-   - テンプレートインジェクション対策の強化
-   - 再帰的構造の検出精度の向上
-   - セキュリティルールの動的更新機能の追加
-
-3. エラー処理の改善
-   - エラーメッセージの多言語対応
-   - エラーコードの体系化
-   - デバッグ情報の充実化
+ファイルサイズ上限は `TemplateSecurityValidator` の初期化時に指定可能です。
+通常、このモジュールのクラスは `DocumentRender` から利用されます。
 """
 
 import decimal
@@ -153,6 +42,8 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
+
+# Re-add the import for FileValidator and FileSizeConfig
 
 T = TypeVar("T")
 RecursiveT = TypeVar("RecursiveT", bound="RecursiveValue")
@@ -1010,14 +901,15 @@ class TemplateSecurityValidator:
         left_num = cast("Decimal", left)
         right_num = cast("Decimal", right)
 
+        # Use lambdas for simple arithmetic operations
         operator_map: Dict[type[nodes.BinExpr], Callable[[Decimal, Decimal], Decimal]] = {
-            nodes.Add: self._add,
-            nodes.Sub: self._subtract,
-            nodes.Mul: self._multiply,
-            nodes.Div: self._divide,
-            nodes.FloorDiv: self._floor_divide,
-            nodes.Mod: self._modulo,
-            nodes.Pow: self._power,
+            nodes.Add: lambda a, b: a + b,
+            nodes.Sub: lambda a, b: a - b,
+            nodes.Mul: lambda a, b: a * b,
+            nodes.Div: lambda a, b: a / b,  # Division by zero checked earlier
+            nodes.FloorDiv: lambda a, b: Decimal(a // b),
+            nodes.Mod: lambda a, b: a % b,
+            nodes.Pow: lambda a, b: Decimal(pow(float(a), float(b))),
         }
 
         operator_func = operator_map.get(type(node))
@@ -1028,34 +920,6 @@ class TemplateSecurityValidator:
             return operator_func(left_num, right_num)
         except decimal.InvalidOperation as e:
             raise ValueError(f"Invalid numeric operation: {e!s}") from e
-
-    def _add(self, left: Decimal, right: Decimal) -> Decimal:
-        """加算を実行する。"""
-        return left + right
-
-    def _subtract(self, left: Decimal, right: Decimal) -> Decimal:
-        """減算を実行する。"""
-        return left - right
-
-    def _multiply(self, left: Decimal, right: Decimal) -> Decimal:
-        """乗算を実行する。"""
-        return left * right
-
-    def _divide(self, left: Decimal, right: Decimal) -> Decimal:
-        """除算を実行する。"""
-        return left / right
-
-    def _floor_divide(self, left: Decimal, right: Decimal) -> Decimal:
-        """床除算を実行する。"""
-        return Decimal(left // right)
-
-    def _modulo(self, left: Decimal, right: Decimal) -> Decimal:
-        """剰余を実行する。"""
-        return left % right
-
-    def _power(self, left: Decimal, right: Decimal) -> Decimal:
-        """べき乗を実行する。"""
-        return Decimal(pow(float(left), float(right)))
 
     def _validate_restricted_tags(self, ast: nodes.Template, validation_state: ValidationState) -> bool:
         """禁止タグを検証する。
