@@ -5,6 +5,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  NODE_OPTIONS: "--max-http-header-size=8192 --max-old-space-size=4096"
+
 runs:
   using: "composite"
   steps:
@@ -46,22 +49,20 @@ runs:
       key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
 
   - name: Dump package
-    run: |
-      npm run dump
     # TODO: stliteのWindows環境のビルド失敗が解消したら削除
     if: runner.os == 'MacOS'
+    run: |
+      npm run dump
 
   - name: Set GH_TOKEN
     run: |
       echo "::add-mask::${{ secrets.GITHUB_TOKEN }}" && export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 
   - name: Build
-    run: |
-      npm run dist
-    env:
-      NODE_OPTIONS: "--max-http-header-size=8192 --max-old-space-size=4096"
     # TODO: stliteのWindows環境のビルド失敗が解消したら削除
     if: runner.os == 'MacOS'
+    run: |
+      npm run dist
 
   - name: Upload artifact (Windows)
     uses: actions/upload-artifact@v4.6.2
