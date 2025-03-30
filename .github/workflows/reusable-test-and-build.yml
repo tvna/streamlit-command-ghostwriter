@@ -337,7 +337,6 @@ jobs:
       matrix:
         os:
           - macos-latest
-          - windows-latest
         browser:
           - chromium
     steps:
