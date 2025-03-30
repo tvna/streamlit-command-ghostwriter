@@ -31,3 +31,4 @@ jobs:
 
   create-pr-to-main:
     uses: ./.github/workflows/reusable-create-pr.yml
+    needs: main
