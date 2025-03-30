@@ -1,16 +1,7 @@
 name: Create PR to main
 
 on:
-  workflow_run:
-    workflows: ["Test & Build (on push)"]
-    types:
-      - completed
-    branches:
-      - develop
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
-  cancel-in-progress: true
+  workflow_call: {}
 
 permissions:
   contents: read

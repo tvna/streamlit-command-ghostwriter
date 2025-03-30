@@ -25,6 +25,10 @@ on:
       workflow_summary_name:
         required: true
         type: string
+    outputs:
+      build_succeeded:
+        description: "Whether the build succeeded"
+        value: ${{ jobs.workflow-summary.outputs.build_succeeded }}
 
 defaults:
   run:
@@ -243,6 +247,15 @@ jobs:
           # 通常のテスト実行（カバレッジ有、ベンチマークなし）
           poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
 
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-${{ matrix.os }}-${{ matrix.python-version }}
+          path: |
+            .coverage
+            coverage.xml
+          retention-days: 5
+
   test-coverage:
     name: Coverage
     needs: small-unit-test
@@ -275,6 +288,15 @@ jobs:
           github-branch-name: ${{ github.ref }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            coverage.xml
+            htmlcov/
+          retention-days: 5
 
   test-e2e:
     name: E2E Tests (${{ matrix.os }} & ${{ matrix.browser }})
@@ -325,6 +347,15 @@ jobs:
         with:
           browser: ${{ matrix.browser }}
         timeout-minutes: 10
+
+      - name: Upload E2E Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results-${{ matrix.os }}-${{ matrix.browser }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 5
 
   # ============================================================
   # ANALYSIS GROUP
@@ -428,6 +459,15 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-app-${{ matrix.os }}
+          path: |
+            dist/
+            build/
+          retention-days: 5
+
   # ============================================================
   # WORKFLOW SUMMARY
   # ============================================================
@@ -438,6 +478,8 @@ jobs:
     needs: [test-coverage, test-e2e, analysis-code-ccn, build-desktop]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      build_succeeded: ${{ steps.set-result.outputs.build_succeeded }}
 
     steps:
       - name: Harden Runner
@@ -448,7 +490,8 @@ jobs:
           disable-file-monitoring: false
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - run: |
+      - id: set-result
+        run: |
           {
             # 総合結果の表示
             echo ""
@@ -457,8 +500,10 @@ jobs:
             # いずれかのジョブが失敗した場合に失敗とする
             if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
               echo "⚠️ **一部のジョブが失敗しました。詳細を確認してください。**"
+              echo "build_succeeded=false" >> "$GITHUB_OUTPUT"
             else
               echo "✅ **すべてのジョブが正常に完了しました**"
+              echo "build_succeeded=true" >> "$GITHUB_OUTPUT"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
