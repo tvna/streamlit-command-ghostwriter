@@ -1,6 +1,11 @@
 name: 'Build by stlite'
 description: 'Setup playwright with cache'
 
+inputs:
+  github-token:
+    description: 'GitHub token'
+    required: true
+
 env:
   NODE_OPTIONS: "--max-http-header-size=8192 --max-old-space-size=4096"
 
@@ -54,7 +59,7 @@ runs:
   - name: Set GH_TOKEN
     shell: bash
     run: |
-      echo "::add-mask::${{ secrets.GITHUB_TOKEN }}" && export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+      echo "::add-mask::${{ inputs.github-token }}" && export GH_TOKEN="${{ inputs.github-token }}"
 
   - name: Build
     # TODO: stliteのWindows環境のビルド失敗が解消したら削除

@@ -519,6 +519,8 @@ jobs:
 
       - name: Build by stlite
         uses: ./.github/actions/build-stlite
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================================
   # WORKFLOW SUMMARY
