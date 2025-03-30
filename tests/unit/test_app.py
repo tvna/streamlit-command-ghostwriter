@@ -4,6 +4,24 @@ from typing import Dict, List
 import pytest
 from streamlit.testing.v1 import AppTest
 
+# Constants for expected UI element counts
+EXPECTED_TITLE_COUNT = 1
+EXPECTED_TAB_COUNT = 4
+MIN_EXPECTED_COLUMN_COUNT = 5
+MIN_EXPECTED_SUBHEADER_COUNT = 1
+MIN_EXPECTED_SIDEBAR_COUNT = 1
+MIN_EXPECTED_MARKDOWN_COUNT = 1
+MIN_EXPECTED_BUTTON_COUNT = 5
+
+# Constants for button keys
+BUTTON_KEYS = [
+    "tab1_execute_text",
+    "tab1_execute_markdown",
+    "tab2_execute_visual",
+    "tab2_execute_toml",
+    "tab2_execute_yaml",
+]
+
 
 @pytest.fixture
 def app_test() -> AppTest:
@@ -30,16 +48,16 @@ def test_main_layout(app_test: AppTest) -> None:
     - 警告、エラー、成功メッセージの表示状態
     """
     # Arrange - 初期状態の検証
-    assert app_test.title.len == 1, "Title is not displayed"
-    assert len(app_test.tabs) == 4, "Four tabs are not displayed"
-    assert len(app_test.columns) >= 5, "At least 5 columns are required"
-    assert app_test.subheader.len >= 1, "Subheader is not displayed"
-    assert len(app_test.sidebar) >= 1, "Sidebar is not displayed"
-    assert app_test.markdown.len >= 1, "Markdown element is not displayed"
-    assert app_test.button.len >= 5, "At least 5 buttons are required"
+    assert app_test.title.len == EXPECTED_TITLE_COUNT, "Title is not displayed"
+    assert len(app_test.tabs) == EXPECTED_TAB_COUNT, "Four tabs are not displayed"
+    assert len(app_test.columns) >= MIN_EXPECTED_COLUMN_COUNT, f"At least {MIN_EXPECTED_COLUMN_COUNT} columns are required"
+    assert app_test.subheader.len >= MIN_EXPECTED_SUBHEADER_COUNT, "Subheader is not displayed"
+    assert len(app_test.sidebar) >= MIN_EXPECTED_SIDEBAR_COUNT, "Sidebar is not displayed"
+    assert app_test.markdown.len >= MIN_EXPECTED_MARKDOWN_COUNT, "Markdown element is not displayed"
+    assert app_test.button.len >= MIN_EXPECTED_BUTTON_COUNT, f"At least {MIN_EXPECTED_BUTTON_COUNT} buttons are required"
 
     # 初期状態ではすべてのボタンが未クリック状態
-    for button_key in ["tab1_execute_text", "tab1_execute_markdown", "tab2_execute_visual", "tab2_execute_toml", "tab2_execute_yaml"]:
+    for button_key in BUTTON_KEYS:
         assert app_test.button(key=button_key).value is False, f"Button '{button_key}' should be in initial unclicked state"
 
     # 初期状態ではエラーや警告メッセージは表示されていない
@@ -157,8 +175,8 @@ def test_button_sequence(app_test: AppTest, button_sequence: List[str]) -> None:
         app_test: Streamlitアプリのテストインスタンス
         button_sequence: クリックするボタンのキーのシーケンス
     """
-    # Arrange - すべてのボタンキーのリスト
-    all_button_keys = ["tab1_execute_text", "tab1_execute_markdown", "tab2_execute_visual", "tab2_execute_toml", "tab2_execute_yaml"]
+    # Arrange - すべてのボタンキーのリスト (定数を使用)
+    all_button_keys = BUTTON_KEYS
 
     # Act & Assert - 各ボタンを順番にクリックして状態を検証
     for _i, current_button in enumerate(button_sequence):
