@@ -51,7 +51,7 @@ runs:
       inputs.is-benchmark == 'false' &&
       runner.os == 'Windows'
     id: e2e-tests-windows
-    shell: cmd
+    shell: powershell
     run: |
       # Windows環境でUTF-8を使用するための設定
       chcp 65001
@@ -72,7 +72,7 @@ runs:
     if: |
       inputs.is-benchmark == 'true' &&
       runner.os == 'Windows'
-    shell: bash
+    shell: powershell
     run: |
       # Windows環境でUTF-8を使用するための設定
       chcp 65001
