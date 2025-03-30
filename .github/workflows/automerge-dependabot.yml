@@ -25,7 +25,7 @@ jobs:
       contents: write
       pull-requests: write
       checks: read
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
@@ -42,37 +42,49 @@ jobs:
         uses: dependabot/fetch-metadata@v2.3.0
 
       - name: Wait for Test & Build workflow
-        timeout-minutes: 15
-        run: |
-          # 最大試行回数を設定
-          MAX_ATTEMPTS=30
-          ATTEMPT=0
+        timeout-minutes: 20
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const ref = context.payload.pull_request.head.sha;
+            const check_name = 'Workflow Summary (Test & Build)';
+            const max_attempts = 40; // 40 attempts * 30 seconds = 20 minutes
+            const poll_interval_ms = 30000; // 30 seconds
 
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            # ワークフローの実行状態を確認
-            STATUS=$(gh api \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "/repos/${{ github.repository }}/commits/${{ github.event.pull_request.head.sha }}/check-runs?check_name=Workflow Summary (Test %26 Build)" \
-              --jq '.check_runs[0].conclusion')
+            console.log(`Waiting for check run "${check_name}" on ref ${ref} to complete...`);
 
-            if [ "$STATUS" = "success" ]; then
-              echo "Test & Build workflow succeeded"
-              exit 0
-            elif [ "$STATUS" = "failure" ] || [ "$STATUS" = "cancelled" ]; then
-              echo "Test & Build workflow failed or was cancelled"
-              exit 1
-            fi
+            for (let attempt = 0; attempt < max_attempts; attempt++) {
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner,
+                repo,
+                ref,
+                check_name,
+                per_page: 1 // We only need the latest run for this specific check name
+              });
 
-            echo "Waiting for Test & Build workflow to complete (attempt $ATTEMPT of $MAX_ATTEMPTS)..."
-            ATTEMPT=$((ATTEMPT + 1))
-            sleep 30
-          done
+              if (checks.total_count > 0) {
+                const checkRun = checks.check_runs[0];
+                console.log(`Attempt ${attempt + 1}/${max_attempts}: Check run status is ${checkRun.status}, conclusion is ${checkRun.conclusion}`);
 
-          echo "Timeout waiting for Test & Build workflow"
-          exit 1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                if (checkRun.status === 'completed') {
+                  if (checkRun.conclusion === 'success') {
+                    console.log(`Check run "${check_name}" completed successfully.`);
+                    return; // Success
+                  } else {
+                    core.setFailed(`Check run "${check_name}" completed with conclusion: ${checkRun.conclusion}`);
+                    return; // Failure or other non-success conclusion
+                  }
+                }
+              } else {
+                 console.log(`Attempt ${attempt + 1}/${max_attempts}: No check run named "${check_name}" found yet.`);
+              }
+
+              await new Promise(r => setTimeout(r, poll_interval_ms));
+            }
+
+            core.setFailed(`Timeout waiting for check run "${check_name}" to complete after ${max_attempts} attempts.`);
 
       - name: Approve and auto-merge
         if: |
