@@ -43,6 +43,8 @@ from pydantic import (
     field_validator,
 )
 
+from features.validate_uploaded_file import FileSizeConfig, FileValidator
+
 # Re-add the import for FileValidator and FileSizeConfig
 
 T = TypeVar("T")
@@ -69,8 +71,6 @@ class TemplateConfig(BaseModel):
 
     model_config = ConfigDict(strict=True, validate_assignment=True)
 
-    max_file_size: Annotated[int, Field(gt=0)] = Field(default=1024 * 1024)  # 1MB
-    max_memory_size: Annotated[int, Field(gt=0)] = Field(default=1024 * 1024 * 10)  # 10MB
     max_range_size: Annotated[int, Field(gt=0)] = Field(default=100000)
     restricted_tags: Set[str] = Field(default_factory=lambda: {"macro", "include", "import", "extends"})
     restricted_attributes: Set[str] = Field(
@@ -94,7 +94,7 @@ class TemplateConfig(BaseModel):
         }
     )
 
-    @field_validator("max_file_size", "max_memory_size", "max_range_size")
+    @field_validator("max_range_size")
     @classmethod
     def validate_positive_limits(cls, v: int) -> int:
         """制限値が正の値であることを検証する。
@@ -226,20 +226,22 @@ class TemplateSecurityValidator:
         config: テンプレート設定
     """
 
-    def __init__(self) -> None:
+    def __init__(self, max_file_size_bytes: int, max_memory_size_bytes: int) -> None:
         """初期化。"""
         self.config = TemplateConfig()
         self._validation_state = ValidationState()
+        self._max_file_size_bytes = max_file_size_bytes
+        self._max_memory_size_bytes = max_memory_size_bytes
 
     @property
     def max_file_size(self) -> int:
         """最大ファイルサイズを返す。"""
-        return self.config.max_file_size
+        return self._max_file_size_bytes
 
     @property
     def max_memory_size(self) -> int:
         """最大メモリ使用量を返す。"""
-        return self.config.max_memory_size
+        return self._max_memory_size_bytes
 
     @property
     def max_range_size(self) -> int:
@@ -1161,8 +1163,9 @@ class TemplateSecurityValidator:
             template_file.seek(current_pos)  # 元の位置に戻す
 
             # ファイルサイズの検証
-            if len(content) > self.max_file_size:
-                validation_state.set_error(f"Template file size exceeds maximum limit of {self.max_file_size} bytes")
+            file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self._max_file_size_bytes))
+            if not file_validator.validate_size(template_file):
+                validation_state.set_error(f"Template file size exceeds maximum limit of {self._max_file_size_bytes} bytes")
                 return None, None
 
             # バイナリデータのチェック

@@ -399,7 +399,9 @@ class DocumentRender:
         self._render_content: Optional[str] = None
         self._is_strict_undefined: bool = True
         self._formatter = ContentFormatter()
-        self._security_validator = TemplateSecurityValidator()
+        self._security_validator = TemplateSecurityValidator(
+            max_file_size_bytes=self.MAX_FILE_SIZE_BYTES, max_memory_size_bytes=self.MAX_MEMORY_SIZE_BYTES
+        )
 
         self._ast: Optional[nodes.Template] = None
 
