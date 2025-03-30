@@ -73,7 +73,7 @@ runs:
 
   - name: Retry E2E Tests with benchmark (Without test-e2e)
     if: |
-      inputs.is-benchmark == 'true'
+      inputs.is-benchmark == 'true' &&
       steps.e2e-benchmark.outcome == 'failure'
     id: e2e-benchmark-retry
     shell: bash
