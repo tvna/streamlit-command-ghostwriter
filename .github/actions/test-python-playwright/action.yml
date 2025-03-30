@@ -50,32 +50,11 @@ runs:
     run: |
       # E2Eテスト実行（ベンチマークなし）
       poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
-    continue-on-error: true
-
-  - name: Retry E2E Tests
-    if: |
-      steps.e2e-not-chromium.outcome == 'failure' &&
-      inputs.is-benchmark == 'false'
-    shell: bash
-    run: |
-      # E2Eテストに失敗した場合、再実行（ベンチマークなし）
-      poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
 
   - name: E2E benchmark
     if: |
       inputs.is-benchmark == 'true'
     id: e2e-benchmark
-    shell: bash
-    run: |
-      # E2Eテストのベンチマーク実行
-      poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
-    continue-on-error: true
-
-  - name: Retry E2E Tests with benchmark (Without test-e2e)
-    if: |
-      inputs.is-benchmark == 'true' &&
-      steps.e2e-benchmark.outcome == 'failure'
-    id: e2e-benchmark-retry
     shell: bash
     run: |
       # E2Eテストのベンチマーク実行
