@@ -40,6 +40,7 @@ runs:
     if: |
       inputs.is-benchmark == 'false' &&
       runner.os != 'Windows'
+    id: e2e-tests-non-windows
     shell: bash
     run: |
       # E2Eテスト実行（ベンチマークなし）
@@ -49,6 +50,7 @@ runs:
     if: |
       inputs.is-benchmark == 'false' &&
       runner.os == 'Windows'
+    id: e2e-tests-windows
     shell: cmd
     run: |
       # Windows環境でUTF-8を使用するための設定
@@ -57,7 +59,7 @@ runs:
       # E2Eテスト実行（ベンチマークなし）
       poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
 
-  - name: E2E benchmark
+  - name: E2E benchmark (non-Windows)
     if: |
       inputs.is-benchmark == 'true' &&
       runner.os != 'Windows'
@@ -66,7 +68,7 @@ runs:
       # E2Eテストのベンチマーク実行
       poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
 
-  - name: E2E benchmark
+  - name: E2E benchmark (Windows)
     if: |
       inputs.is-benchmark == 'true' &&
       runner.os == 'Windows'
