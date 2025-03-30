@@ -1,0 +1,22 @@
+{
+  "site_package_search_strategy": "pep561",
+  "source_directories": [
+    "."
+  ],
+  "exclude": [
+    ".cursor",
+    ".github",
+    ".venv",
+    "assets",
+    "build",
+    "dist",
+    "docs",
+    "htmlcov",
+    "node_modules"
+  ],
+  "extensions": [
+    ".py",
+    ".pyi"
+  ],
+  "strict": true
+}
