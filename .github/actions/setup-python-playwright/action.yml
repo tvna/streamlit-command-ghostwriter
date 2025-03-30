@@ -5,10 +5,6 @@ inputs:
     description: 'Browser to use'
     required: true
 
-defaults:
-  run:
-    shell: bash
-
 runs:
   using: "composite"
   steps:
@@ -32,8 +28,8 @@ runs:
         poetry run playwright install --with-deps ${{ inputs.browser }}
 
     - name: Configure Windows for UTF-8
+      shell: cmd
       if: runner.os == 'Windows'
       run: |
         # Windows環境でUTF-8を使用するための設定
         chcp 65001
-      shell: cmd

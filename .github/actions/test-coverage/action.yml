@@ -23,6 +23,7 @@ runs:
 
     - name: Upload coverage reports to code climate
       if: inputs.github-branch-name == 'main'
+      shell: bash
       run: |
         echo CC_TEST_REPORTER_ID=$"{{ secrets.CODE_CLIMATE_TEST_REPORTER_ID }}" >> "$GITHUB_ENV"
         cc-test-reporter before-build
