@@ -10,10 +10,6 @@ inputs:
     type: boolean
     default: 'false'
 
-env:
-  PYTHONIOENCODING: utf-8
-  PYTHONUTF8: 1
-
 runs:
   using: "composite"
   steps:
@@ -30,6 +26,12 @@ runs:
       key: ${{ runner.os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
       restore-keys: |
         ${{ runner.os }}-playwright-${{ inputs.browser }}-
+
+  - name: Set up UTF-8 environment
+    shell: bash
+    run: |
+      echo "PYTHONIOENCODING=utf-8" >> $GITHUB_ENV
+      echo "PYTHONUTF8=1" >> $GITHUB_ENV
 
   - name: Install Playwright Browser
     shell: bash

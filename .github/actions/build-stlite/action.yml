@@ -6,9 +6,6 @@ inputs:
     description: 'GitHub token'
     required: true
 
-env:
-  NODE_OPTIONS: "--max-http-header-size=8192 --max-old-space-size=4096"
-
 runs:
   using: "composite"
   steps:
