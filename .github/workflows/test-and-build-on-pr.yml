@@ -145,3 +145,32 @@ jobs:
           # Pull Requestのコンテキストからbase_refとhead_refを取得
           base-ref: ${{ github.event.pull_request.base.ref }}
           head-ref: ${{ github.event.pull_request.head.ref }}
+
+  pyre:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
+
+      - name: Create requirements.txt
+        run: |
+          poetry export -f requirements.txt --output requirements.txt
+
+      - name: Run Pyre Action
+        uses: facebook/pyre-action@v0.0.2
+        with:
+          repo-directory: "./"
+          requirements-path: "requirements.txt"
+        timeout-minutes: 120
