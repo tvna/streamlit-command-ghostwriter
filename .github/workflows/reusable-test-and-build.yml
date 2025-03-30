@@ -192,8 +192,8 @@ jobs:
   # TESTS GROUP
   # ============================================================
 
-  test-unit:
-    name: Test - Unit
+  small-unit-test:
+    name: Small Unit Tests
     needs:
       - guard-workflow
       - guard-api-key
@@ -242,7 +242,7 @@ jobs:
 
   test-coverage:
     name: Coverage
-    needs: test-unit
+    needs: small-unit-test
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -274,8 +274,8 @@ jobs:
           codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
 
   test-e2e:
-    name: Test - E2E by ${{ matrix.os }}
-    needs: test-unit
+    name: E2E Tests by ${{ matrix.os }}
+    needs: small-unit-test
     permissions:
       contents: read
     runs-on: ${{ matrix.os }}
@@ -317,37 +317,15 @@ jobs:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
-      - name: Setup Playwright by Python
-        uses: ./.github/actions/setup-python-playwright
+      - name: Run E2E Tests (Playwright)
+        uses: ./.github/actions/test-python-playwright
         with:
           browser: ${{ matrix.browser }}
         timeout-minutes: 10
 
-      - name: E2E Tests (${{ matrix.os }} / ${{ matrix.browser }})
-        id: e2e-not-chromium
-        run: |
-          # E2Eテスト実行（ベンチマークなし）
-          poetry run pytest -n auto -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-disable
-        env:
-          PYTHONIOENCODING: utf-8
-          PYTHONUTF8: 1
-        continue-on-error: true
-        timeout-minutes: 10
-
-      - name: Retry E2E Tests
-        if: steps.e2e-not-chromium.outcome == 'failure'
-        id: e2e-not-chromium-retry
-        run: |
-          # E2Eテストに失敗した場合、再実行（ベンチマークなし）
-          poetry run pytest -n auto -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-disable
-        env:
-          PYTHONIOENCODING: utf-8
-          PYTHONUTF8: 1
-        timeout-minutes: 10
-
   test-e2e-benchmark:
-    name: Test - E2E Benchmark by ${{ matrix.os }})
-    needs: [test-unit]
+    name: E2E Benchmark by ${{ matrix.os }})
+    needs: [small-unit-test]
     permissions:
       contents: read
     runs-on: ${{ matrix.os }}
@@ -381,44 +359,12 @@ jobs:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
-      - name: Setup Playwright by Python
-        uses: ./.github/actions/setup-python-playwright
+      - name: Run E2E Benchmark (Playwright)
+        uses: ./.github/actions/test-python-playwright
         with:
           browser: ${{ matrix.browser }}
-        timeout-minutes: 10
-
-      - name: E2E benchmark (Chromium)
-        if: matrix.browser == 'chromium'
-        id: e2e-chromium-benchmark
-        run: |
-          # E2Eテストのベンチマーク実行（Chromiumのみ)
-          poetry run pytest -n 0 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
-        env:
-          PYTHONIOENCODING: utf-8
-          PYTHONUTF8: 1
-        continue-on-error: true
+          is-benchmark: true
         timeout-minutes: 30
-
-      - name: Retry E2E Tests with benchmark (Chromium without test-e2e)
-        if: matrix.browser == 'chromium' && steps.e2e-chromium-benchmark.outcome == 'failure'
-        id: e2e-chromium-benchmark-retry
-        run: |
-          # E2Eテストのベンチマーク実行（Chromiumのみ)
-          poetry run pytest -n 0 -vv --browser ${{ matrix.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-save=github-actions-${{ matrix.browser }} --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
-        env:
-          PYTHONIOENCODING: utf-8
-          PYTHONUTF8: 1
-        timeout-minutes: 30
-
-      - name: Upload Benchmark Results
-        if: matrix.browser == 'chromium'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: benchmark-results-${{ matrix.os }}-${{ env.GLOBAL_PYTHON_VERSION }}-${{ matrix.browser }}
-          path: .benchmarks/**/*
-          retention-days: 90
-          if-no-files-found: warn
-        timeout-minutes: 5
 
   # ============================================================
   # ANALYSIS GROUP
@@ -427,7 +373,7 @@ jobs:
   # https://github.com/terryyin/lizard
   analysis-code-ccn:
     name: Code Complexity
-    needs: test-unit
+    needs: small-unit-test
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -484,7 +430,7 @@ jobs:
 
   build-desktop:
     name: Build - Desktop (${{ matrix.os }})
-    needs: test-unit
+    needs: small-unit-test
     continue-on-error: ${{ matrix.os == 'windows-latest' }}
     permissions:
       contents: read

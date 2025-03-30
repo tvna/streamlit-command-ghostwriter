@@ -1,0 +1,91 @@
+name: 'Run E2E Tests (Playwright)'
+description: 'Run E2E tests with cache'
+inputs:
+  browser:
+    description: 'Browser to use'
+    required: true
+  is-benchmark:
+    description: 'Whether to run benchmark tests'
+    required: false
+    type: boolean
+    default: 'false'
+
+env:
+  PYTHONIOENCODING: utf-8
+  PYTHONUTF8: 1
+
+runs:
+  using: "composite"
+  steps:
+  - name: Restore cache Playwright browsers
+    uses: actions/cache@v4.2.3
+    id: playwright-cache
+    with:
+      path: |
+        ~/.cache/ms-playwright
+        ~/Library/Caches/ms-playwright
+        /home/runner/.cache/ms-playwright
+        /Users/runner/Library/Caches/ms-playwright
+        %USERPROFILE%\AppData\Local\ms-playwright
+      key: ${{ runner.os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
+      restore-keys: |
+        ${{ runner.os }}-playwright-${{ inputs.browser }}-
+
+  - name: Install Playwright Browser
+    shell: bash
+    run: |
+      poetry run playwright install --with-deps ${{ inputs.browser }}
+
+  - name: Configure Windows for UTF-8
+    if: runner.os == 'Windows'
+    shell: cmd
+    run: |
+      # Windows環境でUTF-8を使用するための設定
+      chcp 65001
+
+  - name: E2E Tests (${{ matrix.os }} / ${{ inputs.browser }})
+    if: |
+      inputs.is-benchmark == 'false'
+    shell: bash
+    run: |
+      # E2Eテスト実行（ベンチマークなし）
+      poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
+    continue-on-error: true
+
+  - name: Retry E2E Tests
+    if: |
+      steps.e2e-not-chromium.outcome == 'failure' &&
+      inputs.is-benchmark == 'false'
+    shell: bash
+    run: |
+      # E2Eテストに失敗した場合、再実行（ベンチマークなし）
+      poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
+
+  - name: E2E benchmark
+    if: |
+      inputs.is-benchmark == 'true'
+    id: e2e-benchmark
+    run: |
+      # E2Eテストのベンチマーク実行
+      poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+    continue-on-error: true
+
+  - name: Retry E2E Tests with benchmark (Without test-e2e)
+    if: |
+      inputs.is-benchmark == 'true'
+      steps.e2e-benchmark.outcome == 'failure'
+    id: e2e-benchmark-retry
+    run: |
+      # E2Eテストのベンチマーク実行
+      poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+
+  - name: Upload Benchmark Results
+    if: |
+      inputs.is-benchmark == 'true' &&
+      inputs.browser == 'chromium'
+    uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+    with:
+      name: benchmark-results-${{ matrix.os }}-${{ env.GLOBAL_PYTHON_VERSION }}-${{ inputs.browser }}
+      path: .benchmarks/*
+      retention-days: 90
+      if-no-files-found: warn
