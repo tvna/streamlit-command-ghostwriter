@@ -517,6 +517,17 @@ test = ["certifi (>=2024)", "cryptography-vectors (==44.0.2)", "pretend (>=0.7)"
 test-randomorder = ["pytest-randomly"]
 
 [[package]]
+name = "data-to-xml"
+version = "1.0.9"
+description = "A simple dict to xml converter"
+optional = false
+python-versions = ">=3.11"
+files = [
+    {file = "data_to_xml-1.0.9-py3-none-any.whl", hash = "sha256:bc1cd0e9bdaab8fd243ad4b341d68d6a0931f6630a99275008c3733c59216872"},
+    {file = "data_to_xml-1.0.9.tar.gz", hash = "sha256:a634017bc14364ae14d28dc1dfcdb972b09d2572d245789036f2e136c1b0871f"},
+]
+
+[[package]]
 name = "dataclasses-json"
 version = "0.5.7"
 description = "Easily serialize dataclasses to and from JSON"
@@ -534,6 +545,20 @@ typing-inspect = ">=0.4.0"
 
 [package.extras]
 dev = ["flake8", "hypothesis", "ipython", "mypy (>=0.710)", "portray", "pytest (>=6.2.3)", "simplejson", "types-dataclasses"]
+
+[[package]]
+name = "dict2xml"
+version = "1.7.6"
+description = "Small utility to convert a python dictionary into an XML string"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "dict2xml-1.7.6-py3-none-any.whl", hash = "sha256:841a0c1720e4bfa121e958b805f1062fccf5af2970e7a1f81d7fa056f49e5065"},
+    {file = "dict2xml-1.7.6.tar.gz", hash = "sha256:3e4811f4ef7fca86dede6acf382268ff9bc5735a4aa0e21b465f6eb0c4e81732"},
+]
+
+[package.extras]
+tests = ["noseofyeti[black] (==2.4.9)", "pytest (==8.3.2)"]
 
 [[package]]
 name = "distlib"
@@ -2380,6 +2405,37 @@ pytest = ">=4.6"
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
+name = "pytest-item-dict"
+version = "1.1.2"
+description = "Get a hierarchical dict of session.items"
+optional = false
+python-versions = ">=3.11"
+files = [
+    {file = "pytest_item_dict-1.1.2-py3-none-any.whl", hash = "sha256:dd9e8935457ba1a787640afd9dd2cb8947d25d8436bacf291c08d7869dee4075"},
+    {file = "pytest_item_dict-1.1.2.tar.gz", hash = "sha256:a12a073315ce7ba413aafe05d90d7f8ae9ac9635f61e757afaa763852f2d5fde"},
+]
+
+[package.dependencies]
+pytest = ">=8.3.0"
+
+[[package]]
+name = "pytest-metadata"
+version = "3.1.1"
+description = "pytest plugin for test session metadata"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pytest_metadata-3.1.1-py3-none-any.whl", hash = "sha256:c8e0844db684ee1c798cfa38908d20d67d0463ecb6137c72e91f418558dd5f4b"},
+    {file = "pytest_metadata-3.1.1.tar.gz", hash = "sha256:d2a29b0355fbc03f168aa96d41ff88b1a3b44a3b02acbe491801c98a048017c8"},
+]
+
+[package.dependencies]
+pytest = ">=7.0.0"
+
+[package.extras]
+test = ["black (>=22.1.0)", "flake8 (>=4.0.1)", "pre-commit (>=2.17.0)", "tox (>=3.24.5)"]
+
+[[package]]
 name = "pytest-mock"
 version = "3.14.0"
 description = "Thin-wrapper around the mock package for easier use with pytest"
@@ -2460,6 +2516,23 @@ pytest = ">=7.0.0"
 psutil = ["psutil (>=3.0)"]
 setproctitle = ["setproctitle"]
 testing = ["filelock"]
+
+[[package]]
+name = "pytest-xml"
+version = "0.1.1"
+description = "Create simple XML results for parsing"
+optional = false
+python-versions = ">=3.11"
+files = [
+    {file = "pytest_xml-0.1.1-py3-none-any.whl", hash = "sha256:44f49fd2f86bcfcdd792844762b6a471a4a4a61322143edc074a7af553627ff6"},
+    {file = "pytest_xml-0.1.1.tar.gz", hash = "sha256:cbeabc9321f83367e430426fe423806d77abe90c9045bd74ccede7ec418b4aa4"},
+]
+
+[package.dependencies]
+dict2xml = ">=1.7.6"
+jinja2 = ">=3.0.0"
+pytest = ">=8.0.0"
+pytest-metadata = ">=2.0.0"
 
 [[package]]
 name = "python-box"
@@ -3484,4 +3557,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <4.0"
-content-hash = "b4298ec949119e87459b5ff8a10952534b8748efbab0f5dbfb5cbb046f3b3cd2"
+content-hash = "ae7badf7166148e947f201a11732a7f4fb50b7b425039ab13fb962d2c446aa41"

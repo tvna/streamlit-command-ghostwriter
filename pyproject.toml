@@ -45,6 +45,9 @@ pytest-clarity = "^1.0.1"
 pygal = "^3.0.5"
 pytest-timeout = "^2.3.1"
 pyre-check = "^0.9.23"
+pytest-item-dict = "^1.1.2"
+pytest-xml = "^0.1.1"
+data-to-xml = "^1.0.9"
 
 [tool.ruff]
 target-version = "py312"
@@ -139,10 +142,8 @@ testpaths = [
 pythonpath = "."
 addopts = [
   "-vv",
-  "-n=auto",
-  "--cache-clear",
-  "--maxfail=5",
-  "--durations=20",
+  "--maxfail=10",
+  "--durations=30",
   "--import-mode=importlib",
 ]
 markers = [
