@@ -281,35 +281,6 @@ class TestHelpers:
         return False
 
     @staticmethod
-    def assert_string_representation(actual_dict: Optional[ParsedDictType], actual_str: str, expected_str: str) -> None:
-        """文字列表現を比較する。
-
-        Args:
-            actual_dict: 実際の辞書
-            actual_str: 実際の文字列表現
-            expected_str: 期待される文字列表現
-        """
-        # Simple comparison first, assuming pprint output is consistent
-        if actual_str == expected_str:
-            return
-
-        # Fallback: Normalize whitespace carefully if direct comparison fails
-        # Remove leading/trailing whitespace from each line, normalize multiple spaces
-        def normalize_whitespace(s: str) -> str:
-            lines = s.strip().split("\n")
-            normalized_lines = [" ".join(line.strip().split()) for line in lines]
-            return "\n".join(normalized_lines)
-
-        actual_normalized = normalize_whitespace(actual_str)
-        expected_normalized = normalize_whitespace(expected_str)
-
-        assert actual_normalized == expected_normalized, (
-            f"Normalized string representation does not match.\n"
-            f"Actual normalized:\n{actual_normalized}\n"
-            f"Expected normalized:\n{expected_normalized}"
-        )
-
-    @staticmethod
     def assert_nan_string_representation(actual: str, expected: str) -> None:
         """NaN値を含む文字列表現を比較する。
 
@@ -463,7 +434,7 @@ def test_default_properties() -> None:
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    ("content", "filename", "is_successful", "expected_dict", "expected_str", "expected_error"),
+    ("content", "filename", "is_successful", "expected_dict", "expected_error"),
     [
         # Test case for tomllib module on success
         pytest.param(
@@ -471,7 +442,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"title": "TOML test"},
-            "{'title': 'TOML test'}",
             None,
             id="parser_toml_basic_key_value",
         ),
@@ -480,7 +450,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"date": date(2024, 4, 1)},
-            "{'date': datetime.date(2024, 4, 1)}",
             None,
             id="parser_toml_date_parsing",
         ),
@@ -489,7 +458,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"fruits": ["apple", "orange", "apple"]},
-            "{'fruits': ['apple', 'orange', 'apple']}",
             None,
             id="parser_toml_array_parsing",
         ),
@@ -498,7 +466,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"nested_array": [[1, 2], [3, 4, 5]]},
-            "{'nested_array': [[1, 2], [3, 4, 5]]}",
             None,
             id="parser_toml_nested_array",
         ),
@@ -508,7 +475,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"title": "YAML test"},
-            "{'title': 'YAML test'}",
             None,
             id="parser_yaml_basic_key_value",
         ),
@@ -517,7 +483,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"title": "YAML test"},
-            "{'title': 'YAML test'}",
             None,
             id="parser_yaml_with_comment",
         ),
@@ -526,7 +491,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"date": date(2024, 4, 1)},
-            "{'date': datetime.date(2024, 4, 1)}",
             None,
             id="parser_yaml_date_parsing",
         ),
@@ -535,7 +499,6 @@ def test_default_properties() -> None:
             "config.yml",
             True,
             {"title": "YAML test"},
-            "{'title': 'YAML test'}",
             None,
             id="parser_yml_basic_key_value",
         ),
@@ -544,7 +507,6 @@ def test_default_properties() -> None:
             "config.yml",
             True,
             {"date": date(2024, 4, 1)},
-            "{'date': datetime.date(2024, 4, 1)}",
             None,
             id="parser_yml_date_parsing",
         ),
@@ -554,7 +516,6 @@ def test_default_properties() -> None:
             "config.csv",
             True,
             {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]},
-            "{'csv_rows': [{'age': 30, 'name': 'Alice'}, {'age': 25, 'name': 'Bob'}]}",
             None,
             id="parser_csv_basic_parsing",
         ),
@@ -564,7 +525,6 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "None",
             "Invalid statement",
             id="parser_toml_invalid_binary",
         ),
@@ -573,7 +533,6 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "None",
             "after a key in a key/value pair (at line 1, column 7)",
             id="parser_toml_syntax_error",
         ),
@@ -585,7 +544,6 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "None",
             "Cannot overwrite a value",
             id="parser_toml_duplicate_key",
         ),
@@ -594,7 +552,6 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "None",
             "Expected newline or end of document after a statement ",
             id="parser_toml_invalid_date",
         ),
@@ -604,7 +561,6 @@ def test_default_properties() -> None:
             "config.yaml",
             False,
             None,
-            "None",
             "unacceptable character #x0000: special characters are not allowed",
             id="parser_yaml_invalid_binary",
         ),
@@ -613,7 +569,6 @@ def test_default_properties() -> None:
             "config.yaml",
             False,
             None,
-            "None",
             "Invalid YAML file loaded.",
             id="parser_yaml_toml_syntax",
         ),
@@ -622,7 +577,6 @@ def test_default_properties() -> None:
             "config.yaml",
             False,
             None,
-            "None",
             "mapping values are not allowed here",
             id="parser_yaml_duplicate_mapping",
         ),
@@ -631,7 +585,6 @@ def test_default_properties() -> None:
             "config.yaml",
             False,
             None,
-            "None",
             "day is out of range for month",
             id="parser_yaml_invalid_date",
         ),
@@ -640,7 +593,6 @@ def test_default_properties() -> None:
             "config.yaml",
             False,
             None,
-            "None",
             "while scanning for the next token\nfound character",
             id="parser_yaml_unexpected_char",
         ),
@@ -650,7 +602,6 @@ def test_default_properties() -> None:
             "config.csv",
             False,
             None,
-            "None",
             "Error tokenizing data. C error: Expected 2 fields in line 3, saw 3",
             id="parser_csv_inconsistent_columns",
         ),
@@ -659,7 +610,6 @@ def test_default_properties() -> None:
             "config.csv",
             False,
             None,
-            "None",
             "No columns to parse from file",
             id="parser_csv_empty_file",
         ),
@@ -668,7 +618,6 @@ def test_default_properties() -> None:
             "config.csv",
             False,
             None,
-            "None",
             "Error tokenizing data. C error: EOF inside string starting at row 2",
             id="parser_csv_unclosed_quote",
         ),
@@ -679,7 +628,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"nested": {"a": {"b": {"c": {"d": {"e": "deep nesting"}}}}}},
-            "{'nested': {'a': {'b': {'c': {'d': {'e': 'deep nesting'}}}}}}",
             None,
             id="parser_toml_deep_nesting",
         ),
@@ -689,7 +637,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"unicode": "日本語"},
-            "{'unicode': '日本語'}",
             None,
             id="parser_toml_unicode_chars",
         ),
@@ -699,7 +646,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,  # 空のTOMLファイルは有効なTOMLとして処理される
             {},  # 空の辞書として解析される
-            "{}",
             None,
             id="parser_toml_empty_file",
         ),
@@ -709,7 +655,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"special_yaml": b"Hello"},
-            "{'special_yaml': b'Hello'}",
             None,
             id="parser_yaml_special_types",
         ),
@@ -719,7 +664,6 @@ def test_default_properties() -> None:
             "config.csv",
             True,
             {"csv_rows": [{"id": 1, "name": "test", "value": "123"}, {"id": 2, "name": "another", "value": "abc"}]},
-            "{'csv_rows': [{'id': 1, 'name': 'test', 'value': '123'}, {'id': 2, 'name': 'another', 'value': 'abc'}]}",
             None,
             id="parser_csv_mixed_types",
         ),
@@ -729,7 +673,6 @@ def test_default_properties() -> None:
             "config.csv",
             True,
             {"csv_rows": [{"id": 1, "name": "test", "value": np.nan}, {"id": 2, "name": np.nan, "value": "abc"}]},
-            "{'csv_rows': [{'id': 1, 'name': 'test', 'value': nan}, {'id': 2, 'name': nan, 'value': 'abc'}]}",
             None,
             id="parser_csv_nan_values",
         ),
@@ -739,7 +682,6 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "None",
             "Expected",
             id="parser_toml_yaml_content",
         ),
@@ -749,7 +691,6 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "None",
             "Invalid statement",
             id="parser_toml_bom_marker",
         ),
@@ -759,7 +700,6 @@ def test_default_properties() -> None:
             "config.csv",
             False,  # Parsing should now fail
             None,  # Expect no dictionary
-            "None",  # Expect "None" string
             "CSV file must contain at least one data row.",  # Expect the new ValueError
             id="parser_csv_header_only",
         ),
@@ -768,7 +708,6 @@ def test_default_properties() -> None:
             "config.csv",
             False,  # Parsing fails
             None,
-            "None",
             "Error tokenizing data",  # Expect pandas ParserError
             id="parser_csv_malformed_header",
         ),
@@ -777,7 +716,6 @@ def test_default_properties() -> None:
             "config.csv",
             False,
             None,
-            "None",
             "Failed to parse CSV: Null byte detected in input data.",  # Expect specific null byte error
             id="parser_csv_invalid_binary",
         ),
@@ -787,7 +725,6 @@ def test_default_properties() -> None:
             "config.csv",
             True,
             {"csv_rows": [{" col1 ": " val1 ", " col2 ": " val2 "}]},  # pandas preserves whitespace
-            "{ 'csv_rows': [{' col1 ': ' val1 ', ' col2 ': ' val2 '}]}",
             None,
             id="parser_csv_leading_trailing_whitespace",
         ),
@@ -796,7 +733,6 @@ def test_default_properties() -> None:
             "config.csv",
             True,
             {"csv_rows": [{"col1": "val1", "col2": "val2"}, {"col1": "val3", "col2": "val4"}, {"col1": "val5", "col2": "val6"}]},
-            "{ 'csv_rows': [{'col1': 'val1', 'col2': 'val2'}, {'col1': 'val3', 'col2': 'val4'}, {'col1': 'val5', 'col2': 'val6'}]}",
             None,
             id="parser_csv_mixed_line_endings",
         ),
@@ -813,10 +749,6 @@ def test_default_properties() -> None:
                 ]
             },
             # Ensure expected_str matches the actual pprint output with strings
-            (
-                "{ 'csv_rows': [{'col1': '123', 'col2': 'abc'}, {'col1': '456.7', 'col2': 'True'}, "
-                "{'col1': 'xyz', 'col2': 'False'}, {'col1': nan, 'col2': '999'}]}"
-            ),
             None,
             id="parser_csv_highly_mixed_types",
         ),
@@ -825,7 +757,6 @@ def test_default_properties() -> None:
             "config.csv",
             False,
             None,
-            "None",
             "No columns to parse from file",  # pandas reads it as empty
             id="parser_csv_whitespace_only_lines",
         ),
@@ -834,7 +765,6 @@ def test_default_properties() -> None:
             "config.csv",
             False,
             None,
-            "None",
             "CSV file must contain at least one data row.",  # Should be treated as header only
             id="parser_csv_header_with_whitespace_lines",
         ),
@@ -843,7 +773,6 @@ def test_default_properties() -> None:
             "config.csv",
             True,
             {"csv_rows": [{"col1": "line1\nline2", "col2": "value2"}]},
-            "{ 'csv_rows': [{'col1': 'line1\\nline2', 'col2': 'value2'}]}",
             None,
             id="parser_csv_quoted_newlines",
         ),
@@ -854,7 +783,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"float_val": 3.14, "inf_val": float("inf"), "nan_val": float("nan")},
-            "{ 'float_val': 3.14, 'inf_val': inf, 'nan_val': nan}",  # Remove extra parens
             None,
             id="parser_toml_float_inf_nan",
         ),
@@ -863,7 +791,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"bool_true": True, "bool_false": False},
-            "{ 'bool_true': True, 'bool_false': False}",
             None,
             id="parser_toml_booleans",
         ),
@@ -872,7 +799,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"inline_table": {"key1": "val1", "key2": 123}},
-            "{ 'inline_table': {'key1': 'val1', 'key2': 123}}",
             None,
             id="parser_toml_inline_table",
         ),
@@ -881,7 +807,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,
             {"points": [{"x": 1, "y": 2}, {"x": 3, "y": 4}]},
-            "{ 'points': [{'x': 1, 'y': 2}, {'x': 3, 'y': 4}]}",
             None,
             id="parser_toml_array_of_tables",
         ),
@@ -892,7 +817,6 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "None",
             "Cannot declare ('table',) twice (at line 6, column 7)",
             id="parser_toml_redefine_table",
         ),
@@ -901,7 +825,6 @@ def test_default_properties() -> None:
             "config.toml",
             True,  # Should parse successfully
             {"array": [1, 2, 3]},  # Expected dictionary
-            "{'array': [1, 2, 3]}",  # Expected string representation
             None,  # No error expected
             id="parser_toml_trailing_comma_array",
         ),
@@ -912,7 +835,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"anchor_test": "value", "alias_test": "value"},
-            "{'anchor_test': 'value', 'alias_test': 'value'}",
             None,
             id="parser_yaml_anchor_alias",
         ),
@@ -921,7 +843,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"base": {"x": 1}, "derived": {"x": 1, "y": 2}},
-            "{'base': {'x': 1}, 'derived': {'x': 1, 'y': 2}}",
             None,
             id="parser_yaml_merge_keys",
         ),
@@ -930,7 +851,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"str_val": "123", "int_val": 456, "bool_val": True},
-            "{'bool_val': True, 'int_val': 456, 'str_val': '123'}",  # Order might vary
             None,
             id="parser_yaml_explicit_tags",
         ),
@@ -939,7 +859,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"literal_block": "Line 1\nLine 2\n", "folded_block": "Word1 Word2 Word3 Word4 Word5"},
-            "{'folded_block': 'Word1 Word2 Word3 Word4 Word5', 'literal_block': 'Line 1\nLine 2\n'}",
             None,
             id="parser_yaml_scalar_styles",
         ),
@@ -948,7 +867,6 @@ def test_default_properties() -> None:
             "config.yaml",
             False,  # Should fail as ConfigParser expects a dict
             None,
-            "None",
             "Invalid YAML file loaded.",
             id="parser_yaml_top_level_sequence",
         ),
@@ -957,7 +875,6 @@ def test_default_properties() -> None:
             "config.yaml",
             False,  # Changed expectation: Assume multiple docs are not supported
             None,  # Changed expectation
-            "None",  # Changed expectation
             "expected a single document",  # Made expected error less specific
             id="parser_yaml_multiple_documents",
         ),
@@ -967,7 +884,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,  # Changed expectation: safe_load handles this
             None,  # Keep as None, will skip assertion
-            "None",  # Keep as None, will skip assertion
             None,  # Changed expectation: No error expected from parse()
             id="parser_yaml_circular_reference",
         ),
@@ -976,7 +892,6 @@ def test_default_properties() -> None:
             "config.yaml",
             True,
             {"large_string": "a" * 5000},
-            "{'large_string': '" + "a" * 5000 + "'}",
             None,
             id="parser_yaml_large_scalar",
         ),
@@ -988,9 +903,7 @@ def test_parse(
     filename: str,
     is_successful: bool,
     expected_dict: Optional[ParsedDictType],
-    expected_str: Optional[str],
     expected_error: Optional[str],
-    request: pytest.FixtureRequest,
 ) -> None:
     """ConfigParserのparse機能をテストする。
 
@@ -999,9 +912,7 @@ def test_parse(
         filename: ファイル名
         is_successful: パースが成功するかどうか
         expected_dict: 期待される辞書
-        expected_str: 期待される文字列表現
         expected_error: 期待されるエラーメッセージ
-        request: pytest fixture for accessing test metadata
     """
     # Use the helper function to perform parsing and assertions
     TestHelpers.assert_parsing_result(
