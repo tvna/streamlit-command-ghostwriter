@@ -2,7 +2,7 @@ name: Create PR to main
 
 on:
   workflow_run:
-    workflows: ["Test & Build"]
+    workflows: ["Test & Build (on push)"]
     types:
       - completed
     branches:
@@ -120,59 +120,109 @@ jobs:
 
       - name: Check if PR already exists
         id: check-pr
-        if: |
-          steps.compare-versions.outputs.comparison-result == '<'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
+        if: steps.compare-versions.outputs.comparison-result == '<'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              const pulls = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head: `${context.repo.owner}:develop`,
+                base: 'main',
+                state: 'open'
+              });
 
-          echo "::notice::既存のPRを確認中..."
-          pr_exists=$(gh pr list --head develop --base main --state open --json number --jq length) || {
-            echo "::error::PRの一覧取得に失敗しました"
-            echo "exists=error" >> "$GITHUB_OUTPUT"
-            exit 1
-          }
-
-          echo "::notice::既存のオープンPR: $pr_exists"
-          echo "exists=$pr_exists" >> "$GITHUB_OUTPUT"
+              const prExists = pulls.data.length;
+              console.log(`既存のオープンPR: ${prExists}`);
+              core.setOutput('exists', prExists.toString());
+              core.setOutput('success', 'true');
+            } catch (error) {
+              console.error(`PRの確認中にエラーが発生しました: ${error.message}`);
+              core.setOutput('exists', '');
+              core.setOutput('success', 'false');
+              core.setFailed(`PRの確認中にエラーが発生しました: ${error.message}`);
+            }
 
       - name: Ensure labels exist
         id: ensure-labels
-        if: steps.check-pr.outputs.exists == '0'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
+        if: |
+          steps.check-pr.outputs.success == 'true' &&
+          steps.check-pr.outputs.exists == '0'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            let success = true;
 
-          echo "::notice::ラベルの確認中..."
-          labels=$(gh label list --json name --jq '.[].name') || {
-            echo "::warning::ラベル一覧の取得に失敗しました"
-          }
+            // ラベルを確認し、必要に応じて作成する関数
+            async function ensureLabel(name, description, color) {
+              try {
+                // ラベルがすでに存在するか確認
+                try {
+                  await github.rest.issues.getLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: name
+                  });
+                  console.log(`ラベル '${name}' はすでに存在します`);
+                  return true;
+                } catch (error) {
+                  // ラベルが存在しない場合は作成
+                  if (error.status === 404) {
+                    console.log(`ラベル '${name}' を作成します`);
+                    await github.rest.issues.createLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: name,
+                      description: description,
+                      color: color
+                    });
+                    console.log(`ラベル '${name}' を作成しました`);
+                    return true;
+                  } else {
+                    throw error;
+                  }
+                }
+              } catch (error) {
+                console.log(`ラベル '${name}' の確認/作成中にエラーが発生しました: ${error.message}`);
+                success = false;
+                return false;
+              }
+            }
 
-          # automated-pr ラベルの確認と作成
-          if ! echo "$labels" | grep -q "automated-pr"; then
-            echo "::notice::ラベル 'automated-pr' を作成します"
-            if ! gh label create "automated-pr" --description "自動生成されたPR" --color "0E8A16"; then
-              echo "::warning::ラベル 'automated-pr' の作成に失敗しました"
-            fi
-          fi
+            console.log("::notice::ラベルの確認中...");
 
-          # release ラベルの確認と作成
-          if ! echo "$labels" | grep -q "release"; then
-            echo "::notice::ラベル 'release' を作成します"
-            if ! gh label create "release" --description "自動リリース用PR" --color "1D76DB"; then
-              echo "::warning::ラベル 'release' の作成に失敗しました"
-            fi
-          fi
+            try {
+              // automated-pr ラベルの確認と作成
+              const automatedResult = await ensureLabel("automated-pr", "自動生成されたPR", "0E8A16");
+
+              // release ラベルの確認と作成
+              const releaseResult = await ensureLabel("release", "自動リリース用PR", "1D76DB");
+
+              if (automatedResult && releaseResult) {
+                core.setOutput('success', 'true');
+              } else {
+                core.setOutput('success', 'false');
+                if (!success) {
+                  core.setFailed("一部のラベルの作成に失敗しました");
+                }
+              }
+            } catch (error) {
+              console.error(`ラベル処理中に予期しないエラーが発生しました: ${error.message}`);
+              core.setOutput('success', 'false');
+              core.setFailed(`ラベル処理中に予期しないエラーが発生しました: ${error.message}`);
+            }
 
       - name: Create Pull Request
         id: create-pr
         if: |
-          steps.compare-versions.outputs.comparison-result == '<'
+          steps.compare-versions.outputs.comparison-result == '<' &&
+          steps.check-pr.outputs.success == 'true' &&
+          steps.check-pr.outputs.exists == '0' &&
+          (steps.ensure-labels.outcome == 'success' || steps.ensure-labels.outputs.success == 'true')
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_VERSION: ${{ needs.get-npm-version-from-main.outputs.version }}
           OLD_VERSION: ${{ needs.get-npm-version-from-develop.outputs.version }}
           GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
@@ -188,6 +238,13 @@ jobs:
 
       - name: Notify existing PR
         id: notify-existing-pr
-        if: steps.check-pr.outputs.exists != '0'
+        if: steps.check-pr.outputs.success == 'true' && steps.check-pr.outputs.exists != '0'
         run: |
           echo "::notice::既存のPRが見つかりました - 新規PRは作成されませんでした"
+
+      - name: Notify error
+        if: |
+          (steps.check-pr.outputs.success == 'false') ||
+          (steps.ensure-labels.outputs.success == 'false' && steps.check-pr.outputs.exists == '0')
+        run: |
+          echo "::error::ワークフロー実行中にエラーが発生しました"
