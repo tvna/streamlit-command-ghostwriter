@@ -13,22 +13,31 @@ repos:
     description: "Run 'no-commit-to-branch' for preventing commits to main branch"
     name: don't commit to main branch
   - id: trailing-whitespace
+    description: "Fixes trailing whitespace."
     types: [text]
   - id: check-added-large-files
     description: "Run 'check-added-large-files' for checking added large files"
   - id: detect-private-key
+    description: "Detects the presence of private keys."
+  - id: end-of-file-fixer
+    description: "Ensures files end with a single newline."
   - id: check-json
+    description: "Checks JSON files for parseable syntax."
     types: [json]
   - id: check-toml
+    description: "Checks TOML files for parseable syntax."
     files: \.toml$
   - id: check-docstring-first
+    description: "Checks that modules, classes, and functions have docstrings."
     types: [python]
   - id: check-shebang-scripts-are-executable
     description: "checking shebang scripts are executable"
     name: check-shebang-scripts-are-executable (only for github actions)
     files: \/scripts\/.*\.py$/
   - id: check-symlinks
+    description: "Checks for symlinks which do not point to anything."
   - id: check-illegal-windows-names
+    description: "Checks for filenames that are invalid on Windows."
   - id: pretty-format-json
     args:
       - "--autofix"
@@ -66,6 +75,7 @@ repos:
   rev: v8.16.3
   hooks:
   - id: gitleaks
+    description: "Detects hardcoded secrets like passwords, API keys, and tokens."
 
 # - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
 #   rev: v9.22.0
@@ -87,7 +97,7 @@ repos:
   rev: v1.15.0
   hooks:
   - id: mypy
-    description: "Run 'mypy' for Python linting"
+    description: "Static type checking for Python."
     additional_dependencies: ["types-PyYAML"]
     types: [python]
 
@@ -95,7 +105,7 @@ repos:
   rev: v1.10.0
   hooks:
   - id: python-use-type-annotations
-    description: "Run 'python-use-type-annotations' for Python linting"
+    description: "Checks for the usage of type annotations in Python code."
     types: [python]
 
 - repo: local
