@@ -441,42 +441,6 @@ class DocumentRender:
         """
         return self._render_content
 
-    def _validate_file_size(self) -> bool:
-        """ファイルサイズを検証する。
-
-        テンプレートファイルのサイズが制限値を超えていないかチェックします。
-        ファイルポインタの位置を保持したまま検証を行います。
-
-        Returns:
-            ファイルサイズが制限内の場合はTrue
-        """
-        try:
-            current_pos = self._template_file.tell()
-            self._template_file.seek(0, 2)  # ファイルの末尾に移動
-            file_size = self._template_file.tell()
-            self._template_file.seek(current_pos)  # 元の位置に戻す
-
-            if file_size > self.MAX_FILE_SIZE_BYTES:
-                self._validation_state.set_error(f"Template file size exceeds maximum limit of {self.MAX_FILE_SIZE_BYTES} bytes")
-                return False
-            return True
-        except Exception as e:
-            self._validation_state.set_error(f"File size validation error: {e!s}")
-            return False
-
-    def _validate_format_type(self, format_type: int) -> bool:
-        """フォーマットタイプを検証する。
-
-        指定されたフォーマットタイプが有効な範囲内かチェックします。
-
-        Args:
-            format_type: フォーマットタイプ [0-4の整数]
-
-        Returns:
-            フォーマットタイプが有効な場合はTrue
-        """
-        return isinstance(format_type, int) and 0 <= format_type <= 4
-
     def _handle_rendering_error(self, e: Exception) -> bool:
         """レンダリングエラーを処理する。
 
@@ -521,7 +485,7 @@ class DocumentRender:
                 self._validation_state.set_error(str(e))
             return None
 
-    def _validate_template_state(self, context: Dict[str, Any]) -> bool:
+    def _validate_template_state(self, context: Dict[str, Any], ast: nodes.Template) -> bool:
         """テンプレートの状態を検証する。
 
         Args:
@@ -530,11 +494,8 @@ class DocumentRender:
         Returns:
             bool: 検証が成功したかどうか
         """
-        if self._ast is None:
-            self._validation_state.set_error("AST is not available")
-            return False
 
-        security_result = self._security_validator.validate_runtime_security(self._ast, context)
+        security_result = self._security_validator.validate_runtime_security(ast, context)
         if not security_result.is_valid:
             self._validation_state.set_error(security_result.error_message)
             return False
@@ -545,7 +506,7 @@ class DocumentRender:
 
         return True
 
-    def _render_template(self, context: Dict[str, Any]) -> Optional[str]:
+    def _render_template(self, context: Dict[str, Any], template_content: str) -> Optional[str]:
         """テンプレートをレンダリングする。
 
         Args:
@@ -556,9 +517,7 @@ class DocumentRender:
         """
         try:
             env = self._create_environment()
-            if self._template_content is None:  # 型チェックのため再確認
-                return None
-            template = env.from_string(self._template_content)
+            template = env.from_string(template_content)
             return template.render(**context)
         except Exception as e:
             if "recursive structure detected" in str(e):
@@ -578,22 +537,30 @@ class DocumentRender:
         Returns:
             bool: コンテキストの適用が成功したかどうか
         """
-        # 入力設定のバリデーション
-        config = self._validate_input_config(context, format_type, is_strict_undefined)
-        if config is None:
-            return False
 
         # 前提条件の検証
         if not self._initial_validation_passed:
             return False
 
+        # 入力設定のバリデーション
+        config = self._validate_input_config(context, format_type, is_strict_undefined)
+        if config is None:
+            return False
+
+        if self._ast is None:
+            self._validation_state.set_error("AST is not available")
+            return False
+
         # テンプレートの状態検証
         self._is_strict_undefined = config.format_config.is_strict_undefined
-        if not self._validate_template_state(config.context):
+        if not self._validate_template_state(config.context, self._ast):
+            return False
+
+        if self._template_content is None:  # 型チェックのため再確認
             return False
 
         # テンプレートのレンダリング
-        rendered = self._render_template(config.context)
+        rendered = self._render_template(config.context, self._template_content)
         if rendered is None:
             return False
 
