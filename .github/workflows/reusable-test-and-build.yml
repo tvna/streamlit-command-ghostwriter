@@ -326,48 +326,6 @@ jobs:
           browser: ${{ matrix.browser }}
         timeout-minutes: 10
 
-  test-e2e-benchmark:
-    name: E2E Benchmark (${{ matrix.os }})
-    needs: [small-unit-test]
-    permissions:
-      contents: read
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-        browser:
-          - chromium
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
-        with:
-          egress-policy: audit
-          disable-sudo: false
-          disable-file-monitoring: false
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
-        timeout-minutes: 5
-
-      - name: Check out Git repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 1
-        timeout-minutes: 3
-
-      - name: Setup Python and restore cache
-        uses: ./.github/actions/setup-python
-        with:
-          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-        timeout-minutes: 10
-
-      - name: Run E2E Benchmark (Playwright)
-        uses: ./.github/actions/test-python-playwright
-        with:
-          browser: ${{ matrix.browser }}
-          is-benchmark: true
-        timeout-minutes: 30
-
   # ============================================================
   # ANALYSIS GROUP
   # ============================================================
@@ -431,7 +389,7 @@ jobs:
   # ============================================================
 
   build-desktop:
-    name: Build - Desktop (${{ matrix.os }})
+    name: Build desktop app (${{ matrix.os }})
     needs: small-unit-test
     continue-on-error: ${{ matrix.os == 'windows-latest' }}
     permissions:
@@ -477,14 +435,7 @@ jobs:
   workflow-summary:
     name: ${{ inputs.workflow_summary_name }}
     if: always()
-    needs:
-      [
-        test-coverage,
-        test-e2e,
-        test-e2e-benchmark,
-        analysis-code-ccn,
-        build-desktop,
-      ]
+    needs: [test-coverage, test-e2e, analysis-code-ccn, build-desktop]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

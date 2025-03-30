@@ -27,6 +27,7 @@ env:
   GLOBAL_ALLOWED_ENDPOINTS: |
     api.github.com:443
     github.com:443
+  GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
 
 jobs:
   main:
@@ -35,6 +36,49 @@ jobs:
       concurrency_group: pr-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: false
       workflow_summary_name: "Workflow summary [Test & Build (on Pull request)]"
+
+  test-e2e-benchmark:
+    name: E2E Benchmark (${{ matrix.os }})
+    needs: main
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+        browser:
+          - chromium
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: audit
+          disable-sudo: false
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 5
+
+      - name: Check out Git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+        timeout-minutes: 3
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
+
+      - name: Run E2E Benchmark (Playwright)
+        uses: ./.github/actions/test-python-playwright
+        with:
+          browser: ${{ matrix.browser }}
+          is-benchmark: true
+        timeout-minutes: 30
 
   scorecards:
     name: OpenSSF Scorecards
