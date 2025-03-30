@@ -39,6 +39,8 @@ env:
     pypi.org:443
     files.pythonhosted.org:443
     playwright.azureedge.net:443
+  GLOBAL_NODE_VERSION: ${{ vars.GLOBAL_NODE_VERSION }}
+  GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
   LIZARD_CCN_COUNT: 10
 
 concurrency:
@@ -134,7 +136,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ vars.GLOBAL_PYTHON_VERSION }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Lint Python and check types
@@ -173,7 +175,7 @@ jobs:
       - name: Setup Node.js and restore cache
         uses: ./.github/actions/setup-node
         with:
-          node-version: ${{ vars.GLOBAL_NODE_VERSION }}
+          node-version: ${{ env.GLOBAL_NODE_VERSION }}
         timeout-minutes: 10
 
       - name: NPM Audit
@@ -230,7 +232,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ vars.GLOBAL_PYTHON_VERSION }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Run Unit Tests
@@ -261,7 +263,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ vars.GLOBAL_PYTHON_VERSION }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Test coverage
@@ -312,7 +314,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ vars.GLOBAL_PYTHON_VERSION }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Setup Playwright by Python
@@ -376,7 +378,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ vars.GLOBAL_PYTHON_VERSION }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Setup Playwright by Python
@@ -412,7 +414,7 @@ jobs:
         if: matrix.browser == 'chromium'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: benchmark-results-${{ matrix.os }}-${{ vars.GLOBAL_PYTHON_VERSION }}-${{ matrix.browser }}
+          name: benchmark-results-${{ matrix.os }}-${{ env.GLOBAL_PYTHON_VERSION }}-${{ matrix.browser }}
           path: .benchmarks/**/*
           retention-days: 90
           if-no-files-found: warn
@@ -448,7 +450,7 @@ jobs:
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
-          python-version: ${{ vars.GLOBAL_PYTHON_VERSION }}
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
 
       - name: Run lizard (analyze CCN for production codes)
