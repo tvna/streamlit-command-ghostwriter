@@ -92,6 +92,18 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from features.validate_template import TemplateSecurityValidator, ValidationState  # type: ignore
 from features.validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
 
+# --- Format Type Constants ---
+FORMAT_KEEP = 0  # Keep whitespace
+FORMAT_COMPRESS = 1  # Compress consecutive whitespace lines to one
+FORMAT_KEEP_ALT = 2  # Alias for KEEP
+FORMAT_COMPRESS_ALT = 3  # Alias for COMPRESS
+FORMAT_REMOVE = 4  # Remove all whitespace lines
+MIN_FORMAT_TYPE = FORMAT_KEEP
+MAX_FORMAT_TYPE = FORMAT_REMOVE
+
+# --- Validation Constants ---
+MAX_BYTES_PER_CHAR_UTF8 = 4  # Maximum bytes per character assumed for UTF-8 estimate
+
 # --- Helper Types and Functions for CustomUndefined (moved to module level) ---
 
 T = TypeVar("T")
@@ -207,7 +219,8 @@ class FormatConfig(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    format_type: Annotated[int, Field(ge=0, le=4)]
+    # Use constants for validation range
+    format_type: Annotated[int, Field(ge=MIN_FORMAT_TYPE, le=MAX_FORMAT_TYPE)]
     is_strict_undefined: bool = Field(default=True)
 
     @classmethod
@@ -224,7 +237,8 @@ class FormatConfig(BaseModel):
         Raises:
             ValueError: 無効なフォーマットタイプの場合
         """
-        if not isinstance(v, int) or not 0 <= v <= 4:
+        # Use constants for validation range
+        if not isinstance(v, int) or not MIN_FORMAT_TYPE <= v <= MAX_FORMAT_TYPE:
             raise ValueError("Unsupported format type")
         return v
 
@@ -277,13 +291,15 @@ class ContentFormatter:
         Returns:
             フォーマット後の文字列
         """
-        if format_type == 0 or format_type == 2:
+        # Use format type constants
+        if format_type in [FORMAT_KEEP, FORMAT_KEEP_ALT]:
             return content
-        elif format_type == 1 or format_type == 3:
+        elif format_type in [FORMAT_COMPRESS, FORMAT_COMPRESS_ALT]:
             return self._compress_whitespace(content)
-        elif format_type == 4:
+        elif format_type == FORMAT_REMOVE:
             return self._remove_all_whitespace(content)
         else:
+            # This case should ideally be caught by FormatConfig validation earlier
             raise ValueError("Unsupported format type")
 
     def _compress_whitespace(self, content: str) -> str:
@@ -597,7 +613,8 @@ class DocumentRender:
             return True
         except UnicodeEncodeError:
             # UTF-8エンコードに失敗した場合は、文字数で概算
-            if len(content) * 4 > self.MAX_MEMORY_SIZE_BYTES:  # 最大4バイト/文字と仮定
+            # Use constant for max bytes per char estimate
+            if len(content) * MAX_BYTES_PER_CHAR_UTF8 > self.MAX_MEMORY_SIZE_BYTES:
                 self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
                 return False
             return True
