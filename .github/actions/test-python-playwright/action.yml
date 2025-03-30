@@ -36,27 +36,47 @@ runs:
     run: |
       poetry run playwright install --with-deps ${{ inputs.browser }}
 
-  - name: Configure Windows for UTF-8
-    if: runner.os == 'Windows'
-    shell: cmd
-    run: |
-      # Windows環境でUTF-8を使用するための設定
-      chcp 65001
-
   - name: E2E Tests (${{ matrix.os }} / ${{ inputs.browser }})
     if: |
-      inputs.is-benchmark == 'false'
+      inputs.is-benchmark == 'false' &&
+      runner.os != 'Windows'
     shell: bash
     run: |
       # E2Eテスト実行（ベンチマークなし）
       poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
 
+  - name: E2E Tests (${{ matrix.os }} / ${{ inputs.browser }})
+    if: |
+      inputs.is-benchmark == 'false' &&
+      runner.os == 'Windows'
+    shell: cmd
+    run: |
+      # Windows環境でUTF-8を使用するための設定
+      chcp 65001
+
+      # E2Eテスト実行（ベンチマークなし）
+      poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
+
   - name: E2E benchmark
     if: |
-      inputs.is-benchmark == 'true'
+      inputs.is-benchmark == 'true' &&
+      runner.os != 'Windows'
     id: e2e-benchmark
     shell: bash
     run: |
+      # E2Eテストのベンチマーク実行
+      poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+
+  - name: E2E benchmark
+    if: |
+      inputs.is-benchmark == 'true' &&
+      runner.os == 'Windows'
+    id: e2e-benchmark
+    shell: bash
+    run: |
+      # Windows環境でUTF-8を使用するための設定
+      chcp 65001
+
       # E2Eテストのベンチマーク実行
       poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
 
