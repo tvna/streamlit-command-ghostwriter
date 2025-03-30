@@ -50,20 +50,17 @@ runs:
       key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
 
   - name: Dump package
-    # TODO: stliteのWindows環境のビルド失敗が解消したら削除
-    if: runner.os == 'MacOS'
     shell: bash
     run: |
       npm run dump
 
   - name: Set GITHUB_TOKEN
+    shell: bash
     run: |
       echo "GITHUB_TOKEN=${{ inputs.github-token }}" >> "$GITHUB_ENV"
       echo "GH_TOKEN=${{ inputs.github-token }}" >> "$GITHUB_ENV"
 
   - name: Build
-    # TODO: stliteのWindows環境のビルド失敗が解消したら削除
-    if: runner.os == 'MacOS'
     shell: bash
     run: |
       npm run dist
