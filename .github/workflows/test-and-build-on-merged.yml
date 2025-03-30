@@ -19,7 +19,7 @@ jobs:
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: true
-      workflow_summary_name: "Workflow summary [Test & Build (on Push)]"
+      workflow_summary_name: "Workflow summary [Test & Build (on merged to main)]"
 
   create-tag:
     if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
