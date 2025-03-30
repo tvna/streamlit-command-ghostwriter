@@ -31,7 +31,21 @@ jobs:
 
   create-pr-to-main:
     uses: ./.github/workflows/reusable-create-pr.yml
+    if: |
+      github.event.ref == 'refs/heads/develop'
     needs: main
     permissions:
       contents: read
       pull-requests: write
+
+  release:
+    uses: ./.github/workflows/reusable-release.yml
+    if: |
+      github.event.ref == 'refs/heads/main'
+    needs: main
+    with:
+      build_succeeded: ${{ needs.main.outputs.build_succeeded }}
+    permissions:
+      contents: read
+      pull-requests: write
+    secrets: inherit
