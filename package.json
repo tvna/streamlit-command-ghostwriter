@@ -15,7 +15,7 @@
         "dist": "electron-builder",
         "postinstall": "electron-builder install-app-deps",
         "lint": "poetry run ruff check . --fix && poetry run mypy .",
-        "test": "poetry run pytest -vv -n auto --cov=. --cov-report=html --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 -k 'not e2e' --benchmark-disable",
+        "test": "poetry run pytest -vv -n auto --cov=. --cov-report=html --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=10 -k 'not e2e' --benchmark-disable",
         "coverage": "poetry run pytest -vv -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=html -k 'not e2e' --benchmark-disable",
         "benchmark": "poetry run pytest -vv -n 0 -m 'e2e' --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean",
         "lizard": "poetry run lizard -l python --CCN '10'",

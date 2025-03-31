@@ -72,6 +72,7 @@ with open('template.txt', 'rb') as f:
 """
 
 from datetime import datetime
+from decimal import Decimal
 from io import BytesIO
 from typing import (
     Annotated,
@@ -79,6 +80,7 @@ from typing import (
     Callable,
     ClassVar,
     Dict,
+    List,
     Optional,
     TypeVar,
     Union,
@@ -340,6 +342,15 @@ class ContentFormatter:
         return "".join(result)
 
 
+# 型エイリアスの定義
+ValueType = Union[str, Decimal, bool, None]
+ListType = List[Union[ValueType, "ListType", "DictType"]]  # type: ignore
+DictType = Dict[str, Union[ValueType, ListType, "DictType"]]  # type: ignore
+ContextType = Dict[str, Union[ValueType, ListType, DictType]]
+RecursiveValue = Union[ValueType, ListType, DictType]
+ContainerType = Union[ValueType, ListType, DictType]
+
+
 class DocumentRender:
     """テンプレートのレンダリングと検証を行うクラス。
 
@@ -403,11 +414,9 @@ class DocumentRender:
             self._file_validator.validate_size(template_file)
         except ValueError as e:
             self._validation_state.set_error(str(e))
-            self._initial_validation_passed = False
             return
         except IOError as e:
             self._validation_state.set_error(f"Failed to validate template file: {e!s}")
-            self._initial_validation_passed = False
             return
 
         self._template_file = template_file
@@ -423,10 +432,7 @@ class DocumentRender:
 
         # 初期検証を実行
         template_content, ast = self._security_validator.validate_template_file(self._template_file, self._validation_state)
-        if template_content is None or ast is None:
-            self._initial_validation_passed = False
-        else:
-            self._initial_validation_passed = True
+        if self._validation_state.is_valid:
             self._template_content = template_content
             self._ast = ast
 
@@ -552,40 +558,105 @@ class DocumentRender:
 
         Returns:
             bool: コンテキストの適用が成功したかどうか
-        """
 
-        # 前提条件の検証
-        if not self._initial_validation_passed:
+        Note:
+            このメソッドは以下の順序で処理を行います:
+            1. 前提条件の検証
+            2. 入力設定のバリデーション
+            3. テンプレートの状態検証
+            4. レンダリング処理
+            5. メモリ使用量の検証
+            6. フォーマット処理
+        """
+        if not self._validate_preconditions():
             return False
 
-        # 入力設定のバリデーション
-        config = self._validate_input_config(context, format_type, is_strict_undefined)
-        if config is None:
+        config = self._prepare_context_config(context, format_type, is_strict_undefined)
+        if config is None or not self._validation_state.is_valid:
+            return False
+
+        rendered_content = self._process_template(config)
+        if not self._validation_state.is_valid:
+            return False
+
+        return self._post_process_content(rendered_content, config.format_config.format_type)
+
+    def _validate_preconditions(self) -> bool:
+        """前提条件を検証する。
+
+        Returns:
+            bool: 前提条件を満たしている場合はTrue
+        """
+        if not self._validation_state.is_valid:
             return False
 
         if self._ast is None:
-            self._validation_state.set_error("AST is not available")
+            self._validation_state.set_error("AST is not available despite initial validation success")
             return False
 
-        # テンプレートの状態検証
+        if self._template_content is None:
+            self._validation_state.set_error("Template content is not available despite validation success")
+            return False
+
+        return True
+
+    def _prepare_context_config(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool) -> Optional[ContextConfig]:
+        """コンテキスト設定を準備する。
+
+        Args:
+            context: テンプレートに適用するコンテキスト
+            format_type: フォーマットタイプ
+            is_strict_undefined: 未定義変数を厳密にチェックするかどうか
+
+        Returns:
+            Optional[ContextConfig]: 検証済みの設定
+        """
+        config = self._validate_input_config(context, format_type, is_strict_undefined)
+        if config is None:
+            return None
+
         self._is_strict_undefined = config.format_config.is_strict_undefined
-        if not self._validate_template_state(config.context, self._ast):
-            return False
+        if not self._validate_template_state(config.context, self._ast):  # type: ignore
+            return None
 
-        if self._template_content is None:  # 型チェックのため再確認
-            return False
+        return config
 
-        # テンプレートのレンダリング
+    def _process_template(self, config: ContextConfig) -> Optional[str]:
+        """テンプレートの処理を行う。
+
+        Args:
+            config: コンテキスト設定
+
+        Returns:
+            Optional[str]: レンダリング結果
+        """
+        if self._template_content is None:
+            self._validation_state.set_error("Template content is not available")
+            return None
+
         rendered = self._render_template(config.context, self._template_content)
         if rendered is None:
+            return None
+
+        return rendered
+
+    def _post_process_content(self, content: Optional[str], format_type: int) -> bool:
+        """レンダリング結果の後処理を行う。
+
+        Args:
+            content: レンダリング結果
+            format_type: フォーマットタイプ
+
+        Returns:
+            bool: 処理が成功したかどうか
+        """
+        if content is None:
             return False
 
-        # メモリ使用量の検証
-        if not self._validate_memory_usage(rendered):
+        if not self._validate_memory_usage(content):
             return False
 
-        # フォーマット処理
-        return self._format_content(rendered, config.format_config.format_type)
+        return self._format_content(content, format_type)
 
     def _validate_memory_usage(self, content: str) -> bool:
         """メモリ使用量を検証する。
