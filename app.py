@@ -204,17 +204,26 @@ def main() -> None:
             """
         )
 
+    header_emojis = [
+        ":memo:",
+        ":scroll:",
+        ":gear:",
+        ":briefcase:",
+        ":twisted_rightwards_arrows:",
+    ]
+
     tabs = st.tabs(
         [
-            ":memo: " + texts.tab1.menu_title,
-            ":scroll: " + texts.tab2.menu_title,
-            ":hammer_and_wrench: " + texts.tab3.menu_title,
-            ":briefcase: " + texts.tab4.menu_title,
+            header_emojis[0] + " " + texts.tab1.menu_title,
+            header_emojis[1] + " " + texts.tab2.menu_title,
+            header_emojis[2] + " " + texts.tab3.menu_title,
+            header_emojis[3] + " " + texts.tab4.menu_title,
+            header_emojis[4] + " " + texts.tab5.menu_title,
         ]
     )
 
     with tabs[0]:
-        st.subheader(":memo: " + texts.tab1.subheader, divider="rainbow")
+        st.subheader(header_emojis[0] + " " + texts.tab1.subheader, divider="rainbow")
         tab1_row1 = st.columns(2)
         tab1_row2 = st.columns(3)
 
@@ -273,7 +282,7 @@ def main() -> None:
         )
 
     with tabs[1]:
-        st.subheader(":scroll: " + texts.tab2.subheader, divider="rainbow")
+        st.subheader(header_emojis[1] + " " + texts.tab2.subheader, divider="rainbow")
         tab2_row1 = st.columns(2)
         tab2_row2 = st.columns(3)
 
@@ -312,7 +321,7 @@ def main() -> None:
         )
 
     with tabs[2]:
-        st.subheader(":hammer_and_wrench: " + texts.tab3.subheader, divider="rainbow")
+        st.subheader(header_emojis[2] + " " + texts.tab3.subheader, divider="rainbow")
         tab3_row1 = st.columns(2)
 
         with tab3_row1[0].container(border=True):
@@ -341,9 +350,14 @@ def main() -> None:
                 st.radio(texts.tab3.download_file_extension, ["txt", "md"], horizontal=True, key="download_file_ext")
 
     with tabs[3]:
-        st.subheader(":briefcase: " + texts.tab4.subheader, divider="rainbow")
+        st.subheader(header_emojis[3] + " " + texts.tab4.subheader, divider="rainbow")
         tab4_view_model = TabViewModel(texts)
         tab4_view_model.show_tab4()
+
+    with tabs[4]:
+        st.subheader(header_emojis[4] + " " + texts.tab5.subheader, divider="rainbow")
+        with st.container(border=True, height=900):
+            st.image("./assets/images/workflow_sequence_diagram_jp.svg", use_container_width=True)
 
 
 if __name__ == "__main__":

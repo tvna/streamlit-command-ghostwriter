@@ -6,7 +6,7 @@ from streamlit.testing.v1 import AppTest
 
 # Constants for expected UI element counts
 EXPECTED_TITLE_COUNT = 1
-EXPECTED_TAB_COUNT = 4
+EXPECTED_TAB_COUNT = 5
 MIN_EXPECTED_COLUMN_COUNT = 5
 MIN_EXPECTED_SUBHEADER_COUNT = 1
 MIN_EXPECTED_SIDEBAR_COUNT = 1
