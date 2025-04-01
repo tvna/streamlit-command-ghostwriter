@@ -92,7 +92,7 @@ jobs:
           ./actionlint -color
 
       - name: Check typos
-        uses: crate-ci/typos@d08e4083f112e684fb88f6babd9ae60a1f1cd84f # v1.30.3
+        uses: crate-ci/typos@b1a1ef3893ff35ade0cfa71523852a49bfd05d19 # v1.31.1
 
   guard-api-key:
     name: Guard API Key
