@@ -1,5 +1,5 @@
 ---
-name: Test & Build (on Pull request)
+name: Test & Build (on pull request)
 
 on:
   pull_request:
@@ -171,6 +171,8 @@ jobs:
 
       - name: Create requirements.txt
         run: |
+          poetry --version
+          poetry config virtualenvs.in-project true
           poetry export -f requirements.txt --output requirements.txt
 
       - name: Run Pyre Action
