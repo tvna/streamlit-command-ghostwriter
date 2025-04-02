@@ -44,7 +44,6 @@ jobs:
 
   test-e2e-benchmark:
     name: E2E Benchmark (${{ matrix.os }})
-    needs: main
     permissions:
       contents: read
     runs-on: ${{ matrix.os }}
