@@ -12,7 +12,9 @@
     "dist",
     "docs",
     "htmlcov",
-    "node_modules"
+    "node_modules",
+    "scripts",
+    "tests"
   ],
   "extensions": [
     ".py",
