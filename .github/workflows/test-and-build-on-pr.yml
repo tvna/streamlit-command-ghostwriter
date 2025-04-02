@@ -171,9 +171,7 @@ jobs:
 
       - name: Create requirements.txt
         run: |
-          poetry --version
-          poetry config virtualenvs.in-project true
-          poetry export -f requirements.txt --output requirements.txt
+          poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
 
       - name: Run Pyre Action
         uses: facebook/pyre-action@v0.0.2
