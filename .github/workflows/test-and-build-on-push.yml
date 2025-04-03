@@ -50,7 +50,7 @@ jobs:
 
       - name: Get version from main
         id: get-main-ver
-        uses: step-security/npm-get-version-action@v1
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
 
       - name: Checkout develop branch
         uses: actions/checkout@v4
@@ -60,7 +60,7 @@ jobs:
 
       - name: Get version from develop
         id: get-dev-ver
-        uses: step-security/npm-get-version-action@v1
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
 
       - name: Set versions output
         id: set-versions
