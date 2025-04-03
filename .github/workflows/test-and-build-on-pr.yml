@@ -159,6 +159,7 @@ jobs:
           egress-policy: audit
           disable-sudo: true
           disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - uses: actions/checkout@v4
 

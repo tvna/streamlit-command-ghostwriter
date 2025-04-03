@@ -20,6 +20,12 @@ permissions:
   contents: read
   security-events: write
 
+env:
+  GLOBAL_ALLOWED_ENDPOINTS: |
+    api.github.com:443
+    github.com:443
+  GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
+
 jobs:
   main:
     uses: ./.github/workflows/reusable-test-and-build.yml
@@ -301,3 +307,33 @@ jobs:
                 // The original bash script logged an error here too.
                 core.error(`Workflow action skipped PR due to label failure: ${status}`);
             }
+
+  pyre:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
+
+      - name: Create requirements.txt
+        run: |
+          poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
+
+      - name: Run Pyre Action
+        uses: facebook/pyre-action@v0.0.2
+        with:
+          repo-directory: "./"
+          requirements-path: "requirements.txt"
+        timeout-minutes: 120
