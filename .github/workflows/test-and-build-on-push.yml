@@ -98,7 +98,7 @@ jobs:
         run: echo "$GITHUB_CONTEXT" | jq -r '. | {event_name, workflow_ref, repository, run_id, run_number}'
 
       - name: Compare versions (Semver)
-        uses: step-security/semver-utils@v4
+        uses: madhead/semver-utils@v4.3.0
         id: compare-versions
         with:
           version: ${{ needs.get-npm-versions.outputs.develop_version }}
