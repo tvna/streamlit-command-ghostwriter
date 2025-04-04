@@ -1,5 +1,5 @@
 ---
-name: Test & Build (on merged to main)
+name: Test and Build (on merged to main)
 
 on:
   pull_request:
