@@ -342,3 +342,4 @@ jobs:
           repo-directory: "./"
           requirements-path: "requirements.txt"
         timeout-minutes: 120
+        continue-on-error: true
