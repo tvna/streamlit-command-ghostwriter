@@ -96,6 +96,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+
       - name: Dump GitHub context # Keep for potential debugging/context needs within the action
         id: github_context_step
         shell: bash
