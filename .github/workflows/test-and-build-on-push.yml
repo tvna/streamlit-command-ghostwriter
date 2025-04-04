@@ -96,11 +96,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python and restore cache
-        uses: ./.github/actions/setup-python
-        with:
-          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-
       - name: Dump GitHub context # Keep for potential debugging/context needs within the action
         id: github_context_step
         shell: bash
@@ -242,8 +237,7 @@ jobs:
           OLD_VERSION: ${{ needs.get-npm-versions.outputs.develop_version }}
         run: |
           echo "Attempting to run python scripts/create_pr.py"
-          # Add install dependencies step here if create_pr.py needs any non-stdlib packages
-          # pip install -r scripts/requirements.txt # Example
+          python -m pip install gitpython
           python scripts/create_pr.py
 
       - name: Set Final Status
