@@ -95,6 +95,8 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Dump GitHub context # Keep for potential debugging/context needs within the action
         id: github_context_step
@@ -109,7 +111,6 @@ jobs:
         with:
           version: ${{ needs.get-npm-versions.outputs.develop_version }}
           compare-to: ${{ needs.get-npm-versions.outputs.main_version }}
-          # satisfies: 1.x # Removed satisfies check as it might be too specific for a reusable action
 
       - name: Display version comparison result # Optional: for debugging
         shell: bash
@@ -119,7 +120,7 @@ jobs:
       - name: Check if PR already exists
         id: check-pr
         if: steps.compare-versions.outputs.comparison-result == '>'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -145,11 +146,7 @@ jobs:
 
       - name: Ensure labels exist
         id: ensure-labels
-        if: |
-          steps.compare-versions.outputs.comparison-result == '>' &&
-          steps.check-pr.outputs.success == 'true' &&
-          steps.check-pr.outputs.exists == '0'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -210,39 +207,35 @@ jobs:
 
       # Setup Python required by the create_pr.py script
       - name: Set up Python
-        if: |
-          steps.compare-versions.outputs.comparison-result == '>' &&
-          steps.check-pr.outputs.success == 'true' &&
-          steps.check-pr.outputs.exists == '0' &&
-          steps.ensure-labels.outputs.success == 'true'
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x" # Or specify a more precise version if needed
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+
+      - name: Get commit log
+        id: commit_log
+        run: |
+          echo "以下のコミットが含まれています:" > commitlog.txt
+          echo "" >> commitlog.txt
+          git log origin/main..HEAD --pretty=format:"- %s" --no-merges > commitlog.txt
 
       - name: Create pull request
         id: create-pr
-        # Run only if develop version < main version, PR check succeeded, no PR exists, and labels were ensured
+        uses: peter-evans/create-pull-request@v7.0.8
         if: |
           steps.compare-versions.outputs.comparison-result == '>' &&
           steps.check-pr.outputs.success == 'true' &&
           steps.check-pr.outputs.exists == '0' &&
           steps.ensure-labels.outputs.success == 'true'
-        shell: bash
-        env:
-          # Pass versions and token to the script environment
-          # Assuming create_pr.py reads these env vars
-          # Also needs GITHUB_TOKEN for potential API calls within script
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEW_VERSION: ${{ needs.get-npm-versions.outputs.main_version }}
-          OLD_VERSION: ${{ needs.get-npm-versions.outputs.develop_version }}
-        run: |
-          echo "Attempting to run python scripts/create_pr.py"
-          python -m pip install gitpython
-          python scripts/create_pr.py
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: develop
+          title: "Release: ${{ needs.get-npm-versions.outputs.main_version }}"
+          body-path: commitlog.txt
 
       - name: Set Final Status
         id: set-status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }} # Not strictly needed for this script, but good practice if future logic needs it
           script: |
