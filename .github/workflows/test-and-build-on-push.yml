@@ -81,7 +81,7 @@ jobs:
       - main
       - get-npm-versions
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
