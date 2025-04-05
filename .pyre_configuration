@@ -4,8 +4,10 @@
     "."
   ],
   "search_path": [
-    "features/**",
-    "tests/**"
+    "features/",
+    "tests/",
+    "tests/unit/",
+    "tests/e2e/"
   ],
   "exclude": [
     ".cursor",
