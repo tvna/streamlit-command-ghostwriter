@@ -1,0 +1,135 @@
+- ci(Test and Build (on push)): create-prの権限不足のため、修正
+- chore(pyre): search_pathからテストコードを削除
+- refactor(AppCore): プライベート変数の名前修正、不要な一時変数の削除、型情報の厳格化
+- ci(Test and Build (on push)): create-prの部分をサードパーティワークフローに代替
+- ci(Test and Build): ワークフローファイル名がコミットログで使うべきでない記号を含んでおり、修正
+- ci(Test & Build): create-prにて、明示的にgitpythonをインストールする仕様に修正
+- ci(Test & Build): pyre警告が続いており、エラーを無視するように変更
+- ci(Test & Build (on pull request)): create-prのsetupが漏れており追加
+- ci(Test & Build): pyreをon-pushでも実行するように変更
+- ci(Test & Build (on push)): create-prの比較演算子が逆向きだったので修正
+- ci(Test & Build (on push)): semver-utilsをフォーク元に切り替え
+- ci(Test & Build (on push)): step-securityのnpm-get-version-actionが無効化されたため、フォーク元のサードパーティアクションに切り替え
+- chore(pyre): github actionsでエラーが発生するため、コンフィグファイルの修正案を反映
+- chore(deps-dev): bump electron from 35.1.2 to 35.1.3
+- ci(Test & Build (on pull request)): ベンチマークテストをTest & Buildを待たずに実行する仕様に修正
+- chore(pyre): 静的解析の対象からテストコードとワークフロー専用スクリプトを除外
+- ci(Dependabot, Test & Build (on pull request)): Dependabotの実行時間が重複していたのを分散, 完了を待つジョブ名を修正
+- chore(deps-dev): bump pytest-cov from 5.0.0 to 6.1.0
+- ci(Test & Build (on pull request)): requirements.txtの生成に失敗する回避策の案を適応
+- chore(deps): bump step-security/harden-runner
+- chore(deps): bump streamlit from 1.44.0 to 1.44.1
+- ci(Test & Build (on push)): Create PRが壊れており、切り分け
+- ci(Test & Build (on pull request)): pyreが失敗するので切り分けのため修正
+- feat(app): ワークフローのタブメニューを追加
+- chore(deps): bump the github-actions group across 1 directory with 2 updates
+- fix(DocumentRender, TemplateSecurityValidator): エッジケーステストの追加に伴う変更
+- test(TestValidationConsistency): template_configに対するファイルサイズ、バイナリデータ入力時のエッジケーステスト追加
+- refactor(TemplateSecurityValidator): デッドコードの削除、内部関数の関数名を修正
+- refactor(class DocumentRender:): マジックナンバーを説明定数に置換
+- refactor(ConfigParser): コンストラクタ周辺が長いので、分割されすぎた関数を襲爵
+- refactor(app): マジックナンバーを説明定数に置換
+- refactor(DocumentRender): デッドコードの削除
+- refactor(DocumentRender): ファイルサイズ検査周りのリファクタリングの事前準備
+- refactor(TemplateSecurityValidator): RUFF036の修正
+- refactor(DocumentRender): 未使用処理の整理、リソース閾値定数の名前ぶれを修正
+- refactor(TemplateSecurityValidator): 算術演算ヘルパーのインライン化
+- refactor(TemplateSecurityValidator): デッドコードの削除
+- fix(DocumentRender): エッジケーステストの追加、実装からデッドコードを一部削除
+- refactor(DocumentRender): デッドコード削除に伴うリファクタリング
+- refactor(ConfigParser): デッドコード削除に伴うリファクタリング、Vulture導入
+- refactor(ConfigParser): テストコードのリファクタリング
+- test(ConfigParser): YAMLファイルに対するエッジケーステストの追加
+- fix(ConfigParser): 無効なTOMLファイルに対するエッジケーステスト追加
+- fix(ConfigParser): 不正なCSVファイルに対するエスケープが適切でなく、修正
+- docs(Rules for AI): 全角括弧の置換、Github actionsに関わるルールの刷新
+- refactor(ruff): デッドコードの削除、RUFF001,RUF002,ANN401の解消に伴うlint.ignoreからの削除
+- chore(pytest): pytest関係のモジュール追加、E2Eテストにおける未使用のバージョン情報を削除
+- ci(Create pull request to main): 誤ってshellが指定されていた箇所を削除、shell scriptをgithub scriptに代替
+- ci(Test & Build (on Pull request)): pull_requestsの実行条件が暗黙的であったため、明示的に指定
+- ci(Auto-merge for dependabot): Test & Buildの実行完了待ちをgithub scriptに代替、タイムアウト値を20分に修正
+- ci(Test & Build on merged to main): サマリの名前が間違っており修正
+- ci(Test & Build): npm versionの取得方法を再実装、checkoutが存在してないため、追加
+- chore(pre-commit): descriptionの追加、end-of-file-fixerの追加
+- chore(safety, code-workspace): safetyを使わなくなりコンフィグを削除、code-workspaceの非表示対象の見直し
+- ci(Test & Build): Create PR to mainを上位側のワークフローに移動、ユニットテストのアーティファクトのアップロードを無効化
+- ci(Test & Build): リリースワークフローが分離されていたのを、上位側のワークフローに集約
+- ci(Test & Build): 実行権限とタイミングを整理
+- ci(Test & Build): リリース用のワークフローに、ビルド時の実行ファイルをアップロードする仕様を追加
+- ci(Test & Build): create-prのpermissionの不足を修正
+- ci(Test & Build): create-pr-to-mainの依存関係を追加
+- ci(Test & Build): Create PR to mainを集約
+- ci(Create PR to main): shellをgithub scriptに置換
+- ci(Test & Build): mainブランチのビルド成功をREADMEがウォッチできておらず、修正
+- ci(E2E Tests, Build): 環境変数のセットの仕方に不備があり修正、未使用の環境変数を削除
+- ci(E2E Tests): Windowsのshellをcmdからpowehshellに変更
+- ci(E2E Tests): WindowsのE2Eテストがこけたため、修正
+- ci(E2E Tests): 未使用のid重複があり、削除
+- ci(Test & Build): ベンチマークテストをプルリク前のテストで実行しないように修正
+- ci(E2E Tests): Windows環境におけるE2Eテストが文字コード由来のエラーで失敗するため、修正
+- revert(Test & Build): Create PR to mainを集約するとジョブの実行が止まったので、元に戻す
+- ci(Test & Build): ベンチマークテストをmacOSのみに限定
+- ci(E2E Tests): ベンチマークテストのアーティファクトの入力パスが誤っていたのを修正
+- ci(Test & Build): 後続処理のCreate PR to mainのワークフローファイルが分割されて可読性にかけるので、Reusable workflowとして統合
+- ci(E2E Tests): 予期せぬ失敗によるE2Eテストのリトライ処理の実装に問題があり、テスト失敗を見逃すため変更
+- ci(E2E Tets): 実行条件の演算子の漏れを修正
+- ci(Test & Build): E2Eテストのshell指定漏れの修正、ワークフローのタイトルの表記ぶれを修正
+- ci(Test & Build): gitleaksのフェッチ対象がALLになってない不具合を修正
+- ci(Test & Build): E2Eテストおよびベンチマークテストを、 Composite actionに移動
+- ci(Test & Build / Test Covarage): Github Varibleの受け渡し方法を、すべて環境変数を経由するように統一
+- ci(Test & Build): Github actionsのvaribleの受け取り方法の不備を修正
+- ci(Setup python): Pythonのセットアップにおけるバージョン指定方法を修正
+- ci(Test & Build): shell指定漏れの設定、Windowsビルドをお試しで有効化
+- ci(Test & Build): stliteへのGITHUB_TOKENの受け渡し方法を修正
+- ci(Test & Build): gitleaks用のチェックアウトを修正
+- ci(Test & Build): GITHUB_TOKENの受け渡し方法を変更
+- chore(pre-commit): 設定値のマイグレーション、actionlintの追加
+- ci(Test & Build): default shellの記載漏れ、secretsの受け渡し方法、if文の位置を修正
+- ci(Test & Build): composite actionsのdefault shellの書き方を修正
+- ci(Test & Build): Default shellの設定方法を統一、環境変数の記載位置をできるだけグローバル設定に統一
+- ci(Test & Build): stliteのビルドにおけるデフォルトshellの設定漏れを修正
+- ci(Test & Build): Coverageの参照不具合の修正、Playwright周辺の見直し
+- ci(composite actions): runner-osのtypoを修正
+- test(Test & Build): composite actionの引数設定が壊れたため、修正
+- ci(Test & Build): covarageをcomposite actionに変更、OSに関数するcomposite actionへの引数の渡し方を修正、Githubのグローバル変数の修正
+- Revert "ci: runner-osが不必要にcomposite actionsで引数とされており、全て削除"
+- ci: runner-osが不必要にcomposite actionsで引数とされており、全て削除
+- ci(Test & Build): gitのcheckoutが浅すぎたので、gitleaksを独立したジョブに変更
+- ci(Test & Build): Composite actionの引数の修正漏れを修正
+- ci(Test & Build / Setup node): inputsの並びを修正、setup nodeのrestore-keysが漏れていたのを修正
+- test(Setup python/playwright): inputsの並びを修正、restore-keysが漏れていた不具合を修正
+- ci(Test & Build): pythonの脆弱性スキャンの方法をtrivyに切り替え
+- ci(Test & Build): safetyの実行方法を修正
+- ci(Test & Build): safetyのログイン考慮漏れを修正
+- ci(Test & Build): SC2086の修正
+- ci(Test & Build): safetyの実行方法の修正、APIキーを安全な受け渡し方法に変更
+- ci(Test & Build): safetyの実行方法の変更、GITHUB_TOKENの受け渡し方法を修正
+- ci(Test & Build): safetyのAPIキーの受け渡し方法を変更
+- ci(Test & Build): pythonのsafetyをofficial reusable workflowに置き換え
+- ci(Test & Build): mypy動作不良のため、切り分けのためキャッシュを削除
+- ci(Test & Build):  Gitleaks動作不良の切り分けのため、コンフィグを削除
+- chore(Test & Build): safetyのコンフィグを新規作成
+- ci(Test & Build): gitleaksの定義ミスを修正
+- ci(Test & Build): ガード節の並び替え、gitleaks-actionの追加
+- docs(Rules for AI): pythonコーディングルールのファイル名のtypoを修正
+- ci(Test & Build): ワークフローの構文エラーを修正
+- ci(Test & Build): ユニットテストを実行すべきOS、E2Eテストを実行すべきOSの割り当てが適切でなく、修正
+- ci(Setup Python Environment): lintやtestに関するキャッシュを、ワークフローのキャッシュとして保持するように変更
+- ci(Test & Build): ワークフローの依存関係の簡略化と、ジョブ名とステップ名の修正
+- chore(pip): pip依存ライブラリのバージョンアップ
+- docs(Rules for AI): はじめに を刷新
+- ci(Test & Build): パーミッションを減らしすぎたので修正
+- chore(npm): 依存ライブラリのアップデート
+- ci(Test & Build): Web画面におけるサマリーの表示名が長すぎるので、短い表記に変更
+- ci(Test & Build): プルリク固有のジョブをreusable workflowから上位ワークフローに移動
+- ci(Test & Build): Setup Playwrightのタイムアウト設定が正しくないため修正、古いワークフローの削除
+- ci(Test & Build): ワークフローに必要なパーミッションの見直し
+- ci(Create PR to main): ステップ内容がわかりにく箇所の名前を修正、create-prのファイルモニタリング有効化
+- ci(Dependabot): timezoneの表記誤りを修正
+- chore(deps-dev): bump lizard from 1.17.22 to 1.17.23
+- ci(Reusable Test & Build): テスト高速化のため、E2Eテストからベンチマークを分離して並列処理に変更
+- chore(deps-dev): bump electron-builder from 24.13.3 to 26.0.12
+- chore(deps-dev): bump electron from 31.7.7 to 35.1.2
+- chore(deps-dev): bump @stlite/desktop from 0.58.7 to 0.80.5
+- chore(deps-dev): bump rimraf from 5.0.10 to 6.0.1
+- chore(deps): bump devcontainers/python in /.devcontainer
