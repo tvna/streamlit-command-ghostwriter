@@ -147,9 +147,6 @@ markers = [
   "unit: mark a test as a unit test.",
   "integration: mark a test as an integration test.",
   "e2e: mark a test as an end-to-end test",
-  "e2e_basic: mark a test as a basic end-to-end test",
-  "e2e_parametrized: mark a test as a parametrized end-to-end test",
-  "workflow: mark a test as a workflow test.",
   "benchmark: mark a test for benchmarking",
 ]
 

@@ -217,7 +217,7 @@ def _get_validated_streamlit_executable() -> str:
     return streamlit_executable
 
 
-def _run_streamlit_safely(app_path: str, port: int, pytestconfig: PytestConfig) -> subprocess.Popen:
+def _run_streamlit_safely(app_path: str, port: int) -> subprocess.Popen:
     """Streamlitサーバーを安全に起動.
 
     Args:
@@ -242,7 +242,7 @@ def _run_streamlit_safely(app_path: str, port: int, pytestconfig: PytestConfig) 
     logger.info(f"Streamlitを起動します: port={port}, headless=true")
 
     process: subprocess.Popen = subprocess.Popen(
-        args,
+        args=args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=False,
@@ -286,9 +286,9 @@ def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[
     process: Optional[subprocess.Popen] = None
     try:
         streamlit_path: Final[str] = _get_validated_streamlit_path()
-        process = _run_streamlit_safely(streamlit_path, port=streamlit_port, pytestconfig=pytestconfig)
+        process = _run_streamlit_safely(streamlit_path, port=streamlit_port)
 
-        if not _wait_for_streamlit(timeout=30, interval=3, port=streamlit_port):
+        if not _wait_for_streamlit(timeout=120, interval=3, port=streamlit_port):
             if process:
                 process.kill()
                 process.wait(timeout=5)
@@ -361,28 +361,3 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen, streamlit_port: 
             page.wait_for_timeout(1000)
         except Exception as e:
             logger.warning(f"ページのリセット中にエラーが発生しました: {e}")
-
-
-def pytest_configure(config: PytestConfig) -> None:
-    """pytestの設定を構成.
-
-    Args:
-        config: pytestの設定オブジェクト
-
-    Note:
-        - カスタムマーカー (e2e) の登録
-        - ベンチマーク設定の構成
-          - 自動保存の有効化
-          - 保存先ディレクトリの設定
-          - 比較対象の設定
-          - ヒストグラム出力の設定
-    """
-    config.addinivalue_line(
-        "markers",
-        "e2e: mark test as end-to-end test",
-    )
-
-    config.option.benchmark_autosave = True
-    config.option.benchmark_save = ".benchmarks"
-    config.option.benchmark_compare = "last"
-    config.option.benchmark_histogram = ".benchmarks/histograms"
