@@ -41,7 +41,6 @@ runs:
         script: |
           const fs = require('fs');
           const path = require('path');
-          const core = require('@actions/core'); // Required for core.summary
           const sarifPath = process.env.SARIF_PATH; // Read path from environment variable
 
           try {
