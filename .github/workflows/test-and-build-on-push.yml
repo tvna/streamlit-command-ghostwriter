@@ -214,9 +214,9 @@ jobs:
       - name: Get commit log
         id: commit_log
         run: |
-          echo "以下のコミットが含まれています:" > commitlog.txt
-          echo "" >> commitlog.txt
-          git log origin/main..HEAD --pretty=format:"- %s" --no-merges > commitlog.txt
+          echo "以下のコミットが含まれています:" > .commit-log.txt
+          echo "" >> .commit-log.txt
+          git log origin/main..HEAD --pretty=format:"- %s" --no-merges > .commit-log.txt
 
       - name: Create pull request
         id: create-pr
@@ -231,7 +231,7 @@ jobs:
           base: main
           branch: develop
           title: "Release: ${{ needs.get-npm-versions.outputs.develop_version }}"
-          body-path: commitlog.txt
+          body-path: .commit-log.txt
 
       - name: Set Final Status
         id: set-status
