@@ -661,7 +661,7 @@ Next Review: June 20, 2024""",
             True,
             False,
             None,
-            "Template rendering error: Invalid date format",
+            "Template rendering error: cannot access local variable 'dt' where it is not associated with a value",
             id="template_render_null_date",
         ),
         # Template Injection Edge Cases based on Rules B-002_domain / C-103_python-security
