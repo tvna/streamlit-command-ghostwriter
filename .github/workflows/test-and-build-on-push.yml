@@ -230,7 +230,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: main
           branch: develop
-          title: "Release: ${{ needs.get-npm-versions.outputs.main_version }}"
+          title: "Release: ${{ needs.get-npm-versions.outputs.develop_version }}"
           body-path: commitlog.txt
 
       - name: Set Final Status
