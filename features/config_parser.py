@@ -176,7 +176,7 @@ class ConfigParser(BaseModel):
         super().__init__(config_file=config_file)
 
         # ファイルサイズの検証
-        file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
+        file_validator: FileValidator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
         if not file_validator.validate_size(config_file):
             self._error_message = file_validator.error_message
             return
@@ -202,7 +202,7 @@ class ConfigParser(BaseModel):
             return False
 
         try:
-            self._parsed_dict = self.__parse_by_file_type(self._config_data)
+            self._parsed_dict = self._parse_by_file_type(self._config_data)
             return True
         except (
             tomllib.TOMLDecodeError,
@@ -219,7 +219,7 @@ class ConfigParser(BaseModel):
             self._parsed_dict = None
             return False
 
-    def __parse_by_file_type(self, config_data: str) -> Dict[str, Any]:
+    def _parse_by_file_type(self, config_data: str) -> Dict[str, Any]:
         """ファイルタイプに応じたパース処理を行います。
 
         Returns:
@@ -243,16 +243,16 @@ class ConfigParser(BaseModel):
                     # Re-raise the original exception to preserve marks for tests
                     raise e from e
             case "csv":
-                return self.__parse_csv_data(config_data)
+                return self._parse_csv_data(config_data)
             # The 'case _:' is used here to satisfy the type checker and catch unexpected states.
             # Validation in __initialize_from_file should prevent reaching this point.
             case _:  # type: ignore
                 raise RuntimeError(
-                    f"Internal error: Reached __parse_by_file_type with unexpected extension '{self._file_extension}'. "
+                    f"Internal error: Reached _parse_by_file_type with unexpected extension '{self._file_extension}'. "
                     "Validation should have caught this."
                 )
 
-    def __parse_csv_data(self, config_data: str) -> Dict[str, Any]:
+    def _parse_csv_data(self, config_data: str) -> Dict[str, Any]:
         """CSVデータをパースします。
 
         Returns:
@@ -273,7 +273,7 @@ class ConfigParser(BaseModel):
 
             # 2. Handle NaN filling if enabled
             if self._is_enable_fill_nan:
-                csv_data = self.__handle_csv_nan_values(csv_data)
+                csv_data = self._handle_csv_nan_values(csv_data)
 
             # 3. Convert DataFrame rows to a list of dictionaries
             mapped_list: List[Dict[str, Any]] = [row.to_dict() for _, row in csv_data.iterrows()]
@@ -296,7 +296,7 @@ class ConfigParser(BaseModel):
             # Wrap any other unexpected exceptions during pandas processing in ParserError
             raise pd.errors.ParserError(f"Failed to process CSV data due to an unexpected error: {e!s}") from e
 
-    def __handle_csv_nan_values(self, csv_data: pd.DataFrame) -> pd.DataFrame:
+    def _handle_csv_nan_values(self, csv_data: pd.DataFrame) -> pd.DataFrame:
         """CSVデータのNaN値を処理します。
 
         Args:
