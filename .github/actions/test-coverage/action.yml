@@ -17,7 +17,22 @@ runs:
     - name: Run pytest (coverage without e2e)
       shell: bash
       run: |
-        poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile -k "not e2e" --benchmark-disable
+        cmd_array=(
+          poetry run pytest
+          --benchmark-disable
+          --cov=app.py
+          --cov=features
+          --cov=i18n
+          --cov=scripts
+          --cov-report=xml
+          --cov-report=term
+          --dist loadfile
+          --junitxml=junit.xml
+          -n auto
+          -k "not e2e"
+          -o junit_family=legacy
+        )
+        "${cmd_array[@]}"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5.4.0

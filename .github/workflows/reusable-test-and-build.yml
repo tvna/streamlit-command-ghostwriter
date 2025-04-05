@@ -323,7 +323,7 @@ jobs:
           path: |
             coverage.xml
             htmlcov/
-          retention-days: 5
+          retention-days: 3
 
   test-e2e:
     name: E2E Tests (${{ matrix.os }} & ${{ matrix.browser }})

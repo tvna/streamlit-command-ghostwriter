@@ -15,7 +15,7 @@ runs:
 
     # 非Windows環境用のキャッシュ復元
     - name: Restore cache pip dependencies (without Windows)
-      uses: actions/cache@v4.2.2
+      uses: actions/cache@451823d7de3a907248c948f8812e087a2c48d531
       if: runner.os != 'Windows'
       with:
         path: |
@@ -32,7 +32,7 @@ runs:
 
     # Windowsのみキャッシュ障害に備えてリトライロジックを追加
     - name: Restore cache pip dependencies (Windows with retry)
-      uses: actions/cache@v4.2.2
+      uses: actions/cache@451823d7de3a907248c948f8812e087a2c48d531
       if: runner.os == 'Windows'
       with:
         path: |
