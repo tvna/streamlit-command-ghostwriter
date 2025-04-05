@@ -344,19 +344,17 @@ jobs:
         # so we always upload the results.
         if: always()
         with:
-          # Path to SARIF file relative to the root of the repository
-          sarif_file: pyre-report.sarif
-          # Optional: You can categoryize the results.
-          # category: pyre-static-analysis
+          sarif_file: sarif.json
+          category: pyre-static-analysis
 
       - name: Convert SARIF to Markdown Summary
         uses: actions/github-script@v7
-        if: always() # Attempt to summarize even if pyre failed
+        if: always()
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const sarifPath = 'pyre-report.sarif';
+            const sarifPath = 'sarif.json';
 
             try {
               if (!fs.existsSync(sarifPath)) {
