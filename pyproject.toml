@@ -114,6 +114,7 @@ lint.per-file-ignores."tests/*" = [
   "PT001", # Use @pytest.fixture{expected} over @pytest.fixture{actual}
   "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
   "S101",  # Use of assert detected
+  "S307",  # Use of assert detected
   "S603",  # `subprocess` call: check for execution of untrusted input
 ]
 lint.per-file-ignores."tests/e2e/conftest.py" = [

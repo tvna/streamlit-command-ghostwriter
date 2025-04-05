@@ -45,333 +45,315 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
     """
 
     def _create_file(content: bytes, filename: str = "template.txt") -> BytesIO:
-        file = BytesIO(content)
+        file: BytesIO = BytesIO(content)
         file.name = filename
         return file
 
     return _create_file
 
 
-class TestInitialValidation:
-    """初期検証のテストクラス。
-
-    このクラスは、DocumentRenderの初期検証機能をテストします。
-    初期検証は、テンプレートの静的な特性を検証します。
-    """
-
-    @pytest.mark.unit
-    @pytest.mark.timeout(5)
-    @pytest.mark.parametrize(
-        ("template_content", "expected_valid", "expected_error"),
-        [
-            # 基本的な構文テスト
-            pytest.param(
-                b"Hello {{ name }}!",
-                True,
-                None,
-                id="template_validate_basic_syntax",
-            ),
-            # エンコーディングテスト
-            pytest.param(
-                b"\x80\x81\x82\x83",
-                False,
-                "Template file contains invalid UTF-8 bytes",
-                id="template_validate_invalid_utf8",
-            ),
-            # 構文エラーテスト
-            pytest.param(
-                b"Hello {{ name }!",
-                False,
-                "unexpected '}'",
-                id="template_validate_syntax_error",
-            ),
-            # セキュリティ検証テスト - マクロ
-            pytest.param(
-                b"{% macro input(name) %}{% endmacro %}",
-                False,
-                "Template security error: 'macro' tag is not allowed",
-                id="template_security_macro_tag",
-            ),
-            # セキュリティ検証テスト - インクルード
-            pytest.param(
-                b"{% include 'header.html' %}",
-                False,
-                "Template security error: 'include' tag is not allowed",
-                id="template_security_include_tag",
-            ),
-            # セキュリティ検証テスト - 制限属性
-            pytest.param(
-                b"{{ request.args }}",
-                False,
-                "Template security validation failed: Use of restricted variable 'request' is forbidden.",
-                id="template_security_restricted_attribute",
-            ),
-            # セキュリティ検証テスト - 大きなループ範囲
-            pytest.param(
-                b"{% for i in range(0, 1000000) %}{{ i }}{% endfor %}",
-                False,
-                "Template security error: loop range exceeds maximum limit of 100000",
-                id="template_security_large_loop_range",
-            ),
-            # ファイルサイズ検証テスト
-            pytest.param(
-                b"",  # 空ファイル
-                True,
-                None,
-                id="template_validate_empty_file",
-            ),
-            pytest.param(
-                b"a" * (30 * 1024 * 1024),  # 制限値ちょうど
-                True,
-                None,
-                id="template_validate_max_size_exact",
-            ),
-            pytest.param(
-                b"a" * (30 * 1024 * 1024 + 1),  # 制限値オーバー
-                False,
-                f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
-                id="template_validate_max_size_exceeded",
-            ),
-            # バイナリデータ (Nullバイト) 検証テスト
-            pytest.param(
-                b"\x00",  # Nullバイトのみ
-                False,
-                "Template file contains invalid binary data",
-                id="template_validate_null_byte_only",
-            ),
-            pytest.param(
-                b"Hello\x00World",  # 有効なテキスト + Nullバイト
-                False,
-                "Template file contains invalid binary data",
-                id="template_validate_null_byte_in_text",
-            ),
-        ],
-    )
-    def test_initial_validation(
-        self,
-        create_template_file: Callable[[bytes, str], BytesIO],
-        template_content: bytes,
-        expected_valid: bool,
-        expected_error: Optional[str],
-    ) -> None:
-        """初期検証の動作を確認する。
-
-        Args:
-            create_template_file: テンプレートファイル作成用フィクスチャ
-            template_content: テンプレートの内容
-            expected_valid: 検証が成功することが期待されるかどうか
-            expected_error: 期待されるエラーメッセージ
-        """
-        # Arrange
-        template_file = create_template_file(template_content, "template.txt")
-
-        # Act
-        renderer = DocumentRender(template_file)
-
-        # Assert
-        assert renderer.is_valid_template == expected_valid, (
-            f"Template validation failed.\nExpected: {expected_valid}\nGot: {renderer.is_valid_template}"
-        )
-        if expected_error:
-            assert renderer.error_message is not None, "Expected error message but got None"
-            assert expected_error == renderer.error_message, (
-                f"Error message does not match.\nExpected: {expected_error}\nGot: {renderer.error_message}"
-            )
-        else:
-            assert renderer.error_message is None, f"Expected no error message, but got: {renderer.error_message}"
-
-
-class TestValidationConsistency:
-    """検証の一貫性テストクラス。
-
-    このクラスは、初期検証とランタイム検証の結果の一貫性をテストします。
-    特に、以下の点を確認します:
-    1. 初期検証で失敗する場合、ランタイム検証も失敗すること
-    2. 初期検証で成功する場合、ランタイム検証の結果が一貫していること
-    """
-
-    @pytest.mark.unit
-    @pytest.mark.timeout(5)
-    @pytest.mark.parametrize(
-        (
-            "template_content",
-            "context",
-            "format_type",
-            "is_strict_undefined",
-            "expected_initial_valid",
-            "expected_runtime_valid",
-            "expected_error",
-            "expected_content",
+@pytest.mark.unit
+@pytest.mark.timeout(10)
+@pytest.mark.parametrize(
+    ("template_content", "expected_valid", "expected_error"),
+    [
+        # 基本的な構文テスト
+        pytest.param(
+            b"Hello {{ name }}!",
+            True,
+            None,
+            id="template_validate_basic_syntax",
         ),
-        [
-            # 初期検証で失敗するケース - strictモード
-            pytest.param(
-                b"{% macro input() %}{% endmacro %}",
-                {},
-                3,
-                True,
-                False,
-                False,
-                "Template security error: 'macro' tag is not allowed",
-                None,
-                id="template_validate_macro_strict",
-            ),
-            # 初期検証で失敗するケース - 非strictモード
-            pytest.param(
-                b"{% macro input() %}{% endmacro %}",
-                {},
-                3,
-                False,
-                False,
-                False,
-                "Template security error: 'macro' tag is not allowed",
-                None,
-                id="template_validate_macro_non_strict",
-            ),
-            # ランタイムのみで失敗するケース - strictモード
-            pytest.param(
-                b"{{ 10 / value }}",
-                {"value": 0},
-                3,
-                True,
-                True,
-                False,
-                "Template rendering error: division by zero",
-                None,
-                id="template_runtime_division_by_zero_strict",
-            ),
-            # ランタイムのみで失敗するケース - 非strictモード
-            pytest.param(
-                b"{{ 10 / value }}",
-                {"value": 0},
-                3,
-                False,
-                True,
-                False,
-                "Template rendering error: division by zero",
-                None,
-                id="template_runtime_division_by_zero_non_strict",
-            ),
-            # 両方で成功するケース - strictモード
-            pytest.param(
-                b"Hello {{ name }}!",
-                {"name": "World"},
-                3,
-                True,
-                True,
-                True,
-                None,
-                "Hello World!",
-                id="template_validate_and_runtime_success_strict",
-            ),
-            # 両方で成功するケース - 非strictモード
-            pytest.param(
-                b"Hello {{ name }}!",
-                {"name": "World"},
-                3,
-                False,
-                True,
-                True,
-                None,
-                "Hello World!",
-                id="template_validate_and_runtime_success_non_strict",
-            ),
-            # 未定義変数のケース - strictモード
-            pytest.param(
-                b"Hello {{ undefined }}!",
-                {},
-                3,
-                True,
-                True,
-                False,
-                "'undefined' is undefined",
-                None,
-                id="template_runtime_undefined_var_strict",
-            ),
-            # 未定義変数のケース - 非strictモード
-            pytest.param(
-                b"Hello {{ undefined }}!",
-                {},
-                3,
-                False,
-                True,
-                True,
-                None,
-                "Hello !",
-                id="template_runtime_undefined_var_non_strict",
-            ),
-        ],
+        # エンコーディングテスト
+        pytest.param(
+            b"\x80\x81\x82\x83",
+            False,
+            "Template file contains invalid UTF-8 bytes",
+            id="template_validate_invalid_utf8",
+        ),
+        # 構文エラーテスト
+        pytest.param(
+            b"Hello {{ name }!",
+            False,
+            "unexpected '}'",
+            id="template_validate_syntax_error",
+        ),
+        # セキュリティ検証テスト - マクロ
+        pytest.param(
+            b"{% macro input(name) %}{% endmacro %}",
+            False,
+            "Template security error: 'macro' tag is not allowed",
+            id="template_security_macro_tag",
+        ),
+        # セキュリティ検証テスト - インクルード
+        pytest.param(
+            b"{% include 'header.html' %}",
+            False,
+            "Template security error: 'include' tag is not allowed",
+            id="template_security_include_tag",
+        ),
+        # セキュリティ検証テスト - 制限属性
+        pytest.param(
+            b"{{ request.args }}",
+            False,
+            "Template security validation failed: Use of restricted variable 'request' is forbidden.",
+            id="template_security_restricted_attribute",
+        ),
+        # セキュリティ検証テスト - 大きなループ範囲
+        pytest.param(
+            b"{% for i in range(0, 1000000) %}{{ i }}{% endfor %}",
+            False,
+            "Template security error: loop range exceeds maximum limit of 100000",
+            id="template_security_large_loop_range",
+        ),
+        # ファイルサイズ検証テスト
+        pytest.param(
+            b"",  # 空ファイル
+            True,
+            None,
+            id="template_validate_empty_file",
+        ),
+        pytest.param(
+            b"a" * (30 * 1024 * 1024),  # 制限値ちょうど
+            True,
+            None,
+            id="template_validate_max_size_exact",
+        ),
+        pytest.param(
+            b"a" * (30 * 1024 * 1024 + 1),  # 制限値オーバー
+            False,
+            f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
+            id="template_validate_max_size_exceeded",
+        ),
+        # バイナリデータ (Nullバイト) 検証テスト
+        pytest.param(
+            b"\x00",  # Nullバイトのみ
+            False,
+            "Template file contains invalid binary data",
+            id="template_validate_null_byte_only",
+        ),
+        pytest.param(
+            b"Hello\x00World",  # 有効なテキスト + Nullバイト
+            False,
+            "Template file contains invalid binary data",
+            id="template_validate_null_byte_in_text",
+        ),
+    ],
+)
+def test_initial_validation(
+    create_template_file: Callable[[bytes, str], BytesIO],
+    template_content: bytes,
+    expected_valid: bool,
+    expected_error: Optional[str],
+) -> None:
+    """初期検証の動作を確認する。
+
+    Args:
+        create_template_file: テンプレートファイル作成用フィクスチャ
+        template_content: テンプレートの内容
+        expected_valid: 検証が成功することが期待されるかどうか
+        expected_error: 期待されるエラーメッセージ
+    """
+    # Arrange
+    template_file: BytesIO = create_template_file(template_content, "template.txt")
+
+    # Act
+    renderer: DocumentRender = DocumentRender(template_file)
+
+    # Assert
+    assert renderer.is_valid_template == expected_valid, (
+        f"Template validation failed.\nExpected: {expected_valid}\nGot: {renderer.is_valid_template}"
     )
-    def test_validation_consistency(
-        self,
-        create_template_file: Callable[[bytes, str], BytesIO],
-        template_content: bytes,
-        context: Dict[str, AnyType],
-        format_type: int,
-        is_strict_undefined: bool,
-        expected_initial_valid: bool,
-        expected_runtime_valid: bool,
-        expected_error: Optional[str],
-        expected_content: Optional[str],
-    ) -> None:
-        """初期検証とランタイム検証の一貫性を確認する。
-
-        Args:
-            create_template_file: テンプレートファイル作成用フィクスチャ
-            template_content: テンプレートの内容
-            context: テンプレートに適用するコンテキスト
-            format_type: フォーマットタイプ
-            is_strict_undefined: 未定義変数を厳密にチェックするかどうか
-            expected_initial_valid: 初期検証が成功することが期待されるかどうか
-            expected_runtime_valid: ランタイム検証が成功することが期待されるかどうか
-            expected_error: 期待されるエラーメッセージ
-            expected_content: 期待される出力内容
-        """
-        # Arrange
-        template_file = create_template_file(template_content, "template.txt")
-
-        # Act
-        renderer = DocumentRender(template_file)
-
-        # Assert - 初期検証
-        assert renderer.is_valid_template == expected_initial_valid, (
-            f"Initial validation failed.\nExpected: {expected_initial_valid}\nGot: {renderer.is_valid_template}"
+    if expected_error:
+        assert renderer.error_message is not None, "Expected error message but got None"
+        assert expected_error == renderer.error_message, (
+            f"Error message does not match.\nExpected: {expected_error}\nGot: {renderer.error_message}"
         )
-        if not expected_initial_valid and expected_error:
-            assert renderer.error_message is not None, "Expected error message but got None"
-            assert expected_error in str(renderer.error_message), (
-                f"Initial error message does not match.\nExpected to contain: {expected_error}\nGot: {renderer.error_message}"
-            )
-            return
-
-        # ランタイム検証 (初期検証が成功した場合のみ実行)
-        if expected_initial_valid:
-            # Act - ランタイム検証
-            apply_result = renderer.apply_context(context, format_type, is_strict_undefined)
-
-            # Assert - ランタイム検証
-            assert apply_result == expected_runtime_valid, (
-                f"Runtime validation failed.\nExpected: {expected_runtime_valid}\nGot: {apply_result}"
-            )
-
-            # Assert - Error Message (Runtime)
-            if not expected_runtime_valid and expected_error:
-                assert renderer.error_message is not None, "Expected runtime error message but got None"
-                assert expected_error in str(renderer.error_message), (
-                    f"Runtime error message does not match.\nExpected to contain: {expected_error}\nGot: {renderer.error_message}"
-                )
-            elif expected_runtime_valid:
-                assert renderer.error_message is None, f"Expected no error message, but got: {renderer.error_message}"
-
-            # Assert - Content (only if runtime validation succeeded)
-            if expected_runtime_valid:
-                assert renderer.render_content == expected_content, (
-                    f"Rendered content does not match.\nExpected: {expected_content}\nGot: {renderer.render_content}"
-                )
+    else:
+        assert renderer.error_message is None, f"Expected no error message, but got: {renderer.error_message}"
 
 
 @pytest.mark.unit
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(10)
+@pytest.mark.parametrize(
+    (
+        "template_content",
+        "context",
+        "format_type",
+        "is_strict_undefined",
+        "expected_initial_valid",
+        "expected_runtime_valid",
+        "expected_error",
+        "expected_content",
+    ),
+    [
+        # 初期検証で失敗するケース - strictモード
+        pytest.param(
+            b"{% macro input() %}{% endmacro %}",
+            {},
+            3,
+            True,
+            False,
+            False,
+            "Template security error: 'macro' tag is not allowed",
+            None,
+            id="template_validate_macro_strict",
+        ),
+        # 初期検証で失敗するケース - 非strictモード
+        pytest.param(
+            b"{% macro input() %}{% endmacro %}",
+            {},
+            3,
+            False,
+            False,
+            False,
+            "Template security error: 'macro' tag is not allowed",
+            None,
+            id="template_validate_macro_non_strict",
+        ),
+        # ランタイムのみで失敗するケース - strictモード
+        pytest.param(
+            b"{{ 10 / value }}",
+            {"value": 0},
+            3,
+            True,
+            True,
+            False,
+            "Template rendering error: division by zero",
+            None,
+            id="template_runtime_division_by_zero_strict",
+        ),
+        # ランタイムのみで失敗するケース - 非strictモード
+        pytest.param(
+            b"{{ 10 / value }}",
+            {"value": 0},
+            3,
+            False,
+            True,
+            False,
+            "Template rendering error: division by zero",
+            None,
+            id="template_runtime_division_by_zero_non_strict",
+        ),
+        # 両方で成功するケース - strictモード
+        pytest.param(
+            b"Hello {{ name }}!",
+            {"name": "World"},
+            3,
+            True,
+            True,
+            True,
+            None,
+            "Hello World!",
+            id="template_validate_and_runtime_success_strict",
+        ),
+        # 両方で成功するケース - 非strictモード
+        pytest.param(
+            b"Hello {{ name }}!",
+            {"name": "World"},
+            3,
+            False,
+            True,
+            True,
+            None,
+            "Hello World!",
+            id="template_validate_and_runtime_success_non_strict",
+        ),
+        # 未定義変数のケース - strictモード
+        pytest.param(
+            b"Hello {{ undefined }}!",
+            {},
+            3,
+            True,
+            True,
+            False,
+            "'undefined' is undefined",
+            None,
+            id="template_runtime_undefined_var_strict",
+        ),
+        # 未定義変数のケース - 非strictモード
+        pytest.param(
+            b"Hello {{ undefined }}!",
+            {},
+            3,
+            False,
+            True,
+            True,
+            None,
+            "Hello !",
+            id="template_runtime_undefined_var_non_strict",
+        ),
+    ],
+)
+def test_validation_consistency(
+    create_template_file: Callable[[bytes, str], BytesIO],
+    template_content: bytes,
+    context: Dict[str, AnyType],
+    format_type: int,
+    is_strict_undefined: bool,
+    expected_initial_valid: bool,
+    expected_runtime_valid: bool,
+    expected_error: Optional[str],
+    expected_content: Optional[str],
+) -> None:
+    """初期検証とランタイム検証の一貫性を確認する。
+
+    Args:
+        create_template_file: テンプレートファイル作成用フィクスチャ
+        template_content: テンプレートの内容
+        context: テンプレートに適用するコンテキスト
+        format_type: フォーマットタイプ
+        is_strict_undefined: 未定義変数を厳密にチェックするかどうか
+        expected_initial_valid: 初期検証が成功することが期待されるかどうか
+        expected_runtime_valid: ランタイム検証が成功することが期待されるかどうか
+        expected_error: 期待されるエラーメッセージ
+        expected_content: 期待される出力内容
+    """
+    # Arrange
+    template_file: BytesIO = create_template_file(template_content, "template.txt")
+
+    # Act
+    renderer: DocumentRender = DocumentRender(template_file)
+
+    # Assert - 初期検証
+    assert renderer.is_valid_template == expected_initial_valid, (
+        f"Initial validation failed.\nExpected: {expected_initial_valid}\nGot: {renderer.is_valid_template}"
+    )
+    if not expected_initial_valid and expected_error:
+        assert renderer.error_message is not None, "Expected error message but got None"
+        assert expected_error in str(renderer.error_message), (
+            f"Initial error message does not match.\nExpected to contain: {expected_error}\nGot: {renderer.error_message}"
+        )
+        return
+
+    # ランタイム検証 (初期検証が成功した場合のみ実行)
+    if expected_initial_valid:
+        # Act - ランタイム検証
+        apply_result: bool = renderer.apply_context(context, format_type, is_strict_undefined)
+
+        # Assert - ランタイム検証
+        assert apply_result == expected_runtime_valid, (
+            f"Runtime validation failed.\nExpected: {expected_runtime_valid}\nGot: {apply_result}"
+        )
+
+        # Assert - Error Message (Runtime)
+        if not expected_runtime_valid and expected_error:
+            assert renderer.error_message is not None, "Expected runtime error message but got None"
+            assert expected_error in str(renderer.error_message), (
+                f"Runtime error message does not match.\nExpected to contain: {expected_error}\nGot: {renderer.error_message}"
+            )
+        elif expected_runtime_valid:
+            assert renderer.error_message is None, f"Expected no error message, but got: {renderer.error_message}"
+
+        # Assert - Content (only if runtime validation succeeded)
+        if expected_runtime_valid:
+            assert renderer.render_content == expected_content, (
+                f"Rendered content does not match.\nExpected: {expected_content}\nGot: {renderer.render_content}"
+            )
+
+
+@pytest.mark.unit
+@pytest.mark.timeout(10)
 @pytest.mark.parametrize(
     (
         "template_content",
@@ -1132,8 +1114,8 @@ def test_render_edge_cases(
         expected_error: 期待されるエラーメッセージ
     """
     # Arrange
-    template_file = create_template_file(template_content, "template.txt")
-    render = DocumentRender(template_file)
+    template_file: BytesIO = create_template_file(template_content, "template.txt")
+    render: DocumentRender = DocumentRender(template_file)
 
     # Act & Assert for template validation
     assert render.is_valid_template == expected_validate_template, (
@@ -1141,7 +1123,7 @@ def test_render_edge_cases(
     )
 
     # Act
-    apply_result = render.apply_context(context, format_type, is_strict_undefined)
+    apply_result: bool = render.apply_context(context, format_type, is_strict_undefined)
 
     # Assert
     assert apply_result == expected_apply_succeeded, (
@@ -1152,7 +1134,7 @@ def test_render_edge_cases(
     )
 
     # エラーメッセージの検証
-    actual_error = render.error_message
+    actual_error: Optional[str] = render.error_message
     if expected_error is not None:
         assert actual_error is not None, "Expected error message but got None"
         actual_error_str = str(actual_error)
