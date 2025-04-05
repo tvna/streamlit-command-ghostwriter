@@ -36,7 +36,7 @@ runs:
       id: convert-sarif-to-markdown
       if: always()
       env:
-        SARIF_PATH: "sarif.json"
+        SARIF_PATH: ${{ inputs.sarif-path }}
       with:
         script: |
           const fs = require('fs');
