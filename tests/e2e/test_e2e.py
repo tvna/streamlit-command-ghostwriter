@@ -236,7 +236,7 @@ def test_ui_advanced_settings_in_tab3(page: Page) -> None:
     helper = StreamlitTestHelper(page)
 
     # タブ3を選択
-    helper.select_tab(f"🛠️ {texts.tab3.menu_title}")
+    helper.select_tab(f"⚙️ {texts.tab3.menu_title}")
 
     # 入力ファイルの設定セクションが表示されることを確認
     input_settings_header = page.locator(f"h3:has-text('{texts.tab3.subheader_input_file}')").first
@@ -328,8 +328,9 @@ def test_ui_sample_collection_in_tab4(page: Page) -> None:
         pytest.param(
             f"📜 {texts.tab2.menu_title}", f"button:has-text('{texts.tab2.generate_visual_button}')", id="e2e_tab_navigation_config_debug"
         ),
-        pytest.param(f"🛠️ {texts.tab3.menu_title}", f"h3:has-text('{texts.tab3.subheader_input_file}')", id="e2e_tab_navigation_settings"),
+        pytest.param(f"⚙️ {texts.tab3.menu_title}", f"h3:has-text('{texts.tab3.subheader_input_file}')", id="e2e_tab_navigation_settings"),
         pytest.param(f"💼 {texts.tab4.menu_title}", f"h3:has-text('{texts.tab4.subheader}')", id="e2e_tab_navigation_samples"),
+        pytest.param(f"🔀 {texts.tab5.menu_title}", f"h3:has-text('{texts.tab5.subheader}')", id="e2e_tab_navigation_workflow"),
     ],
 )
 def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element: str) -> None:
@@ -347,6 +348,7 @@ def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element
         - タブの切り替えを実行
         - タブパネルの表示を確認
         - 期待される要素の表示を確認
+        - list https://streamlit-emoji-shortcodes-streamlit-app-gwckff.streamlit.app/
     """
 
     # Arrange: タブボタンを取得

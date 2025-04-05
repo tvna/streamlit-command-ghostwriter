@@ -6,8 +6,8 @@
 - メモリ使用量の制限
 - CSVデータの特殊処理
 
-クラス階層：
-- ConfigParser: メインのパースクラス（Pydanticモデル）
+クラス階層:
+- ConfigParser: メインのパースクラス (Pydanticモデル)
   - FileValidator: ファイルサイズの検証
   - pandas: CSVデータの処理
 
@@ -18,13 +18,13 @@
    - サポートされているファイル形式の確認
 
 2. ファイル処理
-   - エンコーディングの検証（UTF-8）
+   - エンコーディングの検証 (UTF-8)
    - ファイル拡張子の抽出
    - ファイル内容の読み込み
 
 3. パース処理
-   - ファイル形式に応じたパース（TOML/YAML/CSV）
-   - CSVデータの特殊処理（NaN値の処理）
+   - ファイル形式に応じたパース (TOML/YAML/CSV)
+   - CSVデータの特殊処理 (NaN値の処理)
    - パース結果の辞書変換
 
 4. メモリ管理
@@ -86,7 +86,7 @@ import pprint
 import sys
 import tomllib
 from io import BytesIO, StringIO
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, Final, List, Optional, Union
 
 import pandas as pd
 import yaml
@@ -129,10 +129,10 @@ class ConfigParser(BaseModel):
             [toml, yaml, yml, csv]
 
     Properties:
-        parsed_dict: パース結果の辞書（エラー時はNone）
-        parsed_str: パース結果の文字列表現（エラー時は"None"）
-        error_message: エラーメッセージ（エラーがない場合はNone）
-        csv_rows_name: CSV行のキー名（デフォルト: "csv_rows"）
+        parsed_dict: パース結果の辞書 (エラー時はNone)
+        parsed_str: パース結果の文字列表現 (エラー時は"None")
+        error_message: エラーメッセージ (エラーがない場合はNone)
+        csv_rows_name: CSV行のキー名 (デフォルト: "csv_rows")
         enable_fill_nan: NaN値を置換するかどうか
         fill_nan_with: NaN値の置換値
 
@@ -153,15 +153,15 @@ class ConfigParser(BaseModel):
 
     # Public fields for validation
     config_file: BytesIO = Field(..., description="設定ファイルのバイナリデータ")
+    csv_rows_name: str = Field("csv_rows", min_length=1, description="CSV行のキー名")
 
     # Private attributes
-    __file_extension: str = PrivateAttr()
-    __config_data: Optional[str] = PrivateAttr(default=None)
-    __parsed_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    __error_message: Optional[str] = PrivateAttr(default=None)
-    __csv_rows_name: str = PrivateAttr(default="csv_rows")
-    __is_enable_fill_nan: bool = PrivateAttr(default=False)
-    __fill_nan_with: Optional[str] = PrivateAttr(default=None)
+    _file_extension: str = PrivateAttr()
+    _config_data: Optional[str] = PrivateAttr(default=None)
+    _parsed_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
+    _error_message: Optional[str] = PrivateAttr(default=None)
+    _is_enable_fill_nan: bool = PrivateAttr(default=False)
+    _fill_nan_with: Optional[str] = PrivateAttr(default=None)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -171,100 +171,26 @@ class ConfigParser(BaseModel):
         Args:
             config_file: 設定ファイルのバイナリデータ
         """
-        # FileValidatorの初期化
-        file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
 
         # Pydanticモデルの初期化
         super().__init__(config_file=config_file)
 
         # ファイルサイズの検証
-        file_validator.validate_size(config_file)
-        if not file_validator.is_valid:
-            self.__error_message = file_validator.error_message
+        file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
+        if not file_validator.validate_size(config_file):
+            self._error_message = file_validator.error_message
             return
 
-        self.__initialize_from_file()
+        # ファイル拡張子の抽出
+        self._file_extension: Final[str] = self.config_file.name.split(".")[-1]
+        if self._file_extension not in self.SUPPORTED_EXTENSIONS:
+            self._error_message = "Unsupported file type"
+            return
 
-    def __initialize_from_file(self) -> None:
-        """ファイルから初期化処理を行います。"""
         try:
-            self.__file_extension = self.__extract_file_extension()
-            if self.__file_extension not in self.SUPPORTED_EXTENSIONS:
-                self.__error_message = "Unsupported file type"
-                return
-
-            self.__read_file_content()
-        except Exception as e:
-            self.__error_message = str(e)
-
-    def __extract_file_extension(self) -> str:
-        """ファイル名から拡張子を抽出します。
-
-        Returns:
-            ファイルの拡張子
-        """
-        return self.config_file.name.split(".")[-1]
-
-    def __read_file_content(self) -> None:
-        """ファイルの内容を読み込みます。"""
-        try:
-            self.__config_data = self.config_file.read().decode("utf-8")
+            self._config_data = self.config_file.read().decode("utf-8")
         except UnicodeDecodeError as e:
-            self.__error_message = str(e)
-
-    @property
-    def csv_rows_name(self) -> str:
-        """CSV行名を取得します。
-
-        Returns:
-            CSV行名
-        """
-        return self.__csv_rows_name
-
-    @csv_rows_name.setter
-    def csv_rows_name(self, rows_name: str) -> None:
-        """CSV行名を設定します。
-
-        Args:
-            rows_name: 設定する行名
-        """
-        self.__csv_rows_name = rows_name
-
-    @property
-    def enable_fill_nan(self) -> bool:
-        """NaNを埋めるオプションが有効かどうかを取得します。
-
-        Returns:
-            NaNを埋めるオプションが有効であればTrue、そうでなければFalse
-        """
-        return self.__is_enable_fill_nan
-
-    @enable_fill_nan.setter
-    def enable_fill_nan(self, is_fillna: bool) -> None:
-        """NaNを埋めるオプションを設定します。
-
-        Args:
-            is_fillna: NaNを埋めるオプションを有効にするかどうか
-        """
-        self.__is_enable_fill_nan = is_fillna
-
-    @property
-    def fill_nan_with(self) -> Optional[str]:
-        """NaNを埋める際の値を取得します。
-
-        Returns:
-            NaNを埋める際の値
-        """
-        return self.__fill_nan_with
-
-    @fill_nan_with.setter
-    def fill_nan_with(self, fillna_value: str) -> None:
-        """NaNを埋める際の値を設定します。
-
-        Args:
-            fillna_value: NaNを埋める際の値
-        """
-        self.__fill_nan_with = fillna_value
+            self._error_message = str(e)
 
     def parse(self) -> bool:
         """設定ファイルをパースして辞書に変換します。
@@ -272,11 +198,11 @@ class ConfigParser(BaseModel):
         Returns:
             成功した場合はTrue、失敗した場合はFalse
         """
-        if self.__config_data is None:
+        if self._config_data is None:
             return False
 
         try:
-            self.__parsed_dict = self.__parse_by_file_type()
+            self._parsed_dict = self.__parse_by_file_type(self._config_data)
             return True
         except (
             tomllib.TOMLDecodeError,
@@ -289,11 +215,11 @@ class ConfigParser(BaseModel):
             TypeError,
             ValueError,
         ) as e:
-            self.__error_message = str(e)
-            self.__parsed_dict = None
+            self._error_message = str(e)
+            self._parsed_dict = None
             return False
 
-    def __parse_by_file_type(self) -> Dict[str, Any]:
+    def __parse_by_file_type(self, config_data: str) -> Dict[str, Any]:
         """ファイルタイプに応じたパース処理を行います。
 
         Returns:
@@ -303,64 +229,72 @@ class ConfigParser(BaseModel):
             SyntaxError: YAMLファイルが辞書形式でない場合
             ValueError: CSV行名が1文字未満の場合または設定データがNoneの場合
         """
-        if self.__config_data is None:
-            raise ValueError("Config data is None")
 
-        match self.__file_extension:
+        match self._file_extension:
             case "toml":
-                return tomllib.loads(self.__config_data)
+                return tomllib.loads(config_data)
             case "yaml" | "yml":
                 try:
-                    parsed_data = yaml.safe_load(self.__config_data)
+                    parsed_data: Final[Union[Dict[str, Any], List[Any]]] = yaml.safe_load(config_data)
                     if not isinstance(parsed_data, dict):
                         raise SyntaxError("Invalid YAML file loaded.")
                     return parsed_data
                 except yaml.MarkedYAMLError as e:
-                    # YAMLパースエラーのメッセージを標準化
-                    error_msg = str(e)
-                    if "found character" in error_msg and "that cannot start any token" in error_msg:
-                        # 空白文字やタブ文字のエラーメッセージを標準化
-                        error_msg = error_msg.replace("found character '       '", "found character '\t'")
-                        # 空白文字の検出メッセージを2回出現させる
-                        if "found character '\t'" in error_msg:
-                            lines = error_msg.split("\n")
-                            for i, line in enumerate(lines):
-                                if "found character '\t'" in line:
-                                    lines.insert(i, line.replace("'\t'", "'       '"))
-                                    break
-                            error_msg = "\n".join(lines)
-                    raise yaml.MarkedYAMLError(error_msg) from e
+                    # Re-raise the original exception to preserve marks for tests
+                    raise e from e
             case "csv":
-                return self.__parse_csv_data()
-            case _:
-                # This should never happen due to the check in __initialize_from_file
-                raise ValueError(f"Unsupported file type: {self.__file_extension}")
+                return self.__parse_csv_data(config_data)
+            # The 'case _:' is used here to satisfy the type checker and catch unexpected states.
+            # Validation in __initialize_from_file should prevent reaching this point.
+            case _:  # type: ignore
+                raise RuntimeError(
+                    f"Internal error: Reached __parse_by_file_type with unexpected extension '{self._file_extension}'. "
+                    "Validation should have caught this."
+                )
 
-    def __parse_csv_data(self) -> Dict[str, Any]:
+    def __parse_csv_data(self, config_data: str) -> Dict[str, Any]:
         """CSVデータをパースします。
 
         Returns:
             パースされたCSVデータを含む辞書
 
         Raises:
-            ValueError: CSV行名が1文字未満の場合または設定データがNoneの場合
+            ValueError: CSV行名が1文字未満の場合、設定データがNoneの場合、またはCSV内容が不正な場合
+            pd.errors.ParserError: CSVのパースに失敗した場合
         """
-        if self.__config_data is None:
-            raise ValueError("Config data is None")
+        # --- Check for null bytes before parsing ---
+        if "\x00" in config_data:
+            raise pd.errors.ParserError("Failed to parse CSV: Null byte detected in input data.")
+        # --- End Check ---
 
-        if len(self.__csv_rows_name) < 1:
-            raise ValueError("ensure this value has at least 1 characters.")
+        try:
+            # 1. Attempt to read CSV
+            csv_data: pd.DataFrame = pd.read_csv(StringIO(config_data), index_col=None, low_memory=False)
 
-        csv_data = pd.read_csv(StringIO(self.__config_data), index_col=None)
+            # 2. Handle NaN filling if enabled
+            if self._is_enable_fill_nan:
+                csv_data = self.__handle_csv_nan_values(csv_data)
 
-        if self.__is_enable_fill_nan:
-            csv_data = self.__handle_csv_nan_values(csv_data)
+            # 3. Convert DataFrame rows to a list of dictionaries
+            mapped_list: List[Dict[str, Any]] = [row.to_dict() for _, row in csv_data.iterrows()]
 
-        if isinstance(csv_data, pd.DataFrame):
-            mapped_list = [row.to_dict() for _, row in csv_data.iterrows()]
-            return {self.__csv_rows_name: mapped_list}
+            # 4. Early exit for header-only files (columns exist, but no data rows)
+            if not mapped_list and csv_data.columns.size > 0:
+                raise ValueError("CSV file must contain at least one data row.")
 
-        return {}
+            # 5. Return the successful result
+            return {self.csv_rows_name: mapped_list}
+
+        # 6. Exception Handling (slightly adjusted comments/structure)
+        except (pd.errors.ParserError, pd.errors.EmptyDataError) as e:
+            # Re-raise specific pandas parsing/empty errors
+            raise e from e
+        except ValueError as e:
+            # Re-raise our specific ValueError (header-only check)
+            raise e from e
+        except Exception as e:
+            # Wrap any other unexpected exceptions during pandas processing in ParserError
+            raise pd.errors.ParserError(f"Failed to process CSV data due to an unexpected error: {e!s}") from e
 
     def __handle_csv_nan_values(self, csv_data: pd.DataFrame) -> pd.DataFrame:
         """CSVデータのNaN値を処理します。
@@ -373,14 +307,14 @@ class ConfigParser(BaseModel):
         """
         # 数値列に文字列を設定する場合の警告を回避するため、
         # 文字列値で置換する前に全ての列をオブジェクト型に変換
-        if self.__fill_nan_with is not None and isinstance(self.__fill_nan_with, str):
+        if self._fill_nan_with is not None and isinstance(self._fill_nan_with, str):
             # 数値列を含む可能性のある全ての列をオブジェクト型に変換
             for col in csv_data.columns:
                 if pd.api.types.is_numeric_dtype(csv_data[col]):
                     csv_data[col] = csv_data[col].astype("object")
 
         # NaN値を置換
-        csv_data.fillna(value=self.__fill_nan_with, inplace=True)
+        csv_data.fillna(value=self._fill_nan_with, inplace=True)
         return csv_data
 
     def _validate_memory_size(self, obj: Any) -> bool:  # noqa: ANN401
@@ -393,15 +327,13 @@ class ConfigParser(BaseModel):
             メモリサイズが上限以内の場合はTrue、超える場合はFalse
         """
         try:
-            memory_size = sys.getsizeof(obj)
+            memory_size: Final[int] = sys.getsizeof(obj)
             if memory_size > self.MAX_MEMORY_SIZE_BYTES:
-                self.__error_message = (
-                    f"Memory consumption exceeds the maximum limit of 150MB (actual: {memory_size / (1024 * 1024):.2f}MB)"
-                )
+                self._error_message = f"Memory consumption exceeds the maximum limit of 150MB (actual: {memory_size / (1024 * 1024):.2f}MB)"
                 return False
             return True
         except (MemoryError, OverflowError) as e:
-            self.__error_message = f"Memory error while checking size: {e!s}"
+            self._error_message = f"Memory error while checking size: {e!s}"
             return False
 
     @property
@@ -411,14 +343,14 @@ class ConfigParser(BaseModel):
         Returns:
             パースされた辞書
         """
-        if self.__parsed_dict is None:
+        if self._parsed_dict is None:
             return None
 
         # メモリサイズのバリデーション
-        if not self._validate_memory_size(self.__parsed_dict):
+        if not self._validate_memory_size(self._parsed_dict):
             return None
 
-        return self.__parsed_dict
+        return self._parsed_dict
 
     @property
     def parsed_str(self) -> str:
@@ -428,12 +360,12 @@ class ConfigParser(BaseModel):
         Returns:
             パースされた辞書の文字列表現
         """
-        if self.__parsed_dict is None:
+        if self._parsed_dict is None:
             return "None"
 
         try:
             # Format the dictionary to string
-            formatted_str = pprint.pformat(self.__parsed_dict)
+            formatted_str = pprint.pformat(self._parsed_dict)
 
             # Validate memory size
             if not self._validate_memory_size(formatted_str):
@@ -441,7 +373,7 @@ class ConfigParser(BaseModel):
 
             return formatted_str
         except (MemoryError, OverflowError) as e:
-            self.__error_message = f"Memory error while formatting dictionary: {e!s}"
+            self._error_message = f"Memory error while formatting dictionary: {e!s}"
             return "None"
 
     @property
@@ -451,4 +383,40 @@ class ConfigParser(BaseModel):
         Returns:
             エラーメッセージ
         """
-        return self.__error_message
+        return self._error_message
+
+    @property
+    def enable_fill_nan(self) -> bool:
+        """NaNを埋めるオプションが有効かどうかを取得します。
+
+        Returns:
+            NaNを埋めるオプションが有効であればTrue、そうでなければFalse
+        """
+        return self._is_enable_fill_nan
+
+    @enable_fill_nan.setter
+    def enable_fill_nan(self, is_fillna: bool) -> None:
+        """NaNを埋めるオプションを設定します。
+
+        Args:
+            is_fillna: NaNを埋めるオプションを有効にするかどうか
+        """
+        self._is_enable_fill_nan = is_fillna
+
+    @property
+    def fill_nan_with(self) -> Optional[str]:
+        """NaNを埋める際の値を取得します。
+
+        Returns:
+            NaNを埋める際の値
+        """
+        return self._fill_nan_with
+
+    @fill_nan_with.setter
+    def fill_nan_with(self, fillna_value: str) -> None:
+        """NaNを埋める際の値を設定します。
+
+        Args:
+            fillna_value: NaNを埋める際の値
+        """
+        self._fill_nan_with = fillna_value

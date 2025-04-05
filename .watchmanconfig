@@ -1,0 +1,24 @@
+{
+    "ignore_dirs": [
+        "__pycache__",
+        ".benchmarks",
+        ".cursor",
+        ".devcontainer",
+        ".gitignore",
+        ".github",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".streamlit",
+        ".venv",
+        "assets",
+        "build",
+        "dist",
+        "docs",
+        "htmlcov",
+        "node_modules"
+    ],
+    "suppress_fserr": true,
+    "settle_period": 100,
+    "sync_timeout": 200
+}

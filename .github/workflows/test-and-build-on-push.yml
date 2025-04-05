@@ -1,5 +1,5 @@
 ---
-name: Test & Build (on push)
+name: Test and Build (on push)
 
 on:
   push:
@@ -15,10 +15,319 @@ on:
       - .pre-commit-config.yaml
       - "**.code-workspace"
 
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+env:
+  GLOBAL_ALLOWED_ENDPOINTS: |
+    api.github.com:443
+    github.com:443
+  GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
+
 jobs:
-  test-and-build:
+  main:
     uses: ./.github/workflows/reusable-test-and-build.yml
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: true
       workflow_summary_name: "Workflow summary [Test & Build (on Push)]"
+
+  get-npm-versions:
+    outputs:
+      main_version: ${{ steps.set-versions.outputs.main_version }}
+      develop_version: ${{ steps.set-versions.outputs.develop_version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Get version from main
+        id: get-main-ver
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Get version from develop
+        id: get-dev-ver
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+      - name: Set versions output
+        id: set-versions
+        run: |
+          echo "Main version: ${{ steps.get-main-ver.outputs.current-version }}"
+          echo "Develop version: ${{ steps.get-dev-ver.outputs.current-version }}"
+          echo "main_version=${{ steps.get-main-ver.outputs.current-version }}" >> "$GITHUB_OUTPUT"
+          echo "develop_version=${{ steps.get-dev-ver.outputs.current-version }}" >> "$GITHUB_OUTPUT"
+
+  create-pr-to-main:
+    needs:
+      - main
+      - get-npm-versions
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: false
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Dump GitHub context # Keep for potential debugging/context needs within the action
+        id: github_context_step
+        shell: bash
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT" | jq -r '. | {event_name, workflow_ref, repository, run_id, run_number}'
+
+      - name: Compare versions (Semver)
+        uses: madhead/semver-utils@v4.3.0
+        id: compare-versions
+        with:
+          version: ${{ needs.get-npm-versions.outputs.develop_version }}
+          compare-to: ${{ needs.get-npm-versions.outputs.main_version }}
+
+      - name: Display version comparison result # Optional: for debugging
+        shell: bash
+        run: |
+          echo "Comparison Result: ${{ steps.compare-versions.outputs.comparison-result }}"
+
+      - name: Check if PR already exists
+        id: check-pr
+        if: steps.compare-versions.outputs.comparison-result == '>'
+        uses: actions/github-script@v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              const pulls = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head: `${context.repo.owner}:develop`, // Assuming develop is always the head
+                base: 'main',                       // Assuming main is always the base
+                state: 'open'
+              });
+
+              const prExists = pulls.data.length;
+              console.log(`Existing open PRs from develop to main: ${prExists}`);
+              core.setOutput('exists', prExists.toString());
+              core.setOutput('success', 'true');
+            } catch (error) {
+              console.error(`Error checking for existing PRs: ${error.message}`);
+              core.setOutput('exists', ''); // Indicate failure
+              core.setOutput('success', 'false');
+              core.setFailed(`Error checking for existing PRs: ${error.message}`);
+            }
+
+      - name: Ensure labels exist
+        id: ensure-labels
+        uses: actions/github-script@v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            let allLabelsEnsured = true;
+            const requiredLabels = [
+              { name: "automated-pr", description: "Automatically generated PR", color: "0E8A16" },
+              { name: "release", description: "PR for automated release", color: "1D76DB" }
+            ];
+
+            async function ensureLabel(labelInfo) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: labelInfo.name
+                });
+                console.log(`Label '${labelInfo.name}' already exists.`);
+                return true;
+              } catch (error) {
+                if (error.status === 404) {
+                  console.log(`Label '${labelInfo.name}' does not exist. Creating...`);
+                  try {
+                    await github.rest.issues.createLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: labelInfo.name,
+                      description: labelInfo.description,
+                      color: labelInfo.color
+                    });
+                    console.log(`Label '${labelInfo.name}' created successfully.`);
+                    return true;
+                  } catch (createError) {
+                    console.error(`Failed to create label '${labelInfo.name}': ${createError.message}`);
+                    allLabelsEnsured = false;
+                    return false;
+                  }
+                } else {
+                  console.error(`Error checking label '${labelInfo.name}': ${error.message}`);
+                  allLabelsEnsured = false;
+                  return false;
+                }
+              }
+            }
+
+            console.log("::notice::Ensuring required labels exist...");
+            for (const label of requiredLabels) {
+              await ensureLabel(label);
+            }
+
+            if (allLabelsEnsured) {
+              console.log("All required labels exist or were created.");
+              core.setOutput('success', 'true');
+            } else {
+              console.error("Failed to ensure one or more required labels.");
+              core.setOutput('success', 'false');
+              core.setFailed("Failed to ensure one or more required labels.");
+            }
+
+      # Setup Python required by the create_pr.py script
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+
+      - name: Get commit log
+        id: commit_log
+        run: |
+          echo "以下のコミットが含まれています:" > .commit-log.txt
+          echo "" >> .commit-log.txt
+          git log origin/main..HEAD --pretty=format:"- %s" --no-merges > .commit-log.txt
+
+      - name: Create pull request
+        id: create-pr
+        uses: peter-evans/create-pull-request@v7.0.8
+        if: |
+          steps.compare-versions.outputs.comparison-result == '>' &&
+          steps.check-pr.outputs.success == 'true' &&
+          steps.check-pr.outputs.exists == '0' &&
+          steps.ensure-labels.outputs.success == 'true'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          branch: main
+          title: "Release: v${{ needs.get-npm-versions.outputs.develop_version }}"
+          body-path: .commit-log.txt
+
+      - name: Set Final Status
+        id: set-status
+        uses: actions/github-script@v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }} # Not strictly needed for this script, but good practice if future logic needs it
+          script: |
+            const compareResult = "${{ steps.compare-versions.outputs.comparison-result }}";
+            const checkPrSuccess = "${{ steps.check-pr.outputs.success }}";
+            const checkPrExists = "${{ steps.check-pr.outputs.exists }}";
+            const ensureLabelsSuccess = "${{ steps.ensure-labels.outputs.success }}";
+            const createPrOutcome = "${{ steps.create-pr.outcome }}";
+            const createPrUrl = "${{ steps.create-pr.outputs.pr_url }}";
+            const developVersion = "${{ needs.get-npm-versions.outputs.develop_version }}";
+            const mainVersion = "${{ needs.get-npm-versions.outputs.main_version }}";
+
+            let status = "skipped_version_compare";
+            let prUrl = "";
+
+            core.info(`Initial evaluation: compareResult='${compareResult}', checkPrSuccess='${checkPrSuccess}', checkPrExists='${checkPrExists}', ensureLabelsSuccess='${ensureLabelsSuccess}', createPrOutcome='${createPrOutcome}'`);
+
+            if (compareResult === '<') {
+              if (checkPrSuccess === 'true') {
+                if (checkPrExists !== '0') {
+                  status = "exists";
+                  core.info(`Status update: PR already exists (checkPrExists=${checkPrExists}). Setting status to '${status}'.`);
+                } else { // No existing PR
+                  if (ensureLabelsSuccess === 'true') {
+                    if (createPrOutcome === 'success') {
+                      status = "created";
+                      if (createPrUrl) {
+                        prUrl = createPrUrl;
+                        core.info(`Status update: PR creation successful (createPrOutcome=${createPrOutcome}). Setting status to '${status}' and pr_url.`);
+                      } else {
+                        core.warning("create-pr step succeeded but did not output pr_url.");
+                        core.info(`Status update: PR creation successful but no URL output. Setting status to '${status}'.`);
+                      }
+                    } else { // create-pr failed
+                      status = "error_create_pr";
+                      core.error(`Create PR step failed (outcome: ${createPrOutcome}). Setting status to '${status}'.`);
+                    }
+                  } else { // ensure-labels failed
+                    status = "skipped_label_fail"; // Match bash script status
+                    core.error(`Ensure Labels step failed (success: ${ensureLabelsSuccess}). Setting status to '${status}'.`);
+                  }
+                }
+              } else { // check-pr failed
+                status = "error_check_pr";
+                core.error(`Check PR step failed (success: ${checkPrSuccess}). Setting status to '${status}'.`);
+              }
+            } else { // Version comparison did not result in '<'
+              core.info(`Skipping PR creation: develop version (${developVersion}) is not less than main version (${mainVersion}). Comparison result: ${compareResult}`);
+              status = "skipped_version_compare"; // Explicitly set, though it's the default
+            }
+
+            core.info(`Final Status determined: ${status}`);
+            core.setOutput('status', status);
+            core.setOutput('pr_url', prUrl);
+
+            // Optional: Fail the action step if a critical error occurred - matching commented-out bash behavior (log error, don't fail)
+            if (status.startsWith('error_')) {
+              core.error(`Workflow action encountered an error state: ${status}`);
+              // core.setFailed(`Workflow action encountered an error: ${status}`); // Would fail the step
+            } else if (status === 'skipped_label_fail') {
+                // The original bash script logged an error here too.
+                core.error(`Workflow action skipped PR due to label failure: ${status}`);
+            }
+
+  pyre:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
+
+      - name: Create requirements.txt
+        run: |
+          poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
+
+      - name: Run Pyre Action
+        uses: facebook/pyre-action@v0.0.2
+        with:
+          repo-directory: "./"
+          requirements-path: "requirements.txt"
+        timeout-minutes: 120
+        continue-on-error: true

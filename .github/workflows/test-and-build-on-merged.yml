@@ -1,0 +1,110 @@
+---
+name: Test and Build (on merged to main)
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  main:
+    uses: ./.github/workflows/reusable-test-and-build.yml
+    with:
+      concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
+      concurrency_cancel_in_progress: true
+      workflow_summary_name: "Workflow summary [Test & Build (on merged to main)]"
+
+  create-tag:
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
+    needs: main
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.set_tag_output.outputs.tag_name }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: main
+
+      - name: Get version from main
+        id: package-version-from-main
+        uses: step-security/npm-get-version-action@v1
+
+      - name: Set ENV variables
+        shell: bash
+        run: |
+          {
+            echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}"
+            echo "RELEASE_VERSION=${{ steps.package-version-from-main.outputs.current-version }}"
+            echo "TAG_NAME=v${{ steps.package-version-from-main.outputs.current-version }}"
+          } >> "$GITHUB_ENV"
+
+      - name: Set tag_name output
+        id: set_tag_output
+        run: echo "tag_name=${{ env.TAG_NAME }}" >> "$GITHUB_OUTPUT"
+
+      - name: Push tag
+        run: |
+          # Check if tag already exists
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            # Create annotated tag
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+            git push origin "$TAG_NAME"
+
+          else
+            echo "Tag $TAG_NAME already exists"
+          fi
+
+  upload-artifacts:
+    needs: [create-tag]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+
+      - name: Download macOS build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-app-macos-latest # Match artifact name from reusable-test-and-build
+          path: artifacts/macos
+
+      - name: Download Windows build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-app-windows-latest # Match artifact name from reusable-test-and-build
+          path: artifacts/windows
+
+      - name: Create Release with Artifacts
+        id: create_release # Add an ID for potential future use
+        uses: step-security/action-gh-release@v2.2.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Explicitly pass token
+        with:
+          tag_name: ${{ needs.create-tag.outputs.tag_name }}
+          generate_release_notes: true
+          target_commitish: main
+          files: |
+            artifacts/macos/**/*
+            artifacts/windows/**/*
+          draft: false
+          prerelease: false
