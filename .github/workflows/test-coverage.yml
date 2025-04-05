@@ -18,7 +18,7 @@ concurrency:
 
 env:
   GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
-
+  GLOBAL_ALLOWED_ENDPOINTS: ${{ vars.GLOBAL_ALLOWED_ENDPOINTS }}
 permissions:
   contents: read
 
@@ -30,6 +30,15 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.actor == github.repository_owner
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: false
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 5
+
       - uses: actions/checkout@v4
         with:
           ref: develop
@@ -53,6 +62,15 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.actor == github.repository_owner
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: false
+          disable-file-monitoring: false
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 5
+
       - uses: actions/checkout@v4
         with:
           ref: main
