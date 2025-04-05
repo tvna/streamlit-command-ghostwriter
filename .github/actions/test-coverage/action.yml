@@ -1,0 +1,37 @@
+name: 'test-python-coverage'
+description: 'Test coverage for python'
+inputs:
+  github-branch-name:
+    description: 'Checkout branch to test'
+    required: true
+  codecov-token:
+    description: 'Codecov token'
+    required: true
+  codeclimate-token:
+    description: 'Code Climate token'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Run pytest (coverage without e2e)
+      shell: bash
+      run: |
+        poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile -k "not e2e" --benchmark-disable
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5.4.0
+      with:
+        token: ${{ inputs.codecov-token }}
+
+    - name: Setup Code Climate
+      uses: remarkablemark/setup-codeclimate@v2
+
+    - name: Upload coverage reports to code climate
+      if: inputs.github-branch-name == 'main'
+      shell: bash
+      run: |
+        echo CC_TEST_REPORTER_ID=$"{{ inputs.codeclimate-token }}" >> "$GITHUB_ENV"
+        cc-test-reporter before-build
+        cc-test-reporter after-build --exit-code $?

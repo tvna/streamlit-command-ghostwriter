@@ -60,72 +60,26 @@ poetry run streamlit app.py
 ## 使い方の流れ
 
 ```mermaid
-graph LR
-    %% Initial State
-    P1[既存のコマンド<br>または手順書] --> P2{テンプレート化<br>が必要?}
-
-    %% Template Path
-    subgraph PreparationTemplate ["テンプレート化"]
-        direction TB
-        PT1[変数部分の<br>特定と抽出]
-        PT2[設定定義ファイル<br>作成]
-        PT3[Jinjaテンプレート<br>作成]
-
-        PT1 --> PT2
-        PT1 --> PT3
-    end
-
-    %% Main Flow
-    subgraph Input ["入力"]
-        direction TB
-        B1[設定定義ファイル<br>アップロード]
-        B2[テンプレート<br>アップロード]
-    end
-
-    C1[実行可能な<br>CLIコマンド]
-
-    %% Connections for Template Path
-    P2 -->|Yes| PT1
-    PT2 --> B1
-    PT3 --> B2
-    B1 & B2 --> C1
-
-    %% Connections for Direct Path
-    P2 -->|No| C1
-
-    %% Styles - Semantic Colors
-    %% 入力系: 青系統
-    style P1 fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
-    style P2 fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
-
-    %% サブグラフ内のノード: 白背景・黒文字
-    style PT1 fill:#FFFFFF,stroke:#424242,color:#000000
-    style PT2 fill:#FFFFFF,stroke:#424242,color:#000000
-    style PT3 fill:#FFFFFF,stroke:#424242,color:#000000
-    style B1 fill:#FFFFFF,stroke:#424242,color:#000000
-    style B2 fill:#FFFFFF,stroke:#424242,color:#000000
-
-    %% 出力系: 赤系統
-    style C1 fill:#FFEBEE,stroke:#C62828,color:#B71C1C
-
-    %% サブグラフのスタイル
-    style PreparationTemplate fill:#FFF3E0,stroke:#E65100
-    style Input fill:#E8F5E9,stroke:#2E7D32
-
-    %% Link Styles - Flow based colors
-    linkStyle default stroke:#9E9E9E,stroke-width:2px
-    %% 判断フロー
-    linkStyle 0,1 stroke:#1565C0,stroke-width:2px
-    %% 準備フロー
-    linkStyle 2,3 stroke:#F57C00,stroke-width:2px
-    %% ファイルフロー
-    linkStyle 4,5 stroke:#2E7D32,stroke-width:2px
-    %% 直接パス
-    linkStyle 6 stroke:#C62828,stroke-width:2px
-
-    %% Subgraph Styles
-    classDef subgraphStyle fill:none,stroke-width:2px
-    class PreparationTemplate,Input subgraphStyle
+---
+config:
+  theme: neo-dark
+  look: neo
+---
+sequenceDiagram
+    participant senior as テンプレート<br>作成者
+    participant colabolation as ファイル<br>サーバ
+    participant junior as 利用者
+    participant ghostwriter as Command<br>ghostwriter
+    colabolation->>senior: 過去のコマンド履歴<br>または手順書を用意
+    senior->>senior: 変数部分の特定と抽出
+    senior->>colabolation: 設定定義ファイル<br>フォーマットの作成<br>(toml/yaml/csv)
+    senior->>colabolation: Jinjaテンプレート作成
+    senior->>colabolation: 利用時のルール整備
+    junior-->>colabolation: 設定定義ファイル<br>フォーマットと<br>Jinjaテンプレートの取得
+    junior->>junior: 設定定義ファイルに<br>シナリオに基づく<br>パラメーターを記入
+    junior->>ghostwriter: 設定定義ファイルの<br>アップロード
+    junior->>ghostwriter: Jinjaテンプレートの<br>アップロード
+    ghostwriter-->>junior: 実行可能な<br>CLIコマンドを提供
 ```
 
 ## テンプレート化の手順
@@ -312,8 +266,8 @@ tar -czf {{ file.name }}.tar.gz {{ file.path }}
 [streamlit-img]: https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white
 [streamlit-cloud-img]: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
 [streamlit-cloud-link]: https://command-ghostwriter.streamlit.app/
-[build-link]: https://github.com/tvna/streamlit-command-ghostwriter/actions/workflows/test-develop-branch.yml
-[build-img]: https://github.com/tvna/streamlit-command-ghostwriter/actions/workflows/test-develop-branch.yml/badge.svg?branch=develop
+[build-link]: https://github.com/tvna/command-ghostwriter/actions/workflows/test-and-build-on-push.yml
+[build-img]: https://github.com/tvna/command-ghostwriter/actions/workflows/test-and-build-on-push.yml/badge.svg?branch=main
 [codecov-link]: https://codecov.io/gh/tvna/streamlit-command-ghostwriter
 [codecov-img]: https://codecov.io/gh/tvna/streamlit-command-ghostwriter/graph/badge.svg?token=I2LDXQHXB5
 [license-link]: https://github.com/tvna/streamlit-command-ghostwriter/blob/main/LICENSE

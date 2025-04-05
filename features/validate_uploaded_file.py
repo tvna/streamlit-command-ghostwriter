@@ -2,11 +2,11 @@
 
 このモジュールは、アップロードされたファイルの検証機能を提供します。
 主な機能:
-- ファイルサイズの検証（Pydanticモデル）
+- ファイルサイズの検証 (Pydanticモデル)
 - ファイルポインタの位置を保持したままの検証
 - エラー状態の管理
 
-クラス階層：
+クラス階層:
 - ValidationModels
   - FileSizeConfig: ファイルサイズの設定
   - ValidationState: 検証状態の管理
@@ -49,7 +49,7 @@ with open('large_file.txt', 'rb') as f:
 """
 
 from io import BytesIO
-from typing import Annotated, ClassVar, Optional
+from typing import Annotated, ClassVar, Final, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 
@@ -58,13 +58,13 @@ class FileSizeConfig(BaseModel):
     """ファイルサイズの設定を管理するモデル。
 
     Attributes:
-        max_size_bytes: 許可される最大ファイルサイズ（バイト）
+        max_size_bytes: 許可される最大ファイルサイズ (バイト)
             1以上の整数である必要があります
     """
 
     model_config = ConfigDict(strict=True)
 
-    max_size_bytes: Annotated[int, Field(gt=0, description="許可される最大ファイルサイズ（バイト）")]
+    max_size_bytes: Annotated[int, Field(gt=0, description="許可される最大ファイルサイズ (バイト)")]
 
     @field_validator("max_size_bytes")
     @classmethod
@@ -90,7 +90,7 @@ class ValidationState(BaseModel):
 
     Attributes:
         is_valid: 検証が成功したかどうか
-        error_message: エラーメッセージ（エラーがない場合はNone）
+        error_message: エラーメッセージ (エラーがない場合はNone)
     """
 
     model_config = ConfigDict(strict=True)
@@ -136,7 +136,7 @@ class FileValidator(BaseModel):
 
     Properties:
         max_size_bytes: 設定された最大ファイルサイズ
-        error_message: 現在のエラーメッセージ（エラーがない場合はNone）
+        error_message: 現在のエラーメッセージ (エラーがない場合はNone)
         is_valid: 最後の検証が成功したかどうか
     """
 
@@ -157,7 +157,7 @@ class FileValidator(BaseModel):
         """許可される最大ファイルサイズを返す。
 
         Returns:
-            int: 最大ファイルサイズ（バイト）
+            int: 最大ファイルサイズ (バイト)
         """
         return self.size_config.max_size_bytes
 
@@ -166,7 +166,7 @@ class FileValidator(BaseModel):
         """現在のエラーメッセージを返す。
 
         Returns:
-            Optional[str]: エラーメッセージ（エラーがない場合はNone）
+            Optional[str]: エラーメッセージ (エラーがない場合はNone)
         """
         return self._validation_state.error_message
 
@@ -197,7 +197,7 @@ class FileValidator(BaseModel):
         self._validation_state.reset()
 
         try:
-            file_size = self.get_file_size(file)
+            file_size: Final[Optional[int]] = self.get_file_size(file)
             if file_size is None:
                 self._validation_state.set_error("Failed to get file size")
                 return False
@@ -221,16 +221,16 @@ class FileValidator(BaseModel):
             file: サイズを取得するファイル
 
         Returns:
-            Optional[int]: ファイルサイズ（バイト）、取得に失敗した場合はNone
+            Optional[int]: ファイルサイズ (バイト)、取得に失敗した場合はNone
 
         Note:
             このメソッドは例外を発生させません。
             ファイルサイズの取得に失敗した場合はNoneを返します。
         """
         try:
-            current_pos = file.tell()
+            current_pos: Final[int] = file.tell()
             file.seek(0, 2)  # ファイルの末尾に移動
-            file_size = file.tell()
+            file_size: Final[int] = file.tell()
             file.seek(current_pos)  # 元の位置に戻す
             return file_size
         except IOError:

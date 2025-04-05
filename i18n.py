@@ -5,7 +5,7 @@ LANGUAGES = {
     "日本語": {
         "sidebar": {
             "welcome": """
-            このアプリケーションでは、設定定義ファイル(toml/yaml)とJinjaテンプレートファイルの組み合わせにより、インフラ構築コマンドのコマンド生成ができます。
+            このアプリケーションでは、定型作業のCLIコマンド準備にあたり、設定定義ファイル(toml/yaml/csv)とJinjaテンプレートファイルの組み合わせにより、準備を効率化できます。
 
             各ファイルをアップロードし、「CLIコマンド生成」をクリックして結果を確認してください。
             """,
@@ -66,6 +66,68 @@ LANGUAGES = {
         "tab4": {
             "menu_title": "サンプル集",
             "subheader": "サンプル集の表示",
+        },
+        "tab5": {
+            "menu_title": "ワークフロー",
+            "subheader": "ワークフローの表示",
+            "workflow_text": """
+graph LR
+
+    %% Template Path
+    subgraph PreparationTemplate ["定型作業のテンプレート化"]
+        direction TB
+        PT1[過去のコマンド履歴<br>または手順書]
+        PT2[変数部分の<br>特定と抽出]
+        PT3[利用者に向けて<br>使い方をまとめる]
+        PT4[設定定義ファイル<br>レイアウト作成]
+        PT5[Jinjaテンプレート<br>作成]
+
+        PT1 --> PT2
+        PT2 --> PT3 & PT4 & PT5
+    end
+
+    %% Main Flow
+    subgraph Input ["シナリオに基づく作業準備"]
+        direction TB
+        B1[設定定義ファイルの<br>準備]
+        B2[設定定義ファイル<br>アップロード]
+        B3[テンプレート<br>アップロード]
+    end
+
+    C1[実行可能な<br>CLIコマンド]
+
+    %% Connections for Template Path
+    PT3 & PT4 --> B1
+    PT5 --> B3
+    B1 --> B2
+    B2 & B3 --> C1
+
+    %% Styles - Semantic Colors
+
+    %% サブグラフ内のノード: 白背景・黒文字
+    style PT1 fill:#FFFFFF,stroke:#424242,color:#000000
+    style PT2 fill:#FFFFFF,stroke:#424242,color:#000000
+    style PT3 fill:#FFFFFF,stroke:#424242,color:#000000
+    style PT4 fill:#FFFFFF,stroke:#424242,color:#000000
+    style PT5 fill:#FFFFFF,stroke:#424242,color:#000000
+    style B1 fill:#FFFFFF,stroke:#424242,color:#000000
+    style B2 fill:#FFFFFF,stroke:#424242,color:#000000
+    style B3 fill:#FFFFFF,stroke:#424242,color:#000000
+
+    %% 出力系: 赤系統
+    style C1 fill:#FFEBEE,stroke:#C62828,color:#B71C1C
+
+    %% サブグラフのスタイル
+    style PreparationTemplate fill:#FFF3E0,stroke:#E65100,color:#000000
+    style Input fill:#E8F5E9,stroke:#2E7D32,color:#000000
+
+    %% Link Styles - Flow based colors
+    linkStyle default stroke:#9E9E9E,stroke-width:3px
+
+    %% Subgraph Styles
+    classDef subgraphStyle fill:none,stroke-width:2px
+    class PreparationTemplate,Input subgraphStyle
+""",
         },
     },
 }

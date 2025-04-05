@@ -1,0 +1,34 @@
+{
+  "site_package_search_strategy": "pep561",
+  "source_directories": [
+    ".",
+    "./features"
+  ],
+  "search_path": [
+    "./features"
+  ],
+  "exclude": [
+    ".cursor",
+    ".github",
+    ".venv",
+    "assets",
+    "build",
+    "dist",
+    "docs",
+    "htmlcov",
+    "node_modules",
+    "scripts",
+    "tests"
+  ],
+  "extensions": [
+    ".py",
+    ".pyi"
+  ],
+  "ignore_all_errors": [
+    "altair",
+    "narwhals",
+    "numpy",
+    "pandas"
+  ],
+  "strict": true
+}
