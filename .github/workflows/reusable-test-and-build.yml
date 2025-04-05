@@ -81,6 +81,27 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Lint yaml files by yamllint
+        run: |
+          CONFIG="${RUNNER_TEMP}/.yamllint.yml"
+          cat <<EOF >"${CONFIG}"
+          extends: default
+          rules:
+            document-start: disable
+            truthy:
+              allowed-values: ["true", "false", "on"]
+            comments:
+              min-spaces-from-content: 1
+            braces:
+              max-spaces-inside: 1
+            line-length:
+              max: 150
+          EOF
+          if [ -e ".yamllint.yml" ]; then
+            CONFIG=".yamllint.yml"
+          fi
+          yamllint --strict --format github --config-file "${CONFIG}" .
+
       - name: Download and run actionlint
         run: |
           # バイナリのダウンロードとインストール
@@ -245,7 +266,22 @@ jobs:
       - name: Run Unit Tests
         run: |
           # 通常のテスト実行 (カバレッジ有、ベンチマークなし)
-          poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
+          cmd_array=(
+            poetry run pytest -n auto
+            --cov=app.py
+            --cov=features
+            --cov=i18n
+            --cov=scripts
+            --cov-report=xml
+            --cov-report=term
+            --dist loadfile
+            --durations=10
+            --cache-clear
+            --maxfail=5
+            --verbose -k 'not e2e'
+            --benchmark-disable
+          )
+          "${cmd_array[@]}"
 
   test-coverage:
     name: Coverage
@@ -374,7 +410,17 @@ jobs:
 
       - name: Run lizard (analyze CCN for production codes)
         run: |
-          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "${LIZARD_CCN_COUNT}"
+          cmd_array=(
+            poetry run lizard
+            -x './node_modules/*'
+            -x './.venv/*'
+            -x './build/*'
+            -x './dist/*'
+            -x './htmlcov/*'
+            -x './tests/*'
+            --CCN "${LIZARD_CCN_COUNT}" # Quote variable expansion for safety
+          )
+          "${cmd_array[@]}"
 
       - name: Show AST (app.py)
         run: |

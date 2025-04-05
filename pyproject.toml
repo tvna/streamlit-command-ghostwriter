@@ -49,6 +49,7 @@ pytest-item-dict = "^1.1.2"
 pytest-xml = "^0.1.1"
 data-to-xml = "^1.0.9"
 vulture = "^2.14"
+yamllint = "^1.37.0"
 
 [tool.ruff]
 target-version = "py312"

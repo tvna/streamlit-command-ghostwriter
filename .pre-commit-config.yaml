@@ -48,6 +48,14 @@ repos:
   - id: destroyed-symlinks
     description: "Run 'destroyed-symlinks' for checking destroyed symlinks"
 
+- repo: https://github.com/adrienverge/yamllint.git
+  rev: v1.37.0
+  hooks:
+  - id: yamllint
+    name: yamllint
+    description: This hook runs yamllint.
+    files: ^\.github/(workflows|actions)/.*\.(yml|yaml)$
+
 - repo: https://github.com/tox-dev/pyproject-fmt
   rev: v2.5.1
   hooks:
@@ -59,7 +67,7 @@ repos:
     files: ^pyproject\.toml$
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.9.10
+  rev: v0.11.4
   hooks:
   - id: ruff
     description: "Run 'ruff' for extremely fast Python linting"
@@ -72,7 +80,7 @@ repos:
     types: [python]
 
 - repo: https://github.com/gitleaks/gitleaks
-  rev: v8.16.3
+  rev: v8.24.2
   hooks:
   - id: gitleaks
     description: "Detects hardcoded secrets like passwords, API keys, and tokens."
@@ -87,7 +95,7 @@ repos:
 
 # The following configuration uses check-jsonschema to validate Github Workflow files.
 - repo: https://github.com/python-jsonschema/check-jsonschema
-  rev: 0.31.3
+  rev: 0.32.1
   hooks:
   - id: check-github-workflows
     description: "Run 'check-github-workflows' for Github Workflow validation"
