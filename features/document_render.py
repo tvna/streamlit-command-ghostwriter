@@ -73,6 +73,7 @@ with open('template.txt', 'rb') as f:
 
 from datetime import datetime
 from decimal import Decimal
+from functools import wraps
 from io import BytesIO
 from types import UnionType
 from typing import (
@@ -92,7 +93,7 @@ from typing import (
 import jinja2
 from jinja2 import Environment, Template, nodes
 from jinja2.runtime import StrictUndefined, Undefined
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError, field_validator
 
 from features.validate_template import TemplateSecurityValidator, ValidationState  # type: ignore
 from features.validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
@@ -123,7 +124,6 @@ def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", 
     Returns:
         常に空文字列を返す関数
     """
-    from functools import wraps
 
     @wraps(func)
     def wrapper(self: "CustomUndefined", other: "OperandType") -> str:
@@ -400,6 +400,17 @@ class DocumentRender(BaseModel):
     MAX_FILE_SIZE_BYTES: ClassVar[int] = 30 * 1024 * 1024  # 30MB
     MAX_MEMORY_SIZE_BYTES: ClassVar[int] = 150 * 1024 * 1024  # 150MB
 
+    _ast: Optional[nodes.Template] = PrivateAttr(default=None)
+    _file_validator: FileValidator = PrivateAttr(default=FileValidator(size_config=FileSizeConfig(max_size_bytes=MAX_FILE_SIZE_BYTES)))
+    _formatter: ContentFormatter = PrivateAttr(default=ContentFormatter())
+    _is_strict_undefined: bool = PrivateAttr(default=True)
+    _render_content: Optional[str] = PrivateAttr(default=None)
+    _template_content: Optional[str] = PrivateAttr(default=None)
+    _security_validator: TemplateSecurityValidator = PrivateAttr(
+        default=TemplateSecurityValidator(max_file_size_bytes=MAX_FILE_SIZE_BYTES, max_memory_size_bytes=MAX_MEMORY_SIZE_BYTES)
+    )
+    _validation_state: ValidationState = PrivateAttr(default=ValidationState())
+
     def __init__(self, template_file: BytesIO) -> None:
         """DocumentRenderインスタンスを初期化する。
 
@@ -410,27 +421,17 @@ class DocumentRender(BaseModel):
             初期検証に失敗した場合、エラー状態を保持します。
             エラー状態は is_valid_template と error_message プロパティで確認できます。
         """
-        self._validation_state = ValidationState()
-        self._file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
 
+        super().__init__()
         try:
             self._file_validator.validate_size(template_file)
+            self._template_file = template_file
         except ValueError as e:
             self._validation_state.set_error(str(e))
             return
         except IOError as e:
             self._validation_state.set_error(f"Failed to validate template file: {e!s}")
             return
-
-        self._template_file = template_file
-        self._template_content: Optional[str] = None
-        self._render_content: Optional[str] = None
-        self._is_strict_undefined: bool = True
-        self._formatter = ContentFormatter()
-        self._security_validator = TemplateSecurityValidator(
-            max_file_size_bytes=self.MAX_FILE_SIZE_BYTES, max_memory_size_bytes=self.MAX_MEMORY_SIZE_BYTES
-        )
-        self._ast: Optional[nodes.Template] = None
 
         # 初期検証を実行
         template_content: Optional[str] = None
