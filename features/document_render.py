@@ -110,9 +110,13 @@ MAX_FORMAT_TYPE: Final[int] = FORMAT_REMOVE
 # --- Validation Constants ---
 MAX_BYTES_PER_CHAR_UTF8: Final[int] = 4  # Maximum bytes per character assumed for UTF-8 estimate
 
-# --- Helper Types and Functions for CustomUndefined (moved to module level) ---
-
 T = TypeVar("T")
+ValueType: UnionType = Union[str, Decimal, bool, None]
+ListType: Type = List[Union[ValueType, "ListType", "DictType"]]
+DictType: Type = Dict[str, Union[ValueType, ListType, "DictType"]]
+ContextType: Type = Dict[str, Union[ValueType, ListType, DictType]]
+RecursiveValue: UnionType = Union[ValueType, ListType, DictType]
+ContainerType: UnionType = Union[ValueType, ListType, DictType]
 
 
 def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", "OperandType"], str]:
@@ -345,15 +349,6 @@ class ContentFormatter(BaseModel):
         return "".join(result)
 
 
-# 型エイリアスの定義
-ValueType: UnionType = Union[str, Decimal, bool, None]
-ListType: Type = List[Union[ValueType, "ListType", "DictType"]]
-DictType: Type = Dict[str, Union[ValueType, ListType, "DictType"]]
-ContextType: Type = Dict[str, Union[ValueType, ListType, DictType]]
-RecursiveValue: UnionType = Union[ValueType, ListType, DictType]
-ContainerType: UnionType = Union[ValueType, ListType, DictType]
-
-
 class DocumentRender(BaseModel):
     """テンプレートのレンダリングと検証を行うクラス。
 
@@ -401,15 +396,16 @@ class DocumentRender(BaseModel):
     MAX_MEMORY_SIZE_BYTES: ClassVar[int] = 150 * 1024 * 1024  # 150MB
 
     _ast: Optional[nodes.Template] = PrivateAttr(default=None)
-    _file_validator: FileValidator = PrivateAttr(default=FileValidator(size_config=FileSizeConfig(max_size_bytes=MAX_FILE_SIZE_BYTES)))
-    _formatter: ContentFormatter = PrivateAttr(default=ContentFormatter())
+    _file_validator: "FileValidator" = PrivateAttr(default=FileValidator(size_config=FileSizeConfig(max_size_bytes=MAX_FILE_SIZE_BYTES)))
+    _formatter: "ContentFormatter" = PrivateAttr(default=ContentFormatter())
     _is_strict_undefined: bool = PrivateAttr(default=True)
     _render_content: Optional[str] = PrivateAttr(default=None)
     _template_content: Optional[str] = PrivateAttr(default=None)
-    _security_validator: TemplateSecurityValidator = PrivateAttr(
+    _template_file: Optional[BytesIO] = PrivateAttr(default=None)
+    _security_validator: "TemplateSecurityValidator" = PrivateAttr(
         default=TemplateSecurityValidator(max_file_size_bytes=MAX_FILE_SIZE_BYTES, max_memory_size_bytes=MAX_MEMORY_SIZE_BYTES)
     )
-    _validation_state: ValidationState = PrivateAttr(default=ValidationState())
+    _validation_state: "ValidationState" = PrivateAttr(default=ValidationState())
 
     def __init__(self, template_file: BytesIO) -> None:
         """DocumentRenderインスタンスを初期化する。
