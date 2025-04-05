@@ -30,7 +30,7 @@ import socket
 import subprocess
 import sys
 import time
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Final, Generator, List, Optional
 
 import psutil
 import pytest
@@ -42,7 +42,7 @@ from playwright.sync_api import Page
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 # ロガーの設定
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -76,7 +76,7 @@ def browser_type_launch_args(browser_type_launch_args: Dict[str, Any], pytestcon
           - headless: ヘッドレスモードの有効/無効
           - args: ブラウザ起動時の追加引数
     """
-    is_playwright_headless = not pytestconfig.getoption("--headed")
+    is_playwright_headless: bool = not pytestconfig.getoption("--headed")
 
     return {
         **browser_type_launch_args,
@@ -147,12 +147,12 @@ def _wait_for_streamlit(timeout: int = 30, interval: int = 1, port: int = 8503) 
         HTTPリクエストを定期的に送信し、200レスポンスを待機します
         プロセスの終了も監視し、異常終了を検知します
     """
-    url = f"http://localhost:{port}"
+    url: Final[str] = f"http://localhost:{port}"
     logger.info(f"Streamlitサーバーの起動を確認中: {url}")
 
-    start_time = time.time()
-    end_time = start_time + timeout
-    attempt = 0
+    start_time: float = time.time()
+    end_time: float = start_time + timeout
+    attempt: int = 0
 
     while time.time() < end_time:
         attempt += 1
@@ -188,8 +188,8 @@ def _get_validated_streamlit_path() -> str:
         セキュリティ対策として、相対パスを固定値で指定し、
         絶対パスに変換後に存在確認を行います
     """
-    app_relative_path = os.path.join("..", "..", "app.py")
-    streamlit_path = os.path.abspath(os.path.join(os.path.dirname(__file__), app_relative_path))
+    app_relative_path: Final[str] = os.path.join("..", "..", "app.py")
+    streamlit_path: Final[str] = os.path.abspath(os.path.join(os.path.dirname(__file__), app_relative_path))
 
     if not os.path.exists(streamlit_path):
         raise FileNotFoundError(f"Streamlit app not found at {streamlit_path}")
@@ -235,13 +235,13 @@ def _run_streamlit_safely(app_path: str, port: int, pytestconfig: PytestConfig) 
           - 作業ディレクトリを明示的に設定
           - シェル実行を無効化
     """
-    executable = _get_validated_streamlit_executable()
-    env = os.environ.copy()
-    args: List[str] = [executable, "run", app_path, f"--server.port={port}", "--server.headless=true"]
+    executable: Final[str] = _get_validated_streamlit_executable()
+    env: Final[Dict[str, str]] = os.environ.copy()
+    args: Final[List[str]] = [executable, "run", app_path, f"--server.port={port}", "--server.headless=true"]
 
     logger.info(f"Streamlitを起動します: port={port}, headless=true")
 
-    process = subprocess.Popen(
+    process: subprocess.Popen = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -282,10 +282,10 @@ def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[
         - 常にヘッドレスモードで実行
         - テスト終了時に自動的にプロセスを終了
     """
-    process = None
 
+    process: Optional[subprocess.Popen] = None
     try:
-        streamlit_path = _get_validated_streamlit_path()
+        streamlit_path: Final[str] = _get_validated_streamlit_path()
         process = _run_streamlit_safely(streamlit_path, port=streamlit_port, pytestconfig=pytestconfig)
 
         if not _wait_for_streamlit(timeout=30, interval=3, port=streamlit_port):
@@ -336,7 +336,7 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen, streamlit_port: 
           - ページのリセットと再読み込み
     """
     try:
-        is_running = streamlit_app and streamlit_app.poll() is None
+        is_running: bool = streamlit_app and streamlit_app.poll() is None
         logger.info(
             f"Streamlitプロセス (PID: {streamlit_app.pid if streamlit_app else 'None'}) の状態: "
             f"{'実行中' if is_running else f'終了 (コード: {streamlit_app.returncode if streamlit_app else None})'}"
