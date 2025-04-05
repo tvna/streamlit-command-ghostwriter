@@ -182,7 +182,7 @@ class ConfigParser(BaseModel):
             return
 
         # ファイル拡張子の抽出
-        self._file_extension: Final[str] = self.config_file.name.split(".")[-1]
+        self._file_extension = self.config_file.name.split(".")[-1]
         if self._file_extension not in self.SUPPORTED_EXTENSIONS:
             self._error_message = "Unsupported file type"
             return

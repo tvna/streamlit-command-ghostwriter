@@ -141,14 +141,7 @@ repos:
       - id: lizard_combined
         name: lizard (check CCN for production codes)
         entry: |
-          poetry run lizard -l python \
-            -x "./node_modules/*" \
-            -x "./.venv/*" \
-            -x "./build/*" \
-            -x "./dist/*" \
-            -x "./htmlcov/*" \
-            -x "./tests/*" \
-            --CCN "10"
+          poetry run lizard -l python -x "./node_modules/*" -x "./.venv/*" -x "./build/*"  -x "./dist/*"  --CCN "10"
         language: system
         pass_filenames: false
         types: [python]

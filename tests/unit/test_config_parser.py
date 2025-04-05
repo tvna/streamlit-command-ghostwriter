@@ -214,6 +214,80 @@ class TestHelpers:
             TestHelpers.assert_value_equality(actual_value, expected_value, f"column {col_key} in row {row_index}")
 
     @staticmethod
+    def _assert_nan_comparison(actual: ScalarValueType, expected: ScalarValueType, location: str) -> bool:
+        """NaN値の比較を行い、比較が完了したかを示す。
+
+        Args:
+            actual: 実際の値
+            expected: 期待される値
+            location: 値の場所 (エラーメッセージ用)
+
+        Returns:
+            bool: NaNに関する比較/アサーション完了
+        """
+        is_actual_nan = TestHelpers.is_nan_value(actual)
+        is_expected_nan = TestHelpers.is_nan_value(expected)
+
+        if is_actual_nan or is_expected_nan:
+            assert is_actual_nan is True, (
+                f"Value mismatch at {location}: One value is NaN while the other is not. Actual: {actual!r}, Expected: {expected!r}"
+            )
+            assert is_expected_nan is True, (
+                f"Value mismatch at {location}: One value is NaN while the other is not. Actual: {actual!r}, Expected: {expected!r}"
+            )
+            return True  # NaNに関する比較/アサーション完了
+        return False  # NaNではないので比較は続行
+
+    @staticmethod
+    def _assert_bool_comparison(actual: ScalarValueType, expected: ScalarValueType, location: str) -> bool:
+        """真偽値の比較を行い、比較が完了したかを示す。
+
+        Args:
+            actual: 実際の値
+            expected: 期待される値
+            location: 値の場所 (エラーメッセージ用)
+
+        Returns:
+            bool: 真偽値比較完了
+        """
+        is_actual_bool = isinstance(actual, (bool, np.bool_))
+        is_expected_bool = isinstance(expected, (bool, np.bool_))
+
+        if is_actual_bool and is_expected_bool:
+            assert bool(actual) == bool(expected), f"Boolean value mismatch at {location}: Expected {expected}, Got {actual}"
+            return True  # 真偽値比較完了
+        return False  # 真偽値同士ではないので比較続行
+
+    @staticmethod
+    def _assert_cross_type_comparison(actual: ScalarValueType, expected: ScalarValueType, location: str) -> bool:
+        """数値と文字列の相互比較を行い、比較が完了したかを示す。
+
+        Args:
+            actual: 実際の値
+            expected: 期待される値
+            location: 値の場所 (エラーメッセージ用)
+
+        Returns:
+            bool: 数値/文字列比較完了
+        """
+        # Actualが数値、Expectedが文字列
+        if isinstance(actual, (int, float)) and isinstance(expected, str):
+            assert str(actual) == expected, f"Value mismatch at {location}: Expected string '{expected}', Got numeric {actual}"
+            return True  # 数値->文字列比較完了
+
+        # Actualが文字列、Expectedが数値
+        if isinstance(actual, str) and isinstance(expected, (int, float)):
+            try:
+                converted_actual = float(actual) if isinstance(expected, float) else int(actual)
+                assert converted_actual == expected, f"Value mismatch at {location}: Expected numeric {expected}, Got string '{actual}'"
+                return True  # 文字列->数値比較完了
+            except ValueError:
+                # 変換失敗時はこの比較ケースではないので続行
+                return False
+
+        return False  # クロスタイプの比較対象ではない
+
+    @staticmethod
     def assert_value_equality(actual: ScalarValueType, expected: ScalarValueType, location: str) -> None:
         """値の比較を行う。NaN値や型変換を考慮。
 
@@ -222,44 +296,20 @@ class TestHelpers:
             expected: 期待される値
             location: 値の場所 (エラーメッセージ用)
         """
-        # NaN値の特別処理
-        if TestHelpers.is_nan_value(actual):
-            assert TestHelpers.is_nan_value(expected), f"Value mismatch at {location}: Expected NaN, Got non-NaN value: {actual!r}"
+        # 1. NaN比較
+        if TestHelpers._assert_nan_comparison(actual, expected, location):
             return
-        if TestHelpers.is_nan_value(expected):
-            # If expected is NaN, actual must also be NaN (handled by the block above).
-            # This assertion ensures we don't incorrectly compare a non-NaN actual to an expected NaN.
-            assert TestHelpers.is_nan_value(actual), (
-                f"Value mismatch at {location}: Expected non-NaN value {expected!r}, Got NaN: {actual!r}"
-            )
-            return  # No further comparison needed if both are NaN
 
-        # --- Start: Prioritized Robust Boolean Comparison ---
-        is_actual_bool = isinstance(actual, (bool, np.bool_))
-        is_expected_bool = isinstance(expected, (bool, np.bool_))
+        # 2. 真偽値比較
+        if TestHelpers._assert_bool_comparison(actual, expected, location):
+            return
 
-        if is_actual_bool and is_expected_bool:
-            assert bool(actual) == bool(expected), f"Boolean value mismatch at {location}: Expected {expected}, Got {actual}"
-            return  # Boolean comparison done
-        else:
-            pass  # Continue to other checks
-        # --- End: Prioritized Robust Boolean Comparison ---
+        # 3. 数値/文字列クロス比較
+        if TestHelpers._assert_cross_type_comparison(actual, expected, location):
+            return
 
-        # 数値型とストリング型の相互変換対応 (Booleans already handled)
-        if isinstance(actual, (int, float)) and not TestHelpers.is_nan_value(actual):
-            if isinstance(expected, str):
-                assert str(actual) == expected, f"Value mismatch at {location}: Expected string '{expected}', Got numeric {actual}"
-                return
-        elif isinstance(actual, str) and isinstance(expected, (int, float)):
-            try:
-                converted_actual = float(actual) if isinstance(expected, float) else int(actual)
-                assert converted_actual == expected, f"Value mismatch at {location}: Expected numeric {expected}, Got string '{actual}'"
-                return
-            except ValueError:
-                pass
-
-        # Fallback to standard comparison for other types
-        assert actual == expected, f"Value mismatch at {location}: Expected {expected}, Got {actual}"
+        # 4. その他の型 (上記いずれにも当てはまらない場合)
+        assert actual == expected, f"Value mismatch at {location}: Expected {expected!r}, Got {actual!r}"
 
     @staticmethod
     def is_nan_value(value: Optional[Union[float, str, int]]) -> bool:
@@ -276,8 +326,8 @@ class TestHelpers:
         # Removed incorrect check: `if value is None: return True`
         # Check for numpy NaN specifically, as it might be present from CSV parsing
         # Use isinstance to avoid errors if value doesn't have 'dtype'
-        if isinstance(value, np.generic) and np.isnan(value):
-            return True
+        if isinstance(value, np.generic) and np.isnan(value):  # type: ignore[unreachable]
+            return True  # type: ignore[unreachable]
         return False
 
     @staticmethod
@@ -339,7 +389,7 @@ class TestHelpers:
             assert parser.error_message is None, f"Expected no error message, but got: {parser.error_message}"
         else:
             assert parser.error_message is not None, f"Expected an error message containing '{expected_error}', but got None"
-            assert expected_error in str(parser.error_message), (
+            assert expected_error in parser.error_message, (
                 f"Error message mismatch. Expected to contain: '{expected_error}', Got: '{parser.error_message}'"
             )
 
@@ -392,7 +442,7 @@ class TestHelpers:
         pytest.param(
             b"\x80\x81\x82\x83",
             "config.toml",
-            "invalid start byte",
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
             id="parser_init_invalid_utf8",
         ),
     ],
@@ -415,7 +465,7 @@ def test_initialization(
     if expected_error is None:
         assert parser.error_message is None
     else:
-        assert expected_error in str(parser.error_message)
+        assert expected_error == parser.error_message
 
 
 @pytest.mark.unit
@@ -525,7 +575,7 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "Invalid statement",
+            "Invalid statement (at line 1, column 1)",
             id="parser_toml_invalid_binary",
         ),
         pytest.param(
@@ -533,7 +583,7 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "after a key in a key/value pair (at line 1, column 7)",
+            "Expected '=' after a key in a key/value pair (at line 1, column 7)",
             id="parser_toml_syntax_error",
         ),
         pytest.param(
@@ -544,7 +594,7 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "Cannot overwrite a value",
+            "Cannot overwrite a value (at line 3, column 32)",
             id="parser_toml_duplicate_key",
         ),
         pytest.param(
@@ -552,7 +602,7 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "Expected newline or end of document after a statement ",
+            "Expected newline or end of document after a statement (at line 1, column 12)",
             id="parser_toml_invalid_date",
         ),
         # Test case for pyyaml module on failed
@@ -561,7 +611,8 @@ def test_default_properties() -> None:
             "config.yaml",
             False,
             None,
-            "unacceptable character #x0000: special characters are not allowed",
+            """unacceptable character #x0000: special characters are not allowed
+  in "<unicode string>", position 0""",
             id="parser_yaml_invalid_binary",
         ),
         pytest.param(
@@ -682,7 +733,7 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "Expected",
+            "Expected '=' after a key in a key/value pair (at line 1, column 6)",
             id="parser_toml_yaml_content",
         ),
         # File with BOM marker
@@ -691,7 +742,7 @@ def test_default_properties() -> None:
             "config.toml",
             False,
             None,
-            "Invalid statement",
+            "Invalid statement (at line 1, column 1)",
             id="parser_toml_bom_marker",
         ),
         # Add new CSV edge cases
@@ -708,7 +759,7 @@ def test_default_properties() -> None:
             "config.csv",
             False,  # Parsing fails
             None,
-            "Error tokenizing data",  # Expect pandas ParserError
+            "Error tokenizing data. C error: EOF inside string starting at row 1",  # Expect pandas ParserError
             id="parser_csv_malformed_header",
         ),
         pytest.param(
@@ -874,8 +925,15 @@ def test_default_properties() -> None:
             b"doc1_key: value1\n---\ndoc2_key: value2",
             "config.yaml",
             False,  # Changed expectation: Assume multiple docs are not supported
-            None,  # Changed expectation
-            "expected a single document",  # Made expected error less specific
+            None,
+            """expected a single document in the stream
+  in "<unicode string>", line 1, column 1:
+    doc1_key: value1
+    ^
+but found another document
+  in "<unicode string>", line 2, column 1:
+    ---
+    ^""",  # Made expected error less specific
             id="parser_yaml_multiple_documents",
         ),
         pytest.param(
@@ -1104,7 +1162,7 @@ def test_enable_fill_nan() -> None:
     config_file.seek(0)
     parser = ConfigParser(config_file)
     parser.enable_fill_nan = True
-    parser.fill_nan_with = "N/A"
+    parser.fill_nan_with = "Unknown"
     result = parser.parse()
 
     # If parsing fails, check the error message
@@ -1115,7 +1173,7 @@ def test_enable_fill_nan() -> None:
         return
 
     assert parser.parsed_dict is not None
-    assert parser.parsed_dict["csv_rows"][1]["age"] == "N/A"
+    assert parser.parsed_dict["csv_rows"][1]["age"] == "Unknown"
 
 
 @pytest.mark.unit
@@ -1227,10 +1285,15 @@ def test_csv_options_combined(
 
     for i, (expected_row, result_row) in enumerate(zip(expected_rows, result_rows, strict=False)):
         for key, expected_value in expected_row.items():
-            if expected_value is None and not enable_fill_nan:
+            if expected_value is None and not enable_fill_nan:  # type: ignore[unreachable]
                 # If NaN filling is disabled and expected value is None, check for NaN
-                assert key in result_row
-                assert math.isnan(result_row[key]) or result_row[key] is None
+                assert key in result_row  # type: ignore[unreachable]
+                # Check for actual NaN or None from pandas
+                actual_val = result_row[key]
+                # Assert that actual_val is either NaN or None
+                assert (isinstance(actual_val, (float, np.float64)) and math.isnan(actual_val)) or (actual_val is None), (
+                    f"Row {i}, key {key}: expected NaN or None when filling is disabled, got {actual_val!r}"
+                )
             else:
                 # Otherwise, compare values directly
                 assert result_row[key] == expected_value, f"Row {i}, key {key}: expected {expected_value}, got {result_row[key]}"
@@ -1403,7 +1466,9 @@ def test_parse_edge_cases(
 
     if expected_error is not None:
         assert parser.error_message is not None
-        assert expected_error == parser.error_message
+        assert expected_error == parser.error_message, (
+            f"Expected error message to contain '{expected_error}', but got '{parser.error_message}'"
+        )
     else:
         assert parser.error_message is None
 
@@ -1541,7 +1606,7 @@ def test_memory_consumption_limit_parsed_str() -> None:
 
     try:
         # sys.getsizeofをモンキーパッチして大きな値を返すようにする
-        def mock_getsizeof(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+        def mock_getsizeof(obj: object, default: int = 0) -> int:
             if isinstance(obj, str) and "title" in obj:
                 # 200MBを返す (上限は150MB)
                 return 200 * 1024 * 1024
@@ -1581,7 +1646,7 @@ def test_memory_consumption_limit_parsed_dict() -> None:
 
     try:
         # sys.getsizeofをモンキーパッチして大きな値を返すようにする
-        def mock_getsizeof(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+        def mock_getsizeof(obj: object, default: int = 0) -> int:
             if isinstance(obj, dict) and "title" in obj:
                 # 200MBを返す (上限は150MB)
                 return 200 * 1024 * 1024
@@ -1621,7 +1686,7 @@ def test_memory_error_handling() -> None:
 
     try:
         # sys.getsizeofをモンキーパッチしてMemoryErrorを発生させる
-        def mock_getsizeof_error(obj: Union[str, Dict, bytes, int, float, bool]) -> int:
+        def mock_getsizeof_error(obj: object, default: int = 0) -> int:
             if isinstance(obj, dict) and "title" in obj:
                 raise MemoryError("Simulated memory error")
             return original_getsizeof(obj)
