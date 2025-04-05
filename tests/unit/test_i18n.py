@@ -1,3 +1,5 @@
+from typing import Any, Final, Mapping
+
 import pytest
 
 from i18n import LANGUAGES
@@ -11,7 +13,7 @@ def test_i18n_japanese() -> None:
     すべてのキーと値が適切な型であることを検証します。
     """
     # Arrange
-    japanese_key = "日本語"
+    japanese_key: Final[str] = "日本語"
 
     # Act & Assert
     assert isinstance(LANGUAGES, dict), "LANGUAGES should be a dictionary"
@@ -37,7 +39,7 @@ def test_i18n_structure_consistency() -> None:
     およびネストされた辞書構造を持っていることを確認します。
     """
     # Arrange
-    reference_lang = next(iter(LANGUAGES.values()))
+    reference_lang: Final[Mapping[str, Any]] = next(iter(LANGUAGES.values()))
 
     # Act & Assert
     for lang_name, lang_dict in LANGUAGES.items():
@@ -45,7 +47,7 @@ def test_i18n_structure_consistency() -> None:
 
         # Check that all second-level dictionaries have the same keys
         for section_key, section_dict in lang_dict.items():
-            ref_section = reference_lang[section_key]
+            ref_section: Final[Mapping[str, Any]] = reference_lang[section_key]
             assert set(section_dict.keys()) == set(ref_section.keys()), f"Section {section_key} in {lang_name} has different keys"
 
             # Check nested dictionaries (like format_type_items)
