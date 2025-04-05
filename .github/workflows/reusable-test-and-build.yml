@@ -73,7 +73,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -107,7 +107,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -134,7 +134,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -171,7 +171,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -228,7 +228,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -259,7 +259,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -317,7 +317,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: false
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
         timeout-minutes: 5
 
@@ -358,7 +358,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -422,7 +422,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -469,7 +469,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - id: set-result

@@ -34,8 +34,8 @@ jobs:
         uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
         with:
           egress-policy: audit
-          disable-sudo: false
-          disable-file-monitoring: false
+          disable-sudo: true
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
         timeout-minutes: 5
 
@@ -66,8 +66,8 @@ jobs:
         uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
         with:
           egress-policy: audit
-          disable-sudo: false
-          disable-file-monitoring: false
+          disable-sudo: true
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
         timeout-minutes: 5
 
