@@ -127,7 +127,7 @@ def _find_free_port() -> int:
         s.bind(("localhost", 0))
         _, port = s.getsockname()
         logger.info(f"使用可能なポート {port} を割り当てました")
-        return port
+        return int(port)
 
 
 def _wait_for_streamlit(timeout: int = 30, interval: int = 1, port: int = 8503) -> bool:
@@ -336,7 +336,7 @@ def setup_teardown(page: Page, streamlit_app: subprocess.Popen, streamlit_port: 
           - ページのリセットと再読み込み
     """
     try:
-        is_running: bool = streamlit_app and streamlit_app.poll() is None
+        is_running: bool = streamlit_app is not None and streamlit_app.poll() is None
         logger.info(
             f"Streamlitプロセス (PID: {streamlit_app.pid if streamlit_app else 'None'}) の状態: "
             f"{'実行中' if is_running else f'終了 (コード: {streamlit_app.returncode if streamlit_app else None})'}"

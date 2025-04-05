@@ -42,7 +42,7 @@ from typing import Final, List
 
 import pytest
 from playwright.sync_api import FileChooser, Locator, Page, expect
-from pytest_benchmark.fixture import BenchmarkFixture
+from pytest_benchmark.fixture import BenchmarkFixture  # type: ignore[import-untyped]
 
 from .helpers import StreamlitTestHelper, TestData, texts
 

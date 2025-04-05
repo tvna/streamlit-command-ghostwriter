@@ -517,6 +517,7 @@ class StreamlitTestHelper:
             - 上記で取得できない場合: マークダウン要素から取得
         """
         result_text: str = ""
+        area_text: str = ""
 
         if display_format == "visual":
             json_container: Final[Locator] = tab_panel.locator("div[data-testid='stJson']").first
@@ -525,14 +526,14 @@ class StreamlitTestHelper:
 
         text_areas: Final[List[Locator]] = tab_panel.locator("textarea").all()
         for text_area in text_areas:
-            area_text: str = text_area.input_value()
+            area_text = text_area.input_value()
             if area_text:
                 result_text += area_text + "\n"
 
         if not result_text:
             markdown_areas: Final[List[Locator]] = tab_panel.locator("div.stMarkdown").all()
             for area in markdown_areas:
-                area_text: str = area.inner_text()
+                area_text = area.inner_text()
                 if area_text and not area_text.startswith(texts.tab2.upload_debug_config):
                     result_text += area_text + "\n"
 
