@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
 
 import pytest
 
@@ -15,7 +15,7 @@ def create_text_file() -> Callable[[str, str, str], BytesIO]:
     """
 
     def _create_file(content: str, encoding: str, filename: str = "example.txt") -> BytesIO:
-        file = BytesIO(content.encode(encoding))
+        file: Final[BytesIO] = BytesIO(content.encode(encoding))
         file.name = filename
         return file
 
@@ -31,7 +31,7 @@ def create_binary_file() -> Callable[[bytes, str], BytesIO]:
     """
 
     def _create_file(content: bytes, filename: str = "example.bin") -> BytesIO:
-        file = BytesIO(content)
+        file: Final[BytesIO] = BytesIO(content)
         file.name = filename
         return file
 
@@ -81,13 +81,13 @@ def test_transcoder_basic_functionality(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_text_file(input_str, input_encoding, "example.csv")
+    import_file: Final[BytesIO] = create_text_file(input_str, input_encoding, "example.csv")
 
     # Act
-    transcoder = TextTranscoder(import_file)
-    detected_encoding = transcoder.detect_encoding()
-    export_file_deny_fallback = transcoder.convert(is_allow_fallback=False)
-    export_file_allow_fallback = transcoder.convert(is_allow_fallback=True)
+    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
+    export_file_deny_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=False)
+    export_file_allow_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=True)
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
@@ -103,7 +103,7 @@ def test_transcoder_basic_functionality(
 
     assert isinstance(export_file_allow_fallback, BytesIO), "Export file with allow fallback should be BytesIO instance"
     if isinstance(export_file_allow_fallback, BytesIO):
-        decoded_content = export_file_allow_fallback.getvalue().decode("utf-8")
+        decoded_content: Final[str] = export_file_allow_fallback.getvalue().decode("utf-8")
         assert decoded_content == expected_result, (
             f"Content mismatch with allow fallback.\nExpected: {expected_result}\nGot: {decoded_content}"
         )
@@ -138,13 +138,13 @@ def test_transcoder_non_string_data(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_binary_file(input_bytes, "example.csv")
+    import_file: Final[BytesIO] = create_binary_file(input_bytes, "example.csv")
 
     # Act
-    transcoder = TextTranscoder(import_file)
-    detected_encoding = transcoder.detect_encoding()
-    export_file_deny_fallback = transcoder.convert(is_allow_fallback=False)
-    export_file_allow_fallback = transcoder.convert(is_allow_fallback=True)
+    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
+    export_file_deny_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=False)
+    export_file_allow_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=True)
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
@@ -200,11 +200,11 @@ def test_transcoder_edge_cases(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_text_file(input_str, input_encoding, "example.txt")
+    import_file: Final[BytesIO] = create_text_file(input_str, input_encoding, "example.txt")
 
     # Act
-    transcoder = TextTranscoder(import_file)
-    detected_encoding = transcoder.detect_encoding()
+    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
@@ -212,7 +212,7 @@ def test_transcoder_edge_cases(
     # 期待されるエンコーディングがNoneの場合は、変換結果のチェックをスキップ
     if expected_encoding is not None:
         # Act
-        export_file = transcoder.convert(is_allow_fallback=True)
+        export_file: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=True)
 
         # Assert
         assert isinstance(export_file, BytesIO), "Export file should be BytesIO instance"
@@ -256,17 +256,17 @@ def test_transcoder_binary_edge_cases(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_binary_file(input_bytes, "example.bin")
+    import_file: Final[BytesIO] = create_binary_file(input_bytes, "example.bin")
 
     # Act
-    transcoder = TextTranscoder(import_file)
-    detected_encoding = transcoder.detect_encoding()
+    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
 
     # Act
-    result = transcoder.convert()
+    result: Final[Optional[BytesIO]] = transcoder.convert()
 
     # Assert
     if expected_encoding is None:
@@ -359,11 +359,11 @@ def test_transcoder_encoding_conversion(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_text_file(input_str, "utf-8", "example.txt")
+    import_file: Final[BytesIO] = create_text_file(input_str, "utf-8", "example.txt")
 
     # Act
-    transcoder = TextTranscoder(import_file)
-    result = transcoder.convert(target_encoding, is_allow_fallback)
+    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    result: Final[Optional[BytesIO]] = transcoder.convert(target_encoding, is_allow_fallback)
 
     # Assert
     if expected_result is None:
@@ -377,7 +377,7 @@ def test_transcoder_encoding_conversion(
                 try:
                     if target_encoding.lower() == "ascii":
                         # ASCIIの場合、非ASCII文字は?に置換される
-                        expected_decoded = input_str.encode("ascii", errors="replace").decode("ascii")
+                        expected_decoded: Final[str] = input_str.encode("ascii", errors="replace").decode("ascii")
                         assert result.getvalue().decode("ascii") == expected_decoded
                     else:
                         # その他のエンコーディングの場合
@@ -402,12 +402,12 @@ def test_transcoder_missing_encoding(test_data: bytes, invalid_encoding: str, ex
         expected_encoding: 期待されるエンコーディング
     """
     # Arrange
-    transcoder = TextTranscoder(BytesIO(test_data))
+    transcoder: Final[TextTranscoder] = TextTranscoder(BytesIO(test_data))
 
     # Act
-    detected_encoding = transcoder.detect_encoding()
-    result_without_fallback = transcoder.convert(invalid_encoding, False)
-    result_with_fallback = transcoder.convert(invalid_encoding, True)
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
+    result_without_fallback: Final[Optional[BytesIO]] = transcoder.convert(invalid_encoding, False)
+    result_with_fallback: Final[Optional[BytesIO]] = transcoder.convert(invalid_encoding, True)
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
