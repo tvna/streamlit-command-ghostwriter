@@ -1,24 +1,24 @@
 ---
-name: 'Create pull request to main'
-description: 'Compares develop and main versions and creates a PR if develop is newer and no open PR exists.'
+name: "Create pull request to main"
+description: "Compares develop and main versions and creates a PR if develop is newer and no open PR exists."
 
 inputs:
   github_token:
-    description: 'GitHub token for API calls'
+    description: "GitHub token for API calls"
     required: true
   develop_version:
-    description: 'Version from the develop branch (e.g., package.json)'
+    description: "Version from the develop branch (e.g., package.json)"
     required: true
   main_version:
-    description: 'Version from the main branch (e.g., package.json)'
+    description: "Version from the main branch (e.g., package.json)"
     required: true
 
 outputs:
   pr_url:
-    description: 'URL of the created Pull Request, if any.'
+    description: "URL of the created Pull Request, if any."
     value: ${{ steps.create-pr.outputs.pr_url }}
   status:
-    description: 'Outcome status: created, exists, skipped_version_compare, skipped_label_fail, error_check_pr, error_ensure_label, error_create_pr'
+    description: "Outcome status: created, exists, skipped_version_compare, skipped_label_fail, error_check_pr, error_ensure_label, error_create_pr"
     value: ${{ steps.set-status.outputs.status }}
 
 runs:
@@ -145,7 +145,7 @@ runs:
         steps.ensure-labels.outputs.success == 'true'
       uses: actions/setup-python@v5
       with:
-        python-version: '3.x' # Or specify a more precise version if needed
+        python-version: "3.x" # Or specify a more precise version if needed
 
     - name: Create Pull Request
       id: create-pr

@@ -1,81 +1,81 @@
-name: 'Build by stlite'
-description: 'Setup playwright with cache'
+name: "Build by stlite"
+description: "Setup playwright with cache"
 
 inputs:
   github-token:
-    description: 'GitHub token'
+    description: "GitHub token"
     required: true
 
 runs:
   using: "composite"
   steps:
-  - name: Restore cache electron-builder (Windows)
-    if: runner.os == 'Windows'
-    uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-    with:
-      path: |
-        %LOCALAPPDATA%\electron\Cache
-        %LOCALAPPDATA%\electron-builder\Cache
-        %USERPROFILE%\.electron
-        %USERPROFILE%\.electron-builder
-        ~/AppData/Local/electron/Cache
-        ~/AppData/Local/electron-builder/Cache
-      key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+    - name: Restore cache electron-builder (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: |
+          %LOCALAPPDATA%\electron\Cache
+          %LOCALAPPDATA%\electron-builder\Cache
+          %USERPROFILE%\.electron
+          %USERPROFILE%\.electron-builder
+          ~/AppData/Local/electron/Cache
+          ~/AppData/Local/electron-builder/Cache
+        key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
 
-  - name: Restore cache electron-builder (MacOS)
-    if: runner.os == 'MacOS'
-    uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-    with:
-      path: |
-        ~/Library/Caches/electron
-        ~/Library/Caches/electron-builder
-        ~/.electron
-        ~/.electron-builder
-        ~/Library/Caches/electron/
-        ~/Library/Caches/electron-builder/
-      key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+    - name: Restore cache electron-builder (MacOS)
+      if: runner.os == 'MacOS'
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: |
+          ~/Library/Caches/electron
+          ~/Library/Caches/electron-builder
+          ~/.electron
+          ~/.electron-builder
+          ~/Library/Caches/electron/
+          ~/Library/Caches/electron-builder/
+        key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
 
-  - name: Restore cache electron-builder (Linux)
-    uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-    if: runner.os == 'Linux'
-    with:
-      path: |
-        ~/.cache/electron
-        ~/.cache/electron-builder
-        ~/.electron
-        ~/.electron-builder
-      key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
+    - name: Restore cache electron-builder (Linux)
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      if: runner.os == 'Linux'
+      with:
+        path: |
+          ~/.cache/electron
+          ~/.cache/electron-builder
+          ~/.electron
+          ~/.electron-builder
+        key: ${{ runner.os }}-node-electron-builder-${{ hashFiles('**/package-lock.json') }}
 
-  - name: Dump package
-    shell: bash
-    run: |
-      npm run dump
+    - name: Dump package
+      shell: bash
+      run: |
+        npm run dump
 
-  - name: Set GITHUB_TOKEN
-    shell: bash
-    run: |
-      echo "GITHUB_TOKEN=${{ inputs.github-token }}" >> "$GITHUB_ENV"
-      echo "GH_TOKEN=${{ inputs.github-token }}" >> "$GITHUB_ENV"
+    - name: Set GITHUB_TOKEN
+      shell: bash
+      run: |
+        echo "GITHUB_TOKEN=${{ inputs.github-token }}" >> "$GITHUB_ENV"
+        echo "GH_TOKEN=${{ inputs.github-token }}" >> "$GITHUB_ENV"
 
-  - name: Build
-    shell: bash
-    run: |
-      npm run dist
+    - name: Build
+      shell: bash
+      run: |
+        npm run dist
 
-  - name: Upload artifact (Windows)
-    uses: actions/upload-artifact@v4.6.2
-    if: ${{ runner.os == 'Windows' }}
-    with:
-      name: ${{ runner.os }}-build-artifact
-      path: ./dist/*.exe
-      retention-days: 3
-      compression-level: 9
+    - name: Upload artifact (Windows)
+      uses: actions/upload-artifact@v4.6.2
+      if: ${{ runner.os == 'Windows' }}
+      with:
+        name: ${{ runner.os }}-build-artifact
+        path: ./dist/*.exe
+        retention-days: 3
+        compression-level: 9
 
-  - name: Upload artifact (MacOS)
-    uses: actions/upload-artifact@v4.6.2
-    if: ${{ runner.os == 'MacOS' }}
-    with:
-      name: ${{ runner.os }}-build-artifact
-      path: ./dist/*.dmg
-      retention-days: 3
-      compression-level: 9
+    - name: Upload artifact (MacOS)
+      uses: actions/upload-artifact@v4.6.2
+      if: ${{ runner.os == 'MacOS' }}
+      with:
+        name: ${{ runner.os }}-build-artifact
+        path: ./dist/*.dmg
+        retention-days: 3
+        compression-level: 9

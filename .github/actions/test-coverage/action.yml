@@ -1,20 +1,19 @@
-name: 'test-python-coverage'
-description: 'Test coverage for python'
+name: "test-python-coverage"
+description: "Test coverage for python"
 inputs:
   github-branch-name:
-    description: 'Checkout branch to test'
+    description: "Checkout branch to test"
     required: true
   codecov-token:
-    description: 'Codecov token'
+    description: "Codecov token"
     required: true
   codeclimate-token:
-    description: 'Code Climate token'
+    description: "Code Climate token"
     required: true
 
 runs:
   using: "composite"
   steps:
-
     - name: Run pytest (coverage without e2e)
       shell: bash
       run: |
