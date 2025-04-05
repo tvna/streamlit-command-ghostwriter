@@ -96,6 +96,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: develop
           fetch-depth: 0
 
       - name: Dump GitHub context # Keep for potential debugging/context needs within the action
@@ -230,6 +231,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          labels: release, automated-pr
           branch: main
           title: "Release: v${{ needs.get-npm-versions.outputs.develop_version }}"
           body-path: .commit-log.txt
