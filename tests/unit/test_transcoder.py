@@ -280,14 +280,14 @@ def test_transcoder_binary_edge_cases(
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    ("input_str", "target_encoding", "is_allow_fallback", "expected_result"),
+    ("input_str", "target_encoding", "is_allow_fallback", "expected_result", "expected_error"),
     [
         pytest.param(
             "Hello, 世界!",
             "ascii",
             True,
             None,
-            marks=pytest.mark.skip(reason="ASCIIエンコーディングへの変換はエラーになるため"),
+            "'ascii' codec can't encode characters in position 7-8: ordinal not in range(128)",
             id="encoding_convert_to_ascii_with_fallback",
         ),
         pytest.param(
@@ -295,7 +295,7 @@ def test_transcoder_binary_edge_cases(
             "ascii",
             False,
             None,
-            marks=pytest.mark.skip(reason="ASCIIエンコーディングへの変換はエラーになるため"),
+            "'ascii' codec can't encode characters in position 7-8: ordinal not in range(128)",
             id="encoding_convert_to_ascii_without_fallback",
         ),
         pytest.param(
@@ -303,43 +303,53 @@ def test_transcoder_binary_edge_cases(
             "shift_jis",
             True,
             b"\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd\x90\xa2\x8aE",
+            None,
             id="encoding_convert_to_shift_jis",
         ),
         pytest.param(
-            "こんにちは世界", "euc_jp", True, b"\xa4\xb3\xa4\xf3\xa4\xcb\xa4\xc1\xa4\xcf\xc0\xa4\xb3\xa6", id="encoding_convert_to_euc_jp"
+            "こんにちは世界",
+            "euc_jp",
+            True,
+            b"\xa4\xb3\xa4\xf3\xa4\xcb\xa4\xc1\xa4\xcf\xc0\xa4\xb3\xa6",
+            None,
+            id="encoding_convert_to_euc_jp",
         ),
-        pytest.param("", "shift_jis", True, b"", id="encoding_convert_empty_to_shift_jis"),
-        pytest.param("\u3000", "shift_jis", True, b"\x81\x40", id="encoding_convert_fullwidth_space_to_shift_jis"),
+        pytest.param("", "shift_jis", True, b"", None, id="encoding_convert_empty_to_shift_jis"),
+        pytest.param("\u3000", "shift_jis", True, b"\x81\x40", None, id="encoding_convert_fullwidth_space_to_shift_jis"),
         pytest.param(
             "①②③",
             "shift_jis",
             True,
             None,
-            marks=pytest.mark.skip(reason="丸数字はShift_JISで表現できないため"),
+            r"'shift_jis' codec can't encode character '\u2460' in position 0: illegal multibyte sequence",
             id="encoding_convert_circled_numbers_to_shift_jis",
         ),
-        pytest.param("ｱｲｳｴｵ", "shift_jis", True, b"\xb1\xb2\xb3\xb4\xb5", id="encoding_convert_halfwidth_katakana_to_shift_jis"),
+        pytest.param("ｱｲｳｴｵ", "shift_jis", True, b"\xb1\xb2\xb3\xb4\xb5", None, id="encoding_convert_halfwidth_katakana_to_shift_jis"),
         pytest.param(
             "㈱㈲㈹",
             "shift_jis",
             True,
             None,
-            marks=pytest.mark.skip(reason="括弧付き漢字はShift_JISで表現できないため"),
+            r"'shift_jis' codec can't encode character '\u3231' in position 0: illegal multibyte sequence",
             id="encoding_convert_parenthesized_ideographs_to_shift_jis",
         ),
-        pytest.param("Hello♪World", "shift_jis", True, b"Hello\xe2\x99\xaaWorld", id="encoding_convert_music_symbol_to_shift_jis"),
+        pytest.param("Hello♪World", "shift_jis", True, b"Hello\xe2\x99\xaaWorld", None, id="encoding_convert_music_symbol_to_shift_jis"),
         pytest.param(
             "表\u309a",
             "shift_jis",
             True,
             None,
-            marks=pytest.mark.skip(reason="結合文字はShift_JISで表現できないため"),
+            r"'shift_jis' codec can't encode character '\u309a' in position 1: illegal multibyte sequence",
             id="encoding_convert_combining_mark_to_shift_jis",
         ),
-        pytest.param("\u301c", "shift_jis", True, b"\x81\x60", id="encoding_convert_wave_dash_to_shift_jis"),
-        pytest.param("漢字", "shift_jis", True, b"\x8a\xbf\x8e\x9a", id="encoding_convert_basic_kanji_to_shift_jis"),
-        pytest.param("カタカナ", "shift_jis", True, b"\x83\x4a\x83\x5e\x83\x4a\x83\x69", id="encoding_convert_basic_katakana_to_shift_jis"),
-        pytest.param("ひらがな", "shift_jis", True, b"\x82\xd0\x82\xe7\x82\xaa\x82\xc8", id="encoding_convert_basic_hiragana_to_shift_jis"),
+        pytest.param("\u301c", "shift_jis", True, b"\x81\x60", None, id="encoding_convert_wave_dash_to_shift_jis"),
+        pytest.param("漢字", "shift_jis", True, b"\x8a\xbf\x8e\x9a", None, id="encoding_convert_basic_kanji_to_shift_jis"),
+        pytest.param(
+            "カタカナ", "shift_jis", True, b"\x83\x4a\x83\x5e\x83\x4a\x83\x69", None, id="encoding_convert_basic_katakana_to_shift_jis"
+        ),
+        pytest.param(
+            "ひらがな", "shift_jis", True, b"\x82\xd0\x82\xe7\x82\xaa\x82\xc8", None, id="encoding_convert_basic_hiragana_to_shift_jis"
+        ),
     ],
 )
 def test_transcoder_encoding_conversion(
@@ -348,6 +358,7 @@ def test_transcoder_encoding_conversion(
     target_encoding: str,
     is_allow_fallback: bool,
     expected_result: Optional[bytes],
+    expected_error: Optional[str],
 ) -> None:
     """エンコーディング変換機能をテストする。
 
@@ -363,11 +374,16 @@ def test_transcoder_encoding_conversion(
 
     # Act
     transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
-    result: Final[Optional[BytesIO]] = transcoder.convert(target_encoding, is_allow_fallback)
+
+    if expected_error is None:
+        result: Optional[BytesIO] = transcoder.convert(target_encoding, is_allow_fallback)
+    else:
+        with pytest.raises(UnicodeEncodeError) as exc_info:
+            result: Optional[BytesIO] = transcoder.convert(target_encoding, is_allow_fallback)
 
     # Assert
     if expected_result is None:
-        assert result is None
+        assert str(exc_info.value) == expected_error
     else:
         assert isinstance(result, BytesIO)
         if isinstance(result, BytesIO):
