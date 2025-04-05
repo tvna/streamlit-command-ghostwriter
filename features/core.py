@@ -18,7 +18,7 @@ class AppCore(BaseModel):
     _template_filename: Optional[str] = PrivateAttr(default=None)
     _template_error_header: Optional[str] = PrivateAttr(default=None)
     _template_error_message: Optional[str] = PrivateAttr(default=None)
-    _render: Optional[DocumentRender] = PrivateAttr(default=None)
+    _render: Optional["DocumentRender"] = PrivateAttr(default=None)
 
     def __init__(self: "AppCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
         """
@@ -125,17 +125,16 @@ class AppCore(BaseModel):
 
         self._formatted_text = None
 
-        render: Optional[DocumentRender] = self._render
         config_dict: Optional[Dict[str, Any]] = self._config_dict
 
-        if config_dict is None or render is None:
+        if config_dict is None or self._render is None:
             return self
 
-        if render.apply_context(config_dict, format_type, is_strict_undefined) is False:
-            self._template_error_message = f"{self._template_error_header}: {render.error_message} in '{self._template_filename}'"
+        if self._render.apply_context(config_dict, format_type, is_strict_undefined) is False:
+            self._template_error_message = f"{self._template_error_header}: {self._render.error_message} in '{self._template_filename}'"
             return self
 
-        self._formatted_text = render.render_content
+        self._formatted_text = self._render.render_content
         self._template_error_message = None
 
         return self
