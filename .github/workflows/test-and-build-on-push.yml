@@ -337,3 +337,75 @@ jobs:
           requirements-path: "requirements.txt"
         timeout-minutes: 30
         continue-on-error: true
+
+      - name: Upload Pyre SARIF results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        # Run this step even if the Pyre check fails (continue-on-error: true)
+        # so we always upload the results.
+        if: always()
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: pyre-report.sarif
+          # Optional: You can categoryize the results.
+          # category: pyre-static-analysis
+
+      - name: Convert SARIF to Markdown Summary
+        uses: actions/github-script@v7
+        if: always() # Attempt to summarize even if pyre failed
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const sarifPath = 'pyre-report.sarif';
+
+            try {
+              if (!fs.existsSync(sarifPath)) {
+                core.summary.addRaw(`* Pyre SARIF file (${sarifPath}) not found. Skipping summary generation.\n`);
+                await core.summary.write();
+                return;
+              }
+
+              const sarifContent = fs.readFileSync(sarifPath, 'utf8');
+              const sarifData = JSON.parse(sarifContent);
+
+              let markdown = '## Pyre Static Analysis Results\n\n';
+              let issuesFound = false;
+
+              if (sarifData.runs && sarifData.runs.length > 0 && sarifData.runs[0].results) {
+                const results = sarifData.runs[0].results;
+                if (results.length === 0) {
+                  markdown += '* No issues found by Pyre.\n';
+                } else {
+                  issuesFound = true;
+                  markdown += '| Severity | Rule ID | Message | File | Line |\n';
+                  markdown += '|---|---|---|---|---|\n';
+
+                  for (const result of results) {
+                    const severity = result.level || 'warning'; // Default level if not specified
+                    const ruleId = result.ruleId || 'N/A';
+                    const message = result.message.text || 'No message';
+                    let file = 'N/A';
+                    let line = 'N/A';
+
+                    if (result.locations && result.locations[0] && result.locations[0].physicalLocation) {
+                      const physLoc = result.locations[0].physicalLocation;
+                      file = physLoc.artifactLocation ? physLoc.artifactLocation.uri : 'N/A';
+                      line = physLoc.region ? physLoc.region.startLine : 'N/A';
+                    }
+                    markdown += `| ${severity} | ${ruleId} | ${message.replace(/\|/g, '\\|')} | ${file} | ${line} |\n`;
+                  }
+                }
+              } else {
+                 markdown += '* No results found in SARIF file.\n';
+              }
+
+              core.summary.addRaw(markdown);
+              await core.summary.write();
+
+            } catch (error) {
+              core.warning(`Error processing SARIF file: ${error.message}`);
+              // Add a note to the summary that processing failed
+              core.summary.addRaw('## Pyre Static Analysis Results\n\n');
+              core.summary.addRaw(`*Error processing SARIF file: ${error.message}*\n`);
+              await core.summary.write();
+            }
