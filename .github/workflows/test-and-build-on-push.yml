@@ -228,9 +228,10 @@ jobs:
           steps.ensure-labels.outputs.success == 'true'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          branch: develop
-          title: "Release: ${{ needs.get-npm-versions.outputs.develop_version }}"
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          branch: main
+          title: "Release: v${{ needs.get-npm-versions.outputs.develop_version }}"
           body-path: .commit-log.txt
 
       - name: Set Final Status
