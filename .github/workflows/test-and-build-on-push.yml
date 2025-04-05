@@ -316,6 +316,9 @@ jobs:
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
@@ -332,5 +335,5 @@ jobs:
         with:
           repo-directory: "./"
           requirements-path: "requirements.txt"
-        timeout-minutes: 120
+        timeout-minutes: 30
         continue-on-error: true
