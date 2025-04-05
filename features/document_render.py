@@ -95,8 +95,8 @@ from jinja2 import Environment, Template, nodes
 from jinja2.runtime import StrictUndefined, Undefined
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError, field_validator
 
-from features.validate_template import TemplateSecurityValidator, ValidationState  # type: ignore
-from features.validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
+from features.validate_template import TemplateSecurityValidator, ValidationState
+from features.validate_uploaded_file import FileSizeConfig, FileValidator
 
 # --- Format Type Constants ---
 FORMAT_KEEP: Final[int] = 0  # Keep whitespace
@@ -613,11 +613,11 @@ class DocumentRender(BaseModel):
             Optional[ContextConfig]: 検証済みの設定
         """
         config: Optional[ContextConfig] = self._validate_input_config(context, format_type, is_strict_undefined)
-        if config is None:
+        if config is None or self._ast is None:
             return None
 
         self._is_strict_undefined = config.format_config.is_strict_undefined
-        if not self._validate_template_state(config.context, self._ast):  # type: ignore
+        if not self._validate_template_state(config.context, self._ast):
             return None
 
         return config
