@@ -49,7 +49,7 @@ with open('large_file.txt', 'rb') as f:
 """
 
 from io import BytesIO
-from typing import Annotated, ClassVar, Optional
+from typing import Annotated, ClassVar, Final, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 
@@ -197,7 +197,7 @@ class FileValidator(BaseModel):
         self._validation_state.reset()
 
         try:
-            file_size = self.get_file_size(file)
+            file_size: Final[Optional[int]] = self.get_file_size(file)
             if file_size is None:
                 self._validation_state.set_error("Failed to get file size")
                 return False
@@ -228,9 +228,9 @@ class FileValidator(BaseModel):
             ファイルサイズの取得に失敗した場合はNoneを返します。
         """
         try:
-            current_pos = file.tell()
+            current_pos: Final[int] = file.tell()
             file.seek(0, 2)  # ファイルの末尾に移動
-            file_size = file.tell()
+            file_size: Final[int] = file.tell()
             file.seek(current_pos)  # 元の位置に戻す
             return file_size
         except IOError:
