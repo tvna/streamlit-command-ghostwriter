@@ -4,141 +4,152 @@ minimum_pre_commit_version: "3.7.1"  # pyproject.tomlと一致させる
 default_install_hook_types: [pre-commit, commit-msg]
 default_stages: [pre-commit]
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: no-commit-to-branch
+        args: [--branch, main]
+        description: "Run 'no-commit-to-branch' for preventing commits to main branch"
+        name: don't commit to main branch
+      - id: trailing-whitespace
+        description: "Fixes trailing whitespace."
+        types: [text]
+      - id: check-added-large-files
+        description: "Run 'check-added-large-files' for checking added large files"
+      - id: detect-private-key
+        description: "Detects the presence of private keys."
+      - id: end-of-file-fixer
+        description: "Ensures files end with a single newline."
+      - id: check-json
+        description: "Checks JSON files for parseable syntax."
+        types: [json]
+      - id: check-toml
+        description: "Checks TOML files for parseable syntax."
+        files: \.toml$
+      - id: check-docstring-first
+        description: "Checks that modules, classes, and functions have docstrings."
+        types: [python]
+      - id: check-shebang-scripts-are-executable
+        description: "checking shebang scripts are executable"
+        name: check-shebang-scripts-are-executable (only for github actions)
+        files: \/scripts\/.*\.py$/
+      - id: check-symlinks
+        description: "Checks for symlinks which do not point to anything."
+      - id: check-illegal-windows-names
+        description: "Checks for filenames that are invalid on Windows."
+      - id: pretty-format-json
+        args:
+          - "--autofix"
+          - "--indent=4"
+        description: "Run 'pretty-format-json' for JSON formatting"
+        files: \.json$|\.code-workspace$
+        exclude: ^package\.json$|^package-lock\.json$
+      - id: destroyed-symlinks
+        description: "Run 'destroyed-symlinks' for checking destroyed symlinks"
 
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
-  hooks:
-  - id: no-commit-to-branch
-    args: [--branch, main]
-    description: "Run 'no-commit-to-branch' for preventing commits to main branch"
-    name: don't commit to main branch
-  - id: trailing-whitespace
-    description: "Fixes trailing whitespace."
-    types: [text]
-  - id: check-added-large-files
-    description: "Run 'check-added-large-files' for checking added large files"
-  - id: detect-private-key
-    description: "Detects the presence of private keys."
-  - id: end-of-file-fixer
-    description: "Ensures files end with a single newline."
-  - id: check-json
-    description: "Checks JSON files for parseable syntax."
-    types: [json]
-  - id: check-toml
-    description: "Checks TOML files for parseable syntax."
-    files: \.toml$
-  - id: check-docstring-first
-    description: "Checks that modules, classes, and functions have docstrings."
-    types: [python]
-  - id: check-shebang-scripts-are-executable
-    description: "checking shebang scripts are executable"
-    name: check-shebang-scripts-are-executable (only for github actions)
-    files: \/scripts\/.*\.py$/
-  - id: check-symlinks
-    description: "Checks for symlinks which do not point to anything."
-  - id: check-illegal-windows-names
-    description: "Checks for filenames that are invalid on Windows."
-  - id: pretty-format-json
-    args:
-      - "--autofix"
-      - "--indent=4"
-    description: "Run 'pretty-format-json' for JSON formatting"
-    files: \.json$|\.code-workspace$
-    exclude: ^package\.json$|^package-lock\.json$
-  - id: destroyed-symlinks
-    description: "Run 'destroyed-symlinks' for checking destroyed symlinks"
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.37.0
+    hooks:
+      - id: yamllint
+        name: github yamllint
+        description: This hook runs yamllint.
+        files: ^\.github/(workflows|actions)/.*\.(yml|yaml)$
+      - id: yamllint
+        name: other yamllint
+        description: This hook runs yamllint.
+        files: ^\.*\.(yml|yaml)$
 
-- repo: https://github.com/adrienverge/yamllint.git
-  rev: v1.37.0
-  hooks:
-  - id: yamllint
-    name: yamllint
-    description: This hook runs yamllint.
-    files: ^\.github/(workflows|actions)/.*\.(yml|yaml)$
+  - repo: https://github.com/tox-dev/pyproject-fmt
+    rev: v2.5.1
+    hooks:
+      - id: pyproject-fmt
+        description: "Run 'pyproject-fmt' for extremely fast Python formatting"
+        name: fomart pyproject
+        # https://pyproject-fmt.readthedocs.io/en/latest/#calculating-max-supported-python-version
+        additional_dependencies: ["tox>=4.9"]
+        files: ^pyproject\.toml$
 
-- repo: https://github.com/tox-dev/pyproject-fmt
-  rev: v2.5.1
-  hooks:
-  - id: pyproject-fmt
-    description: "Run 'pyproject-fmt' for extremely fast Python formatting"
-    name: fomart pyproject
-    # https://pyproject-fmt.readthedocs.io/en/latest/#calculating-max-supported-python-version
-    additional_dependencies: ["tox>=4.9"]
-    files: ^pyproject\.toml$
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.4
+    hooks:
+      - id: ruff
+        description: "Run 'ruff' for extremely fast Python linting"
+        name: ruff (lint)
+        args: ["--fix"]
+        types: [python]
+      - id: ruff-format
+        description: "Run 'ruff format' for extremely fast Python formatting"
+        name: ruff (format)
+        types: [python]
 
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.11.4
-  hooks:
-  - id: ruff
-    description: "Run 'ruff' for extremely fast Python linting"
-    name: ruff (lint)
-    args: ["--fix"]
-    types: [python]
-  - id: ruff-format
-    description: "Run 'ruff format' for extremely fast Python formatting"
-    name: ruff (format)
-    types: [python]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
+        description: "Detects hardcoded secrets like passwords, API keys, and tokens."
 
-- repo: https://github.com/gitleaks/gitleaks
-  rev: v8.24.2
-  hooks:
-  - id: gitleaks
-    description: "Detects hardcoded secrets like passwords, API keys, and tokens."
+  # - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+  #   rev: v9.22.0
+  #   hooks:
+  #     - id: commitlint
+  #       description: "Run 'commitlint' for commit message validation"
+  #       stages: [commit-msg]
+  #       additional_dependencies: ['@commitlint/config-conventional']
 
-# - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-#   rev: v9.22.0
-#   hooks:
-#     - id: commitlint
-#       description: "Run 'commitlint' for commit message validation"
-#       stages: [commit-msg]
-#       additional_dependencies: ['@commitlint/config-conventional']
+  # The following configuration uses check-jsonschema to validate Github Workflow files.
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.32.1
+    hooks:
+      - id: check-github-workflows
+        description: "Run 'check-github-workflows' for Github Workflow validation"
+        files: ^\.github/workflows/.*\.(yml|yaml)$
 
-# The following configuration uses check-jsonschema to validate Github Workflow files.
-- repo: https://github.com/python-jsonschema/check-jsonschema
-  rev: 0.32.1
-  hooks:
-  - id: check-github-workflows
-    description: "Run 'check-github-workflows' for Github Workflow validation"
-    files: ^\.github/workflows/.*\.(yml|yaml)$
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        description: "Static type checking for Python."
+        additional_dependencies: ["types-PyYAML"]
+        types: [python]
 
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.15.0
-  hooks:
-  - id: mypy
-    description: "Static type checking for Python."
-    additional_dependencies: ["types-PyYAML"]
-    types: [python]
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-use-type-annotations
+        description: "Checks for the usage of type annotations in Python code."
+        types: [python]
 
-- repo: https://github.com/pre-commit/pygrep-hooks
-  rev: v1.10.0
-  hooks:
-  - id: python-use-type-annotations
-    description: "Checks for the usage of type annotations in Python code."
-    types: [python]
+  - repo: local
+    hooks:
+      - id: actionlint-system
+        name: Lint GitHub Actions workflow files
+        description: Runs system-installed actionlint to lint GitHub Actions workflow files
+        language: system
+        types: ["yaml"]
+        files: ^\.github/workflows/
+        entry: actionlint
 
-- repo: local
-  hooks:
-  - id: actionlint-system
-    name: Lint GitHub Actions workflow files
-    description: Runs system-installed actionlint to lint GitHub Actions workflow files
-    language: system
-    types: ["yaml"]
-    files: ^\.github/workflows/
-    entry: actionlint
-
-- repo: local
-  hooks:
-  - id: pytest_without_e2e
-    name: pytest (without e2e)
-    entry: pytest -vv -n auto -m "unit or integration or workflow" --disable-warnings --benchmark-disable
-    language: system
-    pass_filenames: false
-    types: [python]
-    verbose: true
-  - id: lizard_combined
-    name: lizard (check CCN for production codes)
-    entry: poetry run lizard -l python -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "10"
-    language: system
-    pass_filenames: false
-    types: [python]
-    verbose: true
+  - repo: local
+    hooks:
+      - id: pytest_without_e2e
+        name: pytest (without e2e)
+        entry: pytest -vv -n auto -m "unit or integration or workflow" --disable-warnings --benchmark-disable
+        language: system
+        pass_filenames: false
+        types: [python]
+        verbose: true
+      - id: lizard_combined
+        name: lizard (check CCN for production codes)
+        entry: |
+          poetry run lizard -l python \
+            -x "./node_modules/*" \
+            -x "./.venv/*" \
+            -x "./build/*" \
+            -x "./dist/*" \
+            -x "./htmlcov/*" \
+            -x "./tests/*" \
+            --CCN "10"
+        language: system
+        pass_filenames: false
+        types: [python]
+        verbose: true
