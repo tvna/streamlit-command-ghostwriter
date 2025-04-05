@@ -1,3 +1,20 @@
+# Workflow description:
+# 1. Set up the specified Node.js version using actions/setup-node.
+# 2. Restore cached npm dependencies (node_modules) based on OS, Node version, and package-lock.json.
+# 3. Install project dependencies using npm install.
+#
+# Usage example:
+# jobs:
+#   setup:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Setup Node.js environment
+#         uses: ./.github/actions/setup-node
+#         with:
+#           node-version: '18' # Required: specify the Node.js version
+#
+---
 name: "Setup Node.js Environment"
 description: "Setup Node.js with npm and cache"
 inputs:

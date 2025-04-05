@@ -1,3 +1,30 @@
+# Workflow description:
+# 1. Restore Playwright browser cache based on OS, browser, and poetry.lock.
+# 2. Set Python environment variables for UTF-8 support.
+# 3. Install the specified Playwright browser and its dependencies using Poetry.
+# 4. Run E2E tests using pytest:
+#    - Uses pytest-xdist (`-n auto`) for parallel execution on non-Windows when not benchmarking.
+#    - Disables benchmarking if `inputs.is-benchmark` is false.
+#    - Handles UTF-8 setup specifically for Windows (chcp 65001).
+# 5. Run E2E benchmark tests using pytest if `inputs.is-benchmark` is true:
+#    - Disables parallel execution (`-n 0`) for accurate benchmarks.
+#    - Saves benchmark results automatically.
+# 6. Upload benchmark results as an artifact if `inputs.is-benchmark` is true and `inputs.browser` is 'chromium'.
+#
+# Usage example:
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       # ... other setup steps
+#       - name: Run E2E tests
+#         uses: ./.github/actions/test-python-playwright
+#         with:
+#           browser: chromium  # Required: specify the browser (chromium, firefox, webkit)
+#           is-benchmark: false # Optional: set to true to run benchmark tests (default: false)
+#
+---
 name: "Run E2E Tests (Playwright)"
 description: "Run E2E tests with cache"
 inputs:

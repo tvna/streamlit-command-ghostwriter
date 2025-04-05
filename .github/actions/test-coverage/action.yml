@@ -1,3 +1,26 @@
+# Workflow description:
+# 1. Run pytest with coverage enabled (excluding E2E tests).
+#    - Generates coverage reports in XML and terminal formats.
+#    - Generates JUnit XML report.
+#    - Runs tests in parallel (`-n auto`).
+# 2. Upload the XML coverage report to Codecov using the provided token.
+# 3. Set up the Code Climate test reporter.
+# 4. If the branch is 'main', upload the coverage report to Code Climate using the provided token.
+#
+# Usage example:
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       # ... other setup steps
+#       - name: Run tests and upload coverage
+#         uses: ./.github/actions/test-coverage
+#         with:
+#           github-branch-name: ${{ github.ref_name }}
+#           codecov-token: ${{ secrets.CODECOV_TOKEN }}
+#           codeclimate-token: ${{ secrets.CC_TEST_REPORTER_ID }} # Only needed for main branch
+---
 name: "test-python-coverage"
 description: "Test coverage for python"
 inputs:
@@ -35,12 +58,12 @@ runs:
         "${cmd_array[@]}"
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5.4.0
+      uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574 # v5.4.0
       with:
         token: ${{ inputs.codecov-token }}
 
     - name: Setup Code Climate
-      uses: remarkablemark/setup-codeclimate@v2
+      uses: remarkablemark/setup-codeclimate@6bb7c044fb5ac0c0ed1a34b5f68b3d60aca1bf18 # v2.0.12
 
     - name: Upload coverage reports to code climate
       if: inputs.github-branch-name == 'main'
