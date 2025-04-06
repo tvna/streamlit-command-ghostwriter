@@ -74,9 +74,9 @@ jobs:
         with:
           tag_name: ${{ steps.set_tag_output.outputs.tag_name }}
           generate_release_notes: true
-          target_commitish: ${{ steps.set_tag_output.outputs.commit_sha }}
+          target_commitish: ${{ steps.get_commit_sha.outputs.sha }}
           files: |
-            artifacts/macos/**/*
-            artifacts/windows/**/*
+            artifacts/macos/*.zip
+            artifacts/windows/*.zip
           draft: false
           prerelease: false
