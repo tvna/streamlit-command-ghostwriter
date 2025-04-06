@@ -25,9 +25,9 @@ jobs:
       contents: write
       pull-requests: write
       checks: read
-    timeout-minutes: 20
     steps:
       - name: Harden Runner
+        timeout-minutes: 5
         uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
         with:
           egress-policy: audit
@@ -39,6 +39,7 @@ jobs:
 
       - name: Dependabot metadata
         id: meta
+        timeout-minutes: 5
         uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # v2.3.0
 
       - name: Wait for Test & Build workflow
@@ -94,6 +95,7 @@ jobs:
         run: |
           gh pr review "$PR_URL" --approve
           gh pr merge --auto --merge "$PR_URL"
+        timeout-minutes: 5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
