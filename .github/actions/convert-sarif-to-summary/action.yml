@@ -61,17 +61,17 @@ runs:
             const sarifContent = fs.readFileSync(sarifPath, 'utf8');
             const sarifData = JSON.parse(sarifContent);
 
-            let markdown = `## ${summaryTitle}\\n\\n`; // Use dynamic title
+            let markdown = `## ${summaryTitle}\n\n`; // Use dynamic title
             let issuesFound = false;
 
             if (sarifData.runs && sarifData.runs.length > 0 && sarifData.runs[0].results) {
               const results = sarifData.runs[0].results;
               if (results.length === 0) {
-                markdown += '* No issues found.\\n'; // Generic message
+                markdown += '* No issues found.\n'; // Generic message
               } else {
                 issuesFound = true;
                 markdown += '| Severity | Rule ID | Message | File | Line |\\n';
-                markdown += '|---|---|---|---|---|\\n';
+                markdown += '|---|---|---|---|---|\n';
 
                 for (const result of results) {
                   const severity = result.level || 'warning';
@@ -87,11 +87,11 @@ runs:
                   }
                   // Escape pipe characters in the message for the Markdown table
                   const escapedMessage = message.replace(/\\|/g, '\\\\|');
-                  markdown += `| ${severity} | ${ruleId} | ${escapedMessage} | ${file} | ${line} |\\n`;
+                  markdown += `| ${severity} | ${ruleId} | ${escapedMessage} | ${file} | ${line} |\n`;
                 }
               }
             } else {
-                markdown += '* No results found in SARIF file.\\n';
+                markdown += '* No results found in SARIF file.\n';
             }
 
             core.summary.addRaw(markdown);
@@ -99,7 +99,7 @@ runs:
 
           } catch (error) {
             core.warning(`Error processing SARIF file: ${error.message}`);
-            core.summary.addRaw(`## ${summaryTitle}\\n\\n`); // Use dynamic title in error message
-            core.summary.addRaw(`*Error processing SARIF file: ${error.message}*\\n`);
+            core.summary.addRaw(`## ${summaryTitle}\n\n`); // Use dynamic title in error message
+            core.summary.addRaw(`*Error processing SARIF file: ${error.message}*\n`);
             await core.summary.write();
           }
