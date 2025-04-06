@@ -486,7 +486,7 @@ def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
     expect(upload_container).to_be_visible()
 
     # ファイルアップロードボタンを見つける
-    upload_button: Final[Locator] = page.locator("button:has-text('Browse files')").first
+    upload_button: Locator = page.locator("button:has-text('Browse files')").first
     expect(upload_button).to_be_visible()
 
     # テスト用のファイルパスを指定
@@ -496,7 +496,7 @@ def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
         # ファイルアップロード処理
         with page.expect_file_chooser() as fc_info:
             upload_button.click()
-        file_chooser: Final[FileChooser] = fc_info.value
+        file_chooser: FileChooser = fc_info.value
         file_chooser.set_files(test_file_path)
 
         # アップロード後の処理を待機
@@ -553,7 +553,7 @@ def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) 
         # ファイルアップロード処理
         with page.expect_file_chooser() as fc_info:
             upload_button.click()
-        file_chooser: Final[FileChooser] = fc_info.value
+        file_chooser: FileChooser = fc_info.value
         file_chooser.set_files(test_file_path)
 
         # アップロード後の処理を待機
@@ -624,7 +624,7 @@ def test_file_upload_parametrized_in_tab1(
         # Act: ファイルをアップロード
         with page.expect_file_chooser() as fc_info:
             upload_button.click()
-        file_chooser: Final[FileChooser] = fc_info.value
+        file_chooser: FileChooser = fc_info.value
         file_chooser.set_files(test_file_path)
 
         # ページの読み込みを待機 - 待機時間を増やす

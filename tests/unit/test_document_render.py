@@ -317,7 +317,7 @@ def test_validation_consistency(
     template_file: BytesIO = create_template_file(template_content, "template.txt")
 
     # Act
-    renderer: DocumentRender = DocumentRender(template_file)
+    renderer = DocumentRender(template_file)
 
     # Assert - 初期検証
     assert renderer.is_valid_template == expected_initial_valid, (

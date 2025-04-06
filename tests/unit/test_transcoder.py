@@ -87,7 +87,7 @@ def test_transcoder_basic_functionality(
     import_file: Final[BytesIO] = create_text_file(input_str, input_encoding, "example.csv")
 
     # Act
-    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    transcoder = TextTranscoder(import_file)
     detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
     export_file_deny_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=False)
     export_file_allow_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=True)
@@ -144,7 +144,7 @@ def test_transcoder_non_string_data(
     import_file: Final[BytesIO] = create_binary_file(input_bytes, "example.csv")
 
     # Act
-    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    transcoder = TextTranscoder(import_file)
     detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
     export_file_deny_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=False)
     export_file_allow_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=True)
@@ -206,7 +206,7 @@ def test_transcoder_edge_cases(
     import_file: Final[BytesIO] = create_text_file(input_str, input_encoding, "example.txt")
 
     # Act
-    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    transcoder = TextTranscoder(import_file)
     detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
 
     # Assert
@@ -262,7 +262,7 @@ def test_transcoder_binary_edge_cases(
     import_file: Final[BytesIO] = create_binary_file(input_bytes, "example.bin")
 
     # Act
-    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    transcoder = TextTranscoder(import_file)
     detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
 
     # Assert
@@ -376,7 +376,7 @@ def test_transcoder_encoding_conversion(
     import_file: Final[BytesIO] = create_text_file(input_str, "utf-8", "example.txt")
 
     # Act
-    transcoder: Final[TextTranscoder] = TextTranscoder(import_file)
+    transcoder = TextTranscoder(import_file)
 
     if expected_error is None:
         result: Optional[BytesIO] = transcoder.convert(target_encoding, is_allow_fallback)
@@ -421,7 +421,7 @@ def test_transcoder_missing_encoding(test_data: bytes, invalid_encoding: str, ex
         expected_encoding: 期待されるエンコーディング
     """
     # Arrange
-    transcoder: Final[TextTranscoder] = TextTranscoder(BytesIO(test_data))
+    transcoder = TextTranscoder(BytesIO(test_data))
 
     # Act
     detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
