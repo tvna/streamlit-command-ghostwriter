@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag_name: ${{ steps.set_tag_output.outputs.tag_name }}
+      commit_sha: ${{ steps.get_commit_sha.outputs.sha }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
@@ -37,25 +38,26 @@ jobs:
           fetch-depth: 1
 
       - name: Get version from main
-        id: package-version-from-main
-        uses: step-security/npm-get-version-action@937365306ec087b7af8c059beac03ae4c05533e5 # v1.3.1
+        id: get-main-ver
+        uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b # v1.3.1
 
       - name: Set ENV variables
         shell: bash
         run: |
           {
-            echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}"
-            echo "RELEASE_VERSION=${{ steps.package-version-from-main.outputs.current-version }}"
-            echo "TAG_NAME=v${{ steps.package-version-from-main.outputs.current-version }}"
+            echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}"
+            echo "RELEASE_VERSION=${{ steps.get-main-ver.outputs.current-version }}"
           } >> "$GITHUB_ENV"
 
       - name: Set tag_name output
         id: set_tag_output
-        run: echo "tag_name=${{ env.TAG_NAME }}" >> "$GITHUB_OUTPUT"
+        run: echo "tag_name=v${{ steps.get-main-ver.outputs.current-version }}" >> "$GITHUB_OUTPUT"
 
       - name: Push tag
         run: |
           # Check if tag already exists
+          TAG_NAME="v${{ steps.get-main-ver.outputs.current-version }}"
+
           if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             # Create annotated tag
             git config --global user.name "github-actions[bot]"
@@ -66,6 +68,10 @@ jobs:
           else
             echo "Tag $TAG_NAME already exists"
           fi
+
+      - name: Get commit SHA
+        id: get_commit_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   upload-artifacts:
     needs: [create-tag]
@@ -98,7 +104,7 @@ jobs:
         with:
           tag_name: ${{ needs.create-tag.outputs.tag_name }}
           generate_release_notes: true
-          target_commitish: main
+          target_commitish: ${{ needs.create-tag.outputs.commit_sha }}
           files: |
             artifacts/macos/**/*
             artifacts/windows/**/*
