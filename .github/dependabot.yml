@@ -42,7 +42,7 @@ updates:
     target-branch: develop
 
   - package-ecosystem: devcontainers
-    directory: /.devcontainer
+    directory: /.devcontainer/
     schedule:
       interval: daily
       time: "21:00"
