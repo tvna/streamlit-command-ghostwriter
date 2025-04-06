@@ -85,20 +85,30 @@ runs:
       run: |
         npm run dist
 
+    - name: Archive artifact (Windows)
+      if: ${{ runner.os == 'Windows' }}
+      shell: pwsh
+      run: Compress-Archive -Path ./dist/*.exe -DestinationPath ./dist/desktop-app-${{ runner.os }}.zip
+
     - name: Upload artifact (Windows)
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       if: ${{ runner.os == 'Windows' }}
       with:
-        name: desktop-app-${{ runner.os }}
-        path: ./dist/*.exe
+        name: desktop-app-${{ runner.os }}.zip
+        path: ./dist/desktop-app-${{ runner.os }}.zip
         retention-days: 3
         compression-level: 9
+
+    - name: Archive artifact (MacOS)
+      if: ${{ runner.os == 'MacOS' }}
+      shell: bash
+      run: zip -r ./dist/desktop-app-${{ runner.os }}.zip ./dist/*.dmg
 
     - name: Upload artifact (MacOS)
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       if: ${{ runner.os == 'MacOS' }}
       with:
-        name: desktop-app-${{ runner.os }}
-        path: ./dist/*.dmg
+        name: desktop-app-${{ runner.os }}.zip
+        path: ./dist/desktop-app-${{ runner.os }}.zip
         retention-days: 3
         compression-level: 9
