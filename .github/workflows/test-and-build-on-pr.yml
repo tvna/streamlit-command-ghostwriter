@@ -35,7 +35,7 @@ env:
   GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
 
 jobs:
-  main:
+  test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml
     with:
       concurrency_group: pr-${{ github.workflow }}-${{ github.ref }}
