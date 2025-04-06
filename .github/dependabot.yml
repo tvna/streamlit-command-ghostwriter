@@ -18,6 +18,10 @@ updates:
     target-branch: develop
 
   - package-ecosystem: npm
+    groups:
+      npm:
+        patterns:
+          - "*"
     directory: /
     schedule:
       interval: daily
@@ -26,6 +30,10 @@ updates:
     target-branch: develop
 
   - package-ecosystem: pip
+    groups:
+      pip:
+        patterns:
+          - "*"
     directory: /
     schedule:
       interval: daily
