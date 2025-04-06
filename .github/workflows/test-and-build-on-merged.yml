@@ -44,51 +44,13 @@ jobs:
         id: get-main-ver
         uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b # v1.3.1
 
-      - name: Set ENV variables
-        shell: bash
-        run: |
-          {
-            echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}"
-            echo "RELEASE_VERSION=${{ steps.get-main-ver.outputs.current-version }}"
-          } >> "$GITHUB_ENV"
-
       - name: Set tag_name output
         id: set_tag_output
         run: echo "tag_name=v${{ steps.get-main-ver.outputs.current-version }}" >> "$GITHUB_OUTPUT"
 
-      - name: Push tag
-        run: |
-          # Check if tag already exists
-          TAG_NAME="v${{ steps.get-main-ver.outputs.current-version }}"
-
-          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            # Create annotated tag
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
-            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-            git push origin "$TAG_NAME"
-
-          else
-            echo "Tag $TAG_NAME already exists"
-          fi
-
       - name: Get commit SHA
         id: get_commit_sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-  upload-artifacts:
-    needs:
-      - create-tag-and-release
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden the runner
-        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
-        with:
-          egress-policy: audit
-          disable-sudo: true
-          disable-file-monitoring: true
 
       - name: Download macOS build artifact
         uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
@@ -108,9 +70,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Explicitly pass token
         with:
-          tag_name: ${{ needs.create-tag-and-release.outputs.tag_name }}
+          tag_name: ${{ steps.set_tag_output.outputs.tag_name }}
           generate_release_notes: true
-          target_commitish: ${{ needs.create-tag-and-release.outputs.commit_sha }}
+          target_commitish: ${{ steps.set_tag_output.outputs.commit_sha }}
           files: |
             artifacts/macos/**/*
             artifacts/windows/**/*
