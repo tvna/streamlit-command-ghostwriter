@@ -1,0 +1,105 @@
+# GitHub Actions Composite Action: Convert SARIF to summary
+#
+# Purpose:
+#   This action takes a SARIF (Static Analysis Results Interchange Format) file,
+#   parses its content, and generates a human-readable summary in Markdown format.
+#   This summary is then appended to the GitHub Actions job summary page.
+#   It's primarily designed for summarizing results from static analysis tools like Pyre.
+#
+# Usage:
+#   Include this action as a step in your workflow after the SARIF file has been generated.
+#
+# Example:
+#   - name: Convert SARIF to Summary
+#     uses: ./.github/actions/convert-sarif-to-summary
+#     with:
+#       sarif-path: path/to/your/sarif.json # Specify the path to the SARIF file
+#
+# Inputs:
+#   sarif-path: [Required] The path to the SARIF file to be converted.
+#   summary-title: [Optional] The title to use for the Markdown summary header. Defaults to "Static Analysis Results".
+#
+# Outputs:
+#   None directly, but it appends content to the GitHub Actions job summary.
+#
+---
+name: "Convert SARIF to summary"
+description: "Convert SARIF to summary"
+inputs:
+  sarif-path:
+    description: "Path to the SARIF file"
+    required: true
+  summary-title:
+    description: "Title for the Markdown summary header"
+    required: false
+    default: "Static Analysis Results"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Convert SARIF to Markdown Summary
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      id: convert-sarif-to-markdown
+      if: always()
+      env:
+        SARIF_PATH: ${{ inputs.sarif-path }}
+        SUMMARY_TITLE: ${{ inputs.summary-title }}
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          const sarifPath = process.env.SARIF_PATH; // Read path from environment variable
+          const summaryTitle = process.env.SUMMARY_TITLE || 'Static Analysis Results'; // Read title or use default
+
+          try {
+            if (!fs.existsSync(sarifPath)) {
+              core.summary.addRaw(`* SARIF file (${sarifPath}) not found. Skipping summary generation.\n`);
+              await core.summary.write();
+              return;
+            }
+
+            const sarifContent = fs.readFileSync(sarifPath, 'utf8');
+            const sarifData = JSON.parse(sarifContent);
+
+            let markdown = `## ${summaryTitle}\n\n`; // Use dynamic title
+            let issuesFound = false;
+
+            if (sarifData.runs && sarifData.runs.length > 0 && sarifData.runs[0].results) {
+              const results = sarifData.runs[0].results;
+              if (results.length === 0) {
+                markdown += '* No issues found.\n'; // Generic message
+              } else {
+                issuesFound = true;
+                markdown += '| Severity | Rule ID | Message | File | Line |\n';
+                markdown += '|---|---|---|---|---|\n';
+
+                for (const result of results) {
+                  const severity = result.level || 'warning';
+                  const ruleId = result.ruleId || 'N/A';
+                  const message = result.message.text || 'No message';
+                  let file = 'N/A';
+                  let line = 'N/A';
+
+                  if (result.locations && result.locations[0] && result.locations[0].physicalLocation) {
+                    const physLoc = result.locations[0].physicalLocation;
+                    file = physLoc.artifactLocation ? physLoc.artifactLocation.uri : 'N/A';
+                    line = physLoc.region ? physLoc.region.startLine : 'N/A';
+                  }
+                  // Escape pipe characters in the message for the Markdown table
+                  const escapedMessage = message.replace(/\|/g, '\\\\|');
+                  markdown += `| ${severity} | ${ruleId} | ${escapedMessage} | ${file} | ${line} |\n`;
+                }
+              }
+            } else {
+                markdown += '* No results found in SARIF file.\n';
+            }
+
+            core.summary.addRaw(markdown);
+            await core.summary.write();
+
+          } catch (error) {
+            core.warning(`Error processing SARIF file: ${error.message}`);
+            core.summary.addRaw(`## ${summaryTitle}\n\n`); // Use dynamic title in error message
+            core.summary.addRaw(`*Error processing SARIF file: ${error.message}*\n`);
+            await core.summary.write();
+          }

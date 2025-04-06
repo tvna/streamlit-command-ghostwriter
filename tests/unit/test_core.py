@@ -2,9 +2,12 @@ from io import BytesIO
 from typing import Any, Dict, Optional
 
 import pytest
+from _pytest.mark.structures import MarkDecorator
 from pydantic import BaseModel, PrivateAttr
 
 from features.core import AppCore
+
+UNIT: MarkDecorator = pytest.mark.unit
 
 
 class MockParser(BaseModel):
@@ -121,7 +124,7 @@ def model(monkeypatch: pytest.MonkeyPatch) -> AppCore:
 
 
 # テスト: モックオブジェクトの動作確認
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     (
         "config_content",
@@ -165,7 +168,7 @@ def test_mock_parser(
         )
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     (
         "is_strict_undefined",
@@ -218,7 +221,7 @@ def test_mock_render(
 
 
 # テスト: AppCore.load_config_file メソッド
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("config_content", "expected_dict", "expected_error"),
     [
@@ -253,7 +256,7 @@ def test_app_core_load_config_file(
 
 
 # テスト: AppCore.load_template_file メソッド
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("template_content", "expected_error"),
     [
@@ -286,7 +289,7 @@ def test_app_core_load_template_file(
 
 
 # テスト: AppCore.apply メソッド
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("is_strict_undefined", "template_content", "config_data", "expected_result", "expected_error"),
     [
@@ -347,7 +350,7 @@ def test_app_core_apply(
 
 
 # テスト: AppCore.get_download_filename メソッド
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("is_append_timestamp", "name_prefix", "name_suffix", "expected_filename_pattern", "expected_none"),
     [
@@ -395,7 +398,7 @@ def test_app_core_get_download_filename(
 
 
 # テスト: AppCore.get_download_content メソッド
-@pytest.mark.unit
+@UNIT
 def test_app_core_get_download_content(model: AppCore) -> None:
     """AppCore.get_download_contentメソッドをテストする。"""
     # Arrange
@@ -425,7 +428,7 @@ def test_app_core_get_download_content(model: AppCore) -> None:
 
 
 # テスト: AppCoreの統合テスト
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     (
         "config_content",

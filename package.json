@@ -1,6 +1,6 @@
 {
     "name": "command_ghostwriter",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "main": "./build/electron/main.js",
     "description": "This application is designed for infrastratcture engineers who want to automatically generate commands in template to configure servers, routers, and switches",
     "license": "MIT",
@@ -46,10 +46,11 @@
         "@stlite/desktop": "^0.80.5",
         "commitizen": "^4.3.1",
         "cross-env": "^7.0.3",
-        "electron": "^35.1.3",
+        "electron": "^35.1.4",
         "electron-builder": "^26.0.12",
         "husky": "^9.1.7",
         "lint-staged": "^15.5.0",
+        "prettier": "^3.5.3",
         "rimraf": "^6.0.1"
     },
     "stlite": {
@@ -59,7 +60,8 @@
                 "i18n.py",
                 ".streamlit/*",
                 "features/*.py",
-                "assets/examples"
+                "assets/examples",
+                "assets/images"
             ],
             "nodeJsWorker": false,
             "entrypoint": "app.py",

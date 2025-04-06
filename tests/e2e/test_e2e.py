@@ -38,16 +38,19 @@
     python -m pytest tests/e2e/test_e2e.py --headed
 """
 
-from typing import List
+from typing import Final, List
 
 import pytest
-from playwright.sync_api import Page, expect
-from pytest_benchmark.fixture import BenchmarkFixture
+from _pytest.mark.structures import MarkDecorator
+from playwright.sync_api import FileChooser, Locator, Page, expect
+from pytest_benchmark.fixture import BenchmarkFixture  # type: ignore[import-untyped]
 
 from .helpers import StreamlitTestHelper, TestData, texts
 
+E2E: MarkDecorator = pytest.mark.e2e
 
-@pytest.mark.e2e
+
+@E2E
 def test_ui_app_title(page: Page, benchmark: BenchmarkFixture) -> None:
     """アプリケーションのタイトル表示をテスト.
 
@@ -72,7 +75,7 @@ def test_ui_app_title(page: Page, benchmark: BenchmarkFixture) -> None:
     benchmark(_check_title)
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_input_field(page: Page, benchmark: BenchmarkFixture) -> None:
     """入力フィールドの機能をテスト.
 
@@ -89,22 +92,22 @@ def test_ui_input_field(page: Page, benchmark: BenchmarkFixture) -> None:
     """
 
     # タブを選択
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
     helper.select_tab(f"📝 {texts.tab1.menu_title}")
 
     def _check_input_fields() -> None:
         # ファイルアップロードボタンを見つける
-        upload_button = page.locator("button:has-text('Browse files')").first
+        upload_button: Final[Locator] = page.locator("button:has-text('Browse files')").first
         expect(upload_button).to_be_visible()
 
         # CLIコマンド生成ボタンを見つける
-        cli_button = page.locator(f"button:has-text('{texts.tab1.generate_text_button}')").first
+        cli_button: Final[Locator] = page.locator(f"button:has-text('{texts.tab1.generate_text_button}')").first
         expect(cli_button).to_be_visible()
 
     benchmark(_check_input_fields)
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_button_click(page: Page) -> None:
     """ボタンクリック操作をテスト.
 
@@ -119,14 +122,14 @@ def test_ui_button_click(page: Page) -> None:
     """
 
     # タブを選択
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
     helper.select_tab(f"📝 {texts.tab1.menu_title}")
 
     # ボタンをクリック
     helper.click_button(texts.tab1.generate_text_button)
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_sidebar_interaction(page: Page) -> None:
     """サイドバーの操作機能をテスト.
 
@@ -142,26 +145,26 @@ def test_ui_sidebar_interaction(page: Page) -> None:
     """
 
     # サイドバーを開く - Streamlitの新しいUIでは、ハンバーガーメニューをクリックする必要がある
-    sidebar = page.locator("section[data-testid='stSidebar']")
+    sidebar: Final[Locator] = page.locator("section[data-testid='stSidebar']")
     expect(sidebar).to_be_visible()
 
     # サイドバー内のエキスパンダーを操作
-    expander = page.locator(f"details summary:has-text('{texts.sidebar.syntax_of_each_file}')").first
+    expander: Final[Locator] = page.locator(f"details summary:has-text('{texts.sidebar.syntax_of_each_file}')").first
     expect(expander).to_be_visible()
 
     # エキスパンダーが閉じている場合は開く
-    details = page.locator("details").first
+    details: Final[Locator] = page.locator("details").first
     if not details.get_attribute("open"):
         expander.click()
         page.wait_for_timeout(500)  # アニメーションの完了を待つ
 
     # エキスパンダー内のリンクを確認[存在するかどうかだけを確認]
-    link = page.locator("a:has-text('toml syntax docs')").first
+    link: Final[Locator] = page.locator("a:has-text('toml syntax docs')").first
     # 表示状態ではなく存在を確認
     expect(link).to_be_attached()
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_download_functionality(page: Page) -> None:
     """ダウンロード機能をテスト.
 
@@ -176,18 +179,18 @@ def test_ui_download_functionality(page: Page) -> None:
     """
 
     # タブを選択
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
     helper.select_tab(f"📝 {texts.tab1.menu_title}")
 
     # ダウンロードボタンを見つける
-    download_button = page.locator("div[data-testid='stDownloadButton'] button").first
+    download_button: Final[Locator] = page.locator("div[data-testid='stDownloadButton'] button").first
     expect(download_button).to_be_visible()
 
     # ダウンロードボタンは初期状態では無効になっている
     expect(download_button).to_have_attribute("disabled", "")
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_responsive_design(page: Page) -> None:
     """レスポンシブデザインをテスト.
 
@@ -211,14 +214,14 @@ def test_ui_responsive_design(page: Page) -> None:
 
     # モバイルビューでの表示を確認
     # ハンバーガーメニューが表示されることを確認
-    hamburger_button = page.locator("div[data-testid='stSidebarCollapsedControl']").first
+    hamburger_button: Final[Locator] = page.locator("div[data-testid='stSidebarCollapsedControl']").first
     expect(hamburger_button).to_be_visible()
 
     # デスクトップビューに戻す
     page.set_viewport_size({"width": 1280, "height": 720})
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_advanced_settings_in_tab3(page: Page) -> None:
     """詳細設定タブの機能をテスト.
 
@@ -233,20 +236,20 @@ def test_ui_advanced_settings_in_tab3(page: Page) -> None:
         - 元のタブへの復帰を確認
     """
 
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
 
     # タブ3を選択
     helper.select_tab(f"⚙️ {texts.tab3.menu_title}")
 
     # 入力ファイルの設定セクションが表示されることを確認
-    input_settings_header = page.locator(f"h3:has-text('{texts.tab3.subheader_input_file}')").first
+    input_settings_header: Final[Locator] = page.locator(f"h3:has-text('{texts.tab3.subheader_input_file}')").first
     expect(input_settings_header).to_be_visible()
 
     # コマンド生成タブに戻る
     helper.select_tab(f"📝 {texts.tab1.menu_title}")
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_sample_collection_in_tab4(page: Page) -> None:
     """サンプル集タブの機能をテスト.
 
@@ -261,64 +264,63 @@ def test_ui_sample_collection_in_tab4(page: Page) -> None:
         - サンプルファイルの内容を検証
     """
 
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
 
     # タブ4を選択
-    helper = StreamlitTestHelper(page)
     helper.select_tab(f"💼 {texts.tab4.menu_title}")
 
     # サンプル集の表示セクションが表示されることを確認
-    sample_header = page.locator(f"h3:has-text('{texts.tab4.subheader}')").first
+    sample_header: Final[Locator] = page.locator(f"h3:has-text('{texts.tab4.subheader}')").first
     expect(sample_header).to_be_visible()
 
     # サンプルファイルのテキストエリアが表示されることを確認
     # cisco_config.tomlのテキストエリア
-    cisco_config_textarea = page.locator("textarea[aria-label='cisco_config.toml']").first
+    cisco_config_textarea: Final[Locator] = page.locator("textarea[aria-label='cisco_config.toml']").first
     expect(cisco_config_textarea).to_be_visible()
 
     # cisco_template.jinja2のテキストエリア
-    cisco_template_textarea = page.locator("textarea[aria-label='cisco_template.jinja2']").first
+    cisco_template_textarea: Final[Locator] = page.locator("textarea[aria-label='cisco_template.jinja2']").first
     expect(cisco_template_textarea).to_be_visible()
 
     # dns_dig_config.csvのテキストエリア
-    dns_dig_config_textarea = page.locator("textarea[aria-label='dns_dig_config.csv']").first
+    dns_dig_config_textarea: Final[Locator] = page.locator("textarea[aria-label='dns_dig_config.csv']").first
     expect(dns_dig_config_textarea).to_be_visible()
 
     # dns_dig_tmpl.j2のテキストエリア
-    dns_dig_tmpl_textarea = page.locator("textarea[aria-label='dns_dig_tmpl.j2']").first
+    dns_dig_tmpl_textarea: Final[Locator] = page.locator("textarea[aria-label='dns_dig_tmpl.j2']").first
     expect(dns_dig_tmpl_textarea).to_be_visible()
 
     # wget_config.yamlのテキストエリア
-    success_config_textarea = page.locator("textarea[aria-label='success_config.yaml']").first
+    success_config_textarea: Final[Locator] = page.locator("textarea[aria-label='success_config.yaml']").first
     expect(success_config_textarea).to_be_visible()
 
     # wget_template.j2のテキストエリア
-    success_template_textarea = page.locator("textarea[aria-label='success_template.j2']").first
+    success_template_textarea: Final[Locator] = page.locator("textarea[aria-label='success_template.j2']").first
     expect(success_template_textarea).to_be_visible()
 
     # サンプルファイルの内容が表示されていることを確認
-    cisco_config_text = cisco_config_textarea.input_value()
+    cisco_config_text: Final[str] = cisco_config_textarea.input_value()
     assert "hostname" in cisco_config_text, "Content validation failed for cisco_config.toml.\nExpected to find 'hostname' in content"
     assert "interfaces" in cisco_config_text, "Content validation failed for cisco_config.toml.\nExpected to find 'interfaces' in content"
 
-    cisco_template_text = cisco_template_textarea.input_value()
+    cisco_template_text: Final[str] = cisco_template_textarea.input_value()
     assert "enable" in cisco_template_text, "Content validation failed for cisco_template.jinja2.\nExpected to find 'enable' in content"
     assert "for vlan in global.vlans" in cisco_template_text, (
         "Content validation failed for cisco_template.jinja2.\nExpected to find 'for vlan in global.vlans' in content"
     )
 
-    dns_dig_config_text = dns_dig_config_textarea.input_value()
+    dns_dig_config_text: Final[str] = dns_dig_config_textarea.input_value()
     assert "resolver" in dns_dig_config_text, "Content validation failed for dns_dig_config.csv.\nExpected to find 'resolver' in content"
     assert "fqdn" in dns_dig_config_text, "Content validation failed for dns_dig_config.csv.\nExpected to find 'fqdn' in content"
 
-    dns_dig_tmpl_text = dns_dig_tmpl_textarea.input_value()
+    dns_dig_tmpl_text: Final[str] = dns_dig_tmpl_textarea.input_value()
     assert "for row in csv_rows" in dns_dig_tmpl_text, (
         "Content validation failed for dns_dig_tmpl.j2.\nExpected to find 'for row in csv_rows' in content"
     )
     assert "dig @" in dns_dig_tmpl_text, "Content validation failed for dns_dig_tmpl.j2.\nExpected to find 'dig @' in content"
 
 
-@pytest.mark.e2e
+@E2E
 @pytest.mark.parametrize(
     ("tab_name", "expected_element"),
     [
@@ -352,7 +354,7 @@ def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element
     """
 
     # Arrange: タブボタンを取得
-    tab_button = page.locator(f"button[role='tab']:has-text('{tab_name}')").first
+    tab_button: Final[Locator] = page.locator(f"button[role='tab']:has-text('{tab_name}')").first
     expect(tab_button).to_be_visible()
 
     # Act: タブをクリック
@@ -363,15 +365,15 @@ def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element
     page.wait_for_load_state("networkidle")
 
     # Assert: タブパネルが表示されていることを確認
-    tab_panel = page.locator("div[role='tabpanel']:visible").first
+    tab_panel: Final[Locator] = page.locator("div[role='tabpanel']:visible").first
     expect(tab_panel).to_be_visible()
 
     # 期待される要素が表示されていることを確認
-    expected = page.locator(expected_element).first
+    expected: Final[Locator] = page.locator(expected_element).first
     expect(expected).to_be_visible()
 
 
-@pytest.mark.e2e
+@E2E
 @pytest.mark.parametrize(
     ("config_file", "template_file", "button_text"),
     [
@@ -436,7 +438,7 @@ def test_command_generation_parametrized_in_tab1(
     """
 
     # Arrange: コマンド生成タブを選択
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
     helper.select_tab(f"📝 {texts.tab1.menu_title}")
 
     def _execute() -> None:
@@ -444,7 +446,7 @@ def test_command_generation_parametrized_in_tab1(
         helper.upload_config_and_template(config_file, template_file)
 
         # Act: コマンド生成ボタンをクリック
-        command_button = page.locator(f"button:has-text('{button_text}')").first
+        command_button: Final[Locator] = page.locator(f"button:has-text('{button_text}')").first
         expect(command_button).to_be_visible()
         command_button.click()
 
@@ -458,7 +460,7 @@ def test_command_generation_parametrized_in_tab1(
     benchmark(_execute)
 
 
-@pytest.mark.e2e
+@E2E
 def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
     """ファイルアップロード機能をテスト.
 
@@ -476,25 +478,25 @@ def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
     """
 
     # タブを選択
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
     helper.select_tab(f"📝 {texts.tab1.menu_title}")
 
     # ファイルアップロード要素を見つける
-    upload_container = page.locator("div[data-testid='stFileUploader']").first
+    upload_container: Final[Locator] = page.locator("div[data-testid='stFileUploader']").first
     expect(upload_container).to_be_visible()
 
     # ファイルアップロードボタンを見つける
-    upload_button = page.locator("button:has-text('Browse files')").first
+    upload_button: Locator = page.locator("button:has-text('Browse files')").first
     expect(upload_button).to_be_visible()
 
     # テスト用のファイルパスを指定
-    test_file_path = TestData.get_test_file_path("sample.txt")
+    test_file_path: Final[str] = TestData.get_test_file_path("sample.txt")
 
     def _execute() -> None:
         # ファイルアップロード処理
         with page.expect_file_chooser() as fc_info:
             upload_button.click()
-        file_chooser = fc_info.value
+        file_chooser: FileChooser = fc_info.value
         file_chooser.set_files(test_file_path)
 
         # アップロード後の処理を待機
@@ -504,7 +506,7 @@ def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
     benchmark(_execute)
 
 
-@pytest.mark.e2e
+@E2E
 def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
     """Jinjaテンプレートファイルのアップロード機能をテスト.
 
@@ -523,35 +525,35 @@ def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) 
     """
 
     # タブを選択
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
     helper.select_tab(f"📝 {texts.tab1.menu_title}")
 
     # Jinjaテンプレートファイルのアップロード要素を見つける
     # 2番目のファイルアップローダーを選択
-    upload_containers = page.locator("div[data-testid='stFileUploader']").all()
+    upload_containers: Final[List[Locator]] = page.locator("div[data-testid='stFileUploader']").all()
     # Pythonのassert文を使用して要素の数を確認
     assert len(upload_containers) > 1, "ファイルアップローダーが2つ以上見つかりません"
 
     # 2番目のアップロードコンテナを取得
-    jinja_upload_container = upload_containers[1]
+    jinja_upload_container: Final[Locator] = upload_containers[1]
     expect(jinja_upload_container).to_be_visible()
 
     # ラベルを確認
-    upload_label = jinja_upload_container.locator("div[data-testid='stMarkdownContainer']").first
+    upload_label: Final[Locator] = jinja_upload_container.locator("div[data-testid='stMarkdownContainer']").first
     expect(upload_label).to_contain_text(texts.tab1.upload_template)
 
     # ファイルアップロードボタンを見つける
-    upload_button = jinja_upload_container.locator("button:has-text('Browse files')").first
+    upload_button: Final[Locator] = jinja_upload_container.locator("button:has-text('Browse files')").first
     expect(upload_button).to_be_visible()
 
     # テスト用のファイルパスを指定
-    test_file_path = TestData.get_test_file_path("sample.txt")
+    test_file_path: Final[str] = TestData.get_test_file_path("sample.txt")
 
     def _execute() -> None:
         # ファイルアップロード処理
         with page.expect_file_chooser() as fc_info:
             upload_button.click()
-        file_chooser = fc_info.value
+        file_chooser: FileChooser = fc_info.value
         file_chooser.set_files(test_file_path)
 
         # アップロード後の処理を待機
@@ -561,7 +563,7 @@ def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) 
     benchmark(_execute)
 
 
-@pytest.mark.e2e
+@E2E
 @pytest.mark.parametrize(
     ("tab_name", "upload_index", "file_type", "file_name"),
     [
@@ -571,7 +573,7 @@ def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) 
     ],
 )
 def test_file_upload_parametrized_in_tab1(
-    page: Page, tab_name: str, upload_index: int, file_type: str, file_name: str, benchmark: BenchmarkFixture
+    page: Page, tab_name: str, upload_index: int, file_type: str, file_name: str, benchmark: "BenchmarkFixture"
 ) -> None:
     """ファイルアップロード機能をパラメータ化してテスト.
 
@@ -595,34 +597,34 @@ def test_file_upload_parametrized_in_tab1(
     """
 
     # Arrange: タブを選択
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
     helper.select_tab(tab_name)
 
     # タブパネルが表示されていることを確認
-    tab_panel = page.locator("div[role='tabpanel']:visible").first
+    tab_panel: Final[Locator] = page.locator("div[role='tabpanel']:visible").first
     expect(tab_panel).to_be_visible()
 
     # ファイルアップロード要素を取得 - タブパネル内で検索するように変更
-    upload_containers = tab_panel.locator("div[data-testid='stFileUploader']").all()
+    upload_containers: List[Locator] = tab_panel.locator("div[data-testid='stFileUploader']").all()
     assert len(upload_containers) > upload_index, (
         f"Not enough file uploaders found.\nExpected at least {upload_index + 1} uploaders\nFound: {len(upload_containers)}"
     )
 
-    upload_container = upload_containers[upload_index]
+    upload_container: Locator = upload_containers[upload_index]
     assert upload_container.count() > 0, "File uploader element not found"
 
     # ファイルアップロードボタンを見つける
-    upload_button = upload_container.locator("button:has-text('Browse files')").first
+    upload_button: Final[Locator] = upload_container.locator("button:has-text('Browse files')").first
     expect(upload_button).to_be_visible()
 
     # テスト用のファイルパスを準備
-    test_file_path = TestData.get_test_file_path(file_name)
+    test_file_path: Final[str] = TestData.get_test_file_path(file_name)
 
     def _execute() -> None:
         # Act: ファイルをアップロード
         with page.expect_file_chooser() as fc_info:
             upload_button.click()
-        file_chooser = fc_info.value
+        file_chooser: FileChooser = fc_info.value
         file_chooser.set_files(test_file_path)
 
         # ページの読み込みを待機 - 待機時間を増やす
@@ -630,7 +632,7 @@ def test_file_upload_parametrized_in_tab1(
         page.wait_for_timeout(3000)
 
         # Assert: アップロードされたファイル名が表示されていることを確認
-        uploaded_file_text = upload_container.inner_text()
+        uploaded_file_text: Final[str] = upload_container.inner_text()
         assert file_name in uploaded_file_text, (
             f"Uploaded file name not displayed.\nExpected file name: {file_name}\nActual text: {uploaded_file_text}"
         )
@@ -638,7 +640,7 @@ def test_file_upload_parametrized_in_tab1(
     benchmark(_execute)
 
 
-@pytest.mark.e2e
+@E2E
 @pytest.mark.parametrize(
     ("file_name", "display_format", "expected_content"),
     [
@@ -677,14 +679,14 @@ def test_config_debug_parametrized_in_tab2(
     """
 
     # Arrange: 設定デバッグタブを選択
-    helper = StreamlitTestHelper(page)
+    helper: "StreamlitTestHelper" = StreamlitTestHelper(page)
     helper.select_tab(f"📜 {texts.tab2.menu_title}")
 
     def _execute() -> None:
         helper.upload_debug_config_file(file_name)
 
         # Act: 解析結果の表示ボタンをクリック
-        display_button = helper.get_display_button(display_format)
+        display_button: Final[Locator] = helper.get_display_button(display_format)
         expect(display_button).to_be_visible()
         display_button.click()
 
@@ -693,14 +695,14 @@ def test_config_debug_parametrized_in_tab2(
         page.wait_for_timeout(7000)
 
         # タブパネルを取得
-        tab_panel = page.locator("div[role='tabpanel']:visible").first
+        tab_panel: Final[Locator] = page.locator("div[role='tabpanel']:visible").first
 
         # 成功メッセージが表示されることを確認
-        success_message = tab_panel.locator(f"div:has-text('{texts.tab2.success_debug_config}')").first
+        success_message: Final[Locator] = tab_panel.locator(f"div:has-text('{texts.tab2.success_debug_config}')").first
         expect(success_message).to_be_visible(timeout=15000)
 
         # Assert: 解析結果の検証
-        result_text = helper.get_result_text(tab_panel, display_format)
+        result_text: Final[str] = helper.get_result_text(tab_panel, display_format)
         helper.verify_result_content(result_text, expected_content, display_format)
 
     benchmark(_execute)

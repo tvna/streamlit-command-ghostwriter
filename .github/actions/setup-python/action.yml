@@ -1,59 +1,79 @@
-name: 'Setup Python Environment'
-description: 'Setup Python with Poetry and cache pip dependencies'
+# Workflow description:
+# 1. Set up the specified Python version using actions/setup-python.
+# 2. Restore cached Python/Poetry dependencies (pip, pypoetry, .venv, .ruff_cache, .pytest_cache) based on OS, Python version, and poetry.lock.
+#    - Uses a separate step with retry logic specifically for Windows cache restoration.
+# 3. Install Poetry using pipx.
+# 4. Configure Poetry to not create virtual environments within the project directory.
+# 5. Install project dependencies (main and dev) using Poetry.
+#
+# Usage example:
+# jobs:
+#   setup:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Setup Python environment
+#         uses: ./.github/actions/setup-python
+#         with:
+#           python-version: '3.11' # Required: specify the Python version
+#
+---
+name: "Setup Python Environment"
+description: "Setup Python with Poetry and cache pip dependencies"
 inputs:
   python-version:
-    description: 'Python version to use'
+    description: "Python version to use"
     required: true
 
 runs:
   using: "composite"
   steps:
-  - name: Set up Python ${{ inputs.python-version }}
-    uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.1.0
-    with:
-      python-version: "${{ inputs.python-version }}"
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.1.0
+      with:
+        python-version: "${{ inputs.python-version }}"
 
-  # 非Windows環境用のキャッシュ復元
-  - name: Restore cache pip dependencies (without Windows)
-    uses: actions/cache@v4.2.2
-    if: runner.os != 'Windows'
-    with:
-      path: |
-        ~/.cache/pypoetry
-        ~/.cache/pip
-        .venv
-        .ruff_cache
-        .pytest_cache
-        %LOCALAPPDATA%\pypoetry\Cache
-        %USERPROFILE%\.cache\pypoetry
-      key: ${{ runner.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      restore-keys: |
-        ${{ runner.os }}-python${{ inputs.python-version }}-poetry
+    # 非Windows環境用のキャッシュ復元
+    - name: Restore cache pip dependencies (without Windows)
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      if: runner.os != 'Windows'
+      with:
+        path: |
+          ~/.cache/pypoetry
+          ~/.cache/pip
+          .venv
+          .ruff_cache
+          .pytest_cache
+          %LOCALAPPDATA%\pypoetry\Cache
+          %USERPROFILE%\.cache\pypoetry
+        key: ${{ runner.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-python${{ inputs.python-version }}-poetry
 
-  # Windowsのみキャッシュ障害に備えてリトライロジックを追加
-  - name: Restore cache pip dependencies (Windows with retry)
-    uses: actions/cache@v4.2.2
-    if: runner.os == 'Windows'
-    with:
-      path: |
-        ~/.cache/pypoetry
-        ~/.cache/pip
-        .venv
-        .ruff_cache
-        .pytest_cache
-        %LOCALAPPDATA%\pypoetry\Cache
-        %USERPROFILE%\.cache\pypoetry
-      key: ${{ runner.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      restore-keys: |
-        ${{ runner.os }}-python${{ inputs.python-version }}-poetry
+    # Windowsのみキャッシュ障害に備えてリトライロジックを追加
+    - name: Restore cache pip dependencies (Windows with retry)
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      if: runner.os == 'Windows'
+      with:
+        path: |
+          ~/.cache/pypoetry
+          ~/.cache/pip
+          .venv
+          .ruff_cache
+          .pytest_cache
+          %LOCALAPPDATA%\pypoetry\Cache
+          %USERPROFILE%\.cache\pypoetry
+        key: ${{ runner.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-python${{ inputs.python-version }}-poetry
 
-  - name: Bootstrap poetry
-    shell: bash
-    run: |
-      pipx install poetry
-      poetry config virtualenvs.in-project false
+    - name: Bootstrap poetry
+      shell: bash
+      run: |
+        pipx install poetry
+        poetry config virtualenvs.in-project false
 
-  - name: Install dependencies
-    shell: bash
-    run: |
-      poetry install --no-interaction --no-root --only main,dev
+    - name: Install dependencies
+      shell: bash
+      run: |
+        poetry install --no-interaction --no-root --only main,dev

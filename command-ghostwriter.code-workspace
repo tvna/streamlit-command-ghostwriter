@@ -98,6 +98,9 @@
 			".pyre": true,
 			".pyre_configuration": true,
 			".streamlit": true,
+			".yamllint.yml": true,
+			".watchmanconfig": true,
+			"__init__.py": true
 		},
 		"explorer.excludeGitIgnore": false,
 		"python.analysis.autoImportCompletions": true,

@@ -1,9 +1,12 @@
 from io import BytesIO
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
 
 import pytest
+from _pytest.mark.structures import MarkDecorator
 
 from features.transcoder import TextTranscoder
+
+UNIT: MarkDecorator = pytest.mark.unit
 
 
 @pytest.fixture
@@ -15,7 +18,7 @@ def create_text_file() -> Callable[[str, str, str], BytesIO]:
     """
 
     def _create_file(content: str, encoding: str, filename: str = "example.txt") -> BytesIO:
-        file = BytesIO(content.encode(encoding))
+        file: Final[BytesIO] = BytesIO(content.encode(encoding))
         file.name = filename
         return file
 
@@ -31,14 +34,14 @@ def create_binary_file() -> Callable[[bytes, str], BytesIO]:
     """
 
     def _create_file(content: bytes, filename: str = "example.bin") -> BytesIO:
-        file = BytesIO(content)
+        file: Final[BytesIO] = BytesIO(content)
         file.name = filename
         return file
 
     return _create_file
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_str", "input_encoding", "expected_encoding", "expected_result"),
     [
@@ -81,13 +84,13 @@ def test_transcoder_basic_functionality(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_text_file(input_str, input_encoding, "example.csv")
+    import_file: Final[BytesIO] = create_text_file(input_str, input_encoding, "example.csv")
 
     # Act
     transcoder = TextTranscoder(import_file)
-    detected_encoding = transcoder.detect_encoding()
-    export_file_deny_fallback = transcoder.convert(is_allow_fallback=False)
-    export_file_allow_fallback = transcoder.convert(is_allow_fallback=True)
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
+    export_file_deny_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=False)
+    export_file_allow_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=True)
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
@@ -103,7 +106,7 @@ def test_transcoder_basic_functionality(
 
     assert isinstance(export_file_allow_fallback, BytesIO), "Export file with allow fallback should be BytesIO instance"
     if isinstance(export_file_allow_fallback, BytesIO):
-        decoded_content = export_file_allow_fallback.getvalue().decode("utf-8")
+        decoded_content: Final[str] = export_file_allow_fallback.getvalue().decode("utf-8")
         assert decoded_content == expected_result, (
             f"Content mismatch with allow fallback.\nExpected: {expected_result}\nGot: {decoded_content}"
         )
@@ -112,7 +115,7 @@ def test_transcoder_basic_functionality(
         )
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_bytes", "expected_encoding", "expected_result"),
     [
@@ -138,13 +141,13 @@ def test_transcoder_non_string_data(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_binary_file(input_bytes, "example.csv")
+    import_file: Final[BytesIO] = create_binary_file(input_bytes, "example.csv")
 
     # Act
     transcoder = TextTranscoder(import_file)
-    detected_encoding = transcoder.detect_encoding()
-    export_file_deny_fallback = transcoder.convert(is_allow_fallback=False)
-    export_file_allow_fallback = transcoder.convert(is_allow_fallback=True)
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
+    export_file_deny_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=False)
+    export_file_allow_fallback: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=True)
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
@@ -160,7 +163,7 @@ def test_transcoder_non_string_data(
         )
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_str", "input_encoding", "expected_encoding", "expected_result"),
     [
@@ -200,11 +203,11 @@ def test_transcoder_edge_cases(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_text_file(input_str, input_encoding, "example.txt")
+    import_file: Final[BytesIO] = create_text_file(input_str, input_encoding, "example.txt")
 
     # Act
     transcoder = TextTranscoder(import_file)
-    detected_encoding = transcoder.detect_encoding()
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
@@ -212,7 +215,7 @@ def test_transcoder_edge_cases(
     # 期待されるエンコーディングがNoneの場合は、変換結果のチェックをスキップ
     if expected_encoding is not None:
         # Act
-        export_file = transcoder.convert(is_allow_fallback=True)
+        export_file: Final[Optional[BytesIO]] = transcoder.convert(is_allow_fallback=True)
 
         # Assert
         assert isinstance(export_file, BytesIO), "Export file should be BytesIO instance"
@@ -223,7 +226,7 @@ def test_transcoder_edge_cases(
             assert export_file.name == import_file.name, f"Filename mismatch.\nExpected: {import_file.name}\nGot: {export_file.name}"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_bytes", "expected_encoding", "expected_result"),
     [
@@ -256,17 +259,17 @@ def test_transcoder_binary_edge_cases(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_binary_file(input_bytes, "example.bin")
+    import_file: Final[BytesIO] = create_binary_file(input_bytes, "example.bin")
 
     # Act
     transcoder = TextTranscoder(import_file)
-    detected_encoding = transcoder.detect_encoding()
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"
 
     # Act
-    result = transcoder.convert()
+    result: Final[Optional[BytesIO]] = transcoder.convert()
 
     # Assert
     if expected_encoding is None:
@@ -278,16 +281,16 @@ def test_transcoder_binary_edge_cases(
         assert result is not None, "Result should not be None for text data"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
-    ("input_str", "target_encoding", "is_allow_fallback", "expected_result"),
+    ("input_str", "target_encoding", "is_allow_fallback", "expected_result", "expected_error"),
     [
         pytest.param(
             "Hello, 世界!",
             "ascii",
             True,
             None,
-            marks=pytest.mark.skip(reason="ASCIIエンコーディングへの変換はエラーになるため"),
+            "'ascii' codec can't encode characters in position 7-8: ordinal not in range(128)",
             id="encoding_convert_to_ascii_with_fallback",
         ),
         pytest.param(
@@ -295,7 +298,7 @@ def test_transcoder_binary_edge_cases(
             "ascii",
             False,
             None,
-            marks=pytest.mark.skip(reason="ASCIIエンコーディングへの変換はエラーになるため"),
+            "'ascii' codec can't encode characters in position 7-8: ordinal not in range(128)",
             id="encoding_convert_to_ascii_without_fallback",
         ),
         pytest.param(
@@ -303,43 +306,53 @@ def test_transcoder_binary_edge_cases(
             "shift_jis",
             True,
             b"\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd\x90\xa2\x8aE",
+            None,
             id="encoding_convert_to_shift_jis",
         ),
         pytest.param(
-            "こんにちは世界", "euc_jp", True, b"\xa4\xb3\xa4\xf3\xa4\xcb\xa4\xc1\xa4\xcf\xc0\xa4\xb3\xa6", id="encoding_convert_to_euc_jp"
+            "こんにちは世界",
+            "euc_jp",
+            True,
+            b"\xa4\xb3\xa4\xf3\xa4\xcb\xa4\xc1\xa4\xcf\xc0\xa4\xb3\xa6",
+            None,
+            id="encoding_convert_to_euc_jp",
         ),
-        pytest.param("", "shift_jis", True, b"", id="encoding_convert_empty_to_shift_jis"),
-        pytest.param("\u3000", "shift_jis", True, b"\x81\x40", id="encoding_convert_fullwidth_space_to_shift_jis"),
+        pytest.param("", "shift_jis", True, b"", None, id="encoding_convert_empty_to_shift_jis"),
+        pytest.param("\u3000", "shift_jis", True, b"\x81\x40", None, id="encoding_convert_fullwidth_space_to_shift_jis"),
         pytest.param(
             "①②③",
             "shift_jis",
             True,
             None,
-            marks=pytest.mark.skip(reason="丸数字はShift_JISで表現できないため"),
+            r"'shift_jis' codec can't encode character '\u2460' in position 0: illegal multibyte sequence",
             id="encoding_convert_circled_numbers_to_shift_jis",
         ),
-        pytest.param("ｱｲｳｴｵ", "shift_jis", True, b"\xb1\xb2\xb3\xb4\xb5", id="encoding_convert_halfwidth_katakana_to_shift_jis"),
+        pytest.param("ｱｲｳｴｵ", "shift_jis", True, b"\xb1\xb2\xb3\xb4\xb5", None, id="encoding_convert_halfwidth_katakana_to_shift_jis"),
         pytest.param(
             "㈱㈲㈹",
             "shift_jis",
             True,
             None,
-            marks=pytest.mark.skip(reason="括弧付き漢字はShift_JISで表現できないため"),
+            r"'shift_jis' codec can't encode character '\u3231' in position 0: illegal multibyte sequence",
             id="encoding_convert_parenthesized_ideographs_to_shift_jis",
         ),
-        pytest.param("Hello♪World", "shift_jis", True, b"Hello\xe2\x99\xaaWorld", id="encoding_convert_music_symbol_to_shift_jis"),
+        pytest.param("Hello♪World", "shift_jis", True, b"Hello\xe2\x99\xaaWorld", None, id="encoding_convert_music_symbol_to_shift_jis"),
         pytest.param(
             "表\u309a",
             "shift_jis",
             True,
             None,
-            marks=pytest.mark.skip(reason="結合文字はShift_JISで表現できないため"),
+            r"'shift_jis' codec can't encode character '\u309a' in position 1: illegal multibyte sequence",
             id="encoding_convert_combining_mark_to_shift_jis",
         ),
-        pytest.param("\u301c", "shift_jis", True, b"\x81\x60", id="encoding_convert_wave_dash_to_shift_jis"),
-        pytest.param("漢字", "shift_jis", True, b"\x8a\xbf\x8e\x9a", id="encoding_convert_basic_kanji_to_shift_jis"),
-        pytest.param("カタカナ", "shift_jis", True, b"\x83\x4a\x83\x5e\x83\x4a\x83\x69", id="encoding_convert_basic_katakana_to_shift_jis"),
-        pytest.param("ひらがな", "shift_jis", True, b"\x82\xd0\x82\xe7\x82\xaa\x82\xc8", id="encoding_convert_basic_hiragana_to_shift_jis"),
+        pytest.param("\u301c", "shift_jis", True, b"\x81\x60", None, id="encoding_convert_wave_dash_to_shift_jis"),
+        pytest.param("漢字", "shift_jis", True, b"\x8a\xbf\x8e\x9a", None, id="encoding_convert_basic_kanji_to_shift_jis"),
+        pytest.param(
+            "カタカナ", "shift_jis", True, b"\x83\x4a\x83\x5e\x83\x4a\x83\x69", None, id="encoding_convert_basic_katakana_to_shift_jis"
+        ),
+        pytest.param(
+            "ひらがな", "shift_jis", True, b"\x82\xd0\x82\xe7\x82\xaa\x82\xc8", None, id="encoding_convert_basic_hiragana_to_shift_jis"
+        ),
     ],
 )
 def test_transcoder_encoding_conversion(
@@ -348,6 +361,7 @@ def test_transcoder_encoding_conversion(
     target_encoding: str,
     is_allow_fallback: bool,
     expected_result: Optional[bytes],
+    expected_error: Optional[str],
 ) -> None:
     """エンコーディング変換機能をテストする。
 
@@ -359,15 +373,20 @@ def test_transcoder_encoding_conversion(
         expected_result: 期待される結果
     """
     # Arrange
-    import_file = create_text_file(input_str, "utf-8", "example.txt")
+    import_file: Final[BytesIO] = create_text_file(input_str, "utf-8", "example.txt")
 
     # Act
     transcoder = TextTranscoder(import_file)
-    result = transcoder.convert(target_encoding, is_allow_fallback)
+
+    if expected_error is None:
+        result: Optional[BytesIO] = transcoder.convert(target_encoding, is_allow_fallback)
+    else:
+        with pytest.raises(UnicodeEncodeError) as exc_info:
+            result: Optional[BytesIO] = transcoder.convert(target_encoding, is_allow_fallback)
 
     # Assert
     if expected_result is None:
-        assert result is None
+        assert str(exc_info.value) == expected_error
     else:
         assert isinstance(result, BytesIO)
         if isinstance(result, BytesIO):
@@ -377,7 +396,7 @@ def test_transcoder_encoding_conversion(
                 try:
                     if target_encoding.lower() == "ascii":
                         # ASCIIの場合、非ASCII文字は?に置換される
-                        expected_decoded = input_str.encode("ascii", errors="replace").decode("ascii")
+                        expected_decoded: Final[str] = input_str.encode("ascii", errors="replace").decode("ascii")
                         assert result.getvalue().decode("ascii") == expected_decoded
                     else:
                         # その他のエンコーディングの場合
@@ -386,7 +405,7 @@ def test_transcoder_encoding_conversion(
                     pytest.fail(f"Could not decode {result.getvalue()} with {target_encoding}")
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("test_data", "invalid_encoding", "expected_encoding"),
     [
@@ -405,9 +424,9 @@ def test_transcoder_missing_encoding(test_data: bytes, invalid_encoding: str, ex
     transcoder = TextTranscoder(BytesIO(test_data))
 
     # Act
-    detected_encoding = transcoder.detect_encoding()
-    result_without_fallback = transcoder.convert(invalid_encoding, False)
-    result_with_fallback = transcoder.convert(invalid_encoding, True)
+    detected_encoding: Final[Optional[str]] = transcoder.detect_encoding()
+    result_without_fallback: Final[Optional[BytesIO]] = transcoder.convert(invalid_encoding, False)
+    result_with_fallback: Final[Optional[BytesIO]] = transcoder.convert(invalid_encoding, True)
 
     # Assert
     assert detected_encoding == expected_encoding, f"Encoding detection mismatch.\nExpected: {expected_encoding}\nGot: {detected_encoding}"

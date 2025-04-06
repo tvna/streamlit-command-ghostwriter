@@ -1,9 +1,14 @@
+from typing import Any, Dict, Final, Mapping, Union
+
 import pytest
+from _pytest.mark.structures import MarkDecorator
 
 from i18n import LANGUAGES
 
+UNIT: MarkDecorator = pytest.mark.unit
 
-@pytest.mark.unit
+
+@UNIT
 def test_i18n_japanese() -> None:
     """日本語の言語辞書の構造をテストする。
 
@@ -11,7 +16,7 @@ def test_i18n_japanese() -> None:
     すべてのキーと値が適切な型であることを検証します。
     """
     # Arrange
-    japanese_key = "日本語"
+    japanese_key: Final[str] = "日本語"
 
     # Act & Assert
     assert isinstance(LANGUAGES, dict), "LANGUAGES should be a dictionary"
@@ -29,7 +34,7 @@ def test_i18n_japanese() -> None:
                     assert isinstance(nest3_val, str), f"Third level value for key '{nest3_key}' should be a string"
 
 
-@pytest.mark.unit
+@UNIT
 def test_i18n_structure_consistency() -> None:
     """すべての言語辞書が同じ構造を持っていることをテストする。
 
@@ -37,7 +42,14 @@ def test_i18n_structure_consistency() -> None:
     およびネストされた辞書構造を持っていることを確認します。
     """
     # Arrange
-    reference_lang = next(iter(LANGUAGES.values()))
+    lang_name: str
+    lang_dict: Dict[str, Any]
+    section_key: str
+    section_dict: Dict[str, Any]
+    key: str
+    value: Union[str, Dict[str, Any]]
+
+    reference_lang: Final[Mapping[str, Any]] = next(iter(LANGUAGES.values()))
 
     # Act & Assert
     for lang_name, lang_dict in LANGUAGES.items():
@@ -45,7 +57,7 @@ def test_i18n_structure_consistency() -> None:
 
         # Check that all second-level dictionaries have the same keys
         for section_key, section_dict in lang_dict.items():
-            ref_section = reference_lang[section_key]
+            ref_section: Mapping[str, Any] = reference_lang[section_key]
             assert set(section_dict.keys()) == set(ref_section.keys()), f"Section {section_key} in {lang_name} has different keys"
 
             # Check nested dictionaries (like format_type_items)
@@ -56,7 +68,7 @@ def test_i18n_structure_consistency() -> None:
                     )
 
 
-@pytest.mark.unit
+@UNIT
 def test_i18n_no_empty_strings() -> None:
     """言語辞書に空の文字列がないことをテストする。
 
@@ -64,6 +76,13 @@ def test_i18n_no_empty_strings() -> None:
     これには、ネストされた辞書内の文字列も含まれます。
     """
     # Arrange & Act & Assert
+    lang_name: str
+    lang_dict: Dict[str, Any]
+    section_key: str
+    section_dict: Dict[str, Any]
+    key: str
+    value: Union[str, Dict[str, Any]]
+
     for lang_name, lang_dict in LANGUAGES.items():
         for section_key, section_dict in lang_dict.items():
             for key, value in section_dict.items():
@@ -74,7 +93,7 @@ def test_i18n_no_empty_strings() -> None:
                         assert str(subvalue).strip() != "", f"Empty string found at {lang_name}.{section_key}.{key}.{subkey}"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("unsafe_pattern"),
     [
@@ -90,6 +109,16 @@ def test_i18n_string_interpolation_safety(unsafe_pattern: str) -> None:
     すべての言語辞書の文字列に、安全でない補間パターン({0}、{1}、%s、%dなど)
     が含まれていないことを確認します。
     """
+
+    lang_name: str
+    lang_dict: Dict[str, Any]
+    section_key: str
+    section_dict: Dict[str, Any]
+    key: str
+    value: Union[str, Dict[str, Any]]
+    subkey: str
+    subvalue: Union[str, Dict[str, Any]]
+
     # Arrange & Act & Assert
     for lang_name, lang_dict in LANGUAGES.items():
         for section_key, section_dict in lang_dict.items():

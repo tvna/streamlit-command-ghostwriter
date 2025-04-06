@@ -2,7 +2,10 @@ import os
 from typing import Dict, List
 
 import pytest
+from _pytest.mark.structures import MarkDecorator
 from streamlit.testing.v1 import AppTest
+
+UNIT: MarkDecorator = pytest.mark.unit
 
 # Constants for expected UI element counts
 EXPECTED_TITLE_COUNT = 1
@@ -36,7 +39,7 @@ def app_test() -> AppTest:
     return AppTest.from_file(app_path).run()
 
 
-@pytest.mark.unit
+@UNIT
 def test_main_layout(app_test: AppTest) -> None:
     """
     Streamlitアプリのレイアウトをテストする。
@@ -66,7 +69,7 @@ def test_main_layout(app_test: AppTest) -> None:
     assert app_test.success.len == 0, "Success message should not be displayed in initial state"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("button_key", "expected_states"),
     [
@@ -149,7 +152,7 @@ def test_button_click_state(app_test: AppTest, button_key: str, expected_states:
     assert app_test.warning.len >= 1, "Warning message should be displayed"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("button_sequence"),
     [
@@ -195,7 +198,7 @@ def test_button_sequence(app_test: AppTest, button_sequence: List[str]) -> None:
         assert app_test.warning.len >= 1, "Warning message should be displayed"
 
 
-@pytest.mark.unit
+@UNIT
 def test_app_edge_cases(app_test: AppTest) -> None:
     """
     Streamlitアプリのエッジケースをテストする。

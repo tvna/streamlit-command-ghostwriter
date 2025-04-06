@@ -1,5 +1,5 @@
 ---
-name: Test and Build (on push)
+name: Test and Build (on push to develop)
 
 on:
   push:
@@ -27,7 +27,7 @@ env:
   GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
 
 jobs:
-  main:
+  test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
@@ -49,24 +49,24 @@ jobs:
           disable-file-monitoring: true
 
       - name: Checkout main branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: main
           fetch-depth: 0
 
       - name: Get version from main
         id: get-main-ver
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b # v1.3.1
 
       - name: Checkout develop branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: develop
           fetch-depth: 0
 
       - name: Get version from develop
         id: get-dev-ver
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b # v1.3.1
 
       - name: Set versions output
         id: set-versions
@@ -78,7 +78,7 @@ jobs:
 
   create-pr-to-main:
     needs:
-      - main
+      - test-and-build
       - get-npm-versions
     permissions:
       contents: write
@@ -94,8 +94,9 @@ jobs:
           disable-file-monitoring: false
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Dump GitHub context # Keep for potential debugging/context needs within the action
@@ -106,7 +107,7 @@ jobs:
         run: echo "$GITHUB_CONTEXT" | jq -r '. | {event_name, workflow_ref, repository, run_id, run_number}'
 
       - name: Compare versions (Semver)
-        uses: madhead/semver-utils@v4.3.0
+        uses: madhead/semver-utils@36d1e0ed361bd7b4b77665de8093092eaeabe6ba # v4.3.0
         id: compare-versions
         with:
           version: ${{ needs.get-npm-versions.outputs.develop_version }}
@@ -120,7 +121,7 @@ jobs:
       - name: Check if PR already exists
         id: check-pr
         if: steps.compare-versions.outputs.comparison-result == '>'
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -146,7 +147,7 @@ jobs:
 
       - name: Ensure labels exist
         id: ensure-labels
-        uses: actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -207,7 +208,7 @@ jobs:
 
       # Setup Python required by the create_pr.py script
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
 
@@ -218,64 +219,117 @@ jobs:
           echo "" >> .commit-log.txt
           git log origin/main..HEAD --pretty=format:"- %s" --no-merges > .commit-log.txt
 
-      - name: Create pull request
-        id: create-pr
-        uses: peter-evans/create-pull-request@v7.0.8
+      - name: Create Pull Request using github-script
+        id: create-pr-script
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         if: |
           steps.compare-versions.outputs.comparison-result == '>' &&
           steps.check-pr.outputs.success == 'true' &&
           steps.check-pr.outputs.exists == '0' &&
           steps.ensure-labels.outputs.success == 'true'
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
-          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
-          branch: main
-          title: "Release: v${{ needs.get-npm-versions.outputs.develop_version }}"
-          body-path: .commit-log.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const developVersion = "${{ needs.get-npm-versions.outputs.develop_version }}";
+            const commitLogPath = '.commit-log.txt';
+            let commitLogContent = '';
+            try {
+              commitLogContent = fs.readFileSync(commitLogPath, 'utf8');
+              console.log(`Successfully read commit log from ${commitLogPath}`);
+            } catch (error) {
+              console.error(`Error reading commit log file ${commitLogPath}: ${error.message}`);
+              core.setFailed(`Failed to read commit log: ${error.message}`);
+              return; // Stop execution if commit log cannot be read
+            }
+
+            const prOptions = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release: v${developVersion}`,
+              head: 'develop', // Pointing to the develop branch
+              base: 'main',
+              body: commitLogContent,
+              maintainer_can_modify: true,
+              draft: false
+            };
+
+            try {
+              console.log(`Attempting to create pull request: ${prOptions.title}`);
+              const { data: pullRequest } = await github.rest.pulls.create(prOptions);
+              console.log(`Successfully created pull request #${pullRequest.number}: ${pullRequest.html_url}`);
+              core.setOutput('pr_url', pullRequest.html_url);
+              core.setOutput('outcome', 'success');
+
+              // Add labels to the created PR
+              try {
+                const labels = ['release', 'automated-pr'];
+                console.log(`Adding labels (${labels.join(', ')}) to PR #${pullRequest.number}`);
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pullRequest.number,
+                  labels: labels
+                });
+                console.log('Labels added successfully.');
+              } catch (labelError) {
+                console.error(`Failed to add labels to PR #${pullRequest.number}: ${labelError.message}`);
+                // Continue even if adding labels fails, but log the error
+              }
+
+            } catch (error) {
+              console.error(`Failed to create pull request: ${error.message}`);
+              core.setOutput('outcome', 'error');
+              core.setOutput('pr_url', '');
+              core.setFailed(`Failed to create pull request: ${error.message}`);
+            }
+        env:
+          DEVELOP_VERSION: ${{ needs.get-npm-versions.outputs.develop_version }}
 
       - name: Set Final Status
         id: set-status
-        uses: actions/github-script@v7.0.1
+        # Always run this step to report the final status
+        if: always()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }} # Not strictly needed for this script, but good practice if future logic needs it
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const compareResult = "${{ steps.compare-versions.outputs.comparison-result }}";
             const checkPrSuccess = "${{ steps.check-pr.outputs.success }}";
             const checkPrExists = "${{ steps.check-pr.outputs.exists }}";
             const ensureLabelsSuccess = "${{ steps.ensure-labels.outputs.success }}";
-            const createPrOutcome = "${{ steps.create-pr.outcome }}";
-            const createPrUrl = "${{ steps.create-pr.outputs.pr_url }}";
+            // Use the outcome and URL from the new script step
+            const createPrOutcome = "${{ steps.create-pr-script.outputs.outcome }}";
+            const createPrUrl = "${{ steps.create-pr-script.outputs.pr_url }}";
             const developVersion = "${{ needs.get-npm-versions.outputs.develop_version }}";
             const mainVersion = "${{ needs.get-npm-versions.outputs.main_version }}";
 
-            let status = "skipped_version_compare";
-            let prUrl = "";
+            let status = "unknown"; // Default status
+            let prUrl = createPrUrl || "";
 
             core.info(`Initial evaluation: compareResult='${compareResult}', checkPrSuccess='${checkPrSuccess}', checkPrExists='${checkPrExists}', ensureLabelsSuccess='${ensureLabelsSuccess}', createPrOutcome='${createPrOutcome}'`);
 
-            if (compareResult === '<') {
+            if (compareResult === '>') {
               if (checkPrSuccess === 'true') {
                 if (checkPrExists !== '0') {
                   status = "exists";
                   core.info(`Status update: PR already exists (checkPrExists=${checkPrExists}). Setting status to '${status}'.`);
                 } else { // No existing PR
                   if (ensureLabelsSuccess === 'true') {
+                    // Check the outcome of the create-pr-script step
                     if (createPrOutcome === 'success') {
                       status = "created";
-                      if (createPrUrl) {
-                        prUrl = createPrUrl;
-                        core.info(`Status update: PR creation successful (createPrOutcome=${createPrOutcome}). Setting status to '${status}' and pr_url.`);
-                      } else {
-                        core.warning("create-pr step succeeded but did not output pr_url.");
-                        core.info(`Status update: PR creation successful but no URL output. Setting status to '${status}'.`);
-                      }
-                    } else { // create-pr failed
+                      core.info(`Status update: PR creation successful. Setting status to '${status}' and pr_url.`);
+                    } else if (createPrOutcome === 'error') {
                       status = "error_create_pr";
-                      core.error(`Create PR step failed (outcome: ${createPrOutcome}). Setting status to '${status}'.`);
+                      core.error(`Create PR script failed. Setting status to '${status}'.`);
+                    } else {
+                      // This case should ideally not happen if the script step ran
+                      status = "skipped_create_pr_script"; // Indicates the script step itself was skipped or didn't output 'success'/'error'
+                      core.warning(`Create PR script outcome was neither 'success' nor 'error' ('${createPrOutcome}'). Setting status to '${status}'.`);
                     }
                   } else { // ensure-labels failed
-                    status = "skipped_label_fail"; // Match bash script status
+                    status = "skipped_label_fail";
                     core.error(`Ensure Labels step failed (success: ${ensureLabelsSuccess}). Setting status to '${status}'.`);
                   }
                 }
@@ -283,22 +337,26 @@ jobs:
                 status = "error_check_pr";
                 core.error(`Check PR step failed (success: ${checkPrSuccess}). Setting status to '${status}'.`);
               }
-            } else { // Version comparison did not result in '<'
-              core.info(`Skipping PR creation: develop version (${developVersion}) is not less than main version (${mainVersion}). Comparison result: ${compareResult}`);
-              status = "skipped_version_compare"; // Explicitly set, though it's the default
+            } else { // Version comparison did not result in '>'
+              core.info(`Skipping PR creation: develop version (${developVersion}) is not greater than main version (${mainVersion}). Comparison result: ${compareResult}`);
+              status = "skipped_version_compare";
+            }
+
+            // Override status if the create-pr-script step was explicitly skipped by its 'if' condition
+            if (compareResult !== '>' || checkPrSuccess !== 'true' || checkPrExists !== '0' || ensureLabelsSuccess !== 'true') {
+                if (status === 'unknown') { // Only override if not already set by inner logic
+                    status = 'skipped_precondition_fail';
+                    core.info(`Create PR script step preconditions not met. Setting status to '${status}'.`);
+                }
             }
 
             core.info(`Final Status determined: ${status}`);
             core.setOutput('status', status);
             core.setOutput('pr_url', prUrl);
 
-            // Optional: Fail the action step if a critical error occurred - matching commented-out bash behavior (log error, don't fail)
-            if (status.startsWith('error_')) {
-              core.error(`Workflow action encountered an error state: ${status}`);
-              // core.setFailed(`Workflow action encountered an error: ${status}`); // Would fail the step
-            } else if (status === 'skipped_label_fail') {
-                // The original bash script logged an error here too.
-                core.error(`Workflow action skipped PR due to label failure: ${status}`);
+            // Log errors based on status
+            if (status.startsWith('error_') || status === 'skipped_label_fail') {
+              core.error(`Workflow action encountered an issue: ${status}`);
             }
 
   pyre:
@@ -312,7 +370,10 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: develop
+          fetch-depth: 0
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
@@ -325,9 +386,15 @@ jobs:
           poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
 
       - name: Run Pyre Action
-        uses: facebook/pyre-action@v0.0.2
+        uses: facebook/pyre-action@12b8d923443ea66cb657facc2e5faac1c8c86e64 # v0.0.2
         with:
           repo-directory: "./"
           requirements-path: "requirements.txt"
-        timeout-minutes: 120
+        timeout-minutes: 30
         continue-on-error: true
+
+      - name: Convert SARIF to Markdown Summary
+        uses: ./.github/actions/convert-sarif-to-summary
+        with:
+          sarif-path: sarif.json
+          summary-title: "Pyre Static Analysis Results"

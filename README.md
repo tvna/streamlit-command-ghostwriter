@@ -266,9 +266,9 @@ tar -czf {{ file.name }}.tar.gz {{ file.path }}
 [streamlit-img]: https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white
 [streamlit-cloud-img]: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
 [streamlit-cloud-link]: https://command-ghostwriter.streamlit.app/
-[build-link]: https://github.com/tvna/command-ghostwriter/actions/workflows/test-and-build-on-push.yml
-[build-img]: https://github.com/tvna/command-ghostwriter/actions/workflows/test-and-build-on-push.yml/badge.svg?branch=main
-[codecov-link]: https://codecov.io/gh/tvna/streamlit-command-ghostwriter
-[codecov-img]: https://codecov.io/gh/tvna/streamlit-command-ghostwriter/graph/badge.svg?token=I2LDXQHXB5
+[build-link]: https://github.com/tvna/command-ghostwriter/actions/workflows/test-and-build-on-merged.yml
+[build-img]: https://github.com/tvna/command-ghostwriter/actions/workflows/test-and-build-on-merged.yml/badge.svg?branch=main&event=push
+[codecov-link]: https://codecov.io/gh/tvna/command-ghostwriter
+[codecov-img]: https://codecov.io/gh/tvna/command-ghostwriter/graph/badge.svg?token=I2LDXQHXB5
 [license-link]: https://github.com/tvna/streamlit-command-ghostwriter/blob/main/LICENSE
 [license-img]: https://img.shields.io/badge/license-MIT-blue

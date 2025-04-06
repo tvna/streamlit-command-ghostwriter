@@ -73,13 +73,34 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+
+      - name: Lint yaml files by yamllint
+        run: |
+          CONFIG="${RUNNER_TEMP}/.yamllint.yml"
+          cat <<EOF >"${CONFIG}"
+          extends: default
+          rules:
+            document-start: disable
+            truthy:
+              allowed-values: ["true", "false", "on"]
+            comments:
+              min-spaces-from-content: 1
+            braces:
+              max-spaces-inside: 1
+            line-length:
+              max: 250
+          EOF
+          if [ -e ".yamllint.yml" ]; then
+            CONFIG=".yamllint.yml"
+          fi
+          yamllint --strict --format github --config-file "${CONFIG}" ./.github/
 
       - name: Download and run actionlint
         run: |
@@ -107,7 +128,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -119,7 +140,13 @@ jobs:
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2.3.7
+        uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
+
+      - name: Convert SARIF to Markdown Summary
+        uses: ./.github/actions/convert-sarif-to-summary
+        with:
+          sarif-path: results.sarif
+          summary-title: "Gitleaks Analysis Results"
 
   guard-python:
     name: Guard Python
@@ -134,7 +161,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -171,7 +198,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -228,7 +255,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -245,7 +272,22 @@ jobs:
       - name: Run Unit Tests
         run: |
           # 通常のテスト実行 (カバレッジ有、ベンチマークなし)
-          poetry run pytest -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=xml --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=5 --verbose -k "not e2e" --benchmark-disable
+          cmd_array=(
+            poetry run pytest -n auto
+            --cov=app.py
+            --cov=features
+            --cov=i18n
+            --cov=scripts
+            --cov-report=xml
+            --cov-report=term
+            --dist loadfile
+            --durations=10
+            --cache-clear
+            --maxfail=5
+            --verbose -k 'not e2e'
+            --benchmark-disable
+          )
+          "${cmd_array[@]}"
 
   test-coverage:
     name: Coverage
@@ -259,7 +301,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -281,13 +323,13 @@ jobs:
           codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
 
       - name: Upload Coverage Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-reports
           path: |
             coverage.xml
             htmlcov/
-          retention-days: 5
+          retention-days: 3
 
   test-e2e:
     name: E2E Tests (${{ matrix.os }} & ${{ matrix.browser }})
@@ -317,7 +359,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: false
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
         timeout-minutes: 5
 
@@ -358,7 +400,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -374,7 +416,17 @@ jobs:
 
       - name: Run lizard (analyze CCN for production codes)
         run: |
-          poetry run lizard -x "./node_modules/*" -x "./.venv/*" -x "./build/*" -x "./dist/*" -x "./htmlcov/*" -x "./tests/*" --CCN "${LIZARD_CCN_COUNT}"
+          cmd_array=(
+            poetry run lizard
+            -x './node_modules/*'
+            -x './.venv/*'
+            -x './build/*'
+            -x './dist/*'
+            -x './htmlcov/*'
+            -x './tests/*'
+            --CCN "${LIZARD_CCN_COUNT}" # Quote variable expansion for safety
+          )
+          "${cmd_array[@]}"
 
       - name: Show AST (app.py)
         run: |
@@ -422,7 +474,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -440,15 +492,6 @@ jobs:
         uses: ./.github/actions/build-stlite
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: desktop-app-${{ matrix.os }}
-          path: |
-            dist/
-            build/
-          retention-days: 5
 
   # ============================================================
   # WORKFLOW SUMMARY
@@ -469,7 +512,7 @@ jobs:
         with:
           egress-policy: audit
           disable-sudo: true
-          disable-file-monitoring: false
+          disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - id: set-result

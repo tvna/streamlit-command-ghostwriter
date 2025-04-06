@@ -33,17 +33,17 @@ Typical usage example:
 import os
 import sys
 import tempfile
-from typing import List, Optional
+from typing import Dict, Final, List, Optional
 
 from box import Box
-from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import FileChooser, Locator, Page, expect
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from i18n import LANGUAGES
 
 # 言語リソースの設定
-DEFAULT_LANGUAGE = "日本語"
-texts = Box(LANGUAGES[DEFAULT_LANGUAGE])
+DEFAULT_LANGUAGE: Final[str] = "日本語"
+texts: Final[Box] = Box(LANGUAGES[DEFAULT_LANGUAGE])
 
 
 class TestData:
@@ -75,14 +75,14 @@ class TestData:
     """
 
     # サンプルテキストファイル
-    SAMPLE_TXT = """This is a sample text file for testing file uploads in the Streamlit application.
+    SAMPLE_TXT: Final[str] = """This is a sample text file for testing file uploads in the Streamlit application.
 
 It contains multiple lines of text to simulate a real file.
 
 You can use this file to test the file upload functionality in your E2E tests."""
 
     # DNS設定ファイル (CSV)
-    DNS_DIG_CONFIG_CSV = """resolver,fqdn,type
+    DNS_DIG_CONFIG_CSV: Final[str] = """resolver,fqdn,type
 1.1.1.1,www.yahoo.co.jp,a
 1.1.1.1,yahoo.co.jp,mx
 1.1.1.1,yahoo.co.jp,txt
@@ -93,13 +93,13 @@ You can use this file to test the file upload functionality in your E2E tests.""
 ,selector2._domainkey.live.com,txt"""
 
     # DNSテンプレートファイル (Jinja2)
-    DNS_DIG_TMPL_J2 = """
+    DNS_DIG_TMPL_J2: Final[str] = """
 {% for row in csv_rows %}
 dig @{{ row["resolver"] }} {{ row["fqdn"] }} {{ row["type"] }} +short
 {% endfor %}"""
 
     # 成功設定ファイル (YAML)
-    WGET_CONFIG_YAML = """url: "https://example.com/samplefile.txt"
+    WGET_CONFIG_YAML: Final[str] = """url: "https://example.com/samplefile.txt"
 date: 2024-04-01
 
 users:
@@ -109,7 +109,7 @@ users:
 """
 
     # 成功テンプレートファイル (Jinja2)
-    WGET_TEMPLATE_J2 = """# wget operation
+    WGET_TEMPLATE_J2: Final[str] = """# wget operation
 
 ```bash
 wget {{ url }}
@@ -126,7 +126,7 @@ flowchart LR
 ```"""
 
     # Cisco設定ファイル (TOML)
-    CISCO_CONFIG_TOML = """[global]
+    CISCO_CONFIG_TOML: Final[str] = """[global]
 hostname = "SAMPLE-ROUTER-001"
 vlans = [10, 20, 30, 99]
 
@@ -174,7 +174,7 @@ description = "uplink #1"
 cdp_enable = true"""
 
     # Ciscoテンプレートファイル (Jinja2)
-    CISCO_TEMPLATE_JINJA2 = """enable
+    CISCO_TEMPLATE_JINJA2: Final[str] = """enable
 {{ global.password.enable }}
 
 ter len 0
@@ -256,8 +256,10 @@ show startup-config"""
             test_file_path = TestData.get_test_file_path("config.toml")
             helper.upload_file(selector, test_file_path)
         """
-        content = cls._get_file_content(file_name)
+        content: Final[str] = cls._get_file_content(file_name)
 
+        fd: int
+        path: str
         fd, path = tempfile.mkstemp(suffix=f"_{file_name}")
         with os.fdopen(fd, "w") as f:
             f.write(content)
@@ -275,7 +277,7 @@ show startup-config"""
             str: ファイルの内容
                 対応するファイルが存在しない場合は空文字列
         """
-        file_content_map = {
+        file_content_map: Final[Dict[str, str]] = {
             "sample.txt": cls.SAMPLE_TXT,
             "dns_dig_config.csv": cls.DNS_DIG_CONFIG_CSV,
             "dns_dig_tmpl.j2": cls.DNS_DIG_TMPL_J2,
@@ -344,16 +346,16 @@ class StreamlitTestHelper:
             - ファイル選択ダイアログを処理
             - アップロード完了を待機
         """
-        upload_container = self.page.locator(upload_container_selector).first
+        upload_container: Final[Locator] = self.page.locator(upload_container_selector).first
         expect(upload_container).to_be_visible()
 
-        upload_button = upload_container.locator("button:has-text('Browse files')").first
+        upload_button: Final[Locator] = upload_container.locator("button:has-text('Browse files')").first
         expect(upload_button).to_be_visible()
 
-        test_file_path = TestData.get_test_file_path(file_name)
+        test_file_path: str = TestData.get_test_file_path(file_name)
         with self.page.expect_file_chooser() as fc_info:
             upload_button.click()
-        file_chooser = fc_info.value
+        file_chooser: Final[FileChooser] = fc_info.value
         file_chooser.set_files(test_file_path)
 
         self.wait_for_ui_stabilization()
@@ -369,14 +371,14 @@ class StreamlitTestHelper:
             - タブパネルの表示を確認
             - 切り替え完了を待機
         """
-        tab_button = self.page.locator(f"button[role='tab']:has-text('{tab_name}')").first
+        tab_button: Final[Locator] = self.page.locator(f"button[role='tab']:has-text('{tab_name}')").first
         expect(tab_button).to_be_visible()
         tab_button.click()
 
         self.page.wait_for_timeout(self.default_wait_time)
         self.page.wait_for_load_state("networkidle")
 
-        tab_panel = self.page.locator("div[role='tabpanel']:visible").first
+        tab_panel: Final[Locator] = self.page.locator("div[role='tabpanel']:visible").first
         expect(tab_panel).to_be_visible()
 
     def click_button(self, button_text: str) -> None:
@@ -389,7 +391,7 @@ class StreamlitTestHelper:
             - ボタンの表示を確認
             - クリック完了を待機
         """
-        button = self.page.locator(f"button:has-text('{button_text}')").first
+        button: Final[Locator] = self.page.locator(f"button:has-text('{button_text}')").first
         expect(button).to_be_visible()
         button.click()
 
@@ -413,10 +415,10 @@ class StreamlitTestHelper:
             result = helper.check_result_displayed(["設定", "完了"])
             assert "エラー" not in result
         """
-        result_area = self.page.locator("div.element-container").filter(has=self.page.locator("div.stMarkdown")).first
+        result_area: Final[Locator] = self.page.locator("div.element-container").filter(has=self.page.locator("div.stMarkdown")).first
         expect(result_area).to_be_visible()
 
-        result_text = result_area.inner_text()
+        result_text: Final[str] = result_area.inner_text()
 
         assert len(result_text) > 0, "No result content is displayed"
 
@@ -442,34 +444,34 @@ class StreamlitTestHelper:
             - 各ファイルのアップロードを実行
             - アップロード後のファイル名表示を確認
         """
-        upload_containers = self.page.locator("div[data-testid='stFileUploader']").all()
+        upload_containers: Final[List[Locator]] = self.page.locator("div[data-testid='stFileUploader']").all()
         assert len(upload_containers) > 1, "Not enough file uploaders found (expected at least 2)"
 
-        config_upload_container = upload_containers[0]
-        config_upload_button = config_upload_container.locator("button:has-text('Browse files')").first
+        config_upload_container: Final[Locator] = upload_containers[0]
+        config_upload_button: Final[Locator] = config_upload_container.locator("button:has-text('Browse files')").first
         expect(config_upload_button).to_be_visible()
 
-        config_file_path = TestData.get_test_file_path(config_file)
+        config_file_path: str = TestData.get_test_file_path(config_file)
         with self.page.expect_file_chooser() as fc_info:
             config_upload_button.click()
-        file_chooser = fc_info.value
-        file_chooser.set_files(config_file_path)
+        config_file_chooser: Final[FileChooser] = fc_info.value
+        config_file_chooser.set_files(config_file_path)
 
         self.wait_for_ui_stabilization()
 
-        jinja_upload_container = upload_containers[1]
-        jinja_upload_button = jinja_upload_container.locator("button:has-text('Browse files')").first
+        jinja_upload_container: Final[Locator] = upload_containers[1]
+        jinja_upload_button: Final[Locator] = jinja_upload_container.locator("button:has-text('Browse files')").first
         expect(jinja_upload_button).to_be_visible()
 
-        jinja_file_path = TestData.get_test_file_path(template_file)
+        jinja_file_path: str = TestData.get_test_file_path(template_file)
         with self.page.expect_file_chooser() as fc_info:
             jinja_upload_button.click()
-        file_chooser = fc_info.value
-        file_chooser.set_files(jinja_file_path)
+        template_file_chooser: Final[FileChooser] = fc_info.value
+        template_file_chooser.set_files(jinja_file_path)
 
         self.wait_for_ui_stabilization()
 
-        config_text = config_upload_container.inner_text()
+        config_text: Final[str] = config_upload_container.inner_text()
         assert config_file in config_text, f"Config file name not displayed.\nExpected: {config_file}\nActual text: {config_text}"
 
         jinja_text = jinja_upload_container.inner_text()
@@ -487,13 +489,13 @@ class StreamlitTestHelper:
         Returns:
             Locator: ボタンのLocatorオブジェクト
         """
-        format_button_map = {
+        format_button_map: Final[Dict[str, str]] = {
             "visual": texts.tab2.generate_visual_button,
             "toml": texts.tab2.generate_toml_button,
             "yaml": texts.tab2.generate_yaml_button,
         }
-        button_text = format_button_map[display_format]
-        display_button = self.page.locator(f"button:has-text('{button_text}')").first
+        button_text: Final[str] = format_button_map[display_format]
+        display_button: Final[Locator] = self.page.locator(f"button:has-text('{button_text}')").first
         return display_button
 
     def get_result_text(self, tab_panel: Locator, display_format: str) -> str:
@@ -514,21 +516,22 @@ class StreamlitTestHelper:
             - TOML/YAML形式: テキストエリアから取得
             - 上記で取得できない場合: マークダウン要素から取得
         """
-        result_text = ""
+        result_text: str = ""
+        area_text: str = ""
 
         if display_format == "visual":
-            json_container = tab_panel.locator("div[data-testid='stJson']").first
+            json_container: Final[Locator] = tab_panel.locator("div[data-testid='stJson']").first
             if json_container.count() > 0:
                 return json_container.inner_text()
 
-        text_areas = tab_panel.locator("textarea").all()
+        text_areas: Final[List[Locator]] = tab_panel.locator("textarea").all()
         for text_area in text_areas:
             area_text = text_area.input_value()
             if area_text:
                 result_text += area_text + "\n"
 
         if not result_text:
-            markdown_areas = tab_panel.locator("div.stMarkdown").all()
+            markdown_areas: Final[List[Locator]] = tab_panel.locator("div.stMarkdown").all()
             for area in markdown_areas:
                 area_text = area.inner_text()
                 if area_text and not area_text.startswith(texts.tab2.upload_debug_config):
@@ -566,18 +569,18 @@ class StreamlitTestHelper:
             - 現在表示中のタブパネルにあるアップロード要素を使用
             - アップロード完了を待機
         """
-        tab_panel = self.page.locator("div[role='tabpanel']:visible").first
+        tab_panel: Final[Locator] = self.page.locator("div[role='tabpanel']:visible").first
 
-        upload_container = tab_panel.locator("div[data-testid='stFileUploader']").first
+        upload_container: Final[Locator] = tab_panel.locator("div[data-testid='stFileUploader']").first
         expect(upload_container).to_be_visible()
 
-        upload_button = upload_container.locator("button:has-text('Browse files')").first
+        upload_button: Final[Locator] = upload_container.locator("button:has-text('Browse files')").first
         expect(upload_button).to_be_visible()
 
-        test_file_path = TestData.get_test_file_path(file_name)
+        test_file_path: str = TestData.get_test_file_path(file_name)
         with self.page.expect_file_chooser() as fc_info:
             upload_button.click()
-        file_chooser = fc_info.value
+        file_chooser: Final[FileChooser] = fc_info.value
         file_chooser.set_files(test_file_path)
 
         self.page.wait_for_load_state("networkidle")

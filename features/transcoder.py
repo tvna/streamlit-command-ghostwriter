@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import TYPE_CHECKING, Final, List, Optional
+from typing import TYPE_CHECKING, ClassVar, Final, List, Optional
 
 import chardet
 from pydantic import BaseModel, PrivateAttr
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class TextTranscoder(BaseModel):
-    KNOWN_ENCODES: Final[List[str]] = ["ASCII", "Shift_JIS", "EUC-JP", "ISO-2022-JP", "utf-8"]
+    KNOWN_ENCODES: ClassVar[List[str]] = ["ASCII", "Shift_JIS", "EUC-JP", "ISO-2022-JP", "utf-8"]
 
     _filename: Optional[str] = PrivateAttr(default=None)
     _import_file: BytesIO = PrivateAttr()

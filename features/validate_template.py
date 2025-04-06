@@ -20,12 +20,14 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     List,
     Optional,
     Protocol,
     Set,
     Tuple,
     Type,
+    TypeAlias,
     TypeVar,
     Union,
     cast,
@@ -38,23 +40,24 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     ValidationError,
     field_validator,
 )
 
-from features.validate_uploaded_file import FileSizeConfig, FileValidator
+from .validate_uploaded_file import FileSizeConfig, FileValidator
 
 T = TypeVar("T")
 NodeT = TypeVar("NodeT", bound=nodes.Node)
 
 # Type definitions for container validation
-ContainerValueType = Union[str, Decimal, bool, None]
-ContainerListType = List[Union[ContainerValueType, "ContainerListType", "ContainerDictType"]]  # type: ignore
-ContainerDictType = Dict[str, Union[ContainerValueType, ContainerListType, "ContainerDictType"]]  # type: ignore
-ContainerType = Union[ContainerValueType, ContainerListType, ContainerDictType]
+ContainerValueType: TypeAlias = Union[str, Decimal, bool, None]
+ContainerListType: TypeAlias = List[Union[ContainerValueType, "ContainerListType", "ContainerDictType"]]  # type: ignore
+ContainerDictType: TypeAlias = Dict[str, Union[ContainerValueType, ContainerListType, "ContainerDictType"]]  # type: ignore
+ContainerType: TypeAlias = Union[ContainerValueType, ContainerListType, ContainerDictType]
 
 # Type definition for evaluated values
-EvaluatedValue = Union[str, Decimal, List[Any], Dict[str, Any], bool, None]
+EvaluatedValue: TypeAlias = Union[str, Decimal, List[Any], Dict[str, Any], bool, None]
 
 
 # Type definition for node evaluator function
@@ -62,7 +65,7 @@ class NodeEvaluatorProtocol(Protocol):
     def __call__(self, node: nodes.Node, context: Dict[str, Any], assignments: Dict[str, Any]) -> EvaluatedValue: ...
 
 
-NodeEvaluatorFunc = NodeEvaluatorProtocol
+NodeEvaluatorFunc: TypeAlias = NodeEvaluatorProtocol
 
 
 class TemplateConfig(BaseModel):
@@ -166,7 +169,7 @@ class ValidationState(BaseModel):
 
 
 # Type definition for node validators
-NodeValidator = Callable[[nodes.Node, Dict[str, Any], Dict[str, Any], ValidationState], bool]
+NodeValidator: TypeAlias = Callable[[nodes.Node, Dict[str, Any], Dict[str, Any], ValidationState], bool]
 
 
 class HTMLContent(BaseModel):
@@ -190,11 +193,9 @@ class HTMLContent(BaseModel):
         Raises:
             ValueError: 安全でないHTML要素が含まれる場合
         """
-        if not isinstance(v, str):
-            raise ValueError("HTML content must be a string")
 
         # 安全でないHTMLパターンをチェック
-        unsafe_patterns = [
+        unsafe_patterns: Final[List[str]] = [
             r"<script",  # スクリプトタグ
             r"javascript:",  # JavaScriptプロトコル
             r"data:",  # データURIスキーム
@@ -209,7 +210,7 @@ class HTMLContent(BaseModel):
         return v
 
 
-class TemplateSecurityValidator:
+class TemplateSecurityValidator(BaseModel):
     """テンプレートのセキュリティ検証を行うクラス。
 
     テンプレートの構文、セキュリティ、および構造を検証します。
@@ -227,15 +228,37 @@ class TemplateSecurityValidator:
 
     Attributes:
         config: テンプレート設定
+        max_file_size_bytes: ファイルサイズの最大バイト数
+        max_memory_size_bytes: メモリサイズの最大バイト数
     """
 
-    def __init__(self, max_file_size_bytes: int, max_memory_size_bytes: int) -> None:
-        """初期化。"""
-        self.config = TemplateConfig()
-        self._validation_state = ValidationState()
-        self._max_file_size_bytes = max_file_size_bytes
-        self._max_memory_size_bytes = max_memory_size_bytes
+    # --- Pydantic Model Configuration ---
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # Allow custom types if needed
 
+    # --- Public Fields (Configuration) ---
+    config: TemplateConfig = Field(default_factory=TemplateConfig)
+    max_file_size_bytes: int = Field(gt=0)
+    max_memory_size_bytes: int = Field(gt=0)
+
+    # --- Private Fields (Internal State) ---
+    _validation_state: ValidationState = PrivateAttr(default_factory=ValidationState)
+
+    # --- Initialization (Pydantic handles default initialization) ---
+    # The __init__ method is no longer strictly necessary for basic field setting,
+    # as Pydantic handles it based on the field definitions.
+    # We keep it if custom initialization logic beyond Pydantic's is needed,
+    # but for this conversion, we'll rely on Pydantic's default __init__.
+
+    # The original __init__ is removed:
+    # def __init__(self, max_file_size_bytes: int, max_memory_size_bytes: int) -> None:
+    #     """初期化。"""
+    #     super().__init__(max_file_size_bytes=max_file_size_bytes, max_memory_size_bytes=max_memory_size_bytes)
+    # self.config: Final[TemplateConfig] = TemplateConfig() # Handled by Field default_factory
+    # self._validation_state: Final[ValidationState] = ValidationState() # Handled by PrivateAttr default_factory
+    # self._max_file_size_bytes: Final[int] = max_file_size_bytes # Handled by Field
+    # self._max_memory_size_bytes: Final[int] = max_memory_size_bytes # Handled by Field
+
+    # --- Properties (Accessing Config) ---
     @property
     def max_range_size(self) -> int:
         """最大range値を返す。"""
@@ -261,7 +284,7 @@ class TemplateSecurityValidator:
         Returns:
             ValidationState: 検証結果
         """
-        validation_state = ValidationState()
+        validation_state: Final[ValidationState] = ValidationState()
         assignments: Dict[str, Any] = {}
 
         try:
@@ -309,7 +332,7 @@ class TemplateSecurityValidator:
         }
 
         for node in ast.find_all((nodes.Assign, nodes.For, nodes.Call)):
-            validator = node_validators.get(type(node))
+            validator: Optional[NodeValidator] = node_validators.get(type(node))
             if validator:
                 try:
                     if not validator(node, context, assignments, validation_state):
@@ -338,8 +361,8 @@ class TemplateSecurityValidator:
             bool: 検証が成功したかどうか
         """
         if isinstance(node.target, nodes.Name):
-            target_name = node.target.name
-            value = self._evaluate_expression(node.node, context, assignments)
+            target_name: Final[str] = node.target.name
+            value: Final[EvaluatedValue] = self._evaluate_expression(node.node, context, assignments)
             assignments[target_name] = value
             return True
         return True
@@ -359,7 +382,7 @@ class TemplateSecurityValidator:
             bool: 検証が成功したかどうか
         """
         if isinstance(node.iter, nodes.Name):
-            iter_name = node.iter.name
+            iter_name: Final[str] = node.iter.name
             if iter_name in assignments:
                 self._evaluate_expression(node.iter, context, assignments)
         return True
@@ -397,7 +420,7 @@ class TemplateSecurityValidator:
         """
         for node in ast.find_all(nodes.Div):
             try:
-                right_value = self._evaluate_expression(node.right, context, assignments)
+                right_value: Final[EvaluatedValue] = self._evaluate_expression(node.right, context, assignments)
                 if right_value == 0:
                     validation_state.set_error("Template security error: division by zero is not allowed")
                     return False
@@ -419,7 +442,7 @@ class TemplateSecurityValidator:
             ValueError: 安全でないHTML要素が含まれる場合
         """
         try:
-            html_content = HTMLContent(content=value)
+            html_content: Final[HTMLContent] = HTMLContent(content=value)
             return Markup("").join(html_content.content)
         except ValidationError as e:
             raise ValueError(str(e)) from e
@@ -442,7 +465,7 @@ class TemplateSecurityValidator:
                     return True
 
                 # オブジェクトのIDを取得
-                obj_id = id(v)
+                obj_id: Final[int] = id(v)
                 if obj_id in seen:
                     return True
 
@@ -477,7 +500,7 @@ class TemplateSecurityValidator:
         seen = seen or set()
 
         # 循環参照の検出を防ぐ
-        container_id = id(container)
+        container_id: Final[int] = id(container)
         if container_id in seen:
             return False
         seen.add(container_id)
@@ -591,7 +614,7 @@ class TemplateSecurityValidator:
             nodes.Getattr: self._evaluate_getattr,
             nodes.BinExpr: self._evaluate_binexpr,
         }
-        evaluator = evaluators.get(type(node))
+        evaluator: Optional[NodeEvaluatorFunc] = evaluators.get(type(node))
         return cast("Optional[NodeEvaluatorFunc]", evaluator) if evaluator is not None else None
 
     def _evaluate_name(
@@ -610,7 +633,7 @@ class TemplateSecurityValidator:
         Returns:
             Optional[EvaluatedValue]: 評価結果 [変数の値またはNone]
         """
-        name = node.name
+        name: Final[str] = node.name
         if name in assignments:
             value = assignments[name]
             if isinstance(value, (type(None), str, Decimal, list, dict, bool)):
@@ -722,10 +745,10 @@ class TemplateSecurityValidator:
             TypeError: 評価中にエラーが発生した場合
         """
         # メソッドが呼び出されるオブジェクトを評価
-        obj = self._evaluate_expression(node.node, context, assignments)
+        obj: Final[EvaluatedValue] = self._evaluate_expression(node.node, context, assignments)
 
         # 引数を評価
-        args = self._evaluate_call_arguments(node, context, assignments)
+        args: Final[List[Any]] = self._evaluate_call_arguments(node, context, assignments)
 
         # 再帰チェック
         if isinstance(obj, (list, dict)):
@@ -821,7 +844,7 @@ class TemplateSecurityValidator:
         Returns:
             Optional[EvaluatedValue]: 評価結果 [属性の値またはNone]
         """
-        obj = self._evaluate_expression(node.node, context, assignments)
+        obj: Final[EvaluatedValue] = self._evaluate_expression(node.node, context, assignments)
         if obj is None:
             return None
 
@@ -925,7 +948,7 @@ class TemplateSecurityValidator:
             nodes.Pow: lambda a, b: Decimal(pow(float(a), float(b))),
         }
 
-        operator_func = operator_map.get(type(node))
+        operator_func: Optional[Callable[[Decimal, Decimal], Decimal]] = operator_map.get(type(node))
         if operator_func is None:
             raise TypeError(f"Unsupported binary operator: {type(node).__name__}")
 
@@ -962,7 +985,7 @@ class TemplateSecurityValidator:
 
     def _check_getattr(self, node: nodes.Getattr, validation_state: ValidationState) -> bool:
         """Getattrノードを検証する。"""
-        attribute_name = node.attr
+        attribute_name: Final[str] = node.attr
         if attribute_name in self.restricted_attributes:
             validation_state.set_error(
                 f"Template security validation failed: Access to restricted attribute '{attribute_name}' is forbidden."
@@ -973,7 +996,7 @@ class TemplateSecurityValidator:
     def _check_getitem(self, node: nodes.Getitem, validation_state: ValidationState) -> bool:
         """Getitemノードを検証する。"""
         if isinstance(node.arg, nodes.Const) and isinstance(node.arg.value, str):
-            attribute_name = node.arg.value
+            attribute_name: Final[str] = node.arg.value
             if attribute_name in self.restricted_attributes:
                 validation_state.set_error(
                     f"Template security validation failed: Access to restricted item '{attribute_name}' is forbidden."
@@ -983,7 +1006,7 @@ class TemplateSecurityValidator:
 
     def _check_name(self, node: nodes.Name, validation_state: ValidationState) -> bool:
         """Nameノードを検証する。"""
-        variable_name = node.name
+        variable_name: Final[str] = node.name
         if variable_name in self.restricted_attributes:
             validation_state.set_error(f"Template security validation failed: Use of restricted variable '{variable_name}' is forbidden.")
             return False
@@ -992,7 +1015,7 @@ class TemplateSecurityValidator:
     def _check_call(self, node: nodes.Call, validation_state: ValidationState) -> bool:
         """Callノードを検証する。"""
         if isinstance(node.node, nodes.Name):
-            function_name = node.node.name
+            function_name: Final[str] = node.node.name
             if function_name in self.restricted_attributes:
                 validation_state.set_error(
                     f"Template security validation failed: Call to restricted function '{function_name}()' is forbidden."
@@ -1004,7 +1027,7 @@ class TemplateSecurityValidator:
         """Assignノードを検証する。"""
         # Check if the assigned value is a restricted name
         if isinstance(node.node, nodes.Name) and node.node.name in self.restricted_attributes:
-            variable_name = node.node.name
+            variable_name: Final[str] = node.node.name
             validation_state.set_error(
                 f"Template security validation failed: Assignment of restricted variable '{variable_name}' is forbidden."
             )
@@ -1015,7 +1038,7 @@ class TemplateSecurityValidator:
             and isinstance(node.node.node, nodes.Name)
             and node.node.node.name in self.restricted_attributes
         ):
-            function_name = node.node.node.name
+            function_name: Final[str] = node.node.node.name
             validation_state.set_error(
                 f"Template security validation failed: Assignment involving restricted function '{function_name}()' is forbidden."
             )
@@ -1045,7 +1068,7 @@ class TemplateSecurityValidator:
 
         for node in nodes_to_check:
             node_type = type(node)
-            handler = handler_map.get(node_type)
+            handler: Optional[Callable[[Any, ValidationState], bool]] = handler_map.get(node_type)
 
             if handler:
                 # Note: We pass the specific node type expected by the handler.
@@ -1183,9 +1206,9 @@ class TemplateSecurityValidator:
             template_file.seek(current_pos)  # 元の位置に戻す
 
             # ファイルサイズの検証
-            file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self._max_file_size_bytes))
+            file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.max_file_size_bytes))
             if not file_validator.validate_size(template_file):
-                validation_state.set_error(f"Template file size exceeds maximum limit of {self._max_file_size_bytes} bytes")
+                validation_state.set_error(f"Template file size exceeds maximum limit of {self.max_file_size_bytes} bytes")
                 return None, None
 
             # バイナリデータのチェック

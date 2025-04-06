@@ -1,10 +1,8 @@
 ---
-name: Test and Build (on merged to main)
+name: Test and Build (main)
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - main
 
@@ -14,19 +12,19 @@ permissions:
   security-events: write
 
 jobs:
-  main:
+  test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: true
-      workflow_summary_name: "Workflow summary [Test & Build (on merged to main)]"
+      workflow_summary_name: "Workflow summary [Test & Build (main)]"
 
   create-tag:
-    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
-    needs: main
+    needs: test-and-build
     runs-on: ubuntu-latest
     outputs:
       tag_name: ${{ steps.set_tag_output.outputs.tag_name }}
+      commit_sha: ${{ steps.get_commit_sha.outputs.sha }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
@@ -35,31 +33,31 @@ jobs:
           disable-sudo: true
           disable-file-monitoring: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
-          ref: main
 
       - name: Get version from main
-        id: package-version-from-main
-        uses: step-security/npm-get-version-action@v1
+        id: get-main-ver
+        uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b # v1.3.1
 
       - name: Set ENV variables
         shell: bash
         run: |
           {
-            echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}"
-            echo "RELEASE_VERSION=${{ steps.package-version-from-main.outputs.current-version }}"
-            echo "TAG_NAME=v${{ steps.package-version-from-main.outputs.current-version }}"
+            echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}"
+            echo "RELEASE_VERSION=${{ steps.get-main-ver.outputs.current-version }}"
           } >> "$GITHUB_ENV"
 
       - name: Set tag_name output
         id: set_tag_output
-        run: echo "tag_name=${{ env.TAG_NAME }}" >> "$GITHUB_OUTPUT"
+        run: echo "tag_name=v${{ steps.get-main-ver.outputs.current-version }}" >> "$GITHUB_OUTPUT"
 
       - name: Push tag
         run: |
           # Check if tag already exists
+          TAG_NAME="v${{ steps.get-main-ver.outputs.current-version }}"
+
           if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
             # Create annotated tag
             git config --global user.name "github-actions[bot]"
@@ -70,6 +68,10 @@ jobs:
           else
             echo "Tag $TAG_NAME already exists"
           fi
+
+      - name: Get commit SHA
+        id: get_commit_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   upload-artifacts:
     needs: [create-tag]
@@ -83,26 +85,26 @@ jobs:
           disable-file-monitoring: true
 
       - name: Download macOS build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
-          name: desktop-app-macos-latest # Match artifact name from reusable-test-and-build
+          name: desktop-app-macOS
           path: artifacts/macos
 
       - name: Download Windows build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
-          name: desktop-app-windows-latest # Match artifact name from reusable-test-and-build
+          name: desktop-app-Windows
           path: artifacts/windows
 
       - name: Create Release with Artifacts
         id: create_release # Add an ID for potential future use
-        uses: step-security/action-gh-release@v2.2.1
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Explicitly pass token
         with:
           tag_name: ${{ needs.create-tag.outputs.tag_name }}
           generate_release_notes: true
-          target_commitish: main
+          target_commitish: ${{ needs.create-tag.outputs.commit_sha }}
           files: |
             artifacts/macos/**/*
             artifacts/windows/**/*

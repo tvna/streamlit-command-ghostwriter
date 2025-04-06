@@ -1,94 +1,121 @@
-name: 'Run E2E Tests (Playwright)'
-description: 'Run E2E tests with cache'
+# Workflow description:
+# 1. Restore Playwright browser cache based on OS, browser, and poetry.lock.
+# 2. Set Python environment variables for UTF-8 support.
+# 3. Install the specified Playwright browser and its dependencies using Poetry.
+# 4. Run E2E tests using pytest:
+#    - Uses pytest-xdist (`-n auto`) for parallel execution on non-Windows when not benchmarking.
+#    - Disables benchmarking if `inputs.is-benchmark` is false.
+#    - Handles UTF-8 setup specifically for Windows (chcp 65001).
+# 5. Run E2E benchmark tests using pytest if `inputs.is-benchmark` is true:
+#    - Disables parallel execution (`-n 0`) for accurate benchmarks.
+#    - Saves benchmark results automatically.
+# 6. Upload benchmark results as an artifact if `inputs.is-benchmark` is true and `inputs.browser` is 'chromium'.
+#
+# Usage example:
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       # ... other setup steps
+#       - name: Run E2E tests
+#         uses: ./.github/actions/test-python-playwright
+#         with:
+#           browser: chromium  # Required: specify the browser (chromium, firefox, webkit)
+#           is-benchmark: false # Optional: set to true to run benchmark tests (default: false)
+#
+---
+name: "Run E2E Tests (Playwright)"
+description: "Run E2E tests with cache"
 inputs:
   browser:
-    description: 'Browser to use'
+    description: "Browser to use"
     required: true
   is-benchmark:
-    description: 'Whether to run benchmark tests'
+    description: "Whether to run benchmark tests"
     required: false
     type: boolean
-    default: 'false'
+    default: "false"
 
 runs:
   using: "composite"
   steps:
-  - name: Restore cache Playwright browsers
-    uses: actions/cache@v4.2.3
-    id: playwright-cache
-    with:
-      path: |
-        ~/.cache/ms-playwright
-        ~/Library/Caches/ms-playwright
-        /home/runner/.cache/ms-playwright
-        /Users/runner/Library/Caches/ms-playwright
-        %USERPROFILE%\AppData\Local\ms-playwright
-      key: ${{ runner.os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
-      restore-keys: |
-        ${{ runner.os }}-playwright-${{ inputs.browser }}-
+    - name: Restore cache Playwright browsers
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      id: playwright-cache
+      with:
+        path: |
+          ~/.cache/ms-playwright
+          ~/Library/Caches/ms-playwright
+          /home/runner/.cache/ms-playwright
+          /Users/runner/Library/Caches/ms-playwright
+          %USERPROFILE%\AppData\Local\ms-playwright
+        key: ${{ runner.os }}-playwright-${{ inputs.browser }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-${{ inputs.browser }}-
 
-  - name: Set up UTF-8 environment
-    shell: bash
-    run: |
-      echo "PYTHONIOENCODING=utf-8" >> $GITHUB_ENV
-      echo "PYTHONUTF8=1" >> $GITHUB_ENV
+    - name: Set up UTF-8 environment
+      shell: bash
+      run: |
+        echo "PYTHONIOENCODING=utf-8" >> $GITHUB_ENV
+        echo "PYTHONUTF8=1" >> $GITHUB_ENV
 
-  - name: Install Playwright Browser
-    shell: bash
-    run: |
-      poetry run playwright install --with-deps ${{ inputs.browser }}
+    - name: Install Playwright Browser
+      shell: bash
+      run: |
+        poetry run playwright install --with-deps ${{ inputs.browser }}
 
-  - name: E2E Tests (${{ matrix.os }} / ${{ inputs.browser }})
-    if: |
-      inputs.is-benchmark == 'false' &&
-      runner.os != 'Windows'
-    id: e2e-tests-non-windows
-    shell: bash
-    run: |
-      # E2Eテスト実行 (ベンチマークなし)
-      poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
+    - name: E2E Tests (${{ matrix.os }} / ${{ inputs.browser }})
+      if: |
+        inputs.is-benchmark == 'false' &&
+        runner.os != 'Windows'
+      id: e2e-tests-non-windows
+      shell: bash
+      run: |
+        # E2Eテスト実行 (ベンチマークなし)
+        poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
 
-  - name: E2E Tests (${{ matrix.os }} / ${{ inputs.browser }})
-    if: |
-      inputs.is-benchmark == 'false' &&
-      runner.os == 'Windows'
-    id: e2e-tests-windows
-    shell: powershell
-    run: |
-      # Windows環境でUTF-8を使用するための設定
-      chcp 65001
+    - name: E2E Tests (${{ matrix.os }} / ${{ inputs.browser }})
+      if: |
+        inputs.is-benchmark == 'false' &&
+        runner.os == 'Windows'
+      id: e2e-tests-windows
+      shell: powershell
+      run: |
+        # Windows環境でUTF-8を使用するための設定
+        chcp 65001
 
-      # E2Eテスト実行 (ベンチマークなし)
-      poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
+        # E2Eテスト実行 (ベンチマークなし)
+        poetry run pytest -n auto -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-disable
 
-  - name: E2E benchmark (non-Windows)
-    if: |
-      inputs.is-benchmark == 'true' &&
-      runner.os != 'Windows'
-    shell: bash
-    run: |
-      # E2Eテストのベンチマーク実行
-      poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+    - name: E2E benchmark (non-Windows)
+      if: |
+        inputs.is-benchmark == 'true' &&
+        runner.os != 'Windows'
+      shell: bash
+      run: |
+        # E2Eテストのベンチマーク実行
+        poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
 
-  - name: E2E benchmark (Windows)
-    if: |
-      inputs.is-benchmark == 'true' &&
-      runner.os == 'Windows'
-    shell: powershell
-    run: |
-      # Windows環境でUTF-8を使用するための設定
-      chcp 65001
+    - name: E2E benchmark (Windows)
+      if: |
+        inputs.is-benchmark == 'true' &&
+        runner.os == 'Windows'
+      shell: powershell
+      run: |
+        # Windows環境でUTF-8を使用するための設定
+        chcp 65001
 
-      # E2Eテストのベンチマーク実行
-      poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+        # E2Eテストのベンチマーク実行
+        poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
 
-  - name: Upload Benchmark Results
-    if: |
-      inputs.is-benchmark == 'true' &&
-      inputs.browser == 'chromium'
-    uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-    with:
-      name: benchmark-results-${{ matrix.os }}-${{ env.GLOBAL_PYTHON_VERSION }}-${{ inputs.browser }}
-      path: .benchmarks/**/*.json
-      retention-days: 90
-      if-no-files-found: warn
+    - name: Upload Benchmark Results
+      if: |
+        inputs.is-benchmark == 'true' &&
+        inputs.browser == 'chromium'
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: benchmark-results-${{ matrix.os }}-${{ env.GLOBAL_PYTHON_VERSION }}-${{ inputs.browser }}
+        path: .benchmarks/**/*.json
+        retention-days: 90
+        if-no-files-found: warn

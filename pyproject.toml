@@ -15,7 +15,7 @@ jinja2 = "^3.1.6"
 pyyaml = "^6.0.1"
 chardet = "^5.2.0"
 python-box = "^7.2.0"
-pydantic = "^2.8.0"
+pydantic = "^2.11.2"
 toml = "^0.10.2"
 markupsafe = "^3.0.2"
 
@@ -49,6 +49,9 @@ pytest-item-dict = "^1.1.2"
 pytest-xml = "^0.1.1"
 data-to-xml = "^1.0.9"
 vulture = "^2.14"
+yamllint = "^1.37.0"
+types-psutil = "^7.0.0.20250401"
+types-requests = "^2.32.0.20250328"
 
 [tool.ruff]
 target-version = "py312"
@@ -114,6 +117,7 @@ lint.per-file-ignores."tests/*" = [
   "PT001", # Use @pytest.fixture{expected} over @pytest.fixture{actual}
   "PT023", # Use @pytest.mark.{mark_name}{expected_parens} over @pytest.mark.{mark_name}{actual_parens}
   "S101",  # Use of assert detected
+  "S307",  # Use of assert detected
   "S603",  # `subprocess` call: check for execution of untrusted input
 ]
 lint.per-file-ignores."tests/e2e/conftest.py" = [
@@ -146,9 +150,6 @@ markers = [
   "unit: mark a test as a unit test.",
   "integration: mark a test as an integration test.",
   "e2e: mark a test as an end-to-end test",
-  "e2e_basic: mark a test as a basic end-to-end test",
-  "e2e_parametrized: mark a test as a parametrized end-to-end test",
-  "workflow: mark a test as a workflow test.",
   "benchmark: mark a test for benchmarking",
 ]
 
@@ -192,10 +193,10 @@ disallow_untyped_calls = true
 disallow_untyped_decorators = true
 disallow_incomplete_defs = true
 ignore_errors = true
-ignore_missing_imports = true
+ignore_missing_imports = false
 pretty = true
 python_version = "3.12"
-warn_return_any = true
+warn_return_any = false
 warn_unused_configs = true
 warn_unreachable = true
 
