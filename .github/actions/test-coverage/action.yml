@@ -21,8 +21,8 @@
 #           codecov-token: ${{ secrets.CODECOV_TOKEN }}
 #           codeclimate-token: ${{ secrets.CC_TEST_REPORTER_ID }} # Only needed for main branch
 ---
-name: "test-python-coverage"
-description: "Test coverage for python"
+name: "Test coverage for python"
+description: "Test coverage for python and upload report to cloud services"
 inputs:
   github-branch-name:
     description: "Checkout branch to test"
@@ -56,6 +56,11 @@ runs:
           -o junit_family=legacy
         )
         "${cmd_array[@]}"
+
+    - name: Upload test results to Codecov
+      uses: codecov/test-results-action@f2dba722c67b86c6caa034178c6e4d35335f6706 # v1.1.0
+      with:
+        token: ${{ inputs.codecov-token }}
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574 # v5.4.0
