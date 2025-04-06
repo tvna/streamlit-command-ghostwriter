@@ -233,7 +233,7 @@ jobs:
           author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
           labels: release, automated-pr
           base: main
-          branch: develop
+          branch: release/v${{ needs.get-npm-versions.outputs.develop_version }}
           title: "Release: v${{ needs.get-npm-versions.outputs.develop_version }}"
           body-path: .commit-log.txt
 
@@ -257,7 +257,7 @@ jobs:
 
             core.info(`Initial evaluation: compareResult='${compareResult}', checkPrSuccess='${checkPrSuccess}', checkPrExists='${checkPrExists}', ensureLabelsSuccess='${ensureLabelsSuccess}', createPrOutcome='${createPrOutcome}'`);
 
-            if (compareResult === '<') {
+            if (compareResult === '>') {
               if (checkPrSuccess === 'true') {
                 if (checkPrExists !== '0') {
                   status = "exists";
@@ -286,9 +286,9 @@ jobs:
                 status = "error_check_pr";
                 core.error(`Check PR step failed (success: ${checkPrSuccess}). Setting status to '${status}'.`);
               }
-            } else { // Version comparison did not result in '<'
-              core.info(`Skipping PR creation: develop version (${developVersion}) is not less than main version (${mainVersion}). Comparison result: ${compareResult}`);
-              status = "skipped_version_compare"; // Explicitly set, though it's the default
+            } else { // Version comparison did not result in '>'
+              core.info(`Skipping PR creation: develop version (${developVersion}) is not greater than main version (${mainVersion}). Comparison result: ${compareResult}`);
+              status = "skipped_version_compare"; // Explicitly set, matches default
             }
 
             core.info(`Final Status determined: ${status}`);
