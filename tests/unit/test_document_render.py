@@ -32,8 +32,11 @@ from typing import (
 )
 
 import pytest
+from _pytest.mark.structures import MarkDecorator
 
 from features.document_render import DocumentRender
+
+UNIT: MarkDecorator = pytest.mark.unit
 
 
 @pytest.fixture
@@ -52,7 +55,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
     return _create_file
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.timeout(10)
 @pytest.mark.parametrize(
     ("template_content", "expected_valid", "expected_error"),
@@ -173,7 +176,7 @@ def test_initial_validation(
         assert renderer.error_message is None, f"Expected no error message, but got: {renderer.error_message}"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.timeout(10)
 @pytest.mark.parametrize(
     (
@@ -352,7 +355,7 @@ def test_validation_consistency(
             )
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.timeout(10)
 @pytest.mark.parametrize(
     (

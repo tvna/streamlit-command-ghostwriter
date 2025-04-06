@@ -16,8 +16,11 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Union, cast
 
 import numpy as np
 import pytest
+from _pytest.mark.structures import MarkDecorator
 
 from features.config_parser import ConfigParser
+
+UNIT: MarkDecorator = pytest.mark.unit
 
 # 基本的な値の型を定義
 ScalarValueType = Union[str, int, float, bool, None]
@@ -399,7 +402,7 @@ class TestHelpers:
             TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("content", "filename", "expected_error"),
     [
@@ -468,7 +471,7 @@ def test_initialization(
         assert expected_error == parser.error_message
 
 
-@pytest.mark.unit
+@UNIT
 def test_default_properties() -> None:
     """ConfigParserのデフォルトプロパティをテストする。"""
     config_file = TestHelpers.create_test_file(b"content", "config.toml")
@@ -482,7 +485,7 @@ def test_default_properties() -> None:
     assert parser.error_message is None
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("content", "filename", "is_successful", "expected_dict", "expected_error"),
     [
@@ -982,7 +985,7 @@ def test_parse(
     )
 
 
-@pytest.mark.unit
+@UNIT
 def test_parse_csv_with_nan_handling() -> None:
     """CSVパースでのNaN値処理のテスト。"""
     content = b"id,name,value\n1,test,\n2,,abc"
@@ -1001,7 +1004,7 @@ def test_parse_csv_with_nan_handling() -> None:
     TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)  # type: ignore
 
 
-@pytest.mark.unit
+@UNIT
 def test_custom_csv_rows_name() -> None:
     """カスタムCSV行名のテスト。"""
     content = b"id,name\n1,test\n2,another"
@@ -1019,7 +1022,7 @@ def test_custom_csv_rows_name() -> None:
     TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)  # type: ignore
 
 
-@pytest.mark.unit
+@UNIT
 def test_unsupported_file_extension() -> None:
     """サポートされていないファイル拡張子のテスト。"""
     content = b"This is a text file."
@@ -1030,7 +1033,7 @@ def test_unsupported_file_extension() -> None:
     assert parser.error_message == "Unsupported file type"
 
 
-@pytest.mark.unit
+@UNIT
 def test_file_size_validation() -> None:
     """ファイルサイズのバリデーションのテスト。"""
     # ファイルサイズの上限を一時的に小さくする
@@ -1051,7 +1054,7 @@ def test_file_size_validation() -> None:
         ConfigParser.MAX_FILE_SIZE_BYTES = original_max_size
 
 
-@pytest.mark.unit
+@UNIT
 def test_memory_size_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     """メモリサイズのバリデーションのテスト。"""
     content = b"title = 'TOML test'"
@@ -1071,7 +1074,7 @@ def test_memory_size_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "Memory consumption exceeds the maximum limit" in str(parser.error_message)
 
 
-@pytest.mark.unit
+@UNIT
 def test_memory_error_during_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     """メモリサイズのバリデーション中のメモリエラーのテスト。"""
     content = b"title = 'TOML test'"
@@ -1091,7 +1094,7 @@ def test_memory_error_during_validation(monkeypatch: pytest.MonkeyPatch) -> None
     assert "Memory error while checking size" in str(parser.error_message)
 
 
-@pytest.mark.unit
+@UNIT
 def test_unicode_decode_error() -> None:
     """UnicodeDecodeErrorのテスト。"""
     # 不正なUTF-8シーケンスを含むデータ
@@ -1104,7 +1107,7 @@ def test_unicode_decode_error() -> None:
     assert parser.error_message is not None
 
 
-@pytest.mark.unit
+@UNIT
 def test_csv_rows_name() -> None:
     """Test the csv_rows_name property and setter."""
     # Create a simple CSV file
@@ -1129,7 +1132,7 @@ def test_csv_rows_name() -> None:
     assert len(parser.parsed_dict["people"]) == 2
 
 
-@pytest.mark.unit
+@UNIT
 def test_enable_fill_nan() -> None:
     """Test the enable_fill_nan property and setter."""
     # Create a CSV file with NaN values
@@ -1176,7 +1179,7 @@ def test_enable_fill_nan() -> None:
     assert parser.parsed_dict["csv_rows"][1]["age"] == "Unknown"
 
 
-@pytest.mark.unit
+@UNIT
 def test_fill_nan_with() -> None:
     """Test the fill_nan_with property and setter."""
     # Create a CSV file with NaN values
@@ -1225,7 +1228,7 @@ def test_fill_nan_with() -> None:
     assert parser.parsed_dict["csv_rows"][1]["age"] == "0"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("csv_rows_name", "enable_fill_nan", "fill_nan_with", "expected_dict"),
     [
@@ -1299,7 +1302,7 @@ def test_csv_options_combined(
                 assert result_row[key] == expected_value, f"Row {i}, key {key}: expected {expected_value}, got {result_row[key]}"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("content", "filename", "is_successful", "expected_error"),
     [
@@ -1473,7 +1476,7 @@ def test_parse_edge_cases(
         assert parser.error_message is None
 
 
-@pytest.mark.unit
+@UNIT
 def test_memory_usage_with_reasonable_file() -> None:
     """Test that parsing files with reasonable size doesn't consume excessive memory."""
     # Create a CSV file with a reasonable number of rows
@@ -1504,7 +1507,7 @@ def test_memory_usage_with_reasonable_file() -> None:
     assert all(row.get("col3") == "value3" for row in parser.parsed_dict["csv_rows"])
 
 
-@pytest.mark.unit
+@UNIT
 def test_nested_structures() -> None:
     """Test parsing deeply nested structures."""
     # TOML with deeply nested tables
@@ -1566,7 +1569,7 @@ def test_nested_structures() -> None:
     assert "level5" in parser.parsed_dict["level1"]["level2"]["level3"]["level4"]
 
 
-@pytest.mark.unit
+@UNIT
 def test_file_size_limit() -> None:
     """ファイルサイズの上限を超えた場合のテスト。
 
@@ -1587,7 +1590,7 @@ def test_file_size_limit() -> None:
     assert parser.parse() is False
 
 
-@pytest.mark.unit
+@UNIT
 def test_memory_consumption_limit_parsed_str() -> None:
     """parsed_strのメモリ消費量の上限を超えた場合のテスト。
 
@@ -1627,7 +1630,7 @@ def test_memory_consumption_limit_parsed_str() -> None:
         sys.getsizeof = original_getsizeof
 
 
-@pytest.mark.unit
+@UNIT
 def test_memory_consumption_limit_parsed_dict() -> None:
     """parsed_dictのメモリ消費量の上限を超えた場合のテスト。
 
@@ -1667,7 +1670,7 @@ def test_memory_consumption_limit_parsed_dict() -> None:
         sys.getsizeof = original_getsizeof
 
 
-@pytest.mark.unit
+@UNIT
 def test_memory_error_handling() -> None:
     """メモリエラーが発生した場合のテスト。
 

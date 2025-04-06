@@ -2,8 +2,11 @@ from io import BytesIO
 from typing import Callable, Final, Optional
 
 import pytest
+from _pytest.mark.structures import MarkDecorator
 
 from features.transcoder import TextTranscoder
+
+UNIT: MarkDecorator = pytest.mark.unit
 
 
 @pytest.fixture
@@ -38,7 +41,7 @@ def create_binary_file() -> Callable[[bytes, str], BytesIO]:
     return _create_file
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_str", "input_encoding", "expected_encoding", "expected_result"),
     [
@@ -112,7 +115,7 @@ def test_transcoder_basic_functionality(
         )
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_bytes", "expected_encoding", "expected_result"),
     [
@@ -160,7 +163,7 @@ def test_transcoder_non_string_data(
         )
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_str", "input_encoding", "expected_encoding", "expected_result"),
     [
@@ -223,7 +226,7 @@ def test_transcoder_edge_cases(
             assert export_file.name == import_file.name, f"Filename mismatch.\nExpected: {import_file.name}\nGot: {export_file.name}"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_bytes", "expected_encoding", "expected_result"),
     [
@@ -278,7 +281,7 @@ def test_transcoder_binary_edge_cases(
         assert result is not None, "Result should not be None for text data"
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("input_str", "target_encoding", "is_allow_fallback", "expected_result", "expected_error"),
     [
@@ -402,7 +405,7 @@ def test_transcoder_encoding_conversion(
                     pytest.fail(f"Could not decode {result.getvalue()} with {target_encoding}")
 
 
-@pytest.mark.unit
+@UNIT
 @pytest.mark.parametrize(
     ("test_data", "invalid_encoding", "expected_encoding"),
     [

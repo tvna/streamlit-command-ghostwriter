@@ -41,13 +41,16 @@
 from typing import Final, List
 
 import pytest
+from _pytest.mark.structures import MarkDecorator
 from playwright.sync_api import FileChooser, Locator, Page, expect
 from pytest_benchmark.fixture import BenchmarkFixture  # type: ignore[import-untyped]
 
 from .helpers import StreamlitTestHelper, TestData, texts
 
+E2E: MarkDecorator = pytest.mark.e2e
 
-@pytest.mark.e2e
+
+@E2E
 def test_ui_app_title(page: Page, benchmark: BenchmarkFixture) -> None:
     """アプリケーションのタイトル表示をテスト.
 
@@ -72,7 +75,7 @@ def test_ui_app_title(page: Page, benchmark: BenchmarkFixture) -> None:
     benchmark(_check_title)
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_input_field(page: Page, benchmark: BenchmarkFixture) -> None:
     """入力フィールドの機能をテスト.
 
@@ -104,7 +107,7 @@ def test_ui_input_field(page: Page, benchmark: BenchmarkFixture) -> None:
     benchmark(_check_input_fields)
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_button_click(page: Page) -> None:
     """ボタンクリック操作をテスト.
 
@@ -126,7 +129,7 @@ def test_ui_button_click(page: Page) -> None:
     helper.click_button(texts.tab1.generate_text_button)
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_sidebar_interaction(page: Page) -> None:
     """サイドバーの操作機能をテスト.
 
@@ -161,7 +164,7 @@ def test_ui_sidebar_interaction(page: Page) -> None:
     expect(link).to_be_attached()
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_download_functionality(page: Page) -> None:
     """ダウンロード機能をテスト.
 
@@ -187,7 +190,7 @@ def test_ui_download_functionality(page: Page) -> None:
     expect(download_button).to_have_attribute("disabled", "")
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_responsive_design(page: Page) -> None:
     """レスポンシブデザインをテスト.
 
@@ -218,7 +221,7 @@ def test_ui_responsive_design(page: Page) -> None:
     page.set_viewport_size({"width": 1280, "height": 720})
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_advanced_settings_in_tab3(page: Page) -> None:
     """詳細設定タブの機能をテスト.
 
@@ -246,7 +249,7 @@ def test_ui_advanced_settings_in_tab3(page: Page) -> None:
     helper.select_tab(f"📝 {texts.tab1.menu_title}")
 
 
-@pytest.mark.e2e
+@E2E
 def test_ui_sample_collection_in_tab4(page: Page) -> None:
     """サンプル集タブの機能をテスト.
 
@@ -317,7 +320,7 @@ def test_ui_sample_collection_in_tab4(page: Page) -> None:
     assert "dig @" in dns_dig_tmpl_text, "Content validation failed for dns_dig_tmpl.j2.\nExpected to find 'dig @' in content"
 
 
-@pytest.mark.e2e
+@E2E
 @pytest.mark.parametrize(
     ("tab_name", "expected_element"),
     [
@@ -370,7 +373,7 @@ def test_tab_navigation_parametrized(page: Page, tab_name: str, expected_element
     expect(expected).to_be_visible()
 
 
-@pytest.mark.e2e
+@E2E
 @pytest.mark.parametrize(
     ("config_file", "template_file", "button_text"),
     [
@@ -457,7 +460,7 @@ def test_command_generation_parametrized_in_tab1(
     benchmark(_execute)
 
 
-@pytest.mark.e2e
+@E2E
 def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
     """ファイルアップロード機能をテスト.
 
@@ -503,7 +506,7 @@ def test_file_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
     benchmark(_execute)
 
 
-@pytest.mark.e2e
+@E2E
 def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) -> None:
     """Jinjaテンプレートファイルのアップロード機能をテスト.
 
@@ -560,7 +563,7 @@ def test_jinja_template_upload_in_tab1(page: Page, benchmark: BenchmarkFixture) 
     benchmark(_execute)
 
 
-@pytest.mark.e2e
+@E2E
 @pytest.mark.parametrize(
     ("tab_name", "upload_index", "file_type", "file_name"),
     [
@@ -637,7 +640,7 @@ def test_file_upload_parametrized_in_tab1(
     benchmark(_execute)
 
 
-@pytest.mark.e2e
+@E2E
 @pytest.mark.parametrize(
     ("file_name", "display_format", "expected_content"),
     [

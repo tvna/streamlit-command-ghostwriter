@@ -1,26 +1,29 @@
 import json
 from io import BytesIO
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Final, Optional
 
 import pytest
 import toml
 import yaml
+from _pytest.mark.structures import MarkDecorator
 from streamlit.testing.v1 import AppTest
 
+INTEGRATION: MarkDecorator = pytest.mark.integration
+
 # Constants for UI element counts and messages
-BASE_TEXT_AREA_COUNT = 6
-BASE_MARKDOWN_COUNT = 2
-RENDERED_MARKDOWN_COUNT = BASE_MARKDOWN_COUNT + 1
-RENDERED_TEXT_AREA_COUNT = 1
-NO_RENDERED_TEXT_AREA = 0
-NO_JSON_OUTPUT = 0
-ONE_JSON_OUTPUT = 1
-NO_MESSAGES = 0
-ONE_MESSAGE = 1
-TWO_MESSAGES = 2
+BASE_TEXT_AREA_COUNT: Final[int] = 6
+BASE_MARKDOWN_COUNT: Final[int] = 2
+RENDERED_MARKDOWN_COUNT: Final[int] = BASE_MARKDOWN_COUNT + 1
+RENDERED_TEXT_AREA_COUNT: Final[int] = 1
+NO_RENDERED_TEXT_AREA: Final[int] = 0
+NO_JSON_OUTPUT: Final[int] = 0
+ONE_JSON_OUTPUT: Final[int] = 1
+NO_MESSAGES: Final[int] = 0
+ONE_MESSAGE: Final[int] = 1
+TWO_MESSAGES: Final[int] = 2
 
 
-@pytest.mark.integration
+@INTEGRATION
 @pytest.mark.parametrize(
     (
         "active_button",
