@@ -95,8 +95,8 @@ from jinja2 import Environment, Template, nodes
 from jinja2.runtime import StrictUndefined, Undefined
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError, field_validator
 
-from features.validate_template import TemplateSecurityValidator, ValidationState
-from features.validate_uploaded_file import FileSizeConfig, FileValidator
+from .validate_template import TemplateSecurityValidator, ValidationState
+from .validate_uploaded_file import FileSizeConfig, FileValidator
 
 # --- Format Type Constants ---
 FORMAT_KEEP: Final[int] = 0  # Keep whitespace
@@ -396,16 +396,14 @@ class DocumentRender(BaseModel):
     MAX_MEMORY_SIZE_BYTES: ClassVar[int] = 150 * 1024 * 1024  # 150MB
 
     _ast: Optional[nodes.Template] = PrivateAttr(default=None)
-    _file_validator: "FileValidator" = PrivateAttr(default=FileValidator(size_config=FileSizeConfig(max_size_bytes=MAX_FILE_SIZE_BYTES)))
-    _formatter: "ContentFormatter" = PrivateAttr(default=ContentFormatter())
+    _file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=MAX_FILE_SIZE_BYTES))
+    _formatter = ContentFormatter()
     _is_strict_undefined: bool = PrivateAttr(default=True)
     _render_content: Optional[str] = PrivateAttr(default=None)
     _template_content: Optional[str] = PrivateAttr(default=None)
     _template_file: Optional[BytesIO] = PrivateAttr(default=None)
-    _security_validator: "TemplateSecurityValidator" = PrivateAttr(
-        default=TemplateSecurityValidator(max_file_size_bytes=MAX_FILE_SIZE_BYTES, max_memory_size_bytes=MAX_MEMORY_SIZE_BYTES)
-    )
-    _validation_state: "ValidationState" = PrivateAttr(default=ValidationState())
+    _security_validator = TemplateSecurityValidator(max_file_size_bytes=MAX_FILE_SIZE_BYTES, max_memory_size_bytes=MAX_MEMORY_SIZE_BYTES)
+    _validation_state = ValidationState()
 
     def __init__(self, template_file: BytesIO) -> None:
         """DocumentRenderインスタンスを初期化する。

@@ -45,7 +45,7 @@ from pydantic import (
     field_validator,
 )
 
-from features.validate_uploaded_file import FileSizeConfig, FileValidator
+from .validate_uploaded_file import FileSizeConfig, FileValidator
 
 T = TypeVar("T")
 NodeT = TypeVar("NodeT", bound=nodes.Node)

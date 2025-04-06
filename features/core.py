@@ -5,9 +5,9 @@ from typing import Any, Dict, Final, Optional
 
 from pydantic import BaseModel, PrivateAttr
 
-from features.config_parser import ConfigParser
-from features.document_render import DocumentRender
-from features.transcoder import TextTranscoder
+from .config_parser import ConfigParser
+from .document_render import DocumentRender
+from .transcoder import TextTranscoder
 
 
 class AppCore(BaseModel):
@@ -15,10 +15,10 @@ class AppCore(BaseModel):
     _config_error_header: Optional[str] = PrivateAttr(default=None)
     _config_error_message: Optional[str] = PrivateAttr(default=None)
     _formatted_text: Optional[str] = PrivateAttr(default=None)
+    _render: Optional[DocumentRender] = None
     _template_filename: Optional[str] = PrivateAttr(default=None)
     _template_error_header: Optional[str] = PrivateAttr(default=None)
     _template_error_message: Optional[str] = PrivateAttr(default=None)
-    _render: Optional["DocumentRender"] = PrivateAttr(default=None)
 
     def __init__(self: "AppCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
         """
@@ -103,7 +103,7 @@ class AppCore(BaseModel):
             self._template_error_message = f"{self._template_error_header}: Failed auto decoding in '{template_filename}'"
             return self
 
-        render: DocumentRender = DocumentRender(template_file)
+        render = DocumentRender(template_file)
         if render.is_valid_template is False:
             self._template_error_message = f"{self._template_error_header}: {render.error_message} in '{template_filename}'"
 

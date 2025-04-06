@@ -92,7 +92,7 @@ import pandas as pd
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from features.validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
+from .validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
 
 
 class ConfigParser(BaseModel):
@@ -176,7 +176,7 @@ class ConfigParser(BaseModel):
         super().__init__(config_file=config_file)
 
         # ファイルサイズの検証
-        file_validator: FileValidator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
+        file_validator = FileValidator(size_config=FileSizeConfig(max_size_bytes=self.MAX_FILE_SIZE_BYTES))
         if not file_validator.validate_size(config_file):
             self._error_message = file_validator.error_message
             return
@@ -317,7 +317,7 @@ class ConfigParser(BaseModel):
         csv_data.fillna(value=self._fill_nan_with, inplace=True)
         return csv_data
 
-    def _validate_memory_size(self, obj: Any) -> bool:  # noqa: ANN401
+    def _validate_memory_size(self, obj: Union[Dict[str, Any], str]) -> bool:
         """メモリサイズのバリデーションを行います。
 
         Args:
