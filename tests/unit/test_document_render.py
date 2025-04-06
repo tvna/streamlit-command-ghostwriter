@@ -1119,7 +1119,7 @@ def test_render_edge_cases(
     """
     # Arrange
     template_file: BytesIO = create_template_file(template_content, "template.txt")
-    render: DocumentRender = DocumentRender(template_file)
+    render = DocumentRender(template_file)
 
     # Act & Assert for template validation
     assert render.is_valid_template == expected_validate_template, (

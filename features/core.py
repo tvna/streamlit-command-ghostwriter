@@ -12,12 +12,12 @@ from .transcoder import TextTranscoder
 
 class AppCore(BaseModel):
     _config_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    _config_error_header: Optional[str] = PrivateAttr(default=None)
+    _config_error_header: Final[Optional[str]]
     _config_error_message: Optional[str] = PrivateAttr(default=None)
     _formatted_text: Optional[str] = PrivateAttr(default=None)
     _render: Optional[DocumentRender] = None
     _template_filename: Optional[str] = PrivateAttr(default=None)
-    _template_error_header: Optional[str] = PrivateAttr(default=None)
+    _template_error_header: Final[Optional[str]]
     _template_error_message: Optional[str] = PrivateAttr(default=None)
 
     def __init__(self: "AppCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:
@@ -30,8 +30,8 @@ class AppCore(BaseModel):
         """
 
         super().__init__()
-        self._config_error_header = config_error_header
-        self._template_error_header = template_error_header
+        object.__setattr__(self, "_config_error_header", config_error_header)
+        object.__setattr__(self, "_template_error_header", template_error_header)
 
     def load_config_file(
         self: "AppCore",
@@ -130,7 +130,7 @@ class AppCore(BaseModel):
         if config_dict is None or self._render is None:
             return self
 
-        if not self._render.apply_context(config_dict, format_type, is_strict_undefined) and isinstance(self._render.error_message, str):
+        if self._render.apply_context(config_dict, format_type, is_strict_undefined) is False and self._render.error_message is not None:
             self._template_error_message = f"{self._template_error_header}: {self._render.error_message} in '{self._template_filename}'"
             return self
 
