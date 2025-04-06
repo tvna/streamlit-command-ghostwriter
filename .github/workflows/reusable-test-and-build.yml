@@ -293,6 +293,8 @@ jobs:
     needs: small-unit-test
     permissions:
       contents: read
+      checks: write
+      id-token: write
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
@@ -326,9 +328,9 @@ jobs:
         with:
           name: coverage-reports
           path: |
-            coverage.xml
             htmlcov/
           retention-days: 3
+          compression-level: 0
 
   test-e2e:
     name: E2E Tests (${{ matrix.os }} & ${{ matrix.browser }})
