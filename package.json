@@ -60,7 +60,8 @@
                 "i18n.py",
                 ".streamlit/*",
                 "features/*.py",
-                "assets/examples"
+                "assets/examples",
+                "assets/images"
             ],
             "nodeJsWorker": false,
             "entrypoint": "app.py",
