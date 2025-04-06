@@ -43,6 +43,7 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     - name: Create requirements.txt
+      shell: bash
       run: |
         poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
 
