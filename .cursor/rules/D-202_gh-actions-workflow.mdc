@@ -5,6 +5,15 @@ alwaysApply: false
 ---
 # GitHub Actions ワークフローの基本ルール
 
+## 構文ルール
+- 次のURLの構文に従い記述すること
+  https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
+　https://docs.github.com/ja/actions/writing-workflows/workflow-syntax-for-github-actions
+
+## セキュリティ対策
+- 次のURLのルールに従い、shellcheckをはじめとするエスケープを適切に実施すること
+  https://github.com/rhysd/actionlint/blob/main/docs/checks.md
+
 ## トップレベルキー検査
 - ワークフローファイルに必要なトップレベルキー (name, on, jobs)が欠けている場合、エラーを出します。
 - defaultsにて、shellをbashで指定します
