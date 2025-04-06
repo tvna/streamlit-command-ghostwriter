@@ -53,7 +53,7 @@ runs:
 
           try {
             if (!fs.existsSync(sarifPath)) {
-              core.summary.addRaw(`* SARIF file (${sarifPath}) not found. Skipping summary generation.\\n`);
+              core.summary.addRaw(`* SARIF file (${sarifPath}) not found. Skipping summary generation.\n`);
               await core.summary.write();
               return;
             }
@@ -70,7 +70,7 @@ runs:
                 markdown += '* No issues found.\n'; // Generic message
               } else {
                 issuesFound = true;
-                markdown += '| Severity | Rule ID | Message | File | Line |\\n';
+                markdown += '| Severity | Rule ID | Message | File | Line |\n';
                 markdown += '|---|---|---|---|---|\n';
 
                 for (const result of results) {
