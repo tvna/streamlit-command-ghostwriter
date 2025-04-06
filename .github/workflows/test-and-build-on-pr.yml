@@ -24,8 +24,6 @@ on:
 permissions:
   actions: read
   contents: read
-  id-token: write
-  pull-requests: write
   security-events: write
 
 env:
@@ -120,10 +118,9 @@ jobs:
   dependency-review:
     name: Dependency Review
     permissions:
+      actions: read
       contents: read
       pull-requests: write
-      actions: read
-      security-events: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -151,6 +148,9 @@ jobs:
           head-ref: ${{ github.event.pull_request.head.ref }}
 
   pyre:
+    permissions:
+      contents: read
+      security-events: write
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
@@ -161,22 +161,9 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup Python and restore cache
-        uses: ./.github/actions/setup-python
+      - name: Test Pyre
+        uses: ./.github/actions/test-pyre
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
         timeout-minutes: 10
-
-      - name: Create requirements.txt
-        run: |
-          poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
-
-      - name: Run Pyre Action
-        uses: facebook/pyre-action@12b8d923443ea66cb657facc2e5faac1c8c86e64 # v0.0.2
-        with:
-          repo-directory: "./"
-          requirements-path: "requirements.txt"
-        timeout-minutes: 120
         continue-on-error: true
