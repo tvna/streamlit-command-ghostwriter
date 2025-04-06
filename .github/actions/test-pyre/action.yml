@@ -41,7 +41,6 @@ runs:
       uses: ./.github/actions/setup-python
       with:
         python-version: ${{ inputs.python-version }}
-      timeout-minutes: 10
 
     - name: Create requirements.txt
       run: |
@@ -52,7 +51,6 @@ runs:
       with:
         repo-directory: "./"
         requirements-path: "requirements.txt"
-      timeout-minutes: 30
       continue-on-error: true
 
     - name: Convert SARIF to Markdown Summary
