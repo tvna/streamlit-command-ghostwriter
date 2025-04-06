@@ -1,0 +1,61 @@
+# GitHub Actions Composite Action: Test Pyre
+#
+# Purpose:
+#   This action runs the Pyre static analysis tool on the Python codebase within the repository.
+#   It performs the following steps:
+#   1. Checks out the repository code.
+#   2. Sets up the specified Python version using the './.github/actions/setup-python' action.
+#   3. Generates a requirements.txt file from the poetry.lock file.
+#   4. Executes the official 'facebook/pyre-action' to run Pyre checks.
+#   5. Converts the SARIF output from Pyre into a Markdown summary using the './.github/actions/convert-sarif-to-summary' action, appending it to the job summary.
+#
+# Usage:
+#   Include this action as a step in your workflow to perform Pyre static analysis.
+#
+# Example:
+#   - name: Run Pyre Static Analysis
+#     uses: ./.github/actions/test-pyre
+#     with:
+#       python-version: '3.11' # Specify desired Python version
+#
+# Inputs:
+#   python-version: [Required] The version of Python to set up and use for the analysis.
+#
+# Outputs:
+#   None directly, but it contributes to the job summary via the included
+#   'convert-sarif-to-summary' action.
+#
+---
+name: "Test Pyre"
+description: "Test Pyre"
+inputs:
+  python-version:
+    description: "Python version to use"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Setup Python and restore cache
+      uses: ./.github/actions/setup-python
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Create requirements.txt
+      shell: bash
+      run: |
+        poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
+
+    - name: Run Pyre Action
+      uses: facebook/pyre-action@12b8d923443ea66cb657facc2e5faac1c8c86e64 # v0.0.2
+      with:
+        repo-directory: "./"
+        requirements-path: "requirements.txt"
+      continue-on-error: true
+
+    - name: Convert SARIF to Markdown Summary
+      uses: ./.github/actions/convert-sarif-to-summary
+      with:
+        sarif-path: sarif.json
+        summary-title: "Pyre Static Analysis Results"

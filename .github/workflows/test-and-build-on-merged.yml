@@ -19,12 +19,15 @@ jobs:
       concurrency_cancel_in_progress: true
       workflow_summary_name: "Workflow summary [Test & Build (main)]"
 
-  create-tag:
-    needs: test-and-build
+  create-tag-and-release:
+    needs:
+      - test-and-build
     runs-on: ubuntu-latest
     outputs:
       tag_name: ${{ steps.set_tag_output.outputs.tag_name }}
       commit_sha: ${{ steps.get_commit_sha.outputs.sha }}
+    permissions:
+      contents: write
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
@@ -74,7 +77,10 @@ jobs:
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   upload-artifacts:
-    needs: [create-tag]
+    needs:
+      - create-tag-and-release
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner
@@ -102,9 +108,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Explicitly pass token
         with:
-          tag_name: ${{ needs.create-tag.outputs.tag_name }}
+          tag_name: ${{ needs.create-tag-and-release.outputs.tag_name }}
           generate_release_notes: true
-          target_commitish: ${{ needs.create-tag.outputs.commit_sha }}
+          target_commitish: ${{ needs.create-tag-and-release.outputs.commit_sha }}
           files: |
             artifacts/macos/**/*
             artifacts/windows/**/*
