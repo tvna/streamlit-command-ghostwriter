@@ -21,8 +21,8 @@
 #           codecov-token: ${{ secrets.CODECOV_TOKEN }}
 #           codeclimate-token: ${{ secrets.CC_TEST_REPORTER_ID }} # Only needed for main branch
 ---
-name: "Test coverage for python"
-description: "Test coverage for python and upload report to cloud services"
+name: "Coverage for python"
+description: "Coverage for python and upload report to cloud services"
 inputs:
   github-branch-name:
     description: "Checkout branch to test"
@@ -61,11 +61,13 @@ runs:
       uses: codecov/test-results-action@f2dba722c67b86c6caa034178c6e4d35335f6706 # v1.1.0
       with:
         token: ${{ inputs.codecov-token }}
+        verbose: true
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574 # v5.4.0
       with:
         token: ${{ inputs.codecov-token }}
+        verbose: true
 
     - name: Setup Code Climate
       uses: remarkablemark/setup-codeclimate@6bb7c044fb5ac0c0ed1a34b5f68b3d60aca1bf18 # v2.0.12
