@@ -67,14 +67,14 @@ repos:
         language: system
         types: ["yaml"]
         files: ^\.github/
-        entry: npx prettier ./.github --write
+        entry: npx prettier --parser="yaml" ./.github --write
       - id: prettier-other-yaml
         name: prettier-other-yml
         description: Runs system-installed prettier to lint other yaml files
         language: system
         types: ["yaml"]
         files: ^\.*\.yml$
-        entry: npx prettier "*.(yml|yaml)" --write
+        entry: npx prettier --parser="yaml" "*.(yml|yaml)" --write
 
   - repo: https://github.com/tox-dev/pyproject-fmt
     rev: v2.5.1
