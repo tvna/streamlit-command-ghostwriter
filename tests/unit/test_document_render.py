@@ -37,6 +37,7 @@ from _pytest.mark.structures import MarkDecorator
 from features.document_render import DocumentRender
 
 UNIT: MarkDecorator = pytest.mark.unit
+SET_TIMEOUT: MarkDecorator = pytest.mark.timeout(10)
 
 
 @pytest.fixture
@@ -56,7 +57,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
 
 
 @UNIT
-@pytest.mark.timeout(10)
+@SET_TIMEOUT
 @pytest.mark.parametrize(
     ("template_content", "expected_valid", "expected_error"),
     [
@@ -161,7 +162,7 @@ def test_initial_validation(
     template_file: BytesIO = create_template_file(template_content, "template.txt")
 
     # Act
-    renderer: DocumentRender = DocumentRender(template_file)
+    renderer = DocumentRender(template_file)
 
     # Assert
     assert renderer.is_valid_template == expected_valid, (
@@ -177,7 +178,7 @@ def test_initial_validation(
 
 
 @UNIT
-@pytest.mark.timeout(10)
+@SET_TIMEOUT
 @pytest.mark.parametrize(
     (
         "template_content",
@@ -356,7 +357,7 @@ def test_validation_consistency(
 
 
 @UNIT
-@pytest.mark.timeout(10)
+@SET_TIMEOUT
 @pytest.mark.parametrize(
     (
         "template_content",

@@ -130,7 +130,7 @@ class AppCore(BaseModel):
         if config_dict is None or self._render is None:
             return self
 
-        if self._render.apply_context(config_dict, format_type, is_strict_undefined) is False:
+        if not self._render.apply_context(config_dict, format_type, is_strict_undefined) and isinstance(self._render.error_message, str):
             self._template_error_message = f"{self._template_error_header}: {self._render.error_message} in '{self._template_filename}'"
             return self
 

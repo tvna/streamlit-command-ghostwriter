@@ -434,7 +434,7 @@ def verify_yaml_output(
         ), "YAML output value mismatch"
 
 
-@pytest.mark.integration
+@INTEGRATION
 @pytest.mark.parametrize(
     (
         "active_button",
