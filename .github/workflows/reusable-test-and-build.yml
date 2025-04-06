@@ -241,7 +241,6 @@ jobs:
         os:
           - macos-latest
           - ubuntu-latest
-          - ubuntu-22.04
           - windows-latest
         python-version:
           - "3.13"
