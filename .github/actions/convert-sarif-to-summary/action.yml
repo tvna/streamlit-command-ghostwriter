@@ -86,7 +86,7 @@ runs:
                     line = physLoc.region ? physLoc.region.startLine : 'N/A';
                   }
                   // Escape pipe characters in the message for the Markdown table
-                  const escapedMessage = message.replace(/\\|/g, '\\\\|');
+                  const escapedMessage = message.replace(/\|/g, '\\\\|');
                   markdown += `| ${severity} | ${ruleId} | ${escapedMessage} | ${file} | ${line} |\n`;
                 }
               }
