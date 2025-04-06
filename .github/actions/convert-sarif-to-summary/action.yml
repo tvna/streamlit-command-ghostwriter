@@ -17,6 +17,7 @@
 #
 # Inputs:
 #   sarif-path: [Required] The path to the SARIF file to be converted.
+#   summary-title: [Optional] The title to use for the Markdown summary header. Defaults to "Static Analysis Results".
 #
 # Outputs:
 #   None directly, but it appends content to the GitHub Actions job summary.
@@ -27,6 +28,11 @@ description: "Convert SARIF to summary"
 inputs:
   sarif-path:
     description: "Path to the SARIF file"
+    required: true
+  summary-title:
+    description: "Title for the Markdown summary header"
+    required: false
+    default: "Static Analysis Results"
 
 runs:
   using: "composite"
@@ -37,15 +43,17 @@ runs:
       if: always()
       env:
         SARIF_PATH: ${{ inputs.sarif-path }}
+        SUMMARY_TITLE: ${{ inputs.summary-title }}
       with:
         script: |
           const fs = require('fs');
           const path = require('path');
           const sarifPath = process.env.SARIF_PATH; // Read path from environment variable
+          const summaryTitle = process.env.SUMMARY_TITLE || 'Static Analysis Results'; // Read title or use default
 
           try {
             if (!fs.existsSync(sarifPath)) {
-              core.summary.addRaw(`* Pyre SARIF file (${sarifPath}) not found. Skipping summary generation.\\n`);
+              core.summary.addRaw(`* SARIF file (${sarifPath}) not found. Skipping summary generation.\\n`);
               await core.summary.write();
               return;
             }
@@ -53,13 +61,13 @@ runs:
             const sarifContent = fs.readFileSync(sarifPath, 'utf8');
             const sarifData = JSON.parse(sarifContent);
 
-            let markdown = '## Pyre Static Analysis Results\\n\\n';
+            let markdown = `## ${summaryTitle}\\n\\n`; // Use dynamic title
             let issuesFound = false;
 
             if (sarifData.runs && sarifData.runs.length > 0 && sarifData.runs[0].results) {
               const results = sarifData.runs[0].results;
               if (results.length === 0) {
-                markdown += '* No issues found by Pyre.\\n';
+                markdown += '* No issues found.\\n'; // Generic message
               } else {
                 issuesFound = true;
                 markdown += '| Severity | Rule ID | Message | File | Line |\\n';
@@ -78,7 +86,7 @@ runs:
                     line = physLoc.region ? physLoc.region.startLine : 'N/A';
                   }
                   // Escape pipe characters in the message for the Markdown table
-                  const escapedMessage = message.replace(/\|/g, '\\|');
+                  const escapedMessage = message.replace(/\\|/g, '\\\\|');
                   markdown += `| ${severity} | ${ruleId} | ${escapedMessage} | ${file} | ${line} |\\n`;
                 }
               }
@@ -91,7 +99,7 @@ runs:
 
           } catch (error) {
             core.warning(`Error processing SARIF file: ${error.message}`);
-            core.summary.addRaw('## Pyre Static Analysis Results\\n\\n');
+            core.summary.addRaw(`## ${summaryTitle}\\n\\n`); // Use dynamic title in error message
             core.summary.addRaw(`*Error processing SARIF file: ${error.message}*\\n`);
             await core.summary.write();
           }

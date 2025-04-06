@@ -342,3 +342,4 @@ jobs:
         uses: ./.github/actions/convert-sarif-to-summary
         with:
           sarif-path: sarif.json
+          summary-title: "Pyre Static Analysis Results"

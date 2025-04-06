@@ -146,6 +146,7 @@ jobs:
         uses: ./.github/actions/convert-sarif-to-summary
         with:
           sarif-path: results.sarif
+          summary-title: "Gitleaks Analysis Results"
 
   guard-python:
     name: Guard Python
