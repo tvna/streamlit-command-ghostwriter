@@ -356,12 +356,11 @@ jobs:
         uses: remarkablemark/setup-codeclimate@6bb7c044fb5ac0c0ed1a34b5f68b3d60aca1bf18 # v2.0.12
 
       - name: Upload coverage reports to code climate
-        env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
         if: |
           matrix.branch == 'main'
         shell: bash
         run: |
+          echo CC_TEST_REPORTER_ID="${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}" >> "$GITHUB_ENV"
           cc-test-reporter before-build
           cc-test-reporter after-build --exit-code $?
 
