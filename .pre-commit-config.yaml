@@ -75,6 +75,13 @@ repos:
         types: ["yaml"]
         files: ^\.*\.yml$
         entry: npx prettier --parser="yaml" "*.(yml|yaml)" --write
+      - id: prettier-code-workspace
+        name: prettier-code-workspace
+        description: Runs system-installed prettier to lint code-workspace files
+        language: system
+        types: ["json"]
+        files: ^\.*\.code-workspace$
+        entry: npx prettier --write --parser json --plugin prettier-plugin-sort-json command-ghostwriter.code-workspace
 
   - repo: https://github.com/tox-dev/pyproject-fmt
     rev: v2.5.1
