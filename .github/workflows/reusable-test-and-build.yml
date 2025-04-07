@@ -52,9 +52,6 @@ concurrency:
   group: ${{ inputs.concurrency_group }}
   cancel-in-progress: ${{ inputs.concurrency_cancel_in_progress }}
 
-permissions:
-  contents: read
-
 jobs:
   # ============================================================
   # GUARD CLAUSE GROUP
@@ -296,6 +293,13 @@ jobs:
       checks: write
       id-token: write
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch:
+          - main
+          - develop
+    timeout-minutes: 5
+
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
@@ -309,19 +313,57 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+          ref: ${{ matrix.branch }}
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-        timeout-minutes: 10
 
-      - name: Test coverage
-        uses: ./.github/actions/test-coverage
+      - name: Run pytest (coverage without e2e)
+        shell: bash
+        run: |
+          cmd_array=(
+            poetry run pytest
+            --benchmark-disable
+            --cov=app.py
+            --cov=features
+            --cov=i18n
+            --cov=scripts
+            --cov-report=xml
+            --cov-report=term
+            --dist loadfile
+            --junitxml=junit.xml
+            -n auto
+            -k "not e2e"
+            -o junit_family=legacy
+          )
+          "${cmd_array[@]}"
+
+      - name: Upload test results to Codecov
+        uses: codecov/test-results-action@f2dba722c67b86c6caa034178c6e4d35335f6706 # v1.1.0
         with:
-          github-branch-name: ${{ github.ref }}
-          codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574 # v5.4.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
+
+      - name: Setup Code Climate
+        uses: remarkablemark/setup-codeclimate@6bb7c044fb5ac0c0ed1a34b5f68b3d60aca1bf18 # v2.0.12
+
+      - name: Upload coverage reports to code climate
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
+        if: |
+          matrix.branch == 'main'
+        shell: bash
+        run: |
+          cc-test-reporter before-build
+          cc-test-reporter after-build --exit-code $?
 
       - name: Upload Coverage Reports
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -502,6 +544,8 @@ jobs:
     name: ${{ inputs.workflow_summary_name }}
     if: always()
     needs: [test-coverage, test-e2e, analysis-code-ccn, build-desktop]
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
