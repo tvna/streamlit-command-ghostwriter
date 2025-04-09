@@ -32,7 +32,6 @@ jobs:
   test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
