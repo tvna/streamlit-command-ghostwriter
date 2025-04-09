@@ -296,11 +296,6 @@ jobs:
       checks: write
       id-token: write
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        branch:
-          - main
-          - develop
     timeout-minutes: 5
 
     steps:
@@ -316,7 +311,6 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
-          ref: ${{ matrix.branch }}
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
