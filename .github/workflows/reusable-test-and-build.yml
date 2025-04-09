@@ -29,6 +29,11 @@ on:
       build_succeeded:
         description: "Whether the build succeeded"
         value: ${{ jobs.workflow-summary.outputs.build_succeeded }}
+    secrets:
+      CODECOV_TOKEN:
+        required: true
+      GITHUB_TOKEN:
+        required: true
 
 defaults:
   run:
