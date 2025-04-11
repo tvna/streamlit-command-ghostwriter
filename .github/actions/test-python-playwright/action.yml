@@ -36,6 +36,11 @@ inputs:
     required: false
     type: boolean
     default: "false"
+  github-token:
+    description: "GitHub token"
+    required: false
+    type: string
+    default: ${{ secrets.GITHUB_TOKEN }}
 
 runs:
   using: "composite"
@@ -144,4 +149,4 @@ runs:
         name: Python Benchmark
         tool: "pytest"
         output-file-path: output.json
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ inputs.github-token }}

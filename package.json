@@ -26,7 +26,8 @@
         "files": [
             "build/**/*"
         ],
-        "productName": "CommandGhostwriter",
+        "productName": "Command Ghostwriter",
+        "artifactName": "command-ghostwriter.${ext}",
         "directories": {
             "buildResources": "assets"
         },
