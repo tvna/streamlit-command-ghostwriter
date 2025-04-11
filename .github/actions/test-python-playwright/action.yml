@@ -33,7 +33,7 @@ inputs:
     required: true
   github-token:
     description: "GitHub token"
-    required: true
+    required: false
     type: string
   is-benchmark:
     description: "Whether to run benchmark tests"
