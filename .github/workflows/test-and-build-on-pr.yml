@@ -84,6 +84,7 @@ jobs:
         uses: ./.github/actions/test-python-playwright
         with:
           browser: ${{ matrix.browser }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           is-benchmark: true
         timeout-minutes: 30
 

@@ -31,16 +31,15 @@ inputs:
   browser:
     description: "Browser to use"
     required: true
+  github-token:
+    description: "GitHub token"
+    required: true
+    type: string
   is-benchmark:
     description: "Whether to run benchmark tests"
     required: false
     type: boolean
     default: "false"
-  github-token:
-    description: "GitHub token"
-    required: false
-    type: string
-    default: ${{ secrets.GITHUB_TOKEN }}
 
 runs:
   using: "composite"
