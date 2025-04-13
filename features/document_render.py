@@ -93,7 +93,7 @@ from typing import (
 import jinja2
 from jinja2 import Environment, Template, nodes
 from jinja2.runtime import StrictUndefined, Undefined
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError
 
 from .validate_template import TemplateSecurityValidator, ValidationState
 from .validate_uploaded_file import FileSizeConfig, FileValidator
@@ -232,25 +232,6 @@ class FormatConfig(BaseModel):
     format_type: Annotated[int, Field(ge=MIN_FORMAT_TYPE, le=MAX_FORMAT_TYPE)]
     is_strict_undefined: bool = Field(default=True)
 
-    @classmethod
-    @field_validator("format_type")
-    def validate_format_type(cls, v: int) -> int:
-        """フォーマットタイプの検証。
-
-        Args:
-            v: フォーマットタイプ
-
-        Returns:
-            検証済みのフォーマットタイプ
-
-        Raises:
-            ValueError: 無効なフォーマットタイプの場合
-        """
-        # Use constants for validation range
-        if not isinstance(v, int) or not MIN_FORMAT_TYPE <= v <= MAX_FORMAT_TYPE:
-            raise ValueError("Unsupported format type")
-        return v
-
 
 class ContextConfig(BaseModel):
     """コンテキスト設定のバリデーションモデル。"""
@@ -283,15 +264,12 @@ class ContentFormatter(BaseModel):
             フォーマット後の文字列
         """
         # Use format type constants
-        if format_type in [FORMAT_TYPE_KEEP, FORMAT_TYPE_KEEP_ALT]:
-            return content
-        elif format_type in [FORMAT_TYPE_COMPRESS, FORMAT_TYPE_COMPRESS_ALT]:
+        if format_type in [FORMAT_TYPE_COMPRESS, FORMAT_TYPE_COMPRESS_ALT]:
             return self._compress_whitespace(content)
         elif format_type == FORMAT_TYPE_REMOVE_ALL:
             return self._remove_all_whitespace(content)
-        else:
-            # This case should ideally be caught by FormatConfig validation earlier
-            raise ValueError("Unsupported format type")
+
+        return content
 
     def _compress_whitespace(self, content: str) -> str:
         """連続する空白行を1行に圧縮する。
@@ -399,15 +377,8 @@ class DocumentRender(BaseModel):
         """
 
         super().__init__()
-        try:
-            self._file_validator.validate_size(template_file)
-            self._template_file = template_file
-        except ValueError as e:
-            self._validation_state.set_error(str(e))
-            return
-        except IOError as e:
-            self._validation_state.set_error(f"Failed to validate template file: {e!s}")
-            return
+        self._file_validator.validate_size(template_file)
+        self._template_file = template_file
 
         # 初期検証を実行
         template_content: Optional[str] = None
@@ -476,11 +447,18 @@ class DocumentRender(BaseModel):
             Optional[ContextConfig]: バリデーション済みの設定 (エラー時はNone)
         """
         try:
-            return ContextConfig(
-                context=context, format_config=FormatConfig(format_type=format_type, is_strict_undefined=is_strict_undefined)
-            )
-        except ValidationError:
-            self._validation_state.set_error("Validation error: context is invalid")
+            # FormatConfig のバリデーション
+            format_config = FormatConfig(format_type=format_type, is_strict_undefined=is_strict_undefined)
+            # ContextConfig のバリデーション (context はここで検証される)
+            return ContextConfig(context=context, format_config=format_config)
+        except ValidationError as e:
+            # エラーリストから最初の詳細なエラーメッセージを取得
+            # TODO(all): Handle multiple errors if needed
+            first_error = e.errors()[0]
+            error_field = ".".join(map(str, first_error["loc"])) if first_error.get("loc") else "input"
+            error_msg = first_error["msg"]
+            # より具体的なエラーメッセージを設定
+            self._validation_state.set_error(f"Validation error: {error_msg} at '{error_field}'")
             return None
 
     def _render_template(self, context: Dict[str, Any], template_content: str) -> Optional[str]:
@@ -534,7 +512,8 @@ class DocumentRender(BaseModel):
         if not self._validate_memory_usage(rendered_content):
             return False
 
-        return self._format_content(rendered_content, config.format_config.format_type)
+        self._render_content = self._formatter.format(rendered_content, config.format_config.format_type)
+        return True
 
     def _prepare_context_config(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool) -> Optional[ContextConfig]:
         """コンテキスト設定を準備する。
@@ -583,48 +562,13 @@ class DocumentRender(BaseModel):
         Returns:
             メモリ使用量が制限内の場合はTrue
         """
-        try:
-            # バイナリデータの検出
-            if "\x00" in content:
-                self._validation_state.set_error("Content contains invalid binary data")
-                return False
 
-            # メモリ使用量の検証
-            content_size: Final[int] = len(content.encode("utf-8"))
-            if content_size > self.MAX_MEMORY_SIZE_BYTES:
-                self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
-                return False
-            return True
-        except UnicodeEncodeError:
-            # UTF-8エンコードに失敗した場合は、文字数で概算
-            # Use constant for max bytes per char estimate
-            if len(content) * MAX_BYTES_PER_CHAR_UTF8 > self.MAX_MEMORY_SIZE_BYTES:
-                self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
-                return False
-            return True
-        except Exception as e:
-            self._validation_state.set_error(f"Memory usage validation error: {e!s}")
+        # メモリ使用量の検証
+        content_size: Final[int] = len(content.encode("utf-8"))
+        if content_size > self.MAX_MEMORY_SIZE_BYTES:
+            self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
             return False
-
-    def _format_content(self, content: str, format_type: int) -> bool:
-        """レンダリング結果をフォーマットする。
-
-        指定されたフォーマットタイプに従ってコンテンツを整形します。
-        フォーマット結果は内部状態として保持されます。
-
-        Args:
-            content: フォーマット対象のコンテンツ
-            format_type: フォーマットタイプ [0-4の整数]
-
-        Returns:
-            フォーマットが成功したかどうか
-        """
-        try:
-            self._render_content = self._formatter.format(content, format_type)
-            return True
-        except Exception as e:
-            self._validation_state.set_error(f"Content formatting error: {e!s}")
-            return False
+        return True
 
     def _create_environment(self) -> Environment:
         """Jinja2環境を作成する。
@@ -668,5 +612,5 @@ class DocumentRender(BaseModel):
 
             return dt.strftime(format_str)
 
-        except (ValueError, TypeError) as e:
+        except ValueError as e:
             raise ValueError("Invalid date format") from e

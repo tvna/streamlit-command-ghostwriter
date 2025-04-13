@@ -482,7 +482,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "Validation error: Input should be greater than or equal to 0 at 'format_type'",
             id="test_render_runtime_invalid_format_type_below_min_fail_strict",
         ),
         pytest.param(
@@ -494,7 +494,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "Validation error: Input should be less than or equal to 4 at 'format_type'",
             id="test_render_runtime_invalid_format_type_above_max_fail_strict",
         ),
         pytest.param(
