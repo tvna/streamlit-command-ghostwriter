@@ -212,9 +212,9 @@ def test_initial_validation(
     [
         pytest.param(
             b"{% macro input() %}{% endmacro %}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {},
             INITIAL_INVALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
@@ -224,9 +224,9 @@ def test_initial_validation(
         ),
         pytest.param(
             b"{% macro input() %}{% endmacro %}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
+            {},
             INITIAL_INVALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
@@ -237,79 +237,79 @@ def test_initial_validation(
         # ランタイムのみで失敗するケース - strictモード
         pytest.param(
             b"{{ 10 / value }}",
-            {"value": 0},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {"value": 0},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "Template rendering error: division by zero",
             id="test_render_runtime_division_by_zero_context_fail_strict",
         ),
         # ランタイムのみで失敗するケース - 非strictモード
         pytest.param(
             b"{{ 10 / value }}",
-            {"value": 0},
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
+            {"value": 0},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "Template rendering error: division by zero",
             id="test_render_runtime_division_by_zero_context_fail_non_strict",
         ),
-        # 両方で成功するケース -> ランタイムで失敗するケース (エラーメッセージが不適切?)
+        # 両方で成功するケース
         pytest.param(
             b"Hello {{ name }}!",
-            {"name": "World"},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {"name": "World"},
             INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
+            RUNTIME_VALID,
+            "Hello World!",
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            EXPECTED_NO_ERROR,
             id="test_render_runtime_valid_context_unexpected_fail_strict",
         ),
-        # 両方で成功するケース -> ランタイムで失敗するケース (エラーメッセージが不適切?) - 非strictモード
+        # 両方で成功するケース - 非strictモード
         pytest.param(
             b"Hello {{ name }}!",
-            {"name": "World"},
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
+            {"name": "World"},
             INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
+            RUNTIME_VALID,
+            "Hello World!",
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            EXPECTED_NO_ERROR,
             id="test_render_runtime_valid_context_unexpected_fail_non_strict",
         ),
-        # 未定義変数のケース -> ランタイムで失敗するケース (エラーメッセージが不適切?) - strictモード
+        # 未定義変数のケース - strictモード
         pytest.param(
             b"Hello {{ undefined }}!",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "'undefined' is undefined",
             id="test_render_runtime_undefined_var_context_fail_strict",
         ),
-        # 未定義変数のケース -> ランタイムで失敗するケース (エラーメッセージが不適切?) - 非strictモード
+        # 未定義変数のケース - 非strictモード
         pytest.param(
             b"Hello {{ undefined }}!",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
+            RUNTIME_VALID,
+            "Hello !",
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            EXPECTED_NO_ERROR,
             id="test_render_runtime_undefined_var_context_fail_non_strict",
         ),
         # Test case on success
@@ -357,7 +357,7 @@ def test_initial_validation(
             {"name": "World"},
             INITIAL_VALID,
             RUNTIME_VALID,
-            "Hello World!\n\n\n  \nGood bye World!",  # 空白行を保持
+            "Hello World!\n\n\n  \nGood bye World!",
             EXPECTED_NO_ERROR,
             EXPECTED_NO_ERROR,
             id="test_render_format_keep_alt_success_strict",
@@ -386,7 +386,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_format_keep_success_strict",
         ),
-        # 基本的な未定義変数のテスト - 非strictモード
         pytest.param(
             b"Hello {{ name }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -399,7 +398,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_undefined_var_success_non_strict",
         ),
-        # 基本的な未定義変数のテスト - strictモード
         pytest.param(
             b"Hello {{ name }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -412,7 +410,6 @@ def test_initial_validation(
             "'name' is undefined",
             id="test_render_runtime_undefined_var_fail_strict",
         ),
-        # 複数の変数を含むテスト - 非strictモード (部分成功)
         pytest.param(
             b"Hello {{ first_name }} {{ last_name }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -425,7 +422,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_multiple_vars_partial_success_non_strict",
         ),
-        # 複数の変数を含むテスト - strictモード
         pytest.param(
             b"Hello {{ first_name }} {{ last_name }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -438,7 +434,6 @@ def test_initial_validation(
             "'last_name' is undefined",
             id="test_render_runtime_multiple_vars_partial_fail_strict",
         ),
-        # 条件分岐内の未定義変数 - 非strictモード
         pytest.param(
             b"{% if undefined_var %}Show{% else %}Hide{% endif %}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -451,7 +446,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_undefined_in_condition_success_non_strict",
         ),
-        # 条件分岐内の未定義変数 - strictモード
         pytest.param(
             b"{% if undefined_var %}Show{% else %}Hide{% endif %}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -464,7 +458,6 @@ def test_initial_validation(
             "'undefined_var' is undefined",
             id="test_render_runtime_undefined_in_condition_fail_strict",
         ),
-        # 定義済み変数のチェック - is_definedフィルター (非strictモード)
         pytest.param(
             b"{{ name if name is defined else 'Anonymous' }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -477,7 +470,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_defined_check_fallback_success_non_strict",
         ),
-        # 定義済み変数のチェック - is_definedフィルター (strictモード)
         pytest.param(
             b"{{ name if name is defined else 'Anonymous' }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -490,7 +482,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_defined_check_fallback_success_strict",
         ),
-        # ネストされた変数アクセス - 非strictモード
         pytest.param(
             b"{{ user.name }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -503,7 +494,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_nested_undefined_success_non_strict",
         ),
-        # ネストされた変数アクセス - strictモード
         pytest.param(
             b"{{ user.name }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -516,7 +506,6 @@ def test_initial_validation(
             "'user' is undefined",
             id="test_render_runtime_nested_undefined_fail_strict",
         ),
-        # Test case on failed
         pytest.param(
             b"\x80\x81\x82\x83",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -529,7 +518,6 @@ def test_initial_validation(
             "Template file contains invalid UTF-8 bytes",
             id="test_render_initial_encoding_invalid_utf8_fail_strict",
         ),
-        # Test case for syntax error - 初期検証で失敗するように修正
         pytest.param(
             b"Hello {{ name }!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -566,7 +554,6 @@ def test_initial_validation(
             "Validation error: context is invalid",
             id="test_render_runtime_invalid_format_type_above_max_fail_strict",
         ),
-        # Edge case: Template with error in expression
         pytest.param(
             b"{{ 10 / value }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -579,7 +566,6 @@ def test_initial_validation(
             "Template rendering error: division by zero",
             id="test_render_runtime_division_by_zero_fail_strict",
         ),
-        # YAMLコンテキストのテスト
         pytest.param(
             (
                 b"Current Date: {{ current_date | date('%Y-%m-%d') }}\n"
@@ -599,6 +585,62 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             EXPECTED_NO_ERROR,
             id="test_render_filter_date_success_strict",
+        ),
+        # タイムスタンプ形式の日付テスト
+        pytest.param(
+            (
+                b"Unix Timestamp: {{ unix_timestamp | date('%Y-%m-%d %H:%M:%S') }}\n"
+                b"Millisecond Timestamp: {{ ms_timestamp | date('%Y-%m-%d %H:%M:%S.%f') }}\n"
+                b"Formatted Time: {{ unix_timestamp | date('%H:%M') }}"
+            ),
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {
+                "unix_timestamp": "2024-03-20T15:30:45",  # ISO 8601形式
+                "ms_timestamp": "2024-03-20T15:30:45.123",  # ミリ秒付きISO 8601形式
+            },
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "Unix Timestamp: 2024-03-20 15:30:45\nMillisecond Timestamp: 2024-03-20 15:30:45.123000\nFormatted Time: 15:30",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_filter_timestamp_success_strict",
+        ),
+        # 歴史的な日付テスト [1970年以前]
+        pytest.param(
+            b"Historic Date: {{ historic_date | date('%Y-%m-%d') }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {
+                "historic_date": "1969-01-01T00:00:00",  # ISO 8601形式
+            },
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "Historic Date: 1969-01-01",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_filter_historic_date_success_strict",
+        ),
+        # ISO形式の日付文字列テスト
+        pytest.param(
+            (
+                b"ISO String: {{ iso_date | date('%d %b %Y') }}\n"
+                b"ISO with TZ: {{ iso_with_tz | date('%Y-%m-%d %H:%M %Z') }}\n"
+                b"Future Date: {{ future_date | date('%A, %B %d, %Y') }}"
+            ),
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {
+                "iso_date": "2024-12-31T23:59:59",
+                "iso_with_tz": "2024-06-15T12:30:45+09:00",
+                "future_date": "2025-01-01T00:00:00",
+            },
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "ISO String: 31 Dec 2024\nISO with TZ: 2024-06-15 12:30 UTC+09:00\nFuture Date: Wednesday, January 01, 2025",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_filter_iso_date_formats_success_strict",
         ),
         pytest.param(
             b"{{ invalid_date | date('%Y-%m-%d') }}",
@@ -621,7 +663,7 @@ def test_initial_validation(
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Template rendering error: cannot access local variable 'dt' where it is not associated with a value",
+            "Template rendering error: 'NoneType' object has no attribute 'replace'",
             id="test_render_runtime_filter_null_date_fail_strict",
         ),
         # Template Injection Edge Cases
@@ -710,7 +752,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_extends_tag_fail_strict",
         ),
         pytest.param(
-            b"{{ eval('1+1') }}",  # Assuming context contains 'eval'
+            b"{{ eval('1+1') }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"eval": eval},
@@ -722,7 +764,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_eval_call_fail_strict",
         ),
         pytest.param(
-            b"{{ exec('import os') }}",  # Assuming context contains 'exec'
+            b"{{ exec('import os') }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"exec": exec},
@@ -734,7 +776,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_exec_call_fail_strict",
         ),
         pytest.param(
-            b"{{ os.system('ls') }}",  # Assuming context contains 'os'
+            b"{{ os.system('ls') }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"os": __import__("os")},
@@ -746,7 +788,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_os_var_fail_strict",
         ),
         pytest.param(
-            b"{{ sys.modules }}",  # Assuming context contains 'sys'
+            b"{{ sys.modules }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"sys": __import__("sys")},
@@ -758,7 +800,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_sys_var_fail_strict",
         ),
         pytest.param(
-            b"{{ builtins.open('/etc/passwd').read() }}",  # Assuming context contains 'builtins'
+            b"{{ builtins.open('/etc/passwd').read() }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"builtins": __import__("builtins")},
@@ -770,7 +812,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_builtins_var_fail_strict",
         ),
         pytest.param(
-            b"{{ setattr(obj, 'attr', 'value') }}",  # Assuming context contains 'setattr'
+            b"{{ setattr(obj, 'attr', 'value') }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"setattr": setattr, "obj": object()},
@@ -782,7 +824,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_setattr_call_fail_strict",
         ),
         pytest.param(
-            b"{{ delattr(obj, 'attr') }}",  # Assuming context contains 'delattr'
+            b"{{ delattr(obj, 'attr') }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"delattr": delattr, "obj": type("Dummy", (), {"attr": 1})()},
@@ -794,7 +836,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_delattr_call_fail_strict",
         ),
         pytest.param(
-            b"{{ locals() }}",  # Assuming context contains 'locals'
+            b"{{ locals() }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"locals": locals},
@@ -805,9 +847,8 @@ def test_initial_validation(
             "Template security validation failed: Call to restricted function 'locals()' is forbidden.",
             id="test_render_initial_security_injection_locals_call_fail_strict",
         ),
-        # _validate_restricted_attributes の追加エッジケース
         pytest.param(
-            b"{{ config }}",  # 禁止された Name の直接使用
+            b"{{ config }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"config": {}},
@@ -819,7 +860,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_config_var_fail_strict",
         ),
         pytest.param(
-            b"{{ obj.__base__ }}",  # 禁止された Getattr (__base__)
+            b"{{ obj.__base__ }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"obj": "test"},
@@ -831,10 +872,10 @@ def test_initial_validation(
             id="test_render_initial_security_injection_base_attr_fail_strict",
         ),
         pytest.param(
-            b"{{ my_dict['os'] }}",  # 禁止された Getitem
+            b"{{ my_dict['os'] }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            {"my_dict": {"os": "value"}},  # キーが禁止されている
+            {"my_dict": {"os": "value"}},
             INITIAL_INVALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
@@ -843,7 +884,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_os_item_fail_strict",
         ),
         pytest.param(
-            b"{% set my_os = os %}{{ my_os }}",  # 禁止された Name の Assign
+            b"{% set my_os = os %}{{ my_os }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"os": "fake_os"},
@@ -855,7 +896,7 @@ def test_initial_validation(
             id="test_render_initial_security_injection_os_assign_fail_strict",
         ),
         pytest.param(
-            b"{% set my_eval = eval %}{{ my_eval('1') }}",  # 禁止された Call の Assign
+            b"{% set my_eval = eval %}{{ my_eval('1') }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"eval": eval},
@@ -866,8 +907,6 @@ def test_initial_validation(
             "Template security validation failed: Assignment of restricted variable 'eval' is forbidden.",
             id="test_render_initial_security_injection_eval_assign_fail_strict",
         ),
-        # _is_recursive_structure の追加エッジケース
-        # 辞書の再帰 -> doタグ禁止により初期検証で失敗
         pytest.param(
             b"{% set d = {} %}{% do d.update({'self': d}) %}{{ d }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -880,7 +919,6 @@ def test_initial_validation(
             "Template security error: 'do' tag is not allowed",
             id="test_render_initial_security_do_tag_recursive_dict_fail_strict",
         ),
-        # ネストされたリストの再帰 -> doタグ禁止により初期検証で失敗
         pytest.param(
             b"{% set l = [[]] %}{% do l[0].append(l) %}{{ l }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -893,7 +931,6 @@ def test_initial_validation(
             "Template security error: 'do' tag is not allowed",
             id="test_render_initial_security_do_tag_recursive_list_fail_strict",
         ),
-        # 混合再帰 (リストと辞書) -> doタグ禁止により初期検証で失敗
         pytest.param(
             b"{% set d = {} %}{% set l = [d] %}{% do d.update({'list': l}) %}{{ l }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -906,7 +943,6 @@ def test_initial_validation(
             "Template security error: 'do' tag is not allowed",
             id="test_render_initial_security_do_tag_recursive_mixed_fail_strict",
         ),
-        # Edge case: Template with complex nested loops and conditionals
         pytest.param(
             (
                 b"{% for i in range(3) %}\n"
@@ -932,7 +968,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_logic_complex_loops_conditionals_success_strict",
         ),
-        # Edge case: Template with undefined variable in non-strict mode
         pytest.param(
             b"{{ undefined_var if undefined_var is defined else 'Default' }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -945,7 +980,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_edgecase_undefined_fallback_success_non_strict",
         ),
-        # Edge case: Template with very long output - 修正: 出力行数を減らす
         pytest.param(
             b"{% for i in range(count) %}Line {{ i }}\n{% endfor %}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -958,7 +992,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_edgecase_many_lines_success_strict",
         ),
-        # Edge case: Template with Unicode characters
         pytest.param(
             "{{ emoji }} {{ japanese }}".encode("utf-8"),
             FORMAT_TYPE_COMPRESS_ALT,
@@ -971,7 +1004,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_edgecase_unicode_success_strict",
         ),
-        # Edge case: Template with HTML content and safe filter -> autoescaped
         pytest.param(
             b"<html><body>{{ content | safe }}</body></html>",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -984,7 +1016,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_edgecase_html_safe_filter_autoescaped_success_strict",
         ),
-        # Edge case: Template with unsafe HTML content (Pydantic validation fail)
         pytest.param(
             b"<html><body>{{ content | safe }}</body></html>",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1004,7 +1035,6 @@ def test_initial_validation(
             ),
             id="test_render_runtime_security_unsafe_html_fail_strict",
         ),
-        # Edge case: Template with HTML escaping (default)
         pytest.param(
             b"<html><body>{{ content }}</body></html>",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1017,7 +1047,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_edgecase_html_autoescape_success_strict",
         ),
-        # Edge case: Template with macro - 初期検証で失敗
         pytest.param(
             (
                 b"{% macro input(name, value='', type='text') -%}\n"
@@ -1036,7 +1065,24 @@ def test_initial_validation(
             "Template security error: 'macro' tag is not allowed",
             id="test_render_initial_security_macro_definition_fail_strict",
         ),
-        # Edge case: Template with call tag (runtime undefined fail)
+        pytest.param(
+            (
+                b"{% macro input(name, value='', type='text') -%}\n"
+                b'    <input type="{{ type }}" name="{{ name }}" value="{{ value }}">\n'
+                b"{%- endmacro %}\n\n"
+                b"{{ input('username') }}\n"
+                b"{{ input('password', type='password') }}"
+            ),
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template security error: 'macro' tag is not allowed",
+            "Template security error: 'macro' tag is not allowed",
+            id="test_render_initial_security_macro_definition_fail_non_strict",
+        ),
         pytest.param(
             b"{%- call input('username') %}{% endcall %}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1049,7 +1095,18 @@ def test_initial_validation(
             "'input' is undefined",
             id="test_render_runtime_logic_call_tag_undefined_fail_strict",
         ),
-        # Edge case: Template with request access - 初期検証で失敗
+        pytest.param(
+            b"{%- call input('username') %}{% endcall %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_NO_ERROR,
+            "Template rendering error: sequence item 0: expected str instance, CustomUndefined found",
+            id="test_render_runtime_logic_call_tag_undefined_fail_non_strict",
+        ),
         pytest.param(
             b"{% set x = request.args %}{{ x }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1062,7 +1119,18 @@ def test_initial_validation(
             "Template security validation failed: Use of restricted variable 'request' is forbidden.",
             id="test_render_initial_security_injection_request_var_fail_strict",
         ),
-        # Edge case: Template with config access - 初期検証で失敗
+        pytest.param(
+            b"{% set x = request.args %}{{ x }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {"request": {"args": {"debug": "true"}}},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template security validation failed: Use of restricted variable 'request' is forbidden.",
+            "Template security validation failed: Use of restricted variable 'request' is forbidden.",
+            id="test_render_initial_security_injection_request_var_fail_non_strict",
+        ),
         pytest.param(
             b"{{ config.items() }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1075,7 +1143,18 @@ def test_initial_validation(
             "Template security validation failed: Use of restricted variable 'config' is forbidden.",
             id="test_render_initial_security_injection_config_items_fail_strict",
         ),
-        # Edge case: Template with recursive data structure (list append)
+        pytest.param(
+            b"{{ config.items() }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {"config": {"secret": "sensitive_data"}},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template security validation failed: Use of restricted variable 'config' is forbidden.",
+            "Template security validation failed: Use of restricted variable 'config' is forbidden.",
+            id="test_render_initial_security_injection_config_items_fail_non_strict",
+        ),
         pytest.param(
             b"{% set x = [] %}{% set _ = x.append(x) %}{{ x }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1088,7 +1167,18 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_edgecase_recursive_list_success_strict",
         ),
-        # Edge case: Template with large loop range - Expect specific error message now
+        pytest.param(
+            b"{% set x = [] %}{% set _ = x.append(x) %}{{ x }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "[[...]]",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_runtime_edgecase_recursive_list_success_non_strict",
+        ),
         pytest.param(
             b"{% for i in range(999999999) %}{{ i }}{% endfor %}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1101,238 +1191,238 @@ def test_initial_validation(
             "Template security error: loop range exceeds maximum limit of 100000",
             id="test_render_initial_security_large_loop_range_999M_fail_strict",
         ),
-        # ネストされた未定義変数のケース - strictモード -> 重複のため削除候補だがIDのみ変更
+        pytest.param(
+            b"{% for i in range(999999999) %}{{ i }}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template security error: loop range exceeds maximum limit of 100000",
+            "Template security error: loop range exceeds maximum limit of 100000",
+            id="test_render_initial_security_large_loop_range_999M_fail_non_strict",
+        ),
         pytest.param(
             b"Hello {{ user.name }}!",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "'user' is undefined",
             id="test_render_runtime_nested_undefined_context_fail_strict",
         ),
-        # ネストされた未定義変数のケース - 非strictモード -> 重複のため削除候補だがIDのみ変更
         pytest.param(
             b"Hello {{ user.name }}!",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
+            RUNTIME_VALID,
+            "Hello !",
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            EXPECTED_NO_ERROR,
             id="test_render_runtime_nested_undefined_context_fail_non_strict",
         ),
-        # 複数レベルのネストされた未定義変数 - strictモード
         pytest.param(
             b"Hello {{ user.profile.name }}!",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "'user' is undefined",
             id="test_render_runtime_multi_level_nested_undefined_context_fail_strict",
         ),
-        # 複数レベルのネストされた未定義変数 - 非strictモード
         pytest.param(
             b"Hello {{ user.profile.name }}!",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
+            RUNTIME_VALID,
+            "Hello !",
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            EXPECTED_NO_ERROR,
             id="test_render_runtime_multi_level_nested_undefined_context_fail_non_strict",
         ),
-        # 部分的に定義された変数のネスト - strictモード
         pytest.param(
             b"Hello {{ user.name }}!",
-            {"user": {}},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {"user": {}},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "'dict object' has no attribute 'name'",
             id="test_render_runtime_partial_nested_undefined_context_fail_strict",
         ),
-        # 部分的に定義された変数のネスト - 非strictモード
-        pytest.param(
-            b"Hello {{ user.name }}!",
-            {"user": {}},
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
-            id="test_render_runtime_partial_nested_undefined_context_fail_non_strict",
-        ),
-        # メソッド呼び出し - strictモード
         pytest.param(
             b"{{ undefined.method() }}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "'undefined' is undefined",
             id="test_render_runtime_undefined_method_call_context_fail_strict",
         ),
-        # メソッド呼び出し - 非strictモード
-        pytest.param(
-            b"{{ undefined.method() }}",
-            {},
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
-            id="test_render_runtime_undefined_method_call_context_fail_non_strict",
-        ),
-        # インデックスアクセス - strictモード
         pytest.param(
             b"{{ items[0] }}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "'items' is undefined",
             id="test_render_runtime_undefined_index_access_context_fail_strict",
         ),
-        # インデックスアクセス - 非strictモード
-        pytest.param(
-            b"{{ items[0] }}",
-            {},
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
-            id="test_render_runtime_undefined_index_access_context_fail_non_strict",
-        ),
-        # 複雑な式の中の未定義変数 - strictモード
         pytest.param(
             b"{{ 'prefix_' + undefined + '_suffix' }}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "'undefined' is undefined",
             id="test_render_runtime_undefined_in_expression_context_fail_strict",
         ),
-        # 複雑な式の中の未定義変数 - 非strictモード
         pytest.param(
             b"{{ 'prefix_' + undefined + '_suffix' }}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
+            RUNTIME_VALID,
+            "_suffix",
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            EXPECTED_NO_ERROR,
             id="test_render_runtime_undefined_in_expression_context_fail_non_strict",
         ),
-        # 条件分岐内の未定義変数 - strictモード
         pytest.param(
             b"{% if condition %}{{ value }}{% endif %}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
-            id="test_render_runtime_undefined_in_condition_value_context_fail_strict",
-        ),
-        # 条件分岐内の未定義変数 - 非strictモード
-        pytest.param(
-            b"{% if condition %}{{ value }}{% endif %}",
             {},
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
-            id="test_render_runtime_undefined_in_condition_value_context_fail_non_strict",
+            "'condition' is undefined",
+            id="test_render_runtime_undefined_in_condition_value_context_fail_strict",
         ),
         # フィルターと未定義変数 - strictモード
         pytest.param(
             b"{{ undefined|upper }}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
-            id="test_render_runtime_undefined_with_filter_context_fail_strict",
-        ),
-        # フィルターと未定義変数 - 非strictモード
-        pytest.param(
-            b"{{ undefined|upper }}",
             {},
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
-            id="test_render_runtime_undefined_with_filter_context_fail_non_strict",
+            "'undefined' is undefined",
+            id="test_render_runtime_undefined_with_filter_context_fail_strict",
         ),
         # 複数の未定義変数の連結 - strictモード
         pytest.param(
             b"{{ var1 ~ var2 ~ var3 }}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            "'var1' is undefined",
             id="test_render_runtime_multiple_undefined_concat_context_fail_strict",
+        ),
+        pytest.param(
+            b"Hello {{ user.name }}!",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {"user": {}},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "Hello !",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_runtime_partial_nested_undefined_context_fail_non_strict",
+        ),
+        # メソッド呼び出し - 非strictモード
+        pytest.param(
+            b"{{ undefined.method() }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_runtime_undefined_method_call_context_fail_non_strict",
+        ),
+        # インデックスアクセス - 非strictモード
+        pytest.param(
+            b"{{ items[0] }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_NO_ERROR,
+            "'items' is undefined",
+            id="test_render_runtime_undefined_index_access_context_fail_non_strict",
+        ),
+        pytest.param(
+            b"{% if condition %}{{ value }}{% endif %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_runtime_undefined_in_condition_value_context_fail_non_strict",
+        ),
+        # フィルターと未定義変数 - 非strictモード
+        pytest.param(
+            b"{{ undefined|upper }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_runtime_undefined_with_filter_context_fail_non_strict",
         ),
         # 複数の未定義変数の連結 - 非strictモード
         pytest.param(
             b"{{ var1 ~ var2 ~ var3 }}",
-            {},
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
+            {},
             INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
+            RUNTIME_VALID,
+            "",
             EXPECTED_NO_ERROR,
-            "Validation error: context is invalid",
+            EXPECTED_NO_ERROR,
             id="test_render_runtime_multiple_undefined_concat_context_fail_non_strict",
         ),
     ],
@@ -1380,7 +1470,7 @@ def test_render_template(
     # Act
     apply_result: bool = render.apply_context(context, format_type, is_strict_undefined)
 
-    # Assert
+    # Assert　fo
     assert apply_result == expected_runtime_valid, (
         f"expected_runtime_valid isn't match.\nExpected: {expected_runtime_valid}\nGot: {apply_result}"
     )

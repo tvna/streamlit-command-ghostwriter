@@ -260,24 +260,6 @@ class ContextConfig(BaseModel):
     context: Dict[str, Any] = Field(default_factory=dict)
     format_config: FormatConfig
 
-    @classmethod
-    @field_validator("context")
-    def validate_context(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        """コンテキストの検証。
-
-        Args:
-            v: コンテキスト辞書
-
-        Returns:
-            検証済みのコンテキスト辞書
-
-        Raises:
-            ValueError: コンテキストが辞書でない場合
-        """
-        if not isinstance(v, dict):
-            raise ValueError("Context must be a dictionary")
-        return v
-
 
 class ContentFormatter(BaseModel):
     """テンプレート出力のフォーマット処理を行うクラス。
@@ -478,8 +460,6 @@ class DocumentRender(BaseModel):
         """
         if isinstance(e, jinja2.UndefinedError):
             self._validation_state.set_error(str(e))
-        elif isinstance(e, jinja2.TemplateError):
-            self._validation_state.set_error(str(e))
         else:
             self._validation_state.set_error(f"Template rendering error: {e!s}")
         return False
@@ -499,11 +479,8 @@ class DocumentRender(BaseModel):
             return ContextConfig(
                 context=context, format_config=FormatConfig(format_type=format_type, is_strict_undefined=is_strict_undefined)
             )
-        except ValidationError as e:
-            if "format_type" in str(e):
-                self._validation_state.set_error("Validation error: context is invalid")
-            else:
-                self._validation_state.set_error(str(e))
+        except ValidationError:
+            self._validation_state.set_error("Validation error: context is invalid")
             return None
 
     def _render_template(self, context: Dict[str, Any], template_content: str) -> Optional[str]:
@@ -520,10 +497,7 @@ class DocumentRender(BaseModel):
             template: Template = env.from_string(template_content)
             return template.render(**context)
         except Exception as e:
-            if "recursive structure detected" in str(e):
-                self._validation_state.set_error("Template security error: recursive structure detected")
-            else:
-                self._handle_rendering_error(e)
+            self._handle_rendering_error(e)
             return None
 
     def apply_context(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool = True) -> bool:
@@ -674,7 +648,7 @@ class DocumentRender(BaseModel):
 
         return env
 
-    def _date_filter(self, value: Union[str, datetime], format_str: str = "%Y-%m-%d") -> str:
+    def _date_filter(self, value: str, format_str: str = "%Y-%m-%d") -> str:
         """日付文字列をフォーマットする。
 
         Args:
@@ -689,11 +663,8 @@ class DocumentRender(BaseModel):
         """
 
         try:
-            if isinstance(value, str):
-                # ISO形式の日付文字列をパース
-                dt: datetime = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            elif isinstance(value, datetime):
-                dt: datetime = value
+            # ISO形式の日付文字列をパース
+            dt: datetime = datetime.fromisoformat(value.replace("Z", "+00:00"))
 
             return dt.strftime(format_str)
 
