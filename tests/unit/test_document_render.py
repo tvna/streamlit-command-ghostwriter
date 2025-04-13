@@ -1358,6 +1358,18 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_ERROR,
             id="test_render_runtime_multiple_undefined_concat_context_fail_non_strict",
         ),
+        pytest.param(
+            b"{{ large_data }}",
+            FORMAT_TYPE_KEEP,
+            STRICT_UNDEFINED,
+            {"large_data": "a" * (DocumentRender.MAX_MEMORY_SIZE_BYTES + 10)},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_NO_ERROR,
+            f"Memory consumption exceeds maximum limit of {DocumentRender.MAX_MEMORY_SIZE_BYTES} bytes",
+            id="test_render_runtime_memory_limit_exceeded_by_context_fail_strict",
+        ),
     ],
 )
 def test_render_template(
