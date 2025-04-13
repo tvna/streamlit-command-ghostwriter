@@ -73,7 +73,7 @@
       ".gitignore": false,
       ".github": false,
       ".pyre": true,
-      ".pyre_configuration": true,
+      ".pyre_configuration": false,
       ".pre-commit-config.yaml": false,
       ".streamlit": true,
       ".venv": true,
@@ -81,6 +81,7 @@
       ".yamllint.yml": true,
       "build": true,
       "commitlint.config.cjs": true,
+      "codecov.yaml": false,
       "coverage.xml": true,
       "htmlcov": false,
       "htmlcov/z_**.html": true,
@@ -102,22 +103,22 @@
     "python.analysis.autoSearchPaths": true,
     "python.analysis.diagnosticMode": "workspace",
     "python.analysis.extraPaths": [
-      "${workspaceRoot}/.venv/*/site-packages",
-      "${workspaceRoot}/features",
-      "${workspaceRoot}/tests/e2e"
+      "${workspaceFolder}/.venv/*/site-packages",
+      "${workspaceFolder}/features",
+      "${workspaceFolder}/tests/e2e"
     ],
     "python.analysis.ignore": ["/opt/homebrew/Cellar/python**"],
     "python.analysis.include": [
-      "${workspaceRoot}/.venv/*/site-packages",
-      "${workspaceRoot}/features",
-      "${workspaceRoot}/tests/e2e"
+      "${workspaceFolder}/.venv/*/site-packages",
+      "${workspaceFolder}/features",
+      "${workspaceFolder}/tests/e2e"
     ],
     "python.analysis.indexing": true,
     "python.analysis.typeCheckingMode": "basic",
     "python.autoComplete.extraPaths": [
-      "${workspaceRoot}/.venv/*/site-packages",
-      "${workspaceRoot}/features",
-      "${workspaceRoot}/tests/e2e"
+      "${workspaceFolder}/.venv/*/site-packages",
+      "${workspaceFolder}/features",
+      "${workspaceFolder}/tests/e2e"
     ],
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     "python.poetryPath": "poetry",
