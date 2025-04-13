@@ -77,127 +77,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
 @UNIT
 @SET_TIMEOUT
 @pytest.mark.parametrize(
-    ("template_content", "expected_valid", "expected_error"),
-    [
-        # 基本的な構文テスト
-        pytest.param(
-            b"Hello {{ name }}!",
-            INITIAL_VALID,
-            EXPECTED_NO_ERROR,
-            id="test_initial_syntax_basic_success",
-        ),
-        # エンコーディングテスト
-        pytest.param(
-            b"\x80\x81\x82\x83",
-            INITIAL_INVALID,
-            "Template file contains invalid UTF-8 bytes",
-            id="test_initial_encoding_invalid_utf8_fail",
-        ),
-        # 構文エラーテスト
-        pytest.param(
-            b"Hello {{ name }!",
-            INITIAL_INVALID,
-            "unexpected '}'",
-            id="test_initial_syntax_error_unmatched_brace_fail",
-        ),
-        # セキュリティ検証テスト - マクロ
-        pytest.param(
-            b"{% macro input(name) %}{% endmacro %}",
-            INITIAL_INVALID,
-            "Template security error: 'macro' tag is not allowed",
-            id="test_initial_security_macro_tag_fail",
-        ),
-        # セキュリティ検証テスト - インクルード
-        pytest.param(
-            b"{% include 'header.html' %}",
-            INITIAL_INVALID,
-            "Template security error: 'include' tag is not allowed",
-            id="test_initial_security_include_tag_fail",
-        ),
-        # セキュリティ検証テスト - 制限属性
-        pytest.param(
-            b"{{ request.args }}",
-            INITIAL_INVALID,
-            "Template security validation failed: Use of restricted variable 'request' is forbidden.",
-            id="test_initial_security_restricted_attribute_request_fail",
-        ),
-        # セキュリティ検証テスト - 大きなループ範囲
-        pytest.param(
-            b"{% for i in range(0, 1000000) %}{{ i }}{% endfor %}",
-            INITIAL_INVALID,
-            "Template security error: loop range exceeds maximum limit of 100000",
-            id="test_initial_security_large_loop_range_fail",
-        ),
-        # ファイルサイズ検証テスト
-        pytest.param(
-            b"",  # 空ファイル
-            INITIAL_VALID,
-            EXPECTED_NO_ERROR,
-            id="test_initial_filesize_empty_success",
-        ),
-        pytest.param(
-            b"a" * (30 * 1024 * 1024),  # 制限値ちょうど
-            INITIAL_VALID,
-            EXPECTED_NO_ERROR,
-            id="test_initial_filesize_max_exact_success",
-        ),
-        pytest.param(
-            b"a" * (30 * 1024 * 1024 + 1),  # 制限値オーバー
-            INITIAL_INVALID,
-            f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
-            id="test_initial_filesize_max_exceeded_fail",
-        ),
-        # バイナリデータ (Nullバイト) 検証テスト
-        pytest.param(
-            b"\x00",  # Nullバイトのみ
-            INITIAL_INVALID,
-            "Template file contains invalid binary data",
-            id="test_initial_encoding_null_byte_only_fail",
-        ),
-        pytest.param(
-            b"Hello\x00World",  # 有効なテキスト + Nullバイト
-            INITIAL_INVALID,
-            "Template file contains invalid binary data",
-            id="test_initial_encoding_null_byte_in_text_fail",
-        ),
-    ],
-)
-def test_initial_validation(
-    create_template_file: Callable[[bytes, str], BytesIO],
-    template_content: bytes,
-    expected_valid: bool,
-    expected_error: Optional[str],
-) -> None:
-    """初期検証の動作を確認する。
-
-    Args:
-        create_template_file: テンプレートファイル作成用フィクスチャ
-        template_content: テンプレートの内容
-        expected_valid: 検証が成功することが期待されるかどうか
-        expected_error: 期待されるエラーメッセージ
-    """
-    # Arrange
-    template_file: BytesIO = create_template_file(template_content, "template.txt")
-
-    # Act
-    renderer = DocumentRender(template_file)
-
-    # Assert
-    assert renderer.is_valid_template == expected_valid, (
-        f"Template validation failed.\nExpected: {expected_valid}\nGot: {renderer.is_valid_template}"
-    )
-    if expected_error:
-        assert renderer.error_message is not None, "Expected error message but got None"
-        assert expected_error == renderer.error_message, (
-            f"Error message does not match.\nExpected: {expected_error}\nGot: {renderer.error_message}"
-        )
-    else:
-        assert renderer.error_message is None, f"Expected no error message, but got: {renderer.error_message}"
-
-
-@UNIT
-@SET_TIMEOUT
-@pytest.mark.parametrize(
     (
         "template_content",
         "format_type",
@@ -211,6 +90,90 @@ def test_initial_validation(
     ),
     [
         pytest.param(
+            b"",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "",
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_filesize_empty_success_strict",
+        ),
+        pytest.param(
+            b"a" * (30 * 1024 * 1024),
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "a" * (30 * 1024 * 1024),
+            EXPECTED_NO_ERROR,
+            EXPECTED_NO_ERROR,
+            id="test_render_filesize_max_exact_success_strict",
+        ),
+        pytest.param(
+            b"a" * (30 * 1024 * 1024 + 1),
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
+            f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
+            id="test_render_filesize_max_exceeded_fail_strict",
+        ),
+        pytest.param(
+            b"\x80\x81\x82\x83",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template file contains invalid UTF-8 bytes",
+            "Template file contains invalid UTF-8 bytes",
+            id="test_render_encoding_invalid_utf8_fail_strict",
+        ),
+        pytest.param(
+            b"\x00",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template file contains invalid binary data",
+            "Template file contains invalid binary data",
+            id="test_render_encoding_null_byte_only_fail_strict",
+        ),
+        pytest.param(
+            b"Hello\x00World",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template file contains invalid binary data",
+            "Template file contains invalid binary data",
+            id="test_render_encoding_null_byte_in_text_fail_strict",
+        ),
+        pytest.param(
+            b"Hello {{ name }!",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {"name": "World"},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "unexpected '}'",
+            "unexpected '}'",
+            id="test_render_syntax_error_unmatched_brace_fail_strict",
+        ),
+        pytest.param(
             b"{% macro input() %}{% endmacro %}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
@@ -223,19 +186,6 @@ def test_initial_validation(
             id="test_render_initial_security_macro_tag_fail_strict",
         ),
         pytest.param(
-            b"{% macro input() %}{% endmacro %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
-            {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            "Template security error: 'macro' tag is not allowed",
-            "Template security error: 'macro' tag is not allowed",
-            id="test_render_initial_security_macro_tag_fail_non_strict",
-        ),
-        # ランタイムのみで失敗するケース - strictモード
-        pytest.param(
             b"{{ 10 / value }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
@@ -247,7 +197,6 @@ def test_initial_validation(
             "Template rendering error: division by zero",
             id="test_render_runtime_division_by_zero_context_fail_strict",
         ),
-        # ランタイムのみで失敗するケース - 非strictモード
         pytest.param(
             b"{{ 10 / value }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -260,7 +209,6 @@ def test_initial_validation(
             "Template rendering error: division by zero",
             id="test_render_runtime_division_by_zero_context_fail_non_strict",
         ),
-        # 両方で成功するケース
         pytest.param(
             b"Hello {{ name }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -273,7 +221,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_valid_context_unexpected_fail_strict",
         ),
-        # 両方で成功するケース - 非strictモード
         pytest.param(
             b"Hello {{ name }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -286,7 +233,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_valid_context_unexpected_fail_non_strict",
         ),
-        # 未定義変数のケース - strictモード
         pytest.param(
             b"Hello {{ undefined }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -299,7 +245,6 @@ def test_initial_validation(
             "'undefined' is undefined",
             id="test_render_runtime_undefined_var_context_fail_strict",
         ),
-        # 未定義変数のケース - 非strictモード
         pytest.param(
             b"Hello {{ undefined }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -312,7 +257,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_undefined_var_context_fail_non_strict",
         ),
-        # Test case on success
         pytest.param(
             b"Hello {{ name }}!",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -325,7 +269,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_variable_basic_success_strict",
         ),
-        # フォーマットタイプのテスト - インテグレーションテストの仕様に合わせる
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
             FORMAT_TYPE_REMOVE_ALL,
@@ -586,7 +529,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_filter_date_success_strict",
         ),
-        # タイムスタンプ形式の日付テスト
         pytest.param(
             (
                 b"Unix Timestamp: {{ unix_timestamp | date('%Y-%m-%d %H:%M:%S') }}\n"
@@ -606,9 +548,8 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_filter_timestamp_success_strict",
         ),
-        # 歴史的な日付テスト [1970年以前]
         pytest.param(
-            b"Historic Date: {{ historic_date | date('%Y-%m-%d') }}",
+            b"Historic Date: {{ historic_date | date('%Y-%m-%d %H:%M:%S') }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {
@@ -616,12 +557,11 @@ def test_initial_validation(
             },
             INITIAL_VALID,
             RUNTIME_VALID,
-            "Historic Date: 1969-01-01",
+            "Historic Date: 1969-01-01 00:00:00",
             EXPECTED_NO_ERROR,
             EXPECTED_NO_ERROR,
             id="test_render_filter_historic_date_success_strict",
         ),
-        # ISO形式の日付文字列テスト
         pytest.param(
             (
                 b"ISO String: {{ iso_date | date('%d %b %Y') }}\n"
@@ -666,7 +606,6 @@ def test_initial_validation(
             "Template rendering error: 'NoneType' object has no attribute 'replace'",
             id="test_render_runtime_filter_null_date_fail_strict",
         ),
-        # Template Injection Edge Cases
         pytest.param(
             b"{{ ''.__class__ }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1323,7 +1262,6 @@ def test_initial_validation(
             "'condition' is undefined",
             id="test_render_runtime_undefined_in_condition_value_context_fail_strict",
         ),
-        # フィルターと未定義変数 - strictモード
         pytest.param(
             b"{{ undefined|upper }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1336,7 +1274,6 @@ def test_initial_validation(
             "'undefined' is undefined",
             id="test_render_runtime_undefined_with_filter_context_fail_strict",
         ),
-        # 複数の未定義変数の連結 - strictモード
         pytest.param(
             b"{{ var1 ~ var2 ~ var3 }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1361,7 +1298,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_partial_nested_undefined_context_fail_non_strict",
         ),
-        # メソッド呼び出し - 非strictモード
         pytest.param(
             b"{{ undefined.method() }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1374,7 +1310,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_undefined_method_call_context_fail_non_strict",
         ),
-        # インデックスアクセス - 非strictモード
         pytest.param(
             b"{{ items[0] }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1399,7 +1334,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_undefined_in_condition_value_context_fail_non_strict",
         ),
-        # フィルターと未定義変数 - 非strictモード
         pytest.param(
             b"{{ undefined|upper }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1412,7 +1346,6 @@ def test_initial_validation(
             EXPECTED_NO_ERROR,
             id="test_render_runtime_undefined_with_filter_context_fail_non_strict",
         ),
-        # 複数の未定義変数の連結 - 非strictモード
         pytest.param(
             b"{{ var1 ~ var2 ~ var3 }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1430,28 +1363,28 @@ def test_initial_validation(
 def test_render_template(
     create_template_file: Callable[[bytes, str], BytesIO],
     template_content: bytes,
-    context: Dict[str, AnyType],
     format_type: int,
     is_strict_undefined: bool,
+    context: Dict[str, AnyType],
     expected_initial_valid: bool,
     expected_runtime_valid: bool,
+    expected_content: Optional[str],
     expected_initial_error: Optional[str],
     expected_runtime_error: Optional[str],
-    expected_content: Optional[str],
 ) -> None:
     """初期検証とランタイム検証の一貫性を確認する。
 
     Args:
         create_template_file: テンプレートファイル作成用フィクスチャ
         template_content: テンプレートの内容
-        context: テンプレートに適用するコンテキスト
         format_type: フォーマットタイプ
         is_strict_undefined: 未定義変数を厳密にチェックするかどうか
+        context: テンプレートに適用するコンテキスト
         expected_initial_valid: 初期検証が成功することが期待されるかどうか
         expected_runtime_valid: ランタイム検証が成功することが期待されるかどうか
+        expected_content: 期待される出力内容
         expected_initial_error: 初期検証の期待されるエラーメッセージ
         expected_runtime_error: ランタイム検証の期待されるエラーメッセージ
-        expected_content: 期待される出力内容
     """
     # Arrange
     template_file: BytesIO = create_template_file(template_content, "template.txt")
@@ -1470,7 +1403,7 @@ def test_render_template(
     # Act
     apply_result: bool = render.apply_context(context, format_type, is_strict_undefined)
 
-    # Assert　fo
+    # Assert
     assert apply_result == expected_runtime_valid, (
         f"expected_runtime_valid isn't match.\nExpected: {expected_runtime_valid}\nGot: {apply_result}"
     )
