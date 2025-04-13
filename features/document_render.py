@@ -99,13 +99,13 @@ from .validate_template import TemplateSecurityValidator, ValidationState
 from .validate_uploaded_file import FileSizeConfig, FileValidator
 
 # --- Format Type Constants ---
-FORMAT_KEEP: Final[int] = 0  # Keep whitespace
-FORMAT_COMPRESS: Final[int] = 1  # Compress consecutive whitespace lines to one
-FORMAT_KEEP_ALT: Final[int] = 2  # Alias for KEEP
-FORMAT_COMPRESS_ALT: Final[int] = 3  # Alias for COMPRESS
-FORMAT_REMOVE: Final[int] = 4  # Remove all whitespace lines
-MIN_FORMAT_TYPE: Final[int] = FORMAT_KEEP
-MAX_FORMAT_TYPE: Final[int] = FORMAT_REMOVE
+FORMAT_TYPE_KEEP: Final[int] = 0  # Keep whitespace
+FORMAT_TYPE_COMPRESS: Final[int] = 1  # Compress consecutive whitespace lines to one
+FORMAT_TYPE_KEEP_ALT: Final[int] = 2  # Alias for KEEP
+FORMAT_TYPE_COMPRESS_ALT: Final[int] = 3  # Alias for COMPRESS
+FORMAT_TYPE_REMOVE_ALL: Final[int] = 4  # Remove all whitespace lines
+MIN_FORMAT_TYPE: Final[int] = FORMAT_TYPE_KEEP
+MAX_FORMAT_TYPE: Final[int] = FORMAT_TYPE_REMOVE_ALL
 
 # --- Validation Constants ---
 MAX_BYTES_PER_CHAR_UTF8: Final[int] = 4  # Maximum bytes per character assumed for UTF-8 estimate
@@ -301,11 +301,11 @@ class ContentFormatter(BaseModel):
             フォーマット後の文字列
         """
         # Use format type constants
-        if format_type in [FORMAT_KEEP, FORMAT_KEEP_ALT]:
+        if format_type in [FORMAT_TYPE_KEEP, FORMAT_TYPE_KEEP_ALT]:
             return content
-        elif format_type in [FORMAT_COMPRESS, FORMAT_COMPRESS_ALT]:
+        elif format_type in [FORMAT_TYPE_COMPRESS, FORMAT_TYPE_COMPRESS_ALT]:
             return self._compress_whitespace(content)
-        elif format_type == FORMAT_REMOVE:
+        elif format_type == FORMAT_TYPE_REMOVE_ALL:
             return self._remove_all_whitespace(content)
         else:
             # This case should ideally be caught by FormatConfig validation earlier
@@ -506,27 +506,6 @@ class DocumentRender(BaseModel):
                 self._validation_state.set_error(str(e))
             return None
 
-    def _validate_template_state(self, context: Dict[str, Any], ast: nodes.Template) -> bool:
-        """テンプレートの状態を検証する。
-
-        Args:
-            context: テンプレートに適用するコンテキスト
-
-        Returns:
-            bool: 検証が成功したかどうか
-        """
-
-        security_result: ValidationState = self._security_validator.validate_runtime_security(ast, context)
-        if not security_result.is_valid:
-            self._validation_state.set_error(security_result.error_message)
-            return False
-
-        if self._template_content is None:
-            self._validation_state.set_error("Template content is not loaded")
-            return False
-
-        return True
-
     def _render_template(self, context: Dict[str, Any], template_content: str) -> Optional[str]:
         """テンプレートをレンダリングする。
 
@@ -567,37 +546,21 @@ class DocumentRender(BaseModel):
             5. メモリ使用量の検証
             6. フォーマット処理
         """
-        if not self._validate_preconditions():
+        if not self._validation_state.is_valid or self._template_content is None:
             return False
 
         config: Optional[ContextConfig] = self._prepare_context_config(context, format_type, is_strict_undefined)
         if config is None or not self._validation_state.is_valid:
             return False
 
-        rendered_content: Optional[str] = self._process_template(config)
-        if not self._validation_state.is_valid:
+        rendered_content: Optional[str] = self._process_template(config, self._template_content)
+        if rendered_content is None or not self._validation_state.is_valid:
             return False
 
-        return self._post_process_content(rendered_content, config.format_config.format_type)
-
-    def _validate_preconditions(self) -> bool:
-        """前提条件を検証する。
-
-        Returns:
-            bool: 前提条件を満たしている場合はTrue
-        """
-        if not self._validation_state.is_valid:
+        if not self._validate_memory_usage(rendered_content):
             return False
 
-        if self._ast is None:
-            self._validation_state.set_error("AST is not available despite initial validation success")
-            return False
-
-        if self._template_content is None:
-            self._validation_state.set_error("Template content is not available despite validation success")
-            return False
-
-        return True
+        return self._format_content(rendered_content, config.format_config.format_type)
 
     def _prepare_context_config(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool) -> Optional[ContextConfig]:
         """コンテキスト設定を準備する。
@@ -615,12 +578,10 @@ class DocumentRender(BaseModel):
             return None
 
         self._is_strict_undefined = config.format_config.is_strict_undefined
-        if not self._validate_template_state(config.context, self._ast):
-            return None
 
         return config
 
-    def _process_template(self, config: ContextConfig) -> Optional[str]:
+    def _process_template(self, config: ContextConfig, template_content: str) -> Optional[str]:
         """テンプレートの処理を行う。
 
         Args:
@@ -629,33 +590,12 @@ class DocumentRender(BaseModel):
         Returns:
             Optional[str]: レンダリング結果
         """
-        if self._template_content is None:
-            self._validation_state.set_error("Template content is not available")
-            return None
 
-        rendered: Optional[str] = self._render_template(config.context, self._template_content)
+        rendered: Optional[str] = self._render_template(config.context, template_content)
         if rendered is None:
             return None
 
         return rendered
-
-    def _post_process_content(self, content: Optional[str], format_type: int) -> bool:
-        """レンダリング結果の後処理を行う。
-
-        Args:
-            content: レンダリング結果
-            format_type: フォーマットタイプ
-
-        Returns:
-            bool: 処理が成功したかどうか
-        """
-        if content is None:
-            return False
-
-        if not self._validate_memory_usage(content):
-            return False
-
-        return self._format_content(content, format_type)
 
     def _validate_memory_usage(self, content: str) -> bool:
         """メモリ使用量を検証する。

@@ -35,11 +35,11 @@ import pytest
 from _pytest.mark.structures import MarkDecorator
 
 from features.document_render import (
-    FORMAT_COMPRESS,
-    FORMAT_COMPRESS_ALT,
-    FORMAT_KEEP,
-    FORMAT_KEEP_ALT,
-    FORMAT_REMOVE,
+    FORMAT_TYPE_COMPRESS,
+    FORMAT_TYPE_COMPRESS_ALT,
+    FORMAT_TYPE_KEEP,
+    FORMAT_TYPE_KEEP_ALT,
+    FORMAT_TYPE_REMOVE_ALL,
     MAX_FORMAT_TYPE,
     MIN_FORMAT_TYPE,
     DocumentRender,
@@ -213,7 +213,7 @@ def test_initial_validation(
         pytest.param(
             b"{% macro input() %}{% endmacro %}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             INVALID_TEMPLATE,
             APPLY_FAILS,
@@ -225,7 +225,7 @@ def test_initial_validation(
         pytest.param(
             b"{% macro input() %}{% endmacro %}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             INVALID_TEMPLATE,
             APPLY_FAILS,
@@ -237,7 +237,7 @@ def test_initial_validation(
         pytest.param(
             b"{{ 10 / value }}",
             {"value": 0},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -249,7 +249,7 @@ def test_initial_validation(
         pytest.param(
             b"{{ 10 / value }}",
             {"value": 0},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -261,7 +261,7 @@ def test_initial_validation(
         pytest.param(
             b"Hello {{ name }}!",
             {"name": "World"},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_SUCCEEDS,
@@ -273,7 +273,7 @@ def test_initial_validation(
         pytest.param(
             b"Hello {{ name }}!",
             {"name": "World"},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_SUCCEEDS,
@@ -285,7 +285,7 @@ def test_initial_validation(
         pytest.param(
             b"Hello {{ undefined }}!",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -297,7 +297,7 @@ def test_initial_validation(
         pytest.param(
             b"Hello {{ undefined }}!",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_SUCCEEDS,
@@ -391,7 +391,7 @@ def test_validation_consistency(
         # Test case on success
         pytest.param(
             b"Hello {{ name }}!",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
             VALID_TEMPLATE,
@@ -403,7 +403,7 @@ def test_validation_consistency(
         # フォーマットタイプのテスト - インテグレーションテストの仕様に合わせる
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
-            FORMAT_REMOVE,
+            FORMAT_TYPE_REMOVE_ALL,
             STRICT_UNDEFINED,
             {"name": "World"},
             VALID_TEMPLATE,
@@ -414,7 +414,7 @@ def test_validation_consistency(
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
             VALID_TEMPLATE,
@@ -425,7 +425,7 @@ def test_validation_consistency(
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
-            FORMAT_KEEP_ALT,
+            FORMAT_TYPE_KEEP_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
             VALID_TEMPLATE,
@@ -436,7 +436,7 @@ def test_validation_consistency(
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
-            FORMAT_COMPRESS,
+            FORMAT_TYPE_COMPRESS,
             STRICT_UNDEFINED,
             {"name": "World"},
             VALID_TEMPLATE,
@@ -447,7 +447,7 @@ def test_validation_consistency(
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
-            FORMAT_KEEP,
+            FORMAT_TYPE_KEEP,
             STRICT_UNDEFINED,
             {"name": "World"},
             VALID_TEMPLATE,
@@ -459,7 +459,7 @@ def test_validation_consistency(
         # 基本的な未定義変数のテスト - 非strictモード
         pytest.param(
             b"Hello {{ name }}!",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -471,7 +471,7 @@ def test_validation_consistency(
         # 基本的な未定義変数のテスト - strictモード
         pytest.param(
             b"Hello {{ name }}!",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -483,7 +483,7 @@ def test_validation_consistency(
         # 複数の変数を含むテスト - 非strictモード
         pytest.param(
             b"Hello {{ first_name }} {{ last_name }}!",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {"first_name": "John"},
             VALID_TEMPLATE,
@@ -495,7 +495,7 @@ def test_validation_consistency(
         # 複数の変数を含むテスト - strictモード
         pytest.param(
             b"Hello {{ first_name }} {{ last_name }}!",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"first_name": "John"},
             VALID_TEMPLATE,
@@ -507,7 +507,7 @@ def test_validation_consistency(
         # 条件分岐内の未定義変数 - 非strictモード
         pytest.param(
             b"{% if undefined_var %}Show{% else %}Hide{% endif %}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -519,7 +519,7 @@ def test_validation_consistency(
         # 条件分岐内の未定義変数 - strictモード
         pytest.param(
             b"{% if undefined_var %}Show{% else %}Hide{% endif %}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -531,7 +531,7 @@ def test_validation_consistency(
         # 定義済み変数のチェック - is_definedフィルター (非strictモード)
         pytest.param(
             b"{{ name if name is defined else 'Anonymous' }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -543,7 +543,7 @@ def test_validation_consistency(
         # 定義済み変数のチェック - is_definedフィルター (strictモード)
         pytest.param(
             b"{{ name if name is defined else 'Anonymous' }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -555,7 +555,7 @@ def test_validation_consistency(
         # ネストされた変数アクセス - 非strictモード
         pytest.param(
             b"{{ user.name }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -567,7 +567,7 @@ def test_validation_consistency(
         # ネストされた変数アクセス - strictモード
         pytest.param(
             b"{{ user.name }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -579,7 +579,7 @@ def test_validation_consistency(
         # Test case on failed
         pytest.param(
             b"\x80\x81\x82\x83",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -591,7 +591,7 @@ def test_validation_consistency(
         # Test case for syntax error - 初期検証で失敗するように修正
         pytest.param(
             b"Hello {{ name }!",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
             INVALID_TEMPLATE,
@@ -625,7 +625,7 @@ def test_validation_consistency(
         # Edge case: Template with error in expression
         pytest.param(
             b"{{ 10 / value }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"value": 0},
             VALID_TEMPLATE,  # テンプレートは無効 (ゼロ除算は禁止)
@@ -639,7 +639,7 @@ def test_validation_consistency(
             b"""Current Date: {{ current_date | date('%Y-%m-%d') }}
 Last Updated: {{ last_updated | date('%Y-%m-%d %H:%M:%S') }}
 Next Review: {{ next_review | date('%B %d, %Y') }}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {
                 "current_date": "2024-03-20",
@@ -656,7 +656,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"""{{ invalid_date | date('%Y-%m-%d') }}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"invalid_date": "not-a-date"},
             VALID_TEMPLATE,
@@ -667,7 +667,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"""{{ date | date('%Y-%m-%d') }}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"date": None},
             VALID_TEMPLATE,
@@ -679,7 +679,7 @@ Next Review: June 20, 2024""",
         # Template Injection Edge Cases based on Rules B-002_domain / C-103_python-security
         pytest.param(
             b"{{ ''.__class__ }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -690,7 +690,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ ''.__class__.__mro__ }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -701,7 +701,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ ''.__class__.__mro__[1].__subclasses__() }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -712,7 +712,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ getattr('', '__class__') }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -723,7 +723,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ self.__init__.__globals__['os'] }}",  # Assuming 'self' or similar context
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"self": object()},
             INVALID_TEMPLATE,
@@ -734,7 +734,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{% import 'os' as os %}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -745,7 +745,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{% extends 'base.html' %}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -756,7 +756,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ eval('1+1') }}",  # Assuming context contains 'eval'
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"eval": eval},
             INVALID_TEMPLATE,
@@ -767,7 +767,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ exec('import os') }}",  # Assuming context contains 'exec'
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"exec": exec},
             INVALID_TEMPLATE,
@@ -778,7 +778,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ os.system('ls') }}",  # Assuming context contains 'os'
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"os": __import__("os")},
             INVALID_TEMPLATE,
@@ -789,7 +789,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ sys.modules }}",  # Assuming context contains 'sys'
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"sys": __import__("sys")},
             INVALID_TEMPLATE,
@@ -800,7 +800,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ builtins.open('/etc/passwd').read() }}",  # Assuming context contains 'builtins'
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"builtins": __import__("builtins")},
             INVALID_TEMPLATE,
@@ -811,7 +811,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ setattr(obj, 'attr', 'value') }}",  # Assuming context contains 'setattr'
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"setattr": setattr, "obj": object()},
             INVALID_TEMPLATE,
@@ -822,7 +822,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ delattr(obj, 'attr') }}",  # Assuming context contains 'delattr'
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"delattr": delattr, "obj": type("Dummy", (), {"attr": 1})()},
             INVALID_TEMPLATE,
@@ -833,7 +833,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ locals() }}",  # Assuming context contains 'locals'
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"locals": locals},
             INVALID_TEMPLATE,
@@ -845,7 +845,7 @@ Next Review: June 20, 2024""",
         # _validate_restricted_attributes の追加エッジケース
         pytest.param(
             b"{{ config }}",  # 禁止された Name の直接使用
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"config": {}},  # コンテキストにあっても禁止されるべき
             INVALID_TEMPLATE,
@@ -856,7 +856,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ obj.__base__ }}",  # 禁止された Getattr (__base__)
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"obj": "test"},
             INVALID_TEMPLATE,
@@ -867,7 +867,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{{ my_dict['os'] }}",  # 禁止された Getitem
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"my_dict": {"os": "value"}},  # キーが禁止されている
             INVALID_TEMPLATE,
@@ -878,7 +878,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{% set my_os = os %}{{ my_os }}",  # 禁止された Name の Assign
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"os": "fake_os"},  # コンテキストにあっても禁止されるべき
             INVALID_TEMPLATE,
@@ -889,7 +889,7 @@ Next Review: June 20, 2024""",
         ),
         pytest.param(
             b"{% set my_eval = eval %}{{ my_eval('1') }}",  # 禁止された Call の Assign
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"eval": eval},
             INVALID_TEMPLATE,
@@ -902,7 +902,7 @@ Next Review: June 20, 2024""",
         # 辞書の再帰 -> doタグ禁止により初期検証で失敗
         pytest.param(
             b"{% set d = {} %}{% do d.update({'self': d}) %}{{ d }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,  # 初期検証で失敗
@@ -914,7 +914,7 @@ Next Review: June 20, 2024""",
         # ネストされたリストの再帰 -> doタグ禁止により初期検証で失敗
         pytest.param(
             b"{% set l = [[]] %}{% do l[0].append(l) %}{{ l }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,  # 初期検証で失敗
@@ -926,7 +926,7 @@ Next Review: June 20, 2024""",
         # 混合再帰 (リストと辞書) -> doタグ禁止により初期検証で失敗
         pytest.param(
             b"{% set d = {} %}{% set l = [d] %}{% do d.update({'list': l}) %}{{ l }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,  # 初期検証で失敗
@@ -946,7 +946,7 @@ Next Review: June 20, 2024""",
     {% endif %}
   {% endfor %}
 {% endfor %}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"data": [[1, 2], [3, 4], [5, 6]]},
             VALID_TEMPLATE,
@@ -971,7 +971,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with undefined variable in non-strict mode
         pytest.param(
             b"{{ undefined_var if undefined_var is defined else 'Default' }}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -983,7 +983,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with very long output - 修正: 出力行数を減らす
         pytest.param(
             b"{% for i in range(count) %}Line {{ i }}\n{% endfor %}",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"count": 50},  # 1000から50に減らす
             VALID_TEMPLATE,
@@ -995,7 +995,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with Unicode characters
         pytest.param(
             "{{ emoji }} {{ japanese }}".encode("utf-8"),  # 明示的にUTF-8エンコード
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"emoji": "😀😁😂🤣😃", "japanese": "こんにちは世界"},
             VALID_TEMPLATE,
@@ -1007,7 +1007,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with HTML content and safe filter
         pytest.param(
             b"<html><body>{{ content | safe }}</body></html>",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"content": "<h1>Title</h1><p>Paragraph with <b>bold</b> text</p>"},
             VALID_TEMPLATE,
@@ -1019,7 +1019,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with unsafe HTML content
         pytest.param(
             b"<html><body>{{ content | safe }}</body></html>",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"content": "<script>alert('XSS')</script>"},
             VALID_TEMPLATE,
@@ -1031,7 +1031,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with HTML escaping
         pytest.param(
             b"<html><body>{{ content }}</body></html>",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"content": "<script>alert('XSS')</script>"},
             VALID_TEMPLATE,
@@ -1048,7 +1048,7 @@ Next Review: June 20, 2024""",
 
 {{ input('username') }}
 {{ input('password', type='password') }}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -1060,7 +1060,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with call tag - 初期検証で成功
         pytest.param(
             b"""{%- call input('username') %}{% endcall %}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -1072,7 +1072,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with request access - 初期検証で失敗
         pytest.param(
             b"""{% set x = request.args %}{{ x }}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"request": {"args": {"debug": "true"}}},
             INVALID_TEMPLATE,
@@ -1084,7 +1084,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with config access - 初期検証で失敗
         pytest.param(
             b"""{{ config.items() }}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"config": {"secret": "sensitive_data"}},
             INVALID_TEMPLATE,
@@ -1096,7 +1096,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with recursive data structure
         pytest.param(
             b"""{% set x = [] %}{% set _ = x.append(x) %}{{ x }}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             VALID_TEMPLATE,
@@ -1108,7 +1108,7 @@ Next Review: June 20, 2024""",
         # Edge case: Template with large loop range - Expect specific error message now
         pytest.param(
             b"""{% for i in range(999999999) %}{{ i }}{% endfor %}""",
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
             INVALID_TEMPLATE,
@@ -1121,7 +1121,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"Hello {{ user.name }}!",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1133,7 +1133,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"Hello {{ user.name }}!",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1145,7 +1145,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"Hello {{ user.profile.name }}!",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1157,7 +1157,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"Hello {{ user.profile.name }}!",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1169,7 +1169,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"Hello {{ user.name }}!",
             {"user": {}},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1181,7 +1181,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"Hello {{ user.name }}!",
             {"user": {}},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1193,7 +1193,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ undefined.method() }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1205,7 +1205,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ undefined.method() }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1217,7 +1217,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ items[0] }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1229,7 +1229,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ items[0] }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1241,7 +1241,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ 'prefix_' + undefined + '_suffix' }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1253,7 +1253,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ 'prefix_' + undefined + '_suffix' }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1265,7 +1265,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{% if condition %}{{ value }}{% endif %}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1277,7 +1277,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{% if condition %}{{ value }}{% endif %}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1289,7 +1289,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ undefined|upper }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1301,7 +1301,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ undefined|upper }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1313,7 +1313,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ var1 ~ var2 ~ var3 }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,
@@ -1325,7 +1325,7 @@ Next Review: June 20, 2024""",
         pytest.param(
             b"{{ var1 ~ var2 ~ var3 }}",
             {},
-            FORMAT_COMPRESS_ALT,
+            FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             VALID_TEMPLATE,
             APPLY_FAILS,  # This should fail because concatenation with undefined non-strict still raises error
