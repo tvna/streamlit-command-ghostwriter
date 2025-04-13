@@ -501,7 +501,7 @@ class DocumentRender(BaseModel):
             )
         except ValidationError as e:
             if "format_type" in str(e):
-                self._validation_state.set_error("Unsupported format type")
+                self._validation_state.set_error("Validation error: context is invalid")
             else:
                 self._validation_state.set_error(str(e))
             return None
