@@ -20,6 +20,12 @@ from _pytest.mark.structures import MarkDecorator
 
 from features.config_parser import ConfigParser
 
+# 定数の定義
+PARSE_SUCCESSFUL: bool = True
+PARSE_FAILED: bool = False
+EXPECT_NO_ERROR: Optional[str] = None
+EXPECT_NO_DICT: Optional[Dict[str, Any]] = None
+
 UNIT: MarkDecorator = pytest.mark.unit
 
 # 基本的な値の型を定義
@@ -409,44 +415,44 @@ class TestHelpers:
         pytest.param(
             b"valid content",
             "config.toml",
-            None,
-            id="parser_init_valid_toml",
+            EXPECT_NO_ERROR,
+            id="init_toml_valid_file",
         ),
         pytest.param(
             b"valid content",
             "config.yaml",
-            None,
-            id="parser_init_valid_yaml",
+            EXPECT_NO_ERROR,
+            id="init_yaml_valid_file",
         ),
         pytest.param(
             b"valid content",
             "config.yml",
-            None,
-            id="parser_init_valid_yml",
+            EXPECT_NO_ERROR,
+            id="init_yml_valid_file",
         ),
         pytest.param(
             b"valid content",
             "config.csv",
-            None,
-            id="parser_init_valid_csv",
+            EXPECT_NO_ERROR,
+            id="init_csv_valid_file",
         ),
         pytest.param(
             b"unsupported content",
             "config.txt",
             "Unsupported file type",
-            id="parser_init_unsupported_type",
+            id="init_txt_unsupported_type",
         ),
         pytest.param(
             b"unsupported content",
             "config",
             "Unsupported file type",
-            id="parser_init_no_extension",
+            id="init_no_ext_unsupported_type",
         ),
         pytest.param(
             b"\x80\x81\x82\x83",
             "config.toml",
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
-            id="parser_init_invalid_utf8",
+            id="init_toml_invalid_utf8",
         ),
     ],
 )
@@ -465,7 +471,7 @@ def test_initialization(
     config_file = TestHelpers.create_test_file(content, filename)
     parser = ConfigParser(config_file)
 
-    if expected_error is None:
+    if expected_error is EXPECT_NO_ERROR:
         assert parser.error_message is None
     else:
         assert expected_error == parser.error_message
@@ -489,311 +495,291 @@ def test_default_properties() -> None:
 @pytest.mark.parametrize(
     ("content", "filename", "is_successful", "expected_dict", "expected_error"),
     [
-        # Test case for tomllib module on success
         pytest.param(
             b"title = 'TOML test'",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"title": "TOML test"},
-            None,
-            id="parser_toml_basic_key_value",
+            EXPECT_NO_ERROR,
+            id="parse_toml_basic_key_value_success",
         ),
         pytest.param(
             b"date = 2024-04-01",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"date": date(2024, 4, 1)},
-            None,
-            id="parser_toml_date_parsing",
+            EXPECT_NO_ERROR,
+            id="parse_toml_date_success",
         ),
         pytest.param(
             b"fruits = ['apple', 'orange', 'apple']",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"fruits": ["apple", "orange", "apple"]},
-            None,
-            id="parser_toml_array_parsing",
+            EXPECT_NO_ERROR,
+            id="parse_toml_array_success",
         ),
         pytest.param(
             b"nested_array = [[1, 2], [3, 4, 5]]",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"nested_array": [[1, 2], [3, 4, 5]]},
-            None,
-            id="parser_toml_nested_array",
+            EXPECT_NO_ERROR,
+            id="parse_toml_nested_array_success",
         ),
-        # Test case for pyyaml module on success
         pytest.param(
             b"title: YAML test",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"title": "YAML test"},
-            None,
-            id="parser_yaml_basic_key_value",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_basic_key_value_success",
         ),
         pytest.param(
             b"title: YAML test # comment",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"title": "YAML test"},
-            None,
-            id="parser_yaml_with_comment",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_with_comment_success",
         ),
         pytest.param(
             b"date: 2024-04-01",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"date": date(2024, 4, 1)},
-            None,
-            id="parser_yaml_date_parsing",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_date_success",
         ),
         pytest.param(
             b"title: YAML test",
             "config.yml",
-            True,
+            PARSE_SUCCESSFUL,
             {"title": "YAML test"},
-            None,
-            id="parser_yml_basic_key_value",
+            EXPECT_NO_ERROR,
+            id="parse_yml_basic_key_value_success",
         ),
         pytest.param(
             b"date: 2024-04-01",
             "config.yml",
-            True,
+            PARSE_SUCCESSFUL,
             {"date": date(2024, 4, 1)},
-            None,
-            id="parser_yml_date_parsing",
+            EXPECT_NO_ERROR,
+            id="parse_yml_date_success",
         ),
-        # Test case for pandas.read_csv module on success
         pytest.param(
             b"name,age\nAlice,30\nBob,25",
             "config.csv",
-            True,
+            PARSE_SUCCESSFUL,
             {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]},
-            None,
-            id="parser_csv_basic_parsing",
+            EXPECT_NO_ERROR,
+            id="parse_csv_basic_success",
         ),
-        # Test case for tomllib module on failed
         pytest.param(
             b"\x00\x01\x02\x03\x04",
             "config.toml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Invalid statement (at line 1, column 1)",
-            id="parser_toml_invalid_binary",
+            id="parse_toml_invalid_binary_fail",
         ),
         pytest.param(
             b"title 'TOML test'",
             "config.toml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Expected '=' after a key in a key/value pair (at line 1, column 7)",
-            id="parser_toml_syntax_error",
+            id="parse_toml_syntax_error_fail",
         ),
         pytest.param(
-            b"""
-            title = 'TOML'
-            title = 'TOML test'
-            """,
+            b"\ntitle = 'TOML'\ntitle = 'TOML test'\n",
             "config.toml",
-            False,
-            None,
-            "Cannot overwrite a value (at line 3, column 32)",
-            id="parser_toml_duplicate_key",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            "Cannot overwrite a value (at line 3, column 20)",
+            id="parse_toml_duplicate_key_fail",
         ),
         pytest.param(
             b"date = 2024-04-00",
             "config.toml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Expected newline or end of document after a statement (at line 1, column 12)",
-            id="parser_toml_invalid_date",
+            id="parse_toml_invalid_date_fail",
         ),
-        # Test case for pyyaml module on failed
         pytest.param(
             b"\x00\x01\x02\x03\x04",
             "config.yaml",
-            False,
-            None,
-            """unacceptable character #x0000: special characters are not allowed
-  in "<unicode string>", position 0""",
-            id="parser_yaml_invalid_binary",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            'unacceptable character #x0000: special characters are not allowed\n  in "<unicode string>", position 0',
+            id="parse_yaml_invalid_binary_fail",
         ),
         pytest.param(
             b"title = 'YAML test'",
             "config.yaml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Invalid YAML file loaded.",
-            id="parser_yaml_toml_syntax",
+            id="parse_yaml_toml_syntax_fail",
         ),
         pytest.param(
             b"title: title: YAML test",
             "config.yaml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "mapping values are not allowed here",
-            id="parser_yaml_duplicate_mapping",
+            id="parse_yaml_duplicate_mapping_fail",
         ),
         pytest.param(
             b"date: 2024-04-00",
             "config.yaml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "day is out of range for month",
-            id="parser_yaml_invalid_date",
+            id="parse_yaml_invalid_date_fail",
         ),
         pytest.param(
             b"key: @unexpected_character",
             "config.yaml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "while scanning for the next token\nfound character",
-            id="parser_yaml_unexpected_char",
+            id="parse_yaml_unexpected_char_fail",
         ),
-        # Test case for pandas.read_csv module on failed
         pytest.param(
-            b"name,age\nAlice,30\nBob,30,Japan",
+            (b"name,age\n" + b"Alice,30\n" + b"Bob,30,Japan"),
             "config.csv",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Error tokenizing data. C error: Expected 2 fields in line 3, saw 3",
-            id="parser_csv_inconsistent_columns",
+            id="parse_csv_inconsistent_columns_fail",
         ),
         pytest.param(
             b"",
             "config.csv",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "No columns to parse from file",
-            id="parser_csv_empty_file",
+            id="parse_csv_empty_file_fail",
         ),
         pytest.param(
-            b"""a,b,c\ncat,foo,bar\ndog,foo,"baz""",
+            b'a,b,c\ncat,foo,bar\ndog,foo,"baz',
             "config.csv",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Error tokenizing data. C error: EOF inside string starting at row 2",
-            id="parser_csv_unclosed_quote",
+            id="parse_csv_unclosed_quote_fail",
         ),
-        # Additional edge cases
-        # Large nested structures
         pytest.param(
             b"nested = { a = { b = { c = { d = { e = 'deep nesting' } } } } }",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"nested": {"a": {"b": {"c": {"d": {"e": "deep nesting"}}}}}},
-            None,
-            id="parser_toml_deep_nesting",
+            EXPECT_NO_ERROR,
+            id="parse_toml_deep_nesting_success",
         ),
-        # Unicode characters
         pytest.param(
             b"unicode = '\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e'",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"unicode": "日本語"},
-            None,
-            id="parser_toml_unicode_chars",
+            EXPECT_NO_ERROR,
+            id="parse_toml_unicode_chars_success",
         ),
-        # Empty file with valid extension
         pytest.param(
             b"",
             "config.toml",
-            True,  # 空のTOMLファイルは有効なTOMLとして処理される
-            {},  # 空の辞書として解析される
-            None,
-            id="parser_toml_empty_file",
+            PARSE_SUCCESSFUL,
+            {},
+            EXPECT_NO_ERROR,
+            id="parse_toml_empty_file_success",
         ),
-        # YAML with special data types
         pytest.param(
             b"special_yaml: !!binary SGVsbG8=",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"special_yaml": b"Hello"},
-            None,
-            id="parser_yaml_special_types",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_special_types_binary_success",
         ),
-        # CSV with mixed data types
         pytest.param(
             b"id,name,value\n1,test,123\n2,another,abc",
             "config.csv",
-            True,
+            PARSE_SUCCESSFUL,
             {"csv_rows": [{"id": 1, "name": "test", "value": "123"}, {"id": 2, "name": "another", "value": "abc"}]},
-            None,
-            id="parser_csv_mixed_types",
+            EXPECT_NO_ERROR,
+            id="parse_csv_mixed_types_success",
         ),
-        # CSV with NaN values (without handling NaNs)
         pytest.param(
             b"id,name,value\n1,test,\n2,,abc",
             "config.csv",
-            True,
+            PARSE_SUCCESSFUL,
             {"csv_rows": [{"id": 1, "name": "test", "value": np.nan}, {"id": 2, "name": np.nan, "value": "abc"}]},
-            None,
-            id="parser_csv_nan_values",
+            EXPECT_NO_ERROR,
+            id="parse_csv_nan_values_success",
         ),
-        # Mismatched file extension and content
         pytest.param(
             b"title: YAML content",
             "config.toml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Expected '=' after a key in a key/value pair (at line 1, column 6)",
-            id="parser_toml_yaml_content",
+            id="parse_toml_with_yaml_content_fail",
         ),
-        # File with BOM marker
         pytest.param(
             b"\xef\xbb\xbftitle = 'TOML with BOM'",
             "config.toml",
-            False,
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Invalid statement (at line 1, column 1)",
-            id="parser_toml_bom_marker",
-        ),
-        # Add new CSV edge cases
-        pytest.param(
-            b"col1,col2\n",  # Header only, no data rows
-            "config.csv",
-            False,  # Parsing should now fail
-            None,  # Expect no dictionary
-            "CSV file must contain at least one data row.",  # Expect the new ValueError
-            id="parser_csv_header_only",
+            id="parse_toml_with_bom_fail",
         ),
         pytest.param(
-            b'col1,col2\nval1,"unclosed_val2',  # Malformed data row with unclosed quote
+            b"col1,col2\n",
             "config.csv",
-            False,  # Parsing fails
-            None,
-            "Error tokenizing data. C error: EOF inside string starting at row 1",  # Expect pandas ParserError
-            id="parser_csv_malformed_header",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            "CSV file must contain at least one data row.",
+            id="parse_csv_header_only_fail",
         ),
         pytest.param(
-            b"\x00\x01\x02\x03\x04",  # Add test for .csv
+            b'col1,col2\nval1,"unclosed_val2',
             "config.csv",
-            False,
-            None,
-            "Failed to parse CSV: Null byte detected in input data.",  # Expect specific null byte error
-            id="parser_csv_invalid_binary",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            "Error tokenizing data. C error: EOF inside string starting at row 1",
+            id="parse_csv_unclosed_quote_in_data_fail",
+        ),
+        pytest.param(
+            b"\x00\x01\x02\x03\x04",
+            "config.csv",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            "Failed to parse CSV: Null byte detected in input data.",
+            id="parse_csv_invalid_binary_fail",
         ),
         # --- Start: New CSV Edge Case Tests ---
         pytest.param(
-            b" col1 , col2 \n val1 , val2 \n",  # Leading/trailing whitespace
+            b" col1 , col2 \n val1 , val2 \n",
             "config.csv",
-            True,
-            {"csv_rows": [{" col1 ": " val1 ", " col2 ": " val2 "}]},  # pandas preserves whitespace
-            None,
-            id="parser_csv_leading_trailing_whitespace",
+            PARSE_SUCCESSFUL,
+            {"csv_rows": [{" col1 ": " val1 ", " col2 ": " val2 "}]},
+            EXPECT_NO_ERROR,
+            id="parse_csv_whitespace_in_header_data_success",
         ),
         pytest.param(
-            b"col1,col2\r\nval1,val2\nval3,val4\rval5,val6",  # Mixed line endings
+            b"col1,col2\r\nval1,val2\nval3,val4\rval5,val6",
             "config.csv",
-            True,
+            PARSE_SUCCESSFUL,
             {"csv_rows": [{"col1": "val1", "col2": "val2"}, {"col1": "val3", "col2": "val4"}, {"col1": "val5", "col2": "val6"}]},
-            None,
-            id="parser_csv_mixed_line_endings",
+            EXPECT_NO_ERROR,
+            id="parse_csv_mixed_line_endings_success",
         ),
         pytest.param(
-            b"col1,col2\n123,abc\n456.7,True\nxyz,False\n,999",  # Highly mixed types
+            b"col1,col2\n123,abc\n456.7,True\nxyz,False\n,999",
             "config.csv",
-            True,
+            PARSE_SUCCESSFUL,
             {
                 "csv_rows": [
                     {"col1": "123", "col2": "abc"},
@@ -802,161 +788,153 @@ def test_default_properties() -> None:
                     {"col1": np.nan, "col2": "999"},
                 ]
             },
-            # Ensure expected_str matches the actual pprint output with strings
-            None,
-            id="parser_csv_highly_mixed_types",
+            EXPECT_NO_ERROR,
+            id="parse_csv_highly_mixed_types_nan_success",
         ),
         pytest.param(
-            b" \t \n \n \t\t ",  # Whitespace only lines
+            b" \t \n \n \t\t ",
             "config.csv",
-            False,
-            None,
-            "No columns to parse from file",  # pandas reads it as empty
-            id="parser_csv_whitespace_only_lines",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            "No columns to parse from file",
+            id="parse_csv_whitespace_only_fail",
         ),
         pytest.param(
-            b"col1,col2\n \t \n \n",  # Header then whitespace lines
+            b"col1,col2\n \t \n \n",
             "config.csv",
-            False,
-            None,
-            "CSV file must contain at least one data row.",  # Should be treated as header only
-            id="parser_csv_header_with_whitespace_lines",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            "CSV file must contain at least one data row.",
+            id="parse_csv_header_with_whitespace_lines_fail",
         ),
         pytest.param(
-            b'col1,col2\n"line1\nline2",value2',  # Quoted newlines
+            b'col1,col2\n"line1\nline2",value2',
             "config.csv",
-            True,
+            PARSE_SUCCESSFUL,
             {"csv_rows": [{"col1": "line1\nline2", "col2": "value2"}]},
-            None,
-            id="parser_csv_quoted_newlines",
+            EXPECT_NO_ERROR,
+            id="parse_csv_quoted_newlines_success",
         ),
-        # --- End: New CSV Edge Case Tests ---
-        # --- Start: New TOML Edge Case Tests ---
         pytest.param(
             b"float_val = 3.14\ninf_val = inf\nnan_val = nan",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"float_val": 3.14, "inf_val": float("inf"), "nan_val": float("nan")},
-            None,
-            id="parser_toml_float_inf_nan",
+            EXPECT_NO_ERROR,
+            id="parse_toml_float_inf_nan_success",
         ),
         pytest.param(
             b"bool_true = true\nbool_false = false",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"bool_true": True, "bool_false": False},
-            None,
-            id="parser_toml_booleans",
+            EXPECT_NO_ERROR,
+            id="parse_toml_booleans_success",
         ),
         pytest.param(
             b'inline_table = { key1 = "val1", key2 = 123 }',
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"inline_table": {"key1": "val1", "key2": 123}},
-            None,
-            id="parser_toml_inline_table",
+            EXPECT_NO_ERROR,
+            id="parse_toml_inline_table_success",
         ),
         pytest.param(
             b"[[points]]\nx = 1\ny = 2\n[[points]]\nx = 3\ny = 4",
             "config.toml",
-            True,
+            PARSE_SUCCESSFUL,
             {"points": [{"x": 1, "y": 2}, {"x": 3, "y": 4}]},
-            None,
-            id="parser_toml_array_of_tables",
+            EXPECT_NO_ERROR,
+            id="parse_toml_array_of_tables_success",
         ),
         pytest.param(
-            b"""
-            [table]\nkey = "val"\n[table.subtable]\nkey = "subval"\n[table]\nother_key = "redefined?"
-            """,
+            b'[table]\nkey = "val"\n' + b'[table.subtable]\nkey = "subval"\n' + b'[table]\nother_key = "redefined?"',
             "config.toml",
-            False,
-            None,
-            "Cannot declare ('table',) twice (at line 6, column 7)",
-            id="parser_toml_redefine_table",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            "Cannot declare ('table',) twice (at line 5, column 7)",
+            id="parse_toml_redefine_table_fail",
         ),
         pytest.param(
-            b"array = [1, 2, 3,]",  # Trailing comma is valid in TOML v1.0.0
+            b"array = [1, 2, 3,]",
             "config.toml",
-            True,  # Should parse successfully
-            {"array": [1, 2, 3]},  # Expected dictionary
-            None,  # No error expected
-            id="parser_toml_trailing_comma_array",
+            PARSE_SUCCESSFUL,
+            {"array": [1, 2, 3]},
+            EXPECT_NO_ERROR,
+            id="parse_toml_trailing_comma_array_success",
         ),
-        # --- End: New TOML Edge Case Tests ---
-        # --- Start: New YAML Edge Case Tests ---
         pytest.param(
             b"anchor_test: &anchor_val value\nalias_test: *anchor_val",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"anchor_test": "value", "alias_test": "value"},
-            None,
-            id="parser_yaml_anchor_alias",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_anchor_alias_success",
         ),
         pytest.param(
             b"base: &base { x: 1 }\nderived: { <<: *base, y: 2 }",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"base": {"x": 1}, "derived": {"x": 1, "y": 2}},
-            None,
-            id="parser_yaml_merge_keys",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_merge_keys_success",
         ),
         pytest.param(
             b"str_val: !!str 123\nint_val: !!int '456'\nbool_val: !!bool yes",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"str_val": "123", "int_val": 456, "bool_val": True},
-            None,
-            id="parser_yaml_explicit_tags",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_explicit_tags_success",
         ),
         pytest.param(
             b"literal_block: |\n  Line 1\n  Line 2\nfolded_block: >\n  Word1 Word2 Word3\n  Word4 Word5",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"literal_block": "Line 1\nLine 2\n", "folded_block": "Word1 Word2 Word3 Word4 Word5"},
-            None,
-            id="parser_yaml_scalar_styles",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_scalar_styles_success",
         ),
         pytest.param(
-            b"- item1\n- item2",  # Top-level sequence
+            b"- item1\n- item2",
             "config.yaml",
-            False,  # Should fail as ConfigParser expects a dict
-            None,
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
             "Invalid YAML file loaded.",
-            id="parser_yaml_top_level_sequence",
+            id="parse_yaml_top_level_sequence_fail",
         ),
         pytest.param(
             b"doc1_key: value1\n---\ndoc2_key: value2",
             "config.yaml",
-            False,  # Changed expectation: Assume multiple docs are not supported
-            None,
-            """expected a single document in the stream
-  in "<unicode string>", line 1, column 1:
-    doc1_key: value1
-    ^
-but found another document
-  in "<unicode string>", line 2, column 1:
-    ---
-    ^""",  # Made expected error less specific
-            id="parser_yaml_multiple_documents",
+            PARSE_FAILED,
+            EXPECT_NO_DICT,
+            (
+                "expected a single document in the stream\n"
+                + '  in "<unicode string>", line 1, column 1:\n'
+                + "    doc1_key: value1\n"
+                + "    ^\n"
+                + "but found another document\n"
+                + '  in "<unicode string>", line 2, column 1:\n'
+                + "    ---\n"
+                + "    ^"
+            ),
+            id="parse_yaml_multiple_documents_fail",
         ),
         pytest.param(
-            # Circular reference: safe_load should handle this without infinite loops
             b"a: &a [1, *a]",
             "config.yaml",
-            True,  # Changed expectation: safe_load handles this
-            None,  # Keep as None, will skip assertion
-            None,  # Changed expectation: No error expected from parse()
-            id="parser_yaml_circular_reference",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_DICT,
+            EXPECT_NO_ERROR,
         ),
         pytest.param(
-            b"large_string: '" + b"a" * 5000 + b"'",  # Large scalar value
+            b"large_string: '" + b"a" * 5000 + b"'",
             "config.yaml",
-            True,
+            PARSE_SUCCESSFUL,
             {"large_string": "a" * 5000},
-            None,
-            id="parser_yaml_large_scalar",
+            EXPECT_NO_ERROR,
+            id="parse_yaml_large_scalar_success",
         ),
-        # --- End: New YAML Edge Case Tests ---
     ],
 )
 def test_parse(
@@ -1310,49 +1288,49 @@ def test_csv_options_combined(
         pytest.param(
             b"title = 'TOML test'\n" + b"key_" + b"a" * 1000 + b" = 'value'\n" * 100,
             "config.toml",
-            False,
+            PARSE_FAILED,
             "Invalid statement (at line 3, column 2)",
-            id="toml_large_file_with_long_keys",
+            id="edge_toml_large_file_long_keys_fail",
         ),
         # Edge case: TOML with special characters in keys
         pytest.param(
             b"'key-with-quotes' = 'value'\nkey_with_underscores = 'value'\n\"key.with.dots\" = 'value'",
             "config.toml",
-            True,
-            None,
-            id="toml_special_chars_in_keys",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_toml_special_chars_in_keys_success",
         ),
         # Edge case: YAML with extremely long key names
         pytest.param(
             b"title: YAML test\nkey_" + b"a" * 100 + b": value",
             "config.yaml",
-            True,
-            None,
-            id="yaml_long_key_names",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_yaml_long_key_names_success",
         ),
         # Edge case: YAML with special characters in keys
         pytest.param(
             b"'key-with-quotes': value\nkey_with_underscores: value\n\"key.with.dots\": value",
             "config.yaml",
-            True,
-            None,
-            id="yaml_special_chars_in_keys",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_yaml_special_chars_in_keys_success",
         ),
         # Edge case: Extremely large CSV file
         pytest.param(
             b"col1,col2,col3\n" + b"value1,value2,value3\n" * 1000,
             "config.csv",
-            True,
-            None,
-            id="csv_large_file_many_rows",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_csv_large_file_many_rows_success",
         ),
         # Edge case: CSV with quoted fields containing commas
         pytest.param(
             b'name,description\n"Smith, John","Consultant, senior"\n"Doe, Jane","Manager, department"',
             "config.csv",
-            True,
-            None,
-            id="csv_quoted_fields_with_commas",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_csv_quoted_fields_with_commas_success",
         ),
         # Edge case: CSV with many columns
         pytest.param(
@@ -1363,88 +1341,90 @@ def test_csv_options_combined(
             + b",".join([f"value{i}".encode() for i in range(2, 100)])
             + b",value100",
             "config.csv",
-            True,
-            None,
-            id="csv_many_columns",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_csv_many_columns_success",
         ),
         # Edge case: Empty file
         pytest.param(
             b"",
             "config.toml",
-            True,
-            None,
-            id="toml_empty_file",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_toml_empty_file_success",
         ),
         pytest.param(
             b"",
             "config.yaml",
-            False,
+            PARSE_FAILED,
             "Invalid YAML file loaded.",
-            id="yaml_empty_file",
+            id="edge_yaml_empty_file_fail",
         ),
         # Edge case: File with only whitespace
         pytest.param(
             b"   \n\t\n  ",
             "config.toml",
-            True,
-            None,
-            id="toml_whitespace_only",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_toml_whitespace_only_success",
         ),
         pytest.param(
             b"   \n\t\n  ",
             "config.yaml",
-            False,
-            """while scanning for the next token
-found character '\\t' that cannot start any token
-  in "<unicode string>", line 2, column 1:
-    \t
-    ^""",
-            id="yaml_whitespace_only",
+            PARSE_FAILED,
+            (
+                "while scanning for the next token\n"
+                "found character '\\t' that cannot start any token\n"
+                '  in "<unicode string>", line 2, column 1:\n'
+                "    \t\n"
+                "    ^"
+            ),
+            id="edge_yaml_whitespace_only_fail",
         ),
         # Edge case: File with BOM
         pytest.param(
             b"\xef\xbb\xbftitle = 'TOML test'",
             "config.toml",
-            False,
+            PARSE_FAILED,
             "Invalid statement (at line 1, column 1)",
-            id="toml_with_bom",
+            id="edge_toml_with_bom_fail",
         ),
         pytest.param(
             b"\xef\xbb\xbftitle: YAML test",
             "config.yaml",
-            True,
-            None,
-            id="yaml_with_bom",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_yaml_with_bom_success",
         ),
         # Edge case: File with non-UTF8 characters
         pytest.param(
             b"\x80\x81\x82title = 'TOML test'",
             "config.toml",
-            False,
+            PARSE_FAILED,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
-            id="toml_invalid_utf8",
+            id="edge_toml_invalid_utf8_fail",
         ),
         pytest.param(
             b"\x80\x81\x82title: YAML test",
             "config.yaml",
-            False,
+            PARSE_FAILED,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
-            id="yaml_invalid_utf8",
+            id="edge_yaml_invalid_utf8_fail",
         ),
         # Edge case: File with mixed line endings
         pytest.param(
             b"title = 'TOML test'\r\nkey1 = 'value1'\nkey2 = 'value2'\r\n",
             "config.toml",
-            True,
-            None,
-            id="toml_mixed_line_endings",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_toml_mixed_line_endings_success",
         ),
         pytest.param(
             b"title: YAML test\r\nkey1: value1\nkey2: value2\r\n",
             "config.yaml",
-            True,
-            None,
-            id="yaml_mixed_line_endings",
+            PARSE_SUCCESSFUL,
+            EXPECT_NO_ERROR,
+            id="edge_yaml_mixed_line_endings_success",
         ),
     ],
 )
@@ -1465,15 +1445,8 @@ def test_parse_edge_cases(
     config_file = TestHelpers.create_test_file(content, filename)
     parser = ConfigParser(config_file)
     result = parser.parse()
-    assert result == is_successful
-
-    if expected_error is not None:
-        assert parser.error_message is not None
-        assert expected_error == parser.error_message, (
-            f"Expected error message to contain '{expected_error}', but got '{parser.error_message}'"
-        )
-    else:
-        assert parser.error_message is None
+    assert result == is_successful, f"is_successful isn't match.\nExpected: {is_successful}\nGot: {result}"
+    assert parser.error_message == expected_error, f"expected_error isn't match.\nExpected: {expected_error}\nGot: {parser.error_message}"
 
 
 @UNIT
@@ -1511,22 +1484,22 @@ def test_memory_usage_with_reasonable_file() -> None:
 def test_nested_structures() -> None:
     """Test parsing deeply nested structures."""
     # TOML with deeply nested tables
-    toml_content = b"""
-    [level1]
-    key = "value"
-
-    [level1.level2]
-    key = "value"
-
-    [level1.level2.level3]
-    key = "value"
-
-    [level1.level2.level3.level4]
-    key = "value"
-
-    [level1.level2.level3.level4.level5]
-    key = "value"
-    """
+    toml_content = (
+        b"[level1]\n"
+        b'key = "value"\n'
+        b"\n"
+        b"[level1.level2]\n"
+        b'key = "value"\n'
+        b"\n"
+        b"[level1.level2.level3]\n"
+        b'key = "value"\n'
+        b"\n"
+        b"[level1.level2.level3.level4]\n"
+        b'key = "value"\n'
+        b"\n"
+        b"[level1.level2.level3.level4.level5]\n"
+        b'key = "value"'
+    )
 
     config_file = TestHelpers.create_test_file(toml_content, "nested.toml")
 
@@ -1542,18 +1515,18 @@ def test_nested_structures() -> None:
     assert "level5" in parser.parsed_dict["level1"]["level2"]["level3"]["level4"]
 
     # YAML with deeply nested mappings
-    yaml_content = b"""
-    level1:
-      key: value
-      level2:
-        key: value
-        level3:
-          key: value
-          level4:
-            key: value
-            level5:
-              key: value
-    """
+    yaml_content = (
+        b"level1:\n"
+        b"  key: value\n"
+        b"  level2:\n"
+        b"    key: value\n"
+        b"    level3:\n"
+        b"      key: value\n"
+        b"      level4:\n"
+        b"        key: value\n"
+        b"        level5:\n"
+        b"          key: value\n"
+    )
 
     config_file = TestHelpers.create_test_file(yaml_content, "nested.yaml")
 
