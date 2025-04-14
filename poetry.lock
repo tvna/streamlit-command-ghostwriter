@@ -1260,14 +1260,14 @@ dev-without-jupyter = ["Sphinx (>=5.1.1)", "black (==24.8.0)", "build (>=0.10.0)
 
 [[package]]
 name = "lizard"
-version = "1.17.23"
+version = "1.17.24"
 description = "A code analyzer without caring the C/C++ header files. It works with Java, C/C++, JavaScript, Python, Ruby, Swift, Objective C. Metrics includes cyclomatic complexity number etc."
 optional = false
 python-versions = "*"
 groups = ["dev"]
 files = [
-    {file = "lizard-1.17.23-py2.py3-none-any.whl", hash = "sha256:2a1560fcb3fc6cf013d3055afd9ef287e18afabc48b888b2110076417ead7883"},
-    {file = "lizard-1.17.23.tar.gz", hash = "sha256:78083d27c7d92bcb493f52f5c268061d3d4c9fba98bcab6282b99825b609d1b1"},
+    {file = "lizard-1.17.24-py2.py3-none-any.whl", hash = "sha256:4b93dc669e833ca830df9cd825944fbd176478664147c535f761e9762d2751b1"},
+    {file = "lizard-1.17.24.tar.gz", hash = "sha256:7a776ee52f374ca433160dda8e6999547f9c7686dbbfccefd013b1e311d94a85"},
 ]
 
 [package.dependencies]
@@ -4012,4 +4012,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "bc53c069d25a11856ab662c107fece9e23be3d8c395f039c3d83afbe167acc2e"
+content-hash = "d4d38e757ddcfe67f07f97568e8a6a19885926d02b36f2a87b3fffa8bed1e740"
