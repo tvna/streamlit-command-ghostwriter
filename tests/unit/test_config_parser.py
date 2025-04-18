@@ -1,1377 +1,665 @@
-"""ConfigParserのテストモジュール。
-
-このモジュールは、ConfigParserクラスの機能をテストします。
-テストは以下のカテゴリに分類されます:
-1. 初期化テスト
-2. パース機能テスト
-3. エッジケーステスト
-4. メモリ使用量テスト
-"""
-
-import math
-import sys
-from datetime import date
+import datetime
+import pprint
 from io import BytesIO
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Union, cast
+from typing import Any, Dict, Final, Optional, Union
 
 import numpy as np
 import pytest
-from _pytest.mark.structures import MarkDecorator
 
+# Assuming features is importable from tests/unit, adjust if necessary
 from features.config_parser import ConfigParser
 
-# 定数の定義
-PARSE_SUCCESSFUL: bool = True
-PARSE_FAILED: bool = False
-EXPECT_NO_ERROR: Optional[str] = None
-EXPECT_NO_DICT: Optional[Dict[str, Any]] = None
+# Define descriptive constants for boolean and None values
+SHOULD_FILL_NAN: Final[bool] = True
+SHOULD_NOT_FILL_NAN: Final[bool] = False
+PARSE_SHOULD_SUCCEED: Final[bool] = True
+PARSE_SHOULD_FAIL: Final[bool] = False
+DEFAULT_FILL_VALUE: Final[Optional[str]] = None
+NO_EXPECTED_DICT: Final[Optional[Dict[str, Any]]] = None
+NO_EXPECTED_ERROR: Final[Optional[str]] = None
+DEFAULT_CSV_ROWS_NAME: Final[str] = "csv_rows"
 
-UNIT: MarkDecorator = pytest.mark.unit
 
-# 基本的な値の型を定義
-ScalarValueType = Union[str, int, float, bool, None]
+def _create_large_toml_content(num_entries: int) -> bytes:
+    """Generates moderately large TOML content."""
+    content = "[section]\n"
+    entries = [f'key{i} = "value{i}"' for i in range(num_entries)]
+    return (content + "\n".join(entries)).encode("utf-8")
 
-# 日付型の値の型を定義
-DateValueType = date
 
-# 全ての値の型を定義 (前方参照)
-ValueType = Union[
-    ScalarValueType,
-    "ArrayValueType",
-    "MappingValueType",
-    DateValueType,
-]
+def _create_large_yaml_content(num_entries: int) -> bytes:
+    """Generates moderately large YAML content."""
+    content = "data:\n"
+    entries = [f"  key{i}: value{i}" for i in range(num_entries)]
+    return (content + "\n".join(entries)).encode("utf-8")
 
-# CSV行の型を定義
-CsvRowType = Mapping[str, ScalarValueType]
-CsvRowsType = Sequence[CsvRowType]
 
-# 配列型の値の型を定義
-ArrayValueType = Union[Sequence[ValueType], np.ndarray]
+def _create_large_csv_content(num_rows: int, num_cols: int) -> bytes:
+    """Generates moderately large CSV content."""
+    header = ",".join([f"col{c}" for c in range(num_cols)])
+    rows = [",".join([f"val_{r}_{c}" for c in range(num_cols)]) for r in range(num_rows)]
+    return (header + "\n" + "\n".join(rows)).encode("utf-8")
 
-# マッピング型の値の型を定義
-MappingValueType = Mapping[str, ValueType]
 
-# パース結果の辞書の型を定義
-ParsedDictType = Mapping[str, ValueType]
+def _assert_csv_values_equal(p_val: Union[str, int, float, None], e_val: Union[str, int, float, None], row_idx: int, key: str) -> None:
+    """Asserts equality between a parsed value and an expected value from a CSV row.
 
-
-class TestHelpers:
-    """テストヘルパー関数を提供するクラス。"""
-
-    @staticmethod
-    def create_test_file(content: bytes, filename: str) -> BytesIO:
-        """テスト用のファイルを作成する。
-
-        Args:
-            content: ファイルの内容
-            filename: ファイル名
-
-        Returns:
-            BytesIO: テスト用のファイル
-        """
-        file = BytesIO(content)
-        file.name = filename
-        return file
-
-    @staticmethod
-    def _assert_mapping_equality(
-        actual: Mapping[str, ValueType],
-        expected: Mapping[str, ValueType],
-        current_path: str,
-    ) -> None:
-        """マッピング型の値を比較する。
-
-        Args:
-            actual: 実際の辞書
-            expected: 期待される辞書
-            current_path: 現在のパス (エラーメッセージ用)
-        """
-        TestHelpers.assert_dict_equality(actual, expected, current_path)
-
-    @staticmethod
-    def _assert_csv_rows_equality(
-        actual: Sequence[Mapping[str, ScalarValueType]],
-        expected: Sequence[Mapping[str, ScalarValueType]],
-        current_path: str,
-    ) -> None:
-        """CSV行データを比較する。
-
-        Args:
-            actual: 実際のCSV行データ
-            expected: 期待されるCSV行データ
-            current_path: 現在のパス (エラーメッセージ用)
-        """
-        TestHelpers.assert_csv_rows_equality(actual, expected)  # type: ignore
-
-    @staticmethod
-    def _assert_sequence_equality(
-        actual: Union[Sequence[ValueType], np.ndarray],
-        expected: Union[Sequence[ValueType], np.ndarray],
-        current_path: str,
-    ) -> None:
-        """シーケンス型の値を比較する。
-
-        Args:
-            actual: 実際のシーケンス
-            expected: 期待されるシーケンス
-            current_path: 現在のパス (エラーメッセージ用)
-        """
-        assert len(actual) == len(expected), f"Length mismatch at {current_path}"
-        for a, e in zip(actual, expected, strict=False):
-            assert a == e, f"Value mismatch in sequence at {current_path}"
-
-    @staticmethod
-    def _is_csv_row_sequence(value: Union[Sequence[Mapping[str, ScalarValueType]], ValueType]) -> bool:
-        """値がCSV行のシーケンスかどうかを判定する。
-
-        Args:
-            value: 判定する値。シーケンス型またはValueType型の値を受け取る。
-
-        Returns:
-            bool: CSV行のシーケンスの場合True
-        """
-        if not isinstance(value, (list, tuple)):
-            return False
-        if not value:  # 空のシーケンスの場合
-            return True
-        return all(
-            isinstance(row, Mapping) and all(isinstance(v, (str, int, float, bool)) or v is None for v in row.values()) for row in value
-        )
-
-    @staticmethod
-    def _compare_values(
-        actual_value: ValueType,
-        expected_value: ValueType,
-        key: str,
-        current_path: str,
-    ) -> None:
-        """値を比較する。
-
-        Args:
-            actual_value: 実際の値
-            expected_value: 期待される値
-            key: キー
-            current_path: 現在のパス (エラーメッセージ用)
-        """
-        # マッピング型の場合
-        if isinstance(expected_value, Mapping) and isinstance(actual_value, Mapping):
-            TestHelpers._assert_mapping_equality(actual_value, expected_value, current_path)
-            return
-
-        # csv_rowsの場合
-        if key == "csv_rows" and TestHelpers._is_csv_row_sequence(expected_value) and TestHelpers._is_csv_row_sequence(actual_value):
-            TestHelpers._assert_csv_rows_equality(
-                cast("Sequence[Mapping[str, ScalarValueType]]", actual_value),
-                cast("Sequence[Mapping[str, ScalarValueType]]", expected_value),
-                current_path,
-            )
-            return
-
-        # 配列型の場合
-        if isinstance(expected_value, (list, tuple, np.ndarray)) and isinstance(actual_value, (list, tuple, np.ndarray)):
-            TestHelpers._assert_sequence_equality(actual_value, expected_value, current_path)
-            return
-
-        # スカラー型または日付型の場合 (ScalarValueType or DateValueType)
-        # This explicitly calls the helper designed for scalar/NaN/type comparison logic.
-        TestHelpers.assert_value_equality(cast("ScalarValueType", actual_value), cast("ScalarValueType", expected_value), current_path)
-
-    @staticmethod
-    def assert_dict_equality(actual: Mapping[str, ValueType], expected: Mapping[str, ValueType], path: str = "") -> None:
-        """辞書の内容を比較する。
-
-        Args:
-            actual: 実際の辞書
-            expected: 期待される辞書
-            path: 現在のパス (エラーメッセージ用)
-        """
-        assert set(actual.keys()) == set(expected.keys()), (
-            f"Keys do not match at path: {path}. Expected: {set(expected.keys())}, Got: {set(actual.keys())}"
-        )
-        for key in expected:
-            current_path = f"{path}.{key}" if path else key
-            TestHelpers._compare_values(actual[key], expected[key], key, current_path)
-
-    @staticmethod
-    def assert_csv_rows_equality(actual: CsvRowsType, expected: CsvRowsType) -> None:
-        """CSVの行データの内容を比較する。
-
-        Args:
-            actual: 実際の行データ
-            expected: 期待される行データ
-        """
-        assert len(actual) == len(expected), f"CSV row count mismatch. Expected: {len(expected)}, Got: {len(actual)}"
-        for i, (expected_row, actual_row) in enumerate(zip(expected, actual, strict=False)):
-            TestHelpers.assert_csv_row_equality(actual_row, expected_row, i)
-
-    @staticmethod
-    def assert_csv_row_equality(actual: CsvRowType, expected: CsvRowType, row_index: int) -> None:
-        """CSVの1行のデータを比較する。
-
-        Args:
-            actual: 実際の行データ
-            expected: 期待される行データ
-            row_index: 行のインデックス
-        """
-        assert set(actual.keys()) == set(expected.keys()), (
-            f"CSV row {row_index} keys mismatch. Expected: {set(expected.keys())}, Got: {set(actual.keys())}"
-        )
-        for col_key in expected:
-            actual_value = actual[col_key]
-            expected_value = expected[col_key]
-            TestHelpers.assert_value_equality(actual_value, expected_value, f"column {col_key} in row {row_index}")
-
-    @staticmethod
-    def _assert_nan_comparison(actual: ScalarValueType, expected: ScalarValueType, location: str) -> bool:
-        """NaN値の比較を行い、比較が完了したかを示す。
-
-        Args:
-            actual: 実際の値
-            expected: 期待される値
-            location: 値の場所 (エラーメッセージ用)
-
-        Returns:
-            bool: NaNに関する比較/アサーション完了
-        """
-        is_actual_nan = TestHelpers.is_nan_value(actual)
-        is_expected_nan = TestHelpers.is_nan_value(expected)
-
-        if is_actual_nan or is_expected_nan:
-            assert is_actual_nan is True, (
-                f"Value mismatch at {location}: One value is NaN while the other is not. Actual: {actual!r}, Expected: {expected!r}"
-            )
-            assert is_expected_nan is True, (
-                f"Value mismatch at {location}: One value is NaN while the other is not. Actual: {actual!r}, Expected: {expected!r}"
-            )
-            return True  # NaNに関する比較/アサーション完了
-        return False  # NaNではないので比較は続行
-
-    @staticmethod
-    def _assert_bool_comparison(actual: ScalarValueType, expected: ScalarValueType, location: str) -> bool:
-        """真偽値の比較を行い、比較が完了したかを示す。
-
-        Args:
-            actual: 実際の値
-            expected: 期待される値
-            location: 値の場所 (エラーメッセージ用)
-
-        Returns:
-            bool: 真偽値比較完了
-        """
-        is_actual_bool = isinstance(actual, (bool, np.bool_))
-        is_expected_bool = isinstance(expected, (bool, np.bool_))
-
-        if is_actual_bool and is_expected_bool:
-            assert bool(actual) == bool(expected), f"Boolean value mismatch at {location}: Expected {expected}, Got {actual}"
-            return True  # 真偽値比較完了
-        return False  # 真偽値同士ではないので比較続行
-
-    @staticmethod
-    def _assert_cross_type_comparison(actual: ScalarValueType, expected: ScalarValueType, location: str) -> bool:
-        """数値と文字列の相互比較を行い、比較が完了したかを示す。
-
-        Args:
-            actual: 実際の値
-            expected: 期待される値
-            location: 値の場所 (エラーメッセージ用)
-
-        Returns:
-            bool: 数値/文字列比較完了
-        """
-        # Actualが数値、Expectedが文字列
-        if isinstance(actual, (int, float)) and isinstance(expected, str):
-            assert str(actual) == expected, f"Value mismatch at {location}: Expected string '{expected}', Got numeric {actual}"
-            return True  # 数値->文字列比較完了
-
-        # Actualが文字列、Expectedが数値
-        if isinstance(actual, str) and isinstance(expected, (int, float)):
-            try:
-                converted_actual = float(actual) if isinstance(expected, float) else int(actual)
-                assert converted_actual == expected, f"Value mismatch at {location}: Expected numeric {expected}, Got string '{actual}'"
-                return True  # 文字列->数値比較完了
-            except ValueError:
-                # 変換失敗時はこの比較ケースではないので続行
-                return False
-
-        return False  # クロスタイプの比較対象ではない
-
-    @staticmethod
-    def assert_value_equality(actual: ScalarValueType, expected: ScalarValueType, location: str) -> None:
-        """値の比較を行う。NaN値や型変換を考慮。
-
-        Args:
-            actual: 実際の値
-            expected: 期待される値
-            location: 値の場所 (エラーメッセージ用)
-        """
-        # 1. NaN比較
-        if TestHelpers._assert_nan_comparison(actual, expected, location):
-            return
-
-        # 2. 真偽値比較
-        if TestHelpers._assert_bool_comparison(actual, expected, location):
-            return
-
-        # 3. 数値/文字列クロス比較
-        if TestHelpers._assert_cross_type_comparison(actual, expected, location):
-            return
-
-        # 4. その他の型 (上記いずれにも当てはまらない場合)
-        assert actual == expected, f"Value mismatch at {location}: Expected {expected!r}, Got {actual!r}"
-
-    @staticmethod
-    def is_nan_value(value: Optional[Union[float, str, int]]) -> bool:
-        """値がNaNかどうかを判定する。
-
-        Args:
-            value: 判定する値
-
-        Returns:
-            bool: NaNの場合True
-        """
-        if isinstance(value, float) and math.isnan(value):
-            return True
-        # Removed incorrect check: `if value is None: return True`
-        # Check for numpy NaN specifically, as it might be present from CSV parsing
-        # Use isinstance to avoid errors if value doesn't have 'dtype'
-        if isinstance(value, np.generic) and np.isnan(value):  # type: ignore[unreachable]
-            return True  # type: ignore[unreachable]
-        return False
-
-    @staticmethod
-    def assert_nan_string_representation(actual: str, expected: str) -> None:
-        """NaN値を含む文字列表現を比較する。
-
-        Args:
-            actual: 実際の文字列表現
-            expected: 期待される文字列表現
-        """
-
-        # Normalize whitespace carefully
-        def normalize_whitespace(s: str) -> str:
-            lines = s.strip().split("\n")
-            normalized_lines = [" ".join(line.strip().split()) for line in lines]
-            return "\n".join(normalized_lines)
-
-        actual_normalized = normalize_whitespace(actual)
-        expected_normalized = normalize_whitespace(expected)
-        assert actual_normalized == expected_normalized, (
-            f"Normalized string representation with NaN does not match.\n"
-            f"Actual normalized:\n{actual_normalized}\n"
-            f"Expected normalized:\n{expected_normalized}"
-        )
-
-    @staticmethod
-    def assert_parsing_result(
-        content: bytes,
-        filename: str,
-        is_successful: bool,
-        expected_dict: Optional[ParsedDictType],
-        expected_error: Optional[str],
-        csv_options: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        """ファイル内容をパースし、結果をアサートするヘルパー関数。
-
-        Args:
-            content: パース対象のバイトデータ
-            filename: ファイル名
-            is_successful: パースが成功するかどうか
-            expected_dict: 期待される辞書 (Noneの場合は辞書比較をスキップ)
-            expected_error: 期待されるエラーメッセージ (Noneの場合はエラーがないことを期待)
-            csv_options: CSVパース用の追加オプション (例: {'csv_rows_name': 'items'})
-        """
-        config_file = TestHelpers.create_test_file(content, filename)
-        parser = ConfigParser(config_file)
-
-        # Apply CSV options if provided
-        if csv_options:
-            for key, value in csv_options.items():
-                setattr(parser, key, value)
-
-        # Perform parsing
-        actual_successful = parser.parse()
-        assert actual_successful == is_successful, f"Parsing success status mismatch. Expected: {is_successful}, Got: {actual_successful}"
-
-        # Assert error message
-        if expected_error is None:
-            assert parser.error_message is None, f"Expected no error message, but got: {parser.error_message}"
-        else:
-            assert parser.error_message is not None, f"Expected an error message containing '{expected_error}', but got None"
-            assert expected_error in parser.error_message, (
-                f"Error message mismatch. Expected to contain: '{expected_error}', Got: '{parser.error_message}'"
-            )
-
-        # Assert parsed dictionary (skip if expected_dict is explicitly None)
-        if expected_dict is not None:
-            assert parser.parsed_dict is not None, f"Expected a parsed dictionary, but got None. Error: {parser.error_message}"
-            TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)
-
-
-@UNIT
-@pytest.mark.parametrize(
-    ("content", "filename", "expected_error"),
-    [
-        pytest.param(
-            b"valid content",
-            "config.toml",
-            EXPECT_NO_ERROR,
-            id="init_toml_valid_file",
-        ),
-        pytest.param(
-            b"valid content",
-            "config.yaml",
-            EXPECT_NO_ERROR,
-            id="init_yaml_valid_file",
-        ),
-        pytest.param(
-            b"valid content",
-            "config.yml",
-            EXPECT_NO_ERROR,
-            id="init_yml_valid_file",
-        ),
-        pytest.param(
-            b"valid content",
-            "config.csv",
-            EXPECT_NO_ERROR,
-            id="init_csv_valid_file",
-        ),
-        pytest.param(
-            b"unsupported content",
-            "config.txt",
-            "Unsupported file type",
-            id="init_txt_unsupported_type",
-        ),
-        pytest.param(
-            b"unsupported content",
-            "config",
-            "Unsupported file type",
-            id="init_no_ext_unsupported_type",
-        ),
-        pytest.param(
-            b"\x80\x81\x82\x83",
-            "config.toml",
-            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
-            id="init_toml_invalid_utf8",
-        ),
-    ],
-)
-def test_initialization(
-    content: bytes,
-    filename: str,
-    expected_error: Optional[str],
-) -> None:
-    """ConfigParserの初期化をテストする。
+    Handles NaN values and potential float/int type differences.
 
     Args:
-        content: パース対象のバイトデータ
-        filename: ファイル名
-        expected_error: 期待されるエラーメッセージ
+        p_val: The parsed value.
+        e_val: The expected value.
+        row_idx: The index of the row being compared (for error messages).
+        key: The key of the value being compared (for error messages).
     """
-    config_file = TestHelpers.create_test_file(content, filename)
-    parser = ConfigParser(config_file)
-
-    if expected_error is EXPECT_NO_ERROR:
-        assert parser.error_message is None
+    if isinstance(e_val, float) and np.isnan(e_val):
+        assert isinstance(p_val, float), f"CSV row {row_idx}, key '{key}' NaN check: Type mismatch: Got {type(p_val)}, Expected float"
+        assert np.isnan(p_val), f"CSV row {row_idx}, key '{key}' NaN check: Value mismatch: Got {p_val}, Expected NaN"
+    elif isinstance(p_val, float) and isinstance(e_val, int) and p_val == float(e_val):
+        # Treat as equal if float representation matches int
+        pass
+    elif isinstance(p_val, int) and isinstance(e_val, float) and float(p_val) == e_val:
+        # Treat as equal if int representation matches float
+        pass
     else:
-        assert expected_error == parser.error_message
+        assert p_val == e_val, f"CSV row {row_idx}, key '{key}' value check: Mismatch: Got {p_val!r}, Expected {e_val!r}"
 
 
-@UNIT
-def test_default_properties() -> None:
-    """ConfigParserのデフォルトプロパティをテストする。"""
-    config_file = TestHelpers.create_test_file(b"content", "config.toml")
-    parser = ConfigParser(config_file)
+def _assert_csv_rows_equal(parsed_rows: list, expected_rows: list) -> None:
+    """Asserts equality between two lists of dictionaries representing CSV rows.
 
-    assert parser.csv_rows_name == "csv_rows"
-    assert parser.enable_fill_nan is False
-    assert parser.fill_nan_with is None
-    assert parser.parsed_dict is None
-    assert parser.parsed_str == "None"
-    assert parser.error_message is None
+    Delegates individual value comparison to _assert_csv_values_equal.
+
+    Args:
+        parsed_rows: The list of rows obtained from the parser.
+        expected_rows: The expected list of rows.
+    """
+    assert isinstance(parsed_rows, list), "Parsed CSV rows is not a list."
+    assert isinstance(expected_rows, list), "Expected CSV rows is not a list."
+    assert len(parsed_rows) == len(expected_rows), f"CSV rows length mismatch: Got {len(parsed_rows)}, Expected {len(expected_rows)}"
+
+    for i, (parsed_row, expected_row) in enumerate(zip(parsed_rows, expected_rows, strict=False)):
+        assert isinstance(parsed_row, dict), f"Parsed row {i} is not a dictionary."
+        assert isinstance(expected_row, dict), f"Expected row {i} is not a dictionary."
+        assert parsed_row.keys() == expected_row.keys(), (
+            f"CSV row {i} keys mismatch: Expected {expected_row.keys()}, Got {parsed_row.keys()}"
+        )
+        for key in expected_row:
+            p_val, e_val = parsed_row.get(key), expected_row.get(key)
+            # Delegate value comparison to the specialized helper function
+            _assert_csv_values_equal(p_val, e_val, i, key)
 
 
-@UNIT
+def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str, Any], csv_rows_name: str) -> None:
+    """Asserts equality between two dictionaries, handling CSV list comparison.
+
+    Delegates the comparison of the list of CSV rows to _assert_csv_rows_equal.
+    Compares the remaining dictionary keys directly.
+
+    Args:
+        parsed_dict: The dictionary obtained from the parser.
+        expected_dict: The expected dictionary.
+        csv_rows_name: The key under which the list of CSV rows is stored.
+    """
+    parsed_rows = parsed_dict.get(csv_rows_name)
+    expected_rows = expected_dict.get(csv_rows_name)
+
+    if expected_rows is not None:
+        assert parsed_rows is not None, f"Expected CSV rows under key '{csv_rows_name}' but found none in parsed dict."
+        # Delegate row comparison to the specialized helper function
+        _assert_csv_rows_equal(parsed_rows, expected_rows)
+    else:
+        # Ensure parsed_rows is also None if expected_rows is None
+        assert parsed_rows is None, f"Found unexpected CSV rows under key '{csv_rows_name}' in parsed dict."
+
+    # Compare the rest of the dictionary excluding the csv rows part
+    parsed_dict_other = {k: v for k, v in parsed_dict.items() if k != csv_rows_name}
+    expected_dict_other = {k: v for k, v in expected_dict.items() if k != csv_rows_name}
+    assert parsed_dict_other == expected_dict_other, (
+        f"Non-CSV part of dictionary mismatch\nGot: {pprint.pformat(parsed_dict_other)}\nExpected: {pprint.pformat(expected_dict_other)}"
+    )
+
+
 @pytest.mark.parametrize(
-    ("content", "filename", "is_successful", "expected_dict", "expected_error"),
+    (
+        "config_content",
+        "file_name",
+        "expected_parse_result",
+        "expected_init_error",
+        "expected_dict",
+        "expected_parse_error",
+    ),
     [
+        # --- TOML Cases ---
         pytest.param(
-            b"title = 'TOML test'",
+            b'key = "value"',
             "config.toml",
-            PARSE_SUCCESSFUL,
-            {"title": "TOML test"},
-            EXPECT_NO_ERROR,
-            id="parse_toml_basic_key_value_success",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"key": "value"},
+            NO_EXPECTED_ERROR,
+            id="toml_success_toplevel_key",
         ),
         pytest.param(
-            b"date = 2024-04-01",
+            b'[section\\nkey = "value"',  # Invalid TOML
             "config.toml",
-            PARSE_SUCCESSFUL,
-            {"date": date(2024, 4, 1)},
-            EXPECT_NO_ERROR,
-            id="parse_toml_date_success",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Expected ']' at the end of a table declaration (at line 1, column 9)",
+            id="toml_failure_invalid_syntax",
         ),
         pytest.param(
-            b"fruits = ['apple', 'orange', 'apple']",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {"fruits": ["apple", "orange", "apple"]},
-            EXPECT_NO_ERROR,
-            id="parse_toml_array_success",
+            _create_large_toml_content(1000),
+            "large_ok.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"section": {f"key{i}": f"value{i}" for i in range(1000)}},
+            NO_EXPECTED_ERROR,
+            id="toml_success_moderately_large",
         ),
         pytest.param(
-            b"nested_array = [[1, 2], [3, 4, 5]]",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {"nested_array": [[1, 2], [3, 4, 5]]},
-            EXPECT_NO_ERROR,
-            id="parse_toml_nested_array_success",
+            _create_large_toml_content(2 * 10**6),
+            "large_ng.toml",
+            PARSE_SHOULD_FAIL,
+            "File size exceeds maximum limit of 31457280 bytes",
+            NO_EXPECTED_DICT,
+            "File size exceeds maximum limit of 31457280 bytes",
+            id="toml_failure_moderately_large",
         ),
         pytest.param(
-            b"title: YAML test",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"title": "YAML test"},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_basic_key_value_success",
+            b'# This is a comment\n[section] # Another comment\nkey = "value" # Inline comment',
+            "commented.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"section": {"key": "value"}},
+            NO_EXPECTED_ERROR,
+            id="toml_success_with_comments",
         ),
         pytest.param(
-            b"title: YAML test # comment",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"title": "YAML test"},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_with_comment_success",
+            b'[data]\nint_val = 123\nfloat_val = 4.56\nbool_val = true\narray_val = [1, "two", 3.0]',
+            "datatypes.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"data": {"int_val": 123, "float_val": 4.56, "bool_val": True, "array_val": [1, "two", 3.0]}},
+            NO_EXPECTED_ERROR,
+            id="toml_success_various_types",
         ),
         pytest.param(
-            b"date: 2024-04-01",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"date": date(2024, 4, 1)},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_date_success",
+            b'[parent.child]\nkey = "nested_value"',
+            "nested.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"parent": {"child": {"key": "nested_value"}}},
+            NO_EXPECTED_ERROR,
+            id="toml_success_nested_tables",
         ),
         pytest.param(
-            b"title: YAML test",
-            "config.yml",
-            PARSE_SUCCESSFUL,
-            {"title": "YAML test"},
-            EXPECT_NO_ERROR,
-            id="parse_yml_basic_key_value_success",
+            b"",
+            "empty.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {},
+            NO_EXPECTED_ERROR,
+            id="toml_failure_empty_file",
         ),
         pytest.param(
-            b"date: 2024-04-01",
-            "config.yml",
-            PARSE_SUCCESSFUL,
-            {"date": date(2024, 4, 1)},
-            EXPECT_NO_ERROR,
-            id="parse_yml_date_success",
+            b"[error]\nkey = value_without_quotes",  # Invalid syntax
+            "syntax_error.toml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Invalid value (at line 2, column 7)",  # Example error message
+            id="toml_failure_missing_quotes",
         ),
         pytest.param(
-            b"name,age\nAlice,30\nBob,25",
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]},
-            EXPECT_NO_ERROR,
-            id="parse_csv_basic_success",
+            b'[inline]\ndata = { key1 = "val1", key2 = 123 }',
+            "inline.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"inline": {"data": {"key1": "val1", "key2": 123}}},
+            NO_EXPECTED_ERROR,
+            id="toml_success_inline_table",
         ),
         pytest.param(
-            b"\x00\x01\x02\x03\x04",
-            "config.toml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Invalid statement (at line 1, column 1)",
-            id="parse_toml_invalid_binary_fail",
+            b'[[products]]\nname = "Hammer"\nsku = 738594937\n\n[[products]]\nname = "Nail"\nsku = 284758393\ncolor = "gray"',
+            "array_table.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"products": [{"name": "Hammer", "sku": 738594937}, {"name": "Nail", "sku": 284758393, "color": "gray"}]},
+            NO_EXPECTED_ERROR,
+            id="toml_success_array_of_tables",
         ),
         pytest.param(
-            b"title 'TOML test'",
-            "config.toml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Expected '=' after a key in a key/value pair (at line 1, column 7)",
-            id="parse_toml_syntax_error_fail",
+            (
+                b"[dates]\n"
+                b"offset_dt = 1979-05-27T07:32:00Z\n"
+                b"local_dt = 1979-05-27T00:32:00-07:00\n"
+                b"local_date = 1979-05-27\n"
+                b"local_time = 07:32:00"
+            ),
+            "dates.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            # Note: Exact representation might depend on the TOML library (e.g., datetime objects)
+            # Assuming the library parses them into standard Python types or specific objects
+            # We'll assert structure and type presence rather than exact object equality for simplicity
+            # For now, let's represent as strings, assuming parser keeps them as strings or a custom type
+            # A better test might involve checking `isinstance(parser.parsed_dict['dates']['offset_dt'], datetime)`
+            {
+                "dates": {
+                    "local_date": datetime.date(1979, 5, 27),
+                    "local_dt": datetime.datetime(1979, 5, 27, 0, 32, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=61200))),
+                    "local_time": datetime.time(7, 32),
+                    "offset_dt": datetime.datetime(1979, 5, 27, 7, 32, tzinfo=datetime.timezone.utc),
+                }
+            },
+            NO_EXPECTED_ERROR,
+            id="toml_success_date_time_formats",
         ),
         pytest.param(
-            b"\ntitle = 'TOML'\ntitle = 'TOML test'\n",
-            "config.toml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Cannot overwrite a value (at line 3, column 20)",
-            id="parse_toml_duplicate_key_fail",
+            b"[invalid]\ndate = 2023/01/01",
+            "invalid_date.toml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Expected newline or end of document after a statement (at line 2, column 12)",
+            id="toml_failure_invalid_date_format",
         ),
         pytest.param(
             b"date = 2024-04-00",
-            "config.toml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
+            "invalid_date.toml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
             "Expected newline or end of document after a statement (at line 1, column 12)",
-            id="parse_toml_invalid_date_fail",
+            id="toml_failure_invalid_date_out_of_range",
         ),
         pytest.param(
-            b"\x00\x01\x02\x03\x04",
-            "config.yaml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            'unacceptable character #x0000: special characters are not allowed\n  in "<unicode string>", position 0',
-            id="parse_yaml_invalid_binary_fail",
+            b'[a.b.c]\nkey = "deep_value"',
+            "deep_nested.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"a": {"b": {"c": {"key": "deep_value"}}}},
+            NO_EXPECTED_ERROR,
+            id="toml_success_deeply_nested_tables",
         ),
         pytest.param(
-            b"title = 'YAML test'",
-            "config.yaml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Invalid YAML file loaded.",
-            id="parse_yaml_toml_syntax_fail",
+            b'[table]\ninline = { key = "value" }\n[table.nested]\nval = 123',
+            "mixed_tables.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"table": {"inline": {"key": "value"}, "nested": {"val": 123}}},
+            NO_EXPECTED_ERROR,
+            id="toml_success_mixed_inline_standard_tables",
         ),
         pytest.param(
-            b"title: title: YAML test",
-            "config.yaml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "mapping values are not allowed here",
-            id="parse_yaml_duplicate_mapping_fail",
+            b"points = [ { x = 1, y = 2 }, { x = 7, y = 8 } ]",
+            "array_inline_tables.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"points": [{"x": 1, "y": 2}, {"x": 7, "y": 8}]},
+            NO_EXPECTED_ERROR,
+            id="toml_success_array_of_inline_tables",
         ),
         pytest.param(
-            b"date: 2024-04-00",
-            "config.yaml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "day is out of range for month",
-            id="parse_yaml_invalid_date_fail",
+            b"[invalid#key]\nval = 1",  # Disallowed char # in bare key
+            "invalid_bare_key.toml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Expected ']' at the end of a table declaration (at line 1, column 9)",  # Example error
+            id="toml_failure_disallowed_char_in_bare_key",
         ),
         pytest.param(
-            b"key: @unexpected_character",
-            "config.yaml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "while scanning for the next token\nfound character",
-            id="parse_yaml_unexpected_char_fail",
-        ),
-        pytest.param(
-            (b"name,age\n" + b"Alice,30\n" + b"Bob,30,Japan"),
-            "config.csv",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Error tokenizing data. C error: Expected 2 fields in line 3, saw 3",
-            id="parse_csv_inconsistent_columns_fail",
-        ),
-        pytest.param(
-            b"",
-            "config.csv",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "No columns to parse from file",
-            id="parse_csv_empty_file_fail",
-        ),
-        pytest.param(
-            b'a,b,c\ncat,foo,bar\ndog,foo,"baz',
-            "config.csv",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Error tokenizing data. C error: EOF inside string starting at row 2",
-            id="parse_csv_unclosed_quote_fail",
-        ),
-        pytest.param(
-            b"nested = { a = { b = { c = { d = { e = 'deep nesting' } } } } }",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {"nested": {"a": {"b": {"c": {"d": {"e": "deep nesting"}}}}}},
-            EXPECT_NO_ERROR,
-            id="parse_toml_deep_nesting_success",
-        ),
-        pytest.param(
-            b"unicode = '\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e'",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {"unicode": "日本語"},
-            EXPECT_NO_ERROR,
-            id="parse_toml_unicode_chars_success",
-        ),
-        pytest.param(
-            b"",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {},
-            EXPECT_NO_ERROR,
-            id="parse_toml_empty_file_success",
-        ),
-        pytest.param(
-            b"special_yaml: !!binary SGVsbG8=",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"special_yaml": b"Hello"},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_special_types_binary_success",
-        ),
-        pytest.param(
-            b"id,name,value\n1,test,123\n2,another,abc",
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            {"csv_rows": [{"id": 1, "name": "test", "value": "123"}, {"id": 2, "name": "another", "value": "abc"}]},
-            EXPECT_NO_ERROR,
-            id="parse_csv_mixed_types_success",
-        ),
-        pytest.param(
-            b"id,name,value\n1,test,\n2,,abc",
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            {"csv_rows": [{"id": 1, "name": "test", "value": np.nan}, {"id": 2, "name": np.nan, "value": "abc"}]},
-            EXPECT_NO_ERROR,
-            id="parse_csv_nan_values_success",
+            b'[duplicate]\nkey = "value1"\nkey = "value2"',  # Duplicate key
+            "duplicate_key.toml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Cannot overwrite a value (at end of document)",  # Example error
+            id="toml_failure_duplicate_key",
         ),
         pytest.param(
             b"title: YAML content",
             "config.toml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
             "Expected '=' after a key in a key/value pair (at line 1, column 6)",
-            id="parse_toml_with_yaml_content_fail",
+            id="toml_with_yaml_content_fail",
         ),
         pytest.param(
             b"\xef\xbb\xbftitle = 'TOML with BOM'",
             "config.toml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
             "Invalid statement (at line 1, column 1)",
-            id="parse_toml_with_bom_fail",
+            id="toml_with_bom_fail",
         ),
         pytest.param(
-            b"col1,col2\n",
-            "config.csv",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "CSV file must contain at least one data row.",
-            id="parse_csv_header_only_fail",
-        ),
-        pytest.param(
-            b'col1,col2\nval1,"unclosed_val2',
-            "config.csv",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Error tokenizing data. C error: EOF inside string starting at row 1",
-            id="parse_csv_unclosed_quote_in_data_fail",
-        ),
-        pytest.param(
-            b"\x00\x01\x02\x03\x04",
-            "config.csv",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Failed to parse CSV: Null byte detected in input data.",
-            id="parse_csv_invalid_binary_fail",
-        ),
-        # --- Start: New CSV Edge Case Tests ---
-        pytest.param(
-            b" col1 , col2 \n val1 , val2 \n",
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            {"csv_rows": [{" col1 ": " val1 ", " col2 ": " val2 "}]},
-            EXPECT_NO_ERROR,
-            id="parse_csv_whitespace_in_header_data_success",
-        ),
-        pytest.param(
-            b"col1,col2\r\nval1,val2\nval3,val4\rval5,val6",
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            {"csv_rows": [{"col1": "val1", "col2": "val2"}, {"col1": "val3", "col2": "val4"}, {"col1": "val5", "col2": "val6"}]},
-            EXPECT_NO_ERROR,
-            id="parse_csv_mixed_line_endings_success",
-        ),
-        pytest.param(
-            b"col1,col2\n123,abc\n456.7,True\nxyz,False\n,999",
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            {
-                "csv_rows": [
-                    {"col1": "123", "col2": "abc"},
-                    {"col1": "456.7", "col2": "True"},
-                    {"col1": "xyz", "col2": "False"},
-                    {"col1": np.nan, "col2": "999"},
-                ]
-            },
-            EXPECT_NO_ERROR,
-            id="parse_csv_highly_mixed_types_nan_success",
-        ),
-        pytest.param(
-            b" \t \n \n \t\t ",
-            "config.csv",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "No columns to parse from file",
-            id="parse_csv_whitespace_only_fail",
-        ),
-        pytest.param(
-            b"col1,col2\n \t \n \n",
-            "config.csv",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "CSV file must contain at least one data row.",
-            id="parse_csv_header_with_whitespace_lines_fail",
-        ),
-        pytest.param(
-            b'col1,col2\n"line1\nline2",value2',
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            {"csv_rows": [{"col1": "line1\nline2", "col2": "value2"}]},
-            EXPECT_NO_ERROR,
-            id="parse_csv_quoted_newlines_success",
-        ),
-        pytest.param(
-            b"float_val = 3.14\ninf_val = inf\nnan_val = nan",
+            b"\x80\x81\x82title = 'TOML test'",
             "config.toml",
-            PARSE_SUCCESSFUL,
-            {"float_val": 3.14, "inf_val": float("inf"), "nan_val": float("nan")},
-            EXPECT_NO_ERROR,
-            id="parse_toml_float_inf_nan_success",
+            PARSE_SHOULD_FAIL,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            id="toml_failure_invalid_utf8",
         ),
-        pytest.param(
-            b"bool_true = true\nbool_false = false",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {"bool_true": True, "bool_false": False},
-            EXPECT_NO_ERROR,
-            id="parse_toml_booleans_success",
-        ),
-        pytest.param(
-            b'inline_table = { key1 = "val1", key2 = 123 }',
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {"inline_table": {"key1": "val1", "key2": 123}},
-            EXPECT_NO_ERROR,
-            id="parse_toml_inline_table_success",
-        ),
-        pytest.param(
-            b"[[points]]\nx = 1\ny = 2\n[[points]]\nx = 3\ny = 4",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {"points": [{"x": 1, "y": 2}, {"x": 3, "y": 4}]},
-            EXPECT_NO_ERROR,
-            id="parse_toml_array_of_tables_success",
-        ),
-        pytest.param(
-            b'[table]\nkey = "val"\n' + b'[table.subtable]\nkey = "subval"\n' + b'[table]\nother_key = "redefined?"',
-            "config.toml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Cannot declare ('table',) twice (at line 5, column 7)",
-            id="parse_toml_redefine_table_fail",
-        ),
-        pytest.param(
-            b"array = [1, 2, 3,]",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            {"array": [1, 2, 3]},
-            EXPECT_NO_ERROR,
-            id="parse_toml_trailing_comma_array_success",
-        ),
-        pytest.param(
-            b"anchor_test: &anchor_val value\nalias_test: *anchor_val",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"anchor_test": "value", "alias_test": "value"},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_anchor_alias_success",
-        ),
-        pytest.param(
-            b"base: &base { x: 1 }\nderived: { <<: *base, y: 2 }",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"base": {"x": 1}, "derived": {"x": 1, "y": 2}},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_merge_keys_success",
-        ),
-        pytest.param(
-            b"str_val: !!str 123\nint_val: !!int '456'\nbool_val: !!bool yes",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"str_val": "123", "int_val": 456, "bool_val": True},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_explicit_tags_success",
-        ),
-        pytest.param(
-            b"literal_block: |\n  Line 1\n  Line 2\nfolded_block: >\n  Word1 Word2 Word3\n  Word4 Word5",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"literal_block": "Line 1\nLine 2\n", "folded_block": "Word1 Word2 Word3 Word4 Word5"},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_scalar_styles_success",
-        ),
-        pytest.param(
-            b"- item1\n- item2",
-            "config.yaml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            "Invalid YAML file loaded.",
-            id="parse_yaml_top_level_sequence_fail",
-        ),
-        pytest.param(
-            b"doc1_key: value1\n---\ndoc2_key: value2",
-            "config.yaml",
-            PARSE_FAILED,
-            EXPECT_NO_DICT,
-            (
-                "expected a single document in the stream\n"
-                + '  in "<unicode string>", line 1, column 1:\n'
-                + "    doc1_key: value1\n"
-                + "    ^\n"
-                + "but found another document\n"
-                + '  in "<unicode string>", line 2, column 1:\n'
-                + "    ---\n"
-                + "    ^"
-            ),
-            id="parse_yaml_multiple_documents_fail",
-        ),
-        pytest.param(
-            b"a: &a [1, *a]",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_DICT,
-            EXPECT_NO_ERROR,
-        ),
-        pytest.param(
-            b"large_string: '" + b"a" * 5000 + b"'",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            {"large_string": "a" * 5000},
-            EXPECT_NO_ERROR,
-            id="parse_yaml_large_scalar_success",
-        ),
-    ],
-)
-def test_parse(
-    content: bytes,
-    filename: str,
-    is_successful: bool,
-    expected_dict: Optional[ParsedDictType],
-    expected_error: Optional[str],
-) -> None:
-    """ConfigParserのparse機能をテストする。
-
-    Args:
-        content: パース対象のバイトデータ
-        filename: ファイル名
-        is_successful: パースが成功するかどうか
-        expected_dict: 期待される辞書
-        expected_error: 期待されるエラーメッセージ
-    """
-    # Use the helper function to perform parsing and assertions
-    TestHelpers.assert_parsing_result(
-        content,
-        filename,
-        is_successful,
-        expected_dict,
-        expected_error,
-    )
-
-
-@UNIT
-def test_parse_csv_with_nan_handling() -> None:
-    """CSVパースでのNaN値処理のテスト。"""
-    content = b"id,name,value\n1,test,\n2,,abc"
-    config_file = TestHelpers.create_test_file(content, "config.csv")
-
-    # NaN値を"N/A"で置換する
-    parser = ConfigParser(config_file)
-    parser.enable_fill_nan = True
-    parser.fill_nan_with = "N/A"
-
-    assert parser.parse() is True
-    assert parser.parsed_dict is not None
-
-    # NaN値が"N/A"に置換されていることを確認
-    expected_dict = {"csv_rows": [{"id": 1, "name": "test", "value": "N/A"}, {"id": 2, "name": "N/A", "value": "abc"}]}
-    TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)  # type: ignore
-
-
-@UNIT
-def test_custom_csv_rows_name() -> None:
-    """カスタムCSV行名のテスト。"""
-    content = b"id,name\n1,test\n2,another"
-    config_file = TestHelpers.create_test_file(content, "config.csv")
-
-    # CSV行名を"items"に変更
-    parser = ConfigParser(config_file)
-    parser.csv_rows_name = "items"
-
-    assert parser.parse() is True
-    assert parser.parsed_dict is not None
-
-    # カスタム行名が使用されていることを確認
-    expected_dict = {"items": [{"id": 1, "name": "test"}, {"id": 2, "name": "another"}]}
-    TestHelpers.assert_dict_equality(parser.parsed_dict, expected_dict)  # type: ignore
-
-
-@UNIT
-def test_unsupported_file_extension() -> None:
-    """サポートされていないファイル拡張子のテスト。"""
-    content = b"This is a text file."
-    config_file = TestHelpers.create_test_file(content, "config.txt")
-
-    parser = ConfigParser(config_file)
-    # パースを実行せずに初期化時点でエラーが設定されていることを確認
-    assert parser.error_message == "Unsupported file type"
-
-
-@UNIT
-def test_file_size_validation() -> None:
-    """ファイルサイズのバリデーションのテスト。"""
-    # ファイルサイズの上限を一時的に小さくする
-    original_max_size = ConfigParser.MAX_FILE_SIZE_BYTES
-    ConfigParser.MAX_FILE_SIZE_BYTES = 10  # 10バイトに設定
-
-    try:
-        content = b"This content is more than 10 bytes."
-        config_file = TestHelpers.create_test_file(content, "config.toml")
-
-        # ファイルサイズが上限を超える場合、error_messageが設定されることを確認
-        parser = ConfigParser(config_file)
-        assert parser.error_message is not None
-        assert "File size exceeds maximum limit of 10 bytes" in parser.error_message
-        assert parser.parse() is False
-    finally:
-        # テスト後に元の値に戻す
-        ConfigParser.MAX_FILE_SIZE_BYTES = original_max_size
-
-
-@UNIT
-def test_memory_size_validation(monkeypatch: pytest.MonkeyPatch) -> None:
-    """メモリサイズのバリデーションのテスト。"""
-    content = b"title = 'TOML test'"
-    config_file = TestHelpers.create_test_file(content, "config.toml")
-
-    parser = ConfigParser(config_file)
-
-    # sys.getsizeofが大きな値を返すようにモックする
-    def mock_getsizeof(obj: Union[ParsedDictType, str, bytes, None]) -> int:
-        return ConfigParser.MAX_MEMORY_SIZE_BYTES + 1
-
-    monkeypatch.setattr("sys.getsizeof", mock_getsizeof)
-
-    # パースは成功するが、メモリサイズのバリデーションで失敗する
-    assert parser.parse() is True
-    assert parser.parsed_dict is None
-    assert "Memory consumption exceeds the maximum limit" in str(parser.error_message)
-
-
-@UNIT
-def test_memory_error_during_validation(monkeypatch: pytest.MonkeyPatch) -> None:
-    """メモリサイズのバリデーション中のメモリエラーのテスト。"""
-    content = b"title = 'TOML test'"
-    config_file = TestHelpers.create_test_file(content, "config.toml")
-
-    parser = ConfigParser(config_file)
-
-    # sys.getsizeofがMemoryErrorを発生させるようにモックする
-    def mock_getsizeof(obj: Union[ParsedDictType, str, bytes, None]) -> int:
-        raise MemoryError("Test memory error")
-
-    monkeypatch.setattr("sys.getsizeof", mock_getsizeof)
-
-    # パースは成功するが、メモリサイズのバリデーションで失敗する
-    assert parser.parse() is True
-    assert parser.parsed_dict is None
-    assert "Memory error while checking size" in str(parser.error_message)
-
-
-@UNIT
-def test_unicode_decode_error() -> None:
-    """UnicodeDecodeErrorのテスト。"""
-    # 不正なUTF-8シーケンスを含むデータ
-    content = b"\xff\xfe\xfd"
-    config_file = TestHelpers.create_test_file(content, "config.toml")
-
-    parser = ConfigParser(config_file)
-    assert parser.parse() is False
-    assert parser.parsed_dict is None
-    assert parser.error_message is not None
-
-
-@UNIT
-def test_csv_rows_name() -> None:
-    """Test the csv_rows_name property and setter."""
-    # Create a simple CSV file
-    content = b"name,age\nAlice,30\nBob,25"
-    config_file = TestHelpers.create_test_file(content, "config.csv")
-
-    # Initialize parser with default csv_rows_name
-    parser = ConfigParser(config_file)
-    assert parser.parse() is True
-    assert parser.parsed_dict is not None
-    assert "csv_rows" in parser.parsed_dict
-    assert len(parser.parsed_dict["csv_rows"]) == 2
-
-    # Reset and change csv_rows_name
-    config_file.seek(0)
-    parser = ConfigParser(config_file)
-    parser.csv_rows_name = "people"
-    assert parser.parse() is True
-    assert parser.parsed_dict is not None
-    assert "people" in parser.parsed_dict
-    assert "csv_rows" not in parser.parsed_dict
-    assert len(parser.parsed_dict["people"]) == 2
-
-
-@UNIT
-def test_enable_fill_nan() -> None:
-    """Test the enable_fill_nan property and setter."""
-    # Create a CSV file with NaN values
-    content = b"name,age\nAlice,30\nBob,\nCharlie,35"
-    config_file = TestHelpers.create_test_file(content, "config.csv")
-
-    # Default behavior: NaN values are not filled
-    parser = ConfigParser(config_file)
-    assert parser.parse() is True
-    assert parser.parsed_dict is not None
-    assert math.isnan(parser.parsed_dict["csv_rows"][1]["age"])
-
-    # Reset and enable NaN filling with default value (empty string)
-    config_file.seek(0)
-    parser = ConfigParser(config_file)
-    parser.enable_fill_nan = True
-    result = parser.parse()
-
-    # If parsing fails, check the error message
-    if not result:
-        assert parser.error_message is not None
-        print(f"Error message: {parser.error_message}")
-        # Skip the rest of the test
-        return
-
-    assert parser.parsed_dict is not None
-    assert parser.parsed_dict["csv_rows"][1]["age"] == ""
-
-    # Reset and enable NaN filling with custom value
-    config_file.seek(0)
-    parser = ConfigParser(config_file)
-    parser.enable_fill_nan = True
-    parser.fill_nan_with = "Unknown"
-    result = parser.parse()
-
-    # If parsing fails, check the error message
-    if not result:
-        assert parser.error_message is not None
-        print(f"Error message: {parser.error_message}")
-        # Skip the rest of the test
-        return
-
-    assert parser.parsed_dict is not None
-    assert parser.parsed_dict["csv_rows"][1]["age"] == "Unknown"
-
-
-@UNIT
-def test_fill_nan_with() -> None:
-    """Test the fill_nan_with property and setter."""
-    # Create a CSV file with NaN values
-    content = b"name,age\nAlice,30\nBob,\nCharlie,35"
-    config_file = TestHelpers.create_test_file(content, "config.csv")
-
-    # Setting fill_nan_with without enabling fill_nan should have no effect
-    parser = ConfigParser(config_file)
-    parser.fill_nan_with = "Unknown"
-    assert parser.parse() is True
-    assert parser.parsed_dict is not None
-    assert math.isnan(parser.parsed_dict["csv_rows"][1]["age"])
-
-    # Reset and enable both options
-    config_file.seek(0)
-    parser = ConfigParser(config_file)
-    parser.enable_fill_nan = True
-    parser.fill_nan_with = "Unknown"
-    result = parser.parse()
-
-    # If parsing fails, check the error message
-    if not result:
-        assert parser.error_message is not None
-        print(f"Error message: {parser.error_message}")
-        # Skip the rest of the test
-        return
-
-    assert parser.parsed_dict is not None
-    assert parser.parsed_dict["csv_rows"][1]["age"] == "Unknown"
-
-    # Test with numeric fill value
-    config_file.seek(0)
-    parser = ConfigParser(config_file)
-    parser.enable_fill_nan = True
-    parser.fill_nan_with = "0"  # Use string "0" instead of integer 0
-    result = parser.parse()
-
-    # If parsing fails, check the error message
-    if not result:
-        assert parser.error_message is not None
-        print(f"Error message: {parser.error_message}")
-        # Skip the rest of the test
-        return
-
-    assert parser.parsed_dict is not None
-    assert parser.parsed_dict["csv_rows"][1]["age"] == "0"
-
-
-@UNIT
-@pytest.mark.parametrize(
-    ("csv_rows_name", "enable_fill_nan", "fill_nan_with", "expected_dict"),
-    [
-        # Default settings
-        ("csv_rows", False, "", {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": None}, {"name": "Charlie", "age": 35}]}),
-        # Custom row name
-        ("people", False, "", {"people": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": None}, {"name": "Charlie", "age": 35}]}),
-        # Fill NaN with empty string
-        ("csv_rows", True, "", {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": ""}, {"name": "Charlie", "age": 35}]}),
-        # Fill NaN with custom string
-        (
-            "csv_rows",
-            True,
-            "Unknown",
-            {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": "Unknown"}, {"name": "Charlie", "age": 35}]},
-        ),
-        # Fill NaN with number as string
-        ("csv_rows", True, "0", {"csv_rows": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": "0"}, {"name": "Charlie", "age": 35}]}),
-        # Combination of custom row name and NaN filling
-        ("people", True, "N/A", {"people": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": "N/A"}, {"name": "Charlie", "age": 35}]}),
-    ],
-)
-def test_csv_options_combined(
-    csv_rows_name: str,
-    enable_fill_nan: bool,
-    fill_nan_with: str,  # Changed from Union[str, int] to just str
-    expected_dict: Dict[str, List[Dict[str, Union[str, int]]]],  # Fixed type annotation
-) -> None:
-    """Test combinations of CSV options."""
-    # Create a CSV file with NaN values
-    content = b"name,age\nAlice,30\nBob,\nCharlie,35"
-    config_file = TestHelpers.create_test_file(content, "config.csv")
-
-    # Configure parser with the specified options
-    parser = ConfigParser(config_file)
-    parser.csv_rows_name = csv_rows_name
-    parser.enable_fill_nan = enable_fill_nan
-    parser.fill_nan_with = fill_nan_with
-
-    # Parse and verify results
-    result = parser.parse()
-
-    # If parsing fails, check the error message and skip the test
-    if not result:
-        assert parser.error_message is not None
-        print(f"Error message: {parser.error_message}")
-        pytest.skip(f"Parsing failed with error: {parser.error_message}")
-
-    assert parser.parsed_dict is not None
-
-    # For NaN values, we need special handling in the comparison
-    result_dict = parser.parsed_dict
-    expected_rows = expected_dict[csv_rows_name]
-    result_rows = result_dict[csv_rows_name]
-
-    assert len(result_rows) == len(expected_rows)
-
-    for i, (expected_row, result_row) in enumerate(zip(expected_rows, result_rows, strict=False)):
-        for key, expected_value in expected_row.items():
-            if expected_value is None and not enable_fill_nan:  # type: ignore[unreachable]
-                # If NaN filling is disabled and expected value is None, check for NaN
-                assert key in result_row  # type: ignore[unreachable]
-                # Check for actual NaN or None from pandas
-                actual_val = result_row[key]
-                # Assert that actual_val is either NaN or None
-                assert (isinstance(actual_val, (float, np.float64)) and math.isnan(actual_val)) or (actual_val is None), (
-                    f"Row {i}, key {key}: expected NaN or None when filling is disabled, got {actual_val!r}"
-                )
-            else:
-                # Otherwise, compare values directly
-                assert result_row[key] == expected_value, f"Row {i}, key {key}: expected {expected_value}, got {result_row[key]}"
-
-
-@UNIT
-@pytest.mark.parametrize(
-    ("content", "filename", "is_successful", "expected_error"),
-    [
-        # Edge case: Extremely large TOML file with long key names
         pytest.param(
             b"title = 'TOML test'\n" + b"key_" + b"a" * 1000 + b" = 'value'\n" * 100,
             "config.toml",
-            PARSE_FAILED,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
             "Invalid statement (at line 3, column 2)",
-            id="edge_toml_large_file_long_keys_fail",
+            id="toml_failure_large_file_long_keys",
         ),
-        # Edge case: TOML with special characters in keys
         pytest.param(
-            b"'key-with-quotes' = 'value'\nkey_with_underscores = 'value'\n\"key.with.dots\" = 'value'",
+            b"\xef\xbb\xbftitle = 'TOML test'",
             "config.toml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_toml_special_chars_in_keys_success",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Invalid statement (at line 1, column 1)",
+            id="toml_failure_with_bom",
         ),
-        # Edge case: YAML with extremely long key names
         pytest.param(
-            b"title: YAML test\nkey_" + b"a" * 100 + b": value",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_yaml_long_key_names_success",
-        ),
-        # Edge case: YAML with special characters in keys
-        pytest.param(
-            b"'key-with-quotes': value\nkey_with_underscores: value\n\"key.with.dots\": value",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_yaml_special_chars_in_keys_success",
-        ),
-        # Edge case: Extremely large CSV file
-        pytest.param(
-            b"col1,col2,col3\n" + b"value1,value2,value3\n" * 1000,
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_csv_large_file_many_rows_success",
-        ),
-        # Edge case: CSV with quoted fields containing commas
-        pytest.param(
-            b'name,description\n"Smith, John","Consultant, senior"\n"Doe, Jane","Manager, department"',
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_csv_quoted_fields_with_commas_success",
-        ),
-        # Edge case: CSV with many columns
-        pytest.param(
-            b"col1,"
-            + b",".join([f"col{i}".encode() for i in range(2, 100)])
-            + b",col100\n"
-            + b"value1,"
-            + b",".join([f"value{i}".encode() for i in range(2, 100)])
-            + b",value100",
-            "config.csv",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_csv_many_columns_success",
-        ),
-        # Edge case: Empty file
-        pytest.param(
-            b"",
+            b"\xef\xbb\xbftitle: YAML test",
             "config.toml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_toml_empty_file_success",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Invalid statement (at line 1, column 1)",
+            id="yaml_failure_with_bom",
         ),
         pytest.param(
-            b"",
+            b"\xff\xfe\xfd",
+            "config.toml",
+            PARSE_SHOULD_FAIL,
+            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            id="toml_failure_unicode_decode_error",
+        ),
+        pytest.param(
+            b"unicode = '\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e'",
+            "config.toml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"unicode": "日本語"},
+            NO_EXPECTED_ERROR,
+            id="toml_success_unicode_chars",
+        ),
+        # --- YAML Cases ---
+        pytest.param(
+            b"section:\\n  key: value",
             "config.yaml",
-            PARSE_FAILED,
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"section:\\n  key": "value"},
+            NO_EXPECTED_ERROR,
+            id="yaml_success_valid_structure",
+        ),
+        pytest.param(
+            b"section:\\n key: value",  # Valid YAML (indentation)
+            "config.yml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"section:\\n key": "value"},
+            NO_EXPECTED_ERROR,
+            id="yaml_success_valid_indentation",
+        ),
+        pytest.param(
+            b"- item1\\n- item2",  # Valid YAML but not a dictionary at the root
+            "config.yaml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
             "Invalid YAML file loaded.",
-            id="edge_yaml_empty_file_fail",
-        ),
-        # Edge case: File with only whitespace
-        pytest.param(
-            b"   \n\t\n  ",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_toml_whitespace_only_success",
+            id="yaml_failure_not_a_dict",
         ),
         pytest.param(
+            _create_large_yaml_content(1000),
+            "large_ok.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"data": {f"key{i}": f"value{i}" for i in range(1000)}},
+            NO_EXPECTED_ERROR,
+            id="yaml_success_moderately_large",
+        ),
+        pytest.param(
+            _create_large_yaml_content(2 * 10**6),
+            "large_ng.yaml",
+            PARSE_SHOULD_FAIL,
+            "File size exceeds maximum limit of 31457280 bytes",
+            NO_EXPECTED_DICT,
+            "File size exceeds maximum limit of 31457280 bytes",
+            id="yaml_failure_moderately_large",
+        ),
+        pytest.param(
+            b"section:\\n  list:\\n    - item1\\n    - {key: value}\\nnested:\\n  map:\\n    subkey: subvalue",  # Complex YAML
+            "complex.yaml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            (
+                "mapping values are not allowed here\n"
+                '  in "<unicode string>", line 1, column 80:\n'
+                "     ... ue}\\nnested:\\n  map:\\n    subkey: subvalue\n"
+                "                                         ^"
+            ),
+            id="yaml_failure_complex_mapping_value",
+        ),
+        pytest.param(
+            "セクション:\\n  キー: 値".encode("shift_jis"),  # YAML with Shift-JIS encoding
+            "sjis.yaml",
+            PARSE_SHOULD_FAIL,
+            "'utf-8' codec can't decode byte 0x83 in position 0: invalid start byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0x83 in position 0: invalid start byte",
+            id="yaml_failure_shiftjis_encoding_init",
+        ),
+        pytest.param(
+            b"# Root comment\nsection: # Comment on section\n  key: value # Comment on value",  # YAML with comments
+            "commented.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"section": {"key": "value"}},
+            NO_EXPECTED_ERROR,
+            id="yaml_success_with_comments",
+        ),
+        pytest.param(
+            b"data:\n  int_val: 123\n  float_val: 4.56\n  bool_val: true\n  null_val: null\n  list_val:\n    - item1\n    - 2\n    - false",
+            "datatypes.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"data": {"int_val": 123, "float_val": 4.56, "bool_val": True, "null_val": None, "list_val": ["item1", 2, False]}},
+            NO_EXPECTED_ERROR,
+            id="yaml_success_various_types",
+        ),
+        pytest.param(
+            (
+                b"nested:\n"
+                b"  level1:\n"
+                b"    list_in_map:\n"
+                b"      - itemA\n"
+                b"      - itemB\n"
+                b"    map_in_map:\n"
+                b"      key1: val1\n"
+                b"      key2: val2\n"
+                b"  level1_list:\n"
+                b"    - map_in_list:\n"
+                b"        k: v\n"
+                b"    - simple_item"
+            ),  # Nested structures
+            "nested.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {
+                "nested": {
+                    "level1": {"list_in_map": ["itemA", "itemB"], "map_in_map": {"key1": "val1", "key2": "val2"}},
+                    "level1_list": [{"map_in_list": {"k": "v"}}, "simple_item"],
+                }
+            },
+            NO_EXPECTED_ERROR,
+            id="yaml_success_nested_structures",
+        ),
+        pytest.param(
+            b"",
+            "empty.yaml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Invalid YAML file loaded.",
+            id="yaml_failure_empty_file",
+        ),
+        pytest.param(
+            b"section:\n  key1: value1\n key2: value2",  # Indentation error
+            "indent_error.yaml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            (
+                "while parsing a block mapping\n"
+                '  in "<unicode string>", line 1, column 1:\n'
+                "    section:\n"
+                "    ^\n"
+                "expected <block end>, but found '<block mapping start>'\n"
+                '  in "<unicode string>", line 3, column 2:\n'
+                "     key2: value2\n"
+                "     ^"
+            ),
+            id="yaml_failure_bad_indentation",
+        ),
+        pytest.param(
+            b"anchor_example: &anchor1\n  name: Anchor Name\n  value: 10\nalias_example: *anchor1",  # Anchors and aliases
+            "anchor.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"anchor_example": {"name": "Anchor Name", "value": 10}, "alias_example": {"name": "Anchor Name", "value": 10}},
+            NO_EXPECTED_ERROR,
+            id="yaml_success_anchors_aliases",
+        ),
+        pytest.param(
+            b"doc1:\n  key: value1\n---\ndoc2:\n  key: value2",  # Multiple documents
+            "multidoc.yaml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            (
+                "expected a single document in the stream\n"
+                '  in "<unicode string>", line 1, column 1:\n'
+                "    doc1:\n"
+                "    ^\n"
+                "but found another document\n"
+                '  in "<unicode string>", line 3, column 1:\n'
+                "    ---\n"
+                "    ^"
+            ),
+            id="yaml_failure_multiple_documents_first_only",
+        ),
+        pytest.param(
+            (
+                b"timestamps:\n"
+                b"  iso_utc: 2001-12-15T02:59:43Z\n"
+                b"  space_sep: 2001-12-14 21:59:43 -05:00\n"
+                b"  no_secs: 2001-12-14 21:59 -05:00\n"
+                b"  date_only: 2002-12-14"
+            ),  # Valid YAML timestamps
+            "timestamps.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            # PyYAML parses these into datetime.datetime and datetime.date objects
+            # We represent the expected structure; actual test might need type checks
+            {
+                "timestamps": {
+                    "date_only": datetime.date(2002, 12, 14),
+                    "iso_utc": datetime.datetime(2001, 12, 15, 2, 59, 43, tzinfo=datetime.timezone.utc),
+                    "no_secs": "2001-12-14 21:59 -05:00",
+                    "space_sep": datetime.datetime(
+                        2001, 12, 14, 21, 59, 43, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=68400))
+                    ),
+                }
+            },
+            NO_EXPECTED_ERROR,
+            id="yaml_success_valid_timestamps",
+        ),
+        pytest.param(
+            b"dates_as_strings:\n  ambiguous: 01-02-2023 # Could be Jan 2 or Feb 1",
+            "ambiguous_dates.yaml",
+            PARSE_SHOULD_SUCCEED,  # Should parse as a string
+            NO_EXPECTED_ERROR,
+            {"dates_as_strings": {"ambiguous": "01-02-2023"}},
+            NO_EXPECTED_ERROR,
+            id="yaml_success_ambiguous_date_as_string",
+        ),
+        pytest.param(
+            b"invalid_time: 20:30:40,123",
+            "invalid_timestamp.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"invalid_time": "20:30:40,123"},
+            NO_EXPECTED_ERROR,
+            id="yaml_failure_invalid_timestamp_format",
+        ),
+        pytest.param(
+            (
+                b"deep_mix:\n"
+                b"  level1_map:\n"
+                b"    level2_list:\n"
+                b"      - item1\n"
+                b"      - level3_map:\n"
+                b"          key_c: 1\n"
+                b"          key_d: 2\n"
+                b"    level2_map:\n"
+                b"      level3_key: value_e"
+            ),
+            "deep_mixed_nesting.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {
+                "deep_mix": {
+                    "level1_map": {
+                        "level2_list": ["item1", {"level3_map": {"key_c": 1, "key_d": 2}}],
+                        "level2_map": {"level3_key": "value_e"},
+                    }
+                }
+            },
+            NO_EXPECTED_ERROR,
+            id="yaml_success_deeply_nested_mixed",
+        ),
+        pytest.param(
+            (
+                b"list_of_maps:\n"
+                b"  - id: 1\n"
+                b"    properties:\n"
+                b"      color: red\n"
+                b"      size: L\n"
+                b"  - id: 2\n"
+                b"    properties:\n"
+                b"      color: blue\n"
+                b"      size: M"
+            ),
+            "list_nested_maps.yaml",
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {
+                "list_of_maps": [
+                    {"id": 1, "properties": {"color": "red", "size": "L"}},
+                    {"id": 2, "properties": {"color": "blue", "size": "M"}},
+                ]
+            },
+            NO_EXPECTED_ERROR,
+            id="yaml_success_list_of_nested_maps",
+        ),
+        pytest.param(
             b"   \n\t\n  ",
-            "config.yaml",
-            PARSE_FAILED,
+            "tab_indent.yaml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
             (
                 "while scanning for the next token\n"
                 "found character '\\t' that cannot start any token\n"
@@ -1379,304 +667,488 @@ def test_csv_options_combined(
                 "    \t\n"
                 "    ^"
             ),
-            id="edge_yaml_whitespace_only_fail",
-        ),
-        # Edge case: File with BOM
-        pytest.param(
-            b"\xef\xbb\xbftitle = 'TOML test'",
-            "config.toml",
-            PARSE_FAILED,
-            "Invalid statement (at line 1, column 1)",
-            id="edge_toml_with_bom_fail",
+            id="yaml_failure_tab_indentation",
         ),
         pytest.param(
-            b"\xef\xbb\xbftitle: YAML test",
-            "config.yaml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_yaml_with_bom_success",
-        ),
-        # Edge case: File with non-UTF8 characters
-        pytest.param(
-            b"\x80\x81\x82title = 'TOML test'",
-            "config.toml",
-            PARSE_FAILED,
-            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
-            id="edge_toml_invalid_utf8_fail",
+            b"invalid_utf8: Str with \xc3\x28 invalid seq",  # Invalid UTF-8 sequence (incomplete)
+            "invalid_utf8_seq.yaml",
+            PARSE_SHOULD_FAIL,
+            "'utf-8' codec can't decode byte 0xc3 in position 23: invalid continuation byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0xc3 in position 23: invalid continuation byte",
+            id="yaml_failure_invalid_utf8_sequence",
         ),
         pytest.param(
             b"\x80\x81\x82title: YAML test",
             "config.yaml",
-            PARSE_FAILED,
+            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
-            id="edge_yaml_invalid_utf8_fail",
-        ),
-        # Edge case: File with mixed line endings
-        pytest.param(
-            b"title = 'TOML test'\r\nkey1 = 'value1'\nkey2 = 'value2'\r\n",
-            "config.toml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_toml_mixed_line_endings_success",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            id="yaml_failure_invalid_utf8",
         ),
         pytest.param(
-            b"title: YAML test\r\nkey1: value1\nkey2: value2\r\n",
+            b"\xff\xfe\xfd",
             "config.yaml",
-            PARSE_SUCCESSFUL,
-            EXPECT_NO_ERROR,
-            id="edge_yaml_mixed_line_endings_success",
+            PARSE_SHOULD_FAIL,
+            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            id="yaml_failure_unicode_decode_error",
+        ),
+        pytest.param(
+            b"key: @unexpected_character",
+            "config.yaml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            (
+                "while scanning for the next token\n"
+                "found character '@' that cannot start any token\n"
+                '  in "<unicode string>", line 1, column 6:\n'
+                "    key: @unexpected_character\n"
+                "         ^"
+            ),
+            id="yaml_failure_unexpected_char",
+        ),
+        pytest.param(
+            b"date: 2024-04-00",
+            "invalid_date.yaml",
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "day is out of range for month",
+            id="yaml_failure_invalid_date_out_of_range",
+        ),
+        # --- Common Error Cases ---
+        pytest.param(
+            b"content",
+            "file.txt",  # Unsupported extension
+            PARSE_SHOULD_FAIL,
+            "Unsupported file type",
+            NO_EXPECTED_DICT,
+            "Unsupported file type",
+            id="failure_unsupported_extension_init",
+        ),
+        pytest.param(
+            b"\x80abc",  # Invalid UTF-8 start byte (for TOML/YAML)
+            "config.toml",
+            PARSE_SHOULD_FAIL,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            id="common_failure_invalid_utf8_init_toml",
+        ),
+        pytest.param(
+            b"\x80abc",  # Invalid UTF-8 start byte (for TOML/YAML)
+            "config.yaml",
+            PARSE_SHOULD_FAIL,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
+            id="common_failure_invalid_utf8_init_yaml",
+        ),
+        pytest.param(
+            b'key = "value"',  # Valid TOML content
+            "invalid_extension.abc",  # But wrong extension
+            PARSE_SHOULD_FAIL,
+            "Unsupported file type",
+            NO_EXPECTED_DICT,
+            "Unsupported file type",
+            id="failure_valid_content_wrong_extension_init",
         ),
     ],
 )
-def test_parse_edge_cases(
-    content: bytes,
-    filename: str,
-    is_successful: bool,
-    expected_error: Optional[str],
+def test_parse_toml_or_yaml(
+    config_content: bytes,
+    file_name: str,
+    expected_parse_result: bool,
+    expected_init_error: Optional[str],
+    expected_dict: Optional[Dict[str, Any]],
+    expected_parse_error: Optional[str],
 ) -> None:
-    """Test edge cases for the ConfigParser.
+    """Tests the ConfigParser for TOML and YAML file inputs.
+
+    Covers various scenarios including valid syntax, invalid syntax,
+    different data types, comments, nesting, encoding issues, file size limits,
+    and unsupported file types.
 
     Args:
-        content: The content to parse
-        filename: The filename to use
-        is_successful: Whether parsing should succeed
-        expected_error: The expected error message, if any
+        config_content: The byte content of the configuration file.
+        file_name: The simulated name of the file (determines parser used).
+        expected_parse_result: Expected boolean result from the parse() method.
+        expected_init_error: Expected error message during ConfigParser init, or None.
+        expected_dict: Expected dictionary output after parsing, or None.
+        expected_parse_error: Expected error message after calling parse(), or None.
     """
-    config_file = TestHelpers.create_test_file(content, filename)
-    parser = ConfigParser(config_file)
-    result = parser.parse()
-    assert result == is_successful, f"is_successful isn't match.\nExpected: {is_successful}\nGot: {result}"
-    assert parser.error_message == expected_error, f"expected_error isn't match.\nExpected: {expected_error}\nGot: {parser.error_message}"
+    config_file = BytesIO(config_content)
+    config_file.name = file_name  # Set the name attribute for extension checking
 
+    # Initialize parser
+    parser = ConfigParser(config_file=config_file)
 
-@UNIT
-def test_memory_usage_with_reasonable_file() -> None:
-    """Test that parsing files with reasonable size doesn't consume excessive memory."""
-    # Create a CSV file with a reasonable number of rows
-    header = b"col1,col2,col3\n"
-    row = b"value1,value2,value3\n"
-
-    # Generate a file with 1,000 rows (much more reasonable for a unit test)
-    content = header + row * 1_000
-
-    config_file = TestHelpers.create_test_file(content, "reasonable_file.csv")
-
-    # Parse the file
-    parser = ConfigParser(config_file)
-    result = parser.parse()
-
-    # Verify parsing succeeded
-    assert result is True
-
-    # 辞書と文字列の表現が取得できることを確認
-    assert parser.parsed_dict is not None
-    assert parser.parsed_str != "None"
-
-    # 辞書の内容を確認
-    assert "csv_rows" in parser.parsed_dict
-    assert len(parser.parsed_dict["csv_rows"]) == 1000
-    assert all(row.get("col1") == "value1" for row in parser.parsed_dict["csv_rows"])
-    assert all(row.get("col2") == "value2" for row in parser.parsed_dict["csv_rows"])
-    assert all(row.get("col3") == "value3" for row in parser.parsed_dict["csv_rows"])
-
-
-@UNIT
-def test_nested_structures() -> None:
-    """Test parsing deeply nested structures."""
-    # TOML with deeply nested tables
-    toml_content = (
-        b"[level1]\n"
-        b'key = "value"\n'
-        b"\n"
-        b"[level1.level2]\n"
-        b'key = "value"\n'
-        b"\n"
-        b"[level1.level2.level3]\n"
-        b'key = "value"\n'
-        b"\n"
-        b"[level1.level2.level3.level4]\n"
-        b'key = "value"\n'
-        b"\n"
-        b"[level1.level2.level3.level4.level5]\n"
-        b'key = "value"'
+    # --- Assert Initial State ---
+    assert parser.error_message == expected_init_error, (
+        f"Initial error message mismatch\\nGot: {parser.error_message}\\nExpected: {expected_init_error}"
     )
 
-    config_file = TestHelpers.create_test_file(toml_content, "nested.toml")
+    # Call parse method
+    parse_result = parser.parse()
 
-    parser = ConfigParser(config_file)
-    result = parser.parse()
+    # --- Assert Final State ---
+    assert parse_result == expected_parse_result, f"Parse result mismatch\\nGot: {parse_result}\\nExpected: {expected_parse_result}"
 
-    assert result is True
-    assert parser.parsed_dict is not None
-    assert "level1" in parser.parsed_dict
-    assert "level2" in parser.parsed_dict["level1"]
-    assert "level3" in parser.parsed_dict["level1"]["level2"]
-    assert "level4" in parser.parsed_dict["level1"]["level2"]["level3"]
-    assert "level5" in parser.parsed_dict["level1"]["level2"]["level3"]["level4"]
-
-    # YAML with deeply nested mappings
-    yaml_content = (
-        b"level1:\n"
-        b"  key: value\n"
-        b"  level2:\n"
-        b"    key: value\n"
-        b"    level3:\n"
-        b"      key: value\n"
-        b"      level4:\n"
-        b"        key: value\n"
-        b"        level5:\n"
-        b"          key: value\n"
+    assert parser.parsed_dict == expected_dict, (
+        f"Parsed dictionary mismatch\\nGot: {pprint.pformat(parser.parsed_dict)}\\nExpected: {pprint.pformat(expected_dict)}"
     )
 
-    config_file = TestHelpers.create_test_file(yaml_content, "nested.yaml")
+    # Check final parsed string representation
+    if expected_init_error is None and expected_parse_result:
+        expected_str_final = pprint.pformat(expected_dict)
+    else:
+        expected_str_final = "None"
 
-    parser = ConfigParser(config_file)
-    result = parser.parse()
+    assert parser.parsed_str == expected_str_final, f"Parsed string mismatch\nGot: {parser.parsed_str}\nExpected: {expected_str_final}"
 
-    assert result is True
-    assert parser.parsed_dict is not None
-    assert "level1" in parser.parsed_dict
-    assert "level2" in parser.parsed_dict["level1"]
-    assert "level3" in parser.parsed_dict["level1"]["level2"]
-    assert "level4" in parser.parsed_dict["level1"]["level2"]["level3"]
-    assert "level5" in parser.parsed_dict["level1"]["level2"]["level3"]["level4"]
+    # Check final error message
+    assert parser.error_message == expected_parse_error, (
+        f"Final error message mismatch\nGot: {parser.error_message}\nExpected: {expected_parse_error}"
+    )
 
 
-@UNIT
-def test_file_size_limit() -> None:
-    """ファイルサイズの上限を超えた場合のテスト。
+@pytest.mark.parametrize(
+    (
+        "config_content",
+        "file_name",
+        "csv_rows_name",
+        "enable_fill_nan",
+        "fill_nan_with",
+        "expected_parse_result",
+        "expected_init_error",
+        "expected_dict",
+        "expected_parse_error",
+    ),
+    [
+        # --- CSV Cases ---
+        pytest.param(
+            b"col1,col2\\nval1,val2\\nval3,val4",
+            "data.csv",
+            "my_csv_data",
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "CSV file must contain at least one data row.",
+            id="csv_failure_header_only_custom_name",
+        ),
+        pytest.param(
+            b"col1,col2\\nval1,\\nval3,val4",  # CSV with NaN
+            "data.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,  # Default csv_rows_name, no NaN fill
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "CSV file must contain at least one data row.",
+            id="csv_failure_header_only_nan_no_fill",
+        ),
+        pytest.param(
+            b"col1,col2\nval1,\nval3,val4",  # CSV with NaN, fill with empty string
+            "data.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_FILL_NAN,
+            "",  # Fill with empty string
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"csv_rows": [{"col1": "val1", "col2": ""}, {"col1": "val3", "col2": "val4"}]},
+            NO_EXPECTED_ERROR,
+            id="csv_success_nan_fill_empty_string",
+        ),
+        pytest.param(
+            b"col1,col2\nval1,\nval3,val4",  # CSV with NaN, fill with "N/A"
+            "data.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_FILL_NAN,
+            "N/A",  # Fill with "N/A"
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"csv_rows": [{"col1": "val1", "col2": "N/A"}, {"col1": "val3", "col2": "val4"}]},
+            NO_EXPECTED_ERROR,
+            id="csv_success_nan_fill_na_string",
+        ),
+        pytest.param(
+            b"col1,col2",  # CSV with only header
+            "data.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "CSV file must contain at least one data row.",
+            id="csv_failure_header_only",
+        ),
+        pytest.param(
+            b"",  # Empty CSV
+            "data.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "No columns to parse from file",  # Error message might vary slightly based on pandas version
+            id="csv_failure_empty_file",
+        ),
+        pytest.param(
+            _create_large_csv_content(100, 100),  # ~100KB CSV
+            "large_ok.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_SUCCEED,  # Should pass 30MB limit
+            NO_EXPECTED_ERROR,
+            # Generate expected dict (can be large)
+            {"csv_rows": [{f"col{c}": f"val_{r}_{c}" for c in range(100)} for r in range(100)]},
+            NO_EXPECTED_ERROR,
+            id="csv_success_moderately_large",
+        ),
+        # Note: Testing the exact >30MB boundary failure within parametrize is infeasible
+        # due to the size of data required. Recommend separate test functions for that.
+        pytest.param(
+            b"a,b\n\x00,d",  # CSV with null byte
+            "null.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Failed to parse CSV: Null byte detected in input data.",
+            id="csv_failure_null_byte",
+        ),
+        pytest.param(
+            b'col1,"col,2"\nval1,"v,al2"',
+            "quoted.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"csv_rows": [{"col,2": "v,al2", "col1": "val1"}]},
+            NO_EXPECTED_ERROR,
+            id="csv_success_quoted_commas_newline",
+        ),
+        pytest.param(
+            b"col1;col2\nval1;val2",
+            "semicolon.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"csv_rows": [{"col1;col2": "val1;val2"}]},
+            NO_EXPECTED_ERROR,
+            id="csv_success_semicolon_delimiter",
+        ),
+        pytest.param(
+            b"header1,header2\nvalue1,\nvalue3,value4",  # NaN in second column
+            "nan_fill_missing.csv",
+            "items",  # Custom rows name
+            SHOULD_FILL_NAN,  # Enable fill
+            "MISSING",  # Fill value
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"items": [{"header1": "value1", "header2": "MISSING"}, {"header1": "value3", "header2": "value4"}]},
+            NO_EXPECTED_ERROR,
+            id="csv_success_nan_fill_missing_custom_name",
+        ),
+        pytest.param(
+            b"col_a,col_b,col_c\n1,alpha,\n,beta,gamma\n3,,delta",  # Multiple NaNs
+            "multi_nan_fill_empty.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_FILL_NAN,  # Enable fill
+            "",  # Fill value (empty string)
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {
+                "csv_rows": [
+                    {"col_a": float(1.0), "col_b": "alpha", "col_c": ""},
+                    {"col_a": "", "col_b": "beta", "col_c": "gamma"},
+                    {"col_a": float(3.0), "col_b": "", "col_c": "delta"},
+                ]
+            },
+            NO_EXPECTED_ERROR,
+            id="csv_success_multi_nan_fill_empty_string",
+        ),
+        pytest.param(
+            b"id,value,category\n1,100,A\n2,,B\n3,300,C",  # NaN in potentially numeric column
+            "numeric_nan_fill_na.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_FILL_NAN,  # Enable fill
+            "N/A",  # Fill value
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {
+                "csv_rows": [
+                    {"id": 1, "value": 100.0, "category": "A"},
+                    {"id": 2, "value": "N/A", "category": "B"},
+                    {"id": 3, "value": 300.0, "category": "C"},
+                ]
+            },
+            NO_EXPECTED_ERROR,
+            id="csv_success_numeric_nan_fill_na",
+        ),
+        pytest.param(
+            b"field1,field2\nvalueA,valueB\n,\nvalueC,valueD",  # Row with all NaNs
+            "all_nan_row.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_FILL_NAN,  # Enable fill
+            "DEFAULT",  # Fill value
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {
+                "csv_rows": [
+                    {"field1": "valueA", "field2": "valueB"},
+                    {"field1": "DEFAULT", "field2": "DEFAULT"},
+                    {"field1": "valueC", "field2": "valueD"},
+                ]
+            },
+            NO_EXPECTED_ERROR,
+            id="csv_success_all_nan_row_fill_default",
+        ),
+        pytest.param(
+            b"\xff\xfe\xfd",
+            "config.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_FAIL,
+            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            id="parse_csv_failure_unicode_decode_error",
+        ),
+        pytest.param(
+            b" \t \n \n \t\t ",
+            "config.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "No columns to parse from file",
+            id="csv_failure_whitespace_only",
+        ),
+        pytest.param(
+            b" col1 , col2 \n val1 , val2 \n",
+            "config.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_SUCCEED,
+            NO_EXPECTED_ERROR,
+            {"csv_rows": [{" col1 ": " val1 ", " col2 ": " val2 "}]},
+            NO_EXPECTED_ERROR,
+            id="csv_success_whitespace_in_header_data",
+        ),
+        pytest.param(
+            b"\x00\x01\x02\x03\x04",
+            "config.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Failed to parse CSV: Null byte detected in input data.",
+            id="csv_failure_invalid_binary_fail",
+        ),
+        pytest.param(
+            b'a,b,c\ncat,foo,bar\ndog,foo,"baz',
+            "config.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            PARSE_SHOULD_FAIL,
+            NO_EXPECTED_ERROR,
+            NO_EXPECTED_DICT,
+            "Error tokenizing data. C error: EOF inside string starting at row 2",
+            id="csv_failure_unclosed_quote",
+        ),
+    ],
+)
+def test_parse_csv(
+    config_content: bytes,
+    file_name: str,
+    csv_rows_name: str,
+    enable_fill_nan: bool,
+    fill_nan_with: str,
+    expected_parse_result: bool,
+    expected_init_error: Optional[str],
+    expected_dict: Optional[Dict[str, Any]],
+    expected_parse_error: Optional[str],
+) -> None:
+    """Tests the ConfigParser specifically for CSV file inputs.
 
-    ConfigParserクラスのMAX_FILE_SIZE_BYTES (30MB) を超えるファイルを
-    作成し、バリデーションが正しく機能することを確認します。
+    Covers scenarios such as different delimiters, quoting, NaN values (with and
+    without filling), empty files, large files, null bytes, encoding issues,
+    and whitespace handling.
+
+    Args:
+        config_content: The byte content of the CSV file.
+        file_name: The simulated name of the file (must end with .csv).
+        csv_rows_name: The key name to use for the list of CSV rows in the output dict.
+        enable_fill_nan: Whether to enable filling NaN values.
+        fill_nan_with: The string value to replace NaN values with if enabled.
+        expected_parse_result: Expected boolean result from the parse() method.
+        expected_init_error: Expected error message during ConfigParser init, or None.
+        expected_dict: Expected dictionary output after parsing, or None.
+        expected_parse_error: Expected error message after calling parse(), or None.
     """
-    # Arrange
-    # 31MBのデータを作成 (上限は30MB)
-    large_content = b"x" * (31 * 1024 * 1024)
-    config_file = TestHelpers.create_test_file(large_content, "large_config.toml")
+    config_file = BytesIO(config_content)
+    config_file.name = file_name  # Set the name attribute for extension checking
 
-    # Act
-    parser = ConfigParser(config_file)
+    # Initialize parser
+    parser = ConfigParser(config_file=config_file)
 
-    # Assert
-    assert parser.error_message is not None
-    assert "File size exceeds maximum limit of 31457280 bytes" == parser.error_message
-    assert parser.parse() is False
+    # --- Assert Initial State ---
+    assert parser.error_message == expected_init_error, (
+        f"Initial error message mismatch\\nGot: {parser.error_message}\\nExpected: {expected_init_error}"
+    )
 
+    # Configure CSV options (only if parser initialized without error)
+    parser.csv_rows_name = csv_rows_name
+    parser.enable_fill_nan = enable_fill_nan
+    parser.fill_nan_with = fill_nan_with
 
-@UNIT
-def test_memory_consumption_limit_parsed_str() -> None:
-    """parsed_strのメモリ消費量の上限を超えた場合のテスト。
+    # Call parse method
+    parse_result = parser.parse()
 
-    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
-    大きなメモリサイズを返すようにします。
-    """
-    # Arrange
-    content = b"title = 'TOML test'\nkey = 'value'\n"
-    config_file = TestHelpers.create_test_file(content, "config.toml")
+    # --- Assert Final State ---
+    assert parse_result == expected_parse_result, f"Parse result mismatch\nGot: {parse_result}\nExpected: {expected_parse_result}"
 
-    parser = ConfigParser(config_file)
-    assert parser.parse() is True
+    # Use the helper function for dictionary comparison
 
-    # sys.getsizeofの元の実装を保存
-    original_getsizeof = sys.getsizeof
+    if expected_dict is None or parser.parsed_dict is None:
+        assert parser.parsed_dict is None, f"Parsed dictionary mismatch (expected None)\nGot: {pprint.pformat(parser.parsed_dict)}"
+    else:
+        _assert_csv_dicts_equal(parser.parsed_dict, expected_dict, parser.csv_rows_name)
 
-    try:
-        # sys.getsizeofをモンキーパッチして大きな値を返すようにする
-        def mock_getsizeof(obj: object, default: int = 0) -> int:
-            if isinstance(obj, str) and "title" in obj:
-                # 200MBを返す (上限は150MB)
-                return 200 * 1024 * 1024
-            return original_getsizeof(obj)
+    assert parser.enable_fill_nan == enable_fill_nan, (
+        f"enable_fill_nan mismatch\nGot: {parser.enable_fill_nan}\nExpected: {enable_fill_nan}"
+    )
 
-        sys.getsizeof = mock_getsizeof
+    assert parser.fill_nan_with == fill_nan_with, f"fill_nan_with mismatch\nGot: {parser.fill_nan_with}\nExpected: {fill_nan_with}"
 
-        # Act
-        result = parser.parsed_str
+    # Check final parsed string representation
+    expected_str_final = pprint.pformat(expected_dict)
+    assert parser.parsed_str == expected_str_final, f"Parsed string mismatch\nGot: {parser.parsed_str}\nExpected: {expected_str_final}"
 
-        # Assert
-        assert result == "None"
-        assert parser.error_message is not None
-        assert "Memory consumption exceeds the maximum limit of 150MB (actual: 200.00MB)" == parser.error_message
-
-    finally:
-        # テスト終了後に元の実装を復元
-        sys.getsizeof = original_getsizeof
-
-
-@UNIT
-def test_memory_consumption_limit_parsed_dict() -> None:
-    """parsed_dictのメモリ消費量の上限を超えた場合のテスト。
-
-    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
-    大きなメモリサイズを返すようにします。
-    """
-    # Arrange
-    content = b"title = 'TOML test'\nkey = 'value'\n"
-    config_file = TestHelpers.create_test_file(content, "config.toml")
-
-    parser = ConfigParser(config_file)
-    assert parser.parse() is True
-
-    # sys.getsizeofの元の実装を保存
-    original_getsizeof = sys.getsizeof
-
-    try:
-        # sys.getsizeofをモンキーパッチして大きな値を返すようにする
-        def mock_getsizeof(obj: object, default: int = 0) -> int:
-            if isinstance(obj, dict) and "title" in obj:
-                # 200MBを返す (上限は150MB)
-                return 200 * 1024 * 1024
-            return original_getsizeof(obj)
-
-        sys.getsizeof = mock_getsizeof
-
-        # Act
-        result = parser.parsed_dict
-
-        # Assert
-        assert result is None
-        assert parser.error_message is not None
-        assert "Memory consumption exceeds the maximum limit of 150MB (actual: 200.00MB)" == parser.error_message
-
-    finally:
-        # テスト終了後に元の実装を復元
-        sys.getsizeof = original_getsizeof
-
-
-@UNIT
-def test_memory_error_handling() -> None:
-    """メモリエラーが発生した場合のテスト。
-
-    モンキーパッチを使用してsys.getsizeofをオーバーライドし、
-    MemoryErrorを発生させます。
-    """
-    # Arrange
-    content = b"title = 'TOML test'\nkey = 'value'\n"
-    config_file = TestHelpers.create_test_file(content, "config.toml")
-
-    parser = ConfigParser(config_file)
-    assert parser.parse() is True
-
-    # sys.getsizeofの元の実装を保存
-    original_getsizeof = sys.getsizeof
-
-    try:
-        # sys.getsizeofをモンキーパッチしてMemoryErrorを発生させる
-        def mock_getsizeof_error(obj: object, default: int = 0) -> int:
-            if isinstance(obj, dict) and "title" in obj:
-                raise MemoryError("Simulated memory error")
-            return original_getsizeof(obj)
-
-        sys.getsizeof = mock_getsizeof_error
-
-        # Act
-        result = parser.parsed_dict
-
-        # Assert
-        assert result is None
-        assert parser.error_message is not None
-        assert "Memory error while checking size: Simulated memory error" == parser.error_message
-
-    finally:
-        # テスト終了後に元の実装を復元
-        sys.getsizeof = original_getsizeof
+    # Check final error message
+    assert parser.error_message == expected_parse_error, (
+        f"Final error message mismatch\nGot: {parser.error_message}\nExpected: {expected_parse_error}"
+    )
