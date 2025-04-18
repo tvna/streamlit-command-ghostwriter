@@ -149,3 +149,4 @@ runs:
         tool: "pytest"
         output-file-path: output.json
         github-token: ${{ inputs.github-token }}
+        skip-fetch-gh-pages: true
