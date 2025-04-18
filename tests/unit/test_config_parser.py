@@ -141,7 +141,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
             id="toml_success_toplevel_key",
         ),
         pytest.param(
-            b'[section\\nkey = "value"',  # Invalid TOML
+            b'[section\nkey = "value"',  # Invalid TOML
             "config.toml",
             PARSE_SHOULD_FAIL,
             NO_EXPECTED_ERROR,
@@ -394,25 +394,16 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         ),
         # --- YAML Cases ---
         pytest.param(
-            b"section:\\n  key: value",
-            "config.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
-            {"section:\\n  key": "value"},
-            NO_EXPECTED_ERROR,
-            id="yaml_success_valid_structure",
-        ),
-        pytest.param(
-            b"section:\\n key: value",  # Valid YAML (indentation)
+            b"section:\n key: value",  # Valid YAML (indentation)
             "config.yml",
             PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
-            {"section:\\n key": "value"},
+            {"section": {"key": "value"}},
             NO_EXPECTED_ERROR,
             id="yaml_success_valid_indentation",
         ),
         pytest.param(
-            b"- item1\\n- item2",  # Valid YAML but not a dictionary at the root
+            b"- item1\n- item2",  # Valid YAML but not a dictionary at the root
             "config.yaml",
             PARSE_SHOULD_FAIL,
             NO_EXPECTED_ERROR,
@@ -439,21 +430,16 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
             id="yaml_failure_moderately_large",
         ),
         pytest.param(
-            b"section:\\n  list:\\n    - item1\\n    - {key: value}\\nnested:\\n  map:\\n    subkey: subvalue",  # Complex YAML
+            b"section:\n  list:\n    - item1\n    - {key: value}\nnested:\n  map:\n    subkey: subvalue",  # Complex YAML
             "complex.yaml",
-            PARSE_SHOULD_FAIL,
+            PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
-            NO_EXPECTED_DICT,
-            (
-                "mapping values are not allowed here\n"
-                '  in "<unicode string>", line 1, column 80:\n'
-                "     ... ue}\\nnested:\\n  map:\\n    subkey: subvalue\n"
-                "                                         ^"
-            ),
-            id="yaml_failure_complex_mapping_value",
+            {"nested": {"map": {"subkey": "subvalue"}}, "section": {"list": ["item1", {"key": "value"}]}},
+            NO_EXPECTED_ERROR,
+            id="yaml_success_complex_mapping_value",
         ),
         pytest.param(
-            "セクション:\\n  キー: 値".encode("shift_jis"),  # YAML with Shift-JIS encoding
+            "セクション:\n  キー: 値".encode("shift_jis"),  # YAML with Shift-JIS encoding
             "sjis.yaml",
             PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0x83 in position 0: invalid start byte",
@@ -789,17 +775,17 @@ def test_parse_toml_or_yaml(
 
     # --- Assert Initial State ---
     assert parser.error_message == expected_init_error, (
-        f"Initial error message mismatch\\nGot: {parser.error_message}\\nExpected: {expected_init_error}"
+        f"Initial error message mismatch\nGot: {parser.error_message}\nExpected: {expected_init_error}"
     )
 
     # Call parse method
     parse_result = parser.parse()
 
     # --- Assert Final State ---
-    assert parse_result == expected_parse_result, f"Parse result mismatch\\nGot: {parse_result}\\nExpected: {expected_parse_result}"
+    assert parse_result == expected_parse_result, f"Parse result mismatch\nGot: {parse_result}\nExpected: {expected_parse_result}"
 
     assert parser.parsed_dict == expected_dict, (
-        f"Parsed dictionary mismatch\\nGot: {pprint.pformat(parser.parsed_dict)}\\nExpected: {pprint.pformat(expected_dict)}"
+        f"Parsed dictionary mismatch\nGot: {pprint.pformat(parser.parsed_dict)}\nExpected: {pprint.pformat(expected_dict)}"
     )
 
     # Check final parsed string representation
@@ -831,9 +817,9 @@ def test_parse_toml_or_yaml(
     [
         # --- CSV Cases ---
         pytest.param(
-            b"col1,col2\\nval1,val2\\nval3,val4",
+            b"col1,col2",
             "data.csv",
-            "my_csv_data",
+            DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
             PARSE_SHOULD_FAIL,
@@ -843,16 +829,16 @@ def test_parse_toml_or_yaml(
             id="csv_failure_header_only_custom_name",
         ),
         pytest.param(
-            b"col1,col2\\nval1,\\nval3,val4",  # CSV with NaN
+            b"col1,col2\nval1,\nval2,val3",
             "data.csv",
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,  # Default csv_rows_name, no NaN fill
-            PARSE_SHOULD_FAIL,
+            PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
-            NO_EXPECTED_DICT,
-            "CSV file must contain at least one data row.",
-            id="csv_failure_header_only_nan_no_fill",
+            {"csv_rows": [{"col1": "val1", "col2": np.nan}, {"col1": "val2", "col2": "val3"}]},
+            NO_EXPECTED_ERROR,
+            id="csv_success_nan_no_fill",
         ),
         pytest.param(
             b"col1,col2\nval1,\nval3,val4",  # CSV with NaN, fill with empty string
@@ -1117,7 +1103,7 @@ def test_parse_csv(
 
     # --- Assert Initial State ---
     assert parser.error_message == expected_init_error, (
-        f"Initial error message mismatch\\nGot: {parser.error_message}\\nExpected: {expected_init_error}"
+        f"Initial error message mismatch\nGot: {parser.error_message}\nExpected: {expected_init_error}"
     )
 
     # Configure CSV options (only if parser initialized without error)
