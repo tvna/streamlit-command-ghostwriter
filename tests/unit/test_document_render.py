@@ -157,7 +157,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "a" * (30 * 1024 * 1024),
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_filesize_max_exact_success_strict",
+            id="test_render_success_filesize_max_exact_strict",
         ),
         pytest.param(
             b"a" * (30 * 1024 * 1024 + 1),
@@ -169,7 +169,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
             f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
-            id="test_render_filesize_max_exceeded_fail_strict",
+            id="test_render_failure_filesize_max_exceeded_strict",
         ),
         pytest.param(
             b"\x80\x81\x82\x83",
@@ -181,7 +181,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template file contains invalid UTF-8 bytes",
             "Template file contains invalid UTF-8 bytes",
-            id="test_render_encoding_invalid_utf8_fail_strict",
+            id="test_render_failure_encoding_invalid_utf8_strict",
         ),
         pytest.param(
             b"\x00",
@@ -193,7 +193,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template file contains invalid binary data",
             "Template file contains invalid binary data",
-            id="test_render_encoding_null_byte_only_fail_strict",
+            id="test_render_failure_encoding_null_byte_only_strict",
         ),
         pytest.param(
             b"Hello\x00World",
@@ -205,7 +205,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template file contains invalid binary data",
             "Template file contains invalid binary data",
-            id="test_render_encoding_null_byte_in_text_fail_strict",
+            id="test_render_failure_encoding_null_byte_in_text_strict",
         ),
         pytest.param(
             b"Hello {{ name }!",
@@ -217,7 +217,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template syntax error: unexpected '}'",
             "Template syntax error: unexpected '}'",
-            id="test_render_syntax_error_unmatched_brace_fail_strict",
+            id="test_render_failure_syntax_error_unmatched_brace_strict",
         ),
         pytest.param(
             b"{% macro input() %}{% endmacro %}",
@@ -229,7 +229,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: 'macro' tag is not allowed",
             "Template security error: 'macro' tag is not allowed",
-            id="test_render_security_macro_tag_fail_strict",
+            id="test_render_failure_security_macro_tag_strict",
         ),
         pytest.param(
             b"{{ 10 / value }}",
@@ -241,7 +241,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: division by zero",
-            id="test_render_division_by_zero_context_fail_strict",
+            id="test_render_failure_division_by_zero_context_strict",
         ),
         pytest.param(
             b"{{ 10 / value }}",
@@ -253,7 +253,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: division by zero",
-            id="test_render_division_by_zero_context_fail_non_strict",
+            id="test_render_failure_division_by_zero_context_non_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!",
@@ -265,7 +265,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_valid_context_unexpected_success_strict",
+            id="test_render_success_valid_context_unexpected_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!",
@@ -277,7 +277,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_valid_context_unexpected_success_non_strict",
+            id="test_render_success_valid_context_unexpected_non_strict",
         ),
         pytest.param(
             b"Hello {{ undefined }}!",
@@ -289,7 +289,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined' is undefined",
-            id="test_render_undefined_var_context_fail_strict",
+            id="test_render_failure_undefined_var_context_strict",
         ),
         pytest.param(
             b"Hello {{ undefined }}!",
@@ -301,7 +301,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_undefined_var_context_success_non_strict",
+            id="test_render_success_undefined_var_context_non_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!",
@@ -313,7 +313,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_variable_basic_success_strict",
+            id="test_render_success_variable_basic_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
@@ -325,7 +325,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello World!\nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_format_remove_all_success_strict",
+            id="test_render_success_format_remove_all_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
@@ -337,7 +337,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello World!\n\nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_format_compress_alt_success_strict",
+            id="test_render_success_format_compress_alt_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
@@ -349,7 +349,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello World!\n\n\n  \nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_format_keep_alt_success_strict",
+            id="test_render_success_format_keep_alt_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
@@ -361,7 +361,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello World!\n\nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_format_compress_success_strict",
+            id="test_render_success_format_compress_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
@@ -373,7 +373,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello World!\n\n\n  \nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_format_keep_success_strict",
+            id="test_render_success_format_keep_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!",
@@ -385,7 +385,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_undefined_var_success_non_strict",
+            id="test_render_success_undefined_var_non_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!",
@@ -397,7 +397,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'name' is undefined",
-            id="test_render_undefined_var_fail_strict",
+            id="test_render_failure_undefined_var_strict",
         ),
         pytest.param(
             b"Hello {{ first_name }} {{ last_name }}!",
@@ -409,7 +409,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello John !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_multiple_vars_partial_success_non_strict",
+            id="test_render_success_multiple_vars_partial_non_strict",
         ),
         pytest.param(
             b"Hello {{ first_name }} {{ last_name }}!",
@@ -421,7 +421,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'last_name' is undefined",
-            id="test_render_multiple_vars_partial_fail_strict",
+            id="test_render_failure_multiple_vars_partial_strict",
         ),
         pytest.param(
             b"{% if undefined_var %}Show{% else %}Hide{% endif %}",
@@ -433,7 +433,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hide",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_undefined_in_condition_success_non_strict",
+            id="test_render_success_undefined_in_condition_non_strict",
         ),
         pytest.param(
             b"{% if undefined_var %}Show{% else %}Hide{% endif %}",
@@ -445,7 +445,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined_var' is undefined",
-            id="test_render_undefined_in_condition_fail_strict",
+            id="test_render_failure_undefined_in_condition_strict",
         ),
         pytest.param(
             b"{{ name if name is defined else 'Anonymous' }}",
@@ -457,7 +457,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Anonymous",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_defined_check_fallback_success_non_strict",
+            id="test_render_success_defined_check_fallback_non_strict",
         ),
         pytest.param(
             b"{{ name if name is defined else 'Anonymous' }}",
@@ -469,7 +469,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Anonymous",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_defined_check_fallback_success_strict",
+            id="test_render_success_defined_check_fallback_strict",
         ),
         pytest.param(
             b"{{ user.name }}",
@@ -481,7 +481,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_nested_undefined_success_non_strict",
+            id="test_render_success_nested_undefined_non_strict",
         ),
         pytest.param(
             b"{{ user.name }}",
@@ -493,7 +493,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'user' is undefined",
-            id="test_render_nested_undefined_fail_strict",
+            id="test_render_failure_nested_undefined_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
@@ -505,7 +505,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Validation error: Input should be greater than or equal to 0 at 'format_type'",
-            id="test_render_invalid_format_type_below_min_fail_strict",
+            id="test_render_failure_invalid_format_type_below_min_strict",
         ),
         pytest.param(
             b"Hello {{ name }}!\n\n\n  \nGood bye {{ name }}!",
@@ -517,7 +517,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Validation error: Input should be less than or equal to 4 at 'format_type'",
-            id="test_render_invalid_format_type_above_max_fail_strict",
+            id="test_render_failure_invalid_format_type_above_max_strict",
         ),
         pytest.param(
             b"{{ 10 / value }}",
@@ -529,7 +529,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: division by zero",
-            id="test_render_division_by_zero_fail_strict",
+            id="test_render_failure_division_by_zero_strict",
         ),
         pytest.param(
             (
@@ -549,7 +549,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             ("Current Date: 2024-03-20\nLast Updated: 2024-03-20 15:30:45\nNext Review: June 20, 2024"),
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_filter_date_success_strict",
+            id="test_render_success_filter_date_strict",
         ),
         pytest.param(
             (
@@ -568,7 +568,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Unix Timestamp: 2024-03-20 15:30:45\nMillisecond Timestamp: 2024-03-20 15:30:45.123000\nFormatted Time: 15:30",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_filter_timestamp_success_strict",
+            id="test_render_success_filter_timestamp_strict",
         ),
         pytest.param(
             b"Historic Date: {{ historic_date | date('%Y-%m-%d %H:%M:%S') }}",
@@ -582,7 +582,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Historic Date: 1969-01-01 00:00:00",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_filter_historic_date_success_strict",
+            id="test_render_success_filter_historic_date_strict",
         ),
         pytest.param(
             (
@@ -602,7 +602,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "ISO String: 31 Dec 2024\nISO with TZ: 2024-06-15 12:30 UTC+09:00\nFuture Date: Wednesday, January 01, 2025",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_filter_iso_date_formats_success_strict",
+            id="test_render_success_filter_iso_date_formats_strict",
         ),
         pytest.param(
             b"{{ invalid_date | date('%Y-%m-%d') }}",
@@ -614,7 +614,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: Invalid date format",
-            id="test_render_filter_invalid_date_fail_strict",
+            id="test_render_failure_filter_invalid_date_strict",
         ),
         pytest.param(
             b"{{ date | date('%Y-%m-%d') }}",
@@ -626,7 +626,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'NoneType' object has no attribute 'replace'",
-            id="test_render_filter_null_date_fail_strict",
+            id="test_render_failure_filter_null_date_strict",
         ),
         pytest.param(
             b"{{ ''.__class__ }}",
@@ -638,7 +638,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__class__' is forbidden.",
             "Template security error: Access to restricted attribute '__class__' is forbidden.",
-            id="test_render_security_injection_class_attr_fail_strict",
+            id="test_render_failure_security_injection_class_attr_strict",
         ),
         pytest.param(
             b"{{ ''.__class__.__mro__ }}",
@@ -650,7 +650,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__mro__' is forbidden.",
             "Template security error: Access to restricted attribute '__mro__' is forbidden.",
-            id="test_render_security_injection_mro_attr_fail_strict",
+            id="test_render_failure_security_injection_mro_attr_strict",
         ),
         pytest.param(
             b"{{ ''.__class__.__mro__[1].__subclasses__() }}",
@@ -662,7 +662,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__subclasses__' is forbidden.",
             "Template security error: Access to restricted attribute '__subclasses__' is forbidden.",
-            id="test_render_security_injection_subclasses_attr_fail_strict",
+            id="test_render_failure_security_injection_subclasses_attr_strict",
         ),
         pytest.param(
             b"{{ getattr('', '__class__') }}",
@@ -674,7 +674,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'getattr()' is forbidden.",
             "Template security error: Call to restricted function 'getattr()' is forbidden.",
-            id="test_render_security_injection_getattr_call_fail_strict",
+            id="test_render_failure_security_injection_getattr_call_strict",
         ),
         pytest.param(
             b"{{ self.__init__.__globals__['os'] }}",
@@ -686,7 +686,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted item 'os' is forbidden.",
             "Template security error: Access to restricted item 'os' is forbidden.",
-            id="test_render_security_injection_globals_item_fail_strict",
+            id="test_render_failure_security_injection_globals_item_strict",
         ),
         pytest.param(
             b"{% import 'os' as os %}",
@@ -698,7 +698,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: 'import' tag is not allowed",
             "Template security error: 'import' tag is not allowed",
-            id="test_render_security_injection_import_tag_fail_strict",
+            id="test_render_failure_security_injection_import_tag_strict",
         ),
         pytest.param(
             b"{% extends 'base.html' %}",
@@ -710,7 +710,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: 'extends' tag is not allowed",
             "Template security error: 'extends' tag is not allowed",
-            id="test_render_security_injection_extends_tag_fail_strict",
+            id="test_render_failure_security_injection_extends_tag_strict",
         ),
         pytest.param(
             b"{{ eval('1+1') }}",
@@ -722,7 +722,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'eval()' is forbidden.",
             "Template security error: Call to restricted function 'eval()' is forbidden.",
-            id="test_render_security_injection_eval_call_fail_strict",
+            id="test_render_failure_security_injection_eval_call_strict",
         ),
         pytest.param(
             b"{{ exec('import os') }}",
@@ -734,7 +734,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'exec()' is forbidden.",
             "Template security error: Call to restricted function 'exec()' is forbidden.",
-            id="test_render_security_injection_exec_call_fail_strict",
+            id="test_render_failure_security_injection_exec_call_strict",
         ),
         pytest.param(
             b"{{ os.system('ls') }}",
@@ -746,7 +746,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'os' is forbidden.",
             "Template security error: Use of restricted variable 'os' is forbidden.",
-            id="test_render_security_injection_os_var_fail_strict",
+            id="test_render_failure_security_injection_os_var_strict",
         ),
         pytest.param(
             b"{{ sys.modules }}",
@@ -758,7 +758,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'sys' is forbidden.",
             "Template security error: Use of restricted variable 'sys' is forbidden.",
-            id="test_render_security_injection_sys_var_fail_strict",
+            id="test_render_failure_security_injection_sys_var_strict",
         ),
         pytest.param(
             b"{{ builtins.open('/etc/passwd').read() }}",
@@ -770,7 +770,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'builtins' is forbidden.",
             "Template security error: Use of restricted variable 'builtins' is forbidden.",
-            id="test_render_security_injection_builtins_var_fail_strict",
+            id="test_render_failure_security_injection_builtins_var_strict",
         ),
         pytest.param(
             b"{{ setattr(obj, 'attr', 'value') }}",
@@ -782,7 +782,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'setattr()' is forbidden.",
             "Template security error: Call to restricted function 'setattr()' is forbidden.",
-            id="test_render_security_injection_setattr_call_fail_strict",
+            id="test_render_failure_security_injection_setattr_call_strict",
         ),
         pytest.param(
             b"{{ delattr(obj, 'attr') }}",
@@ -794,7 +794,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'delattr()' is forbidden.",
             "Template security error: Call to restricted function 'delattr()' is forbidden.",
-            id="test_render_security_injection_delattr_call_fail_strict",
+            id="test_render_failure_security_injection_delattr_call_strict",
         ),
         pytest.param(
             b"{{ locals() }}",
@@ -806,7 +806,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'locals()' is forbidden.",
             "Template security error: Call to restricted function 'locals()' is forbidden.",
-            id="test_render_security_injection_locals_call_fail_strict",
+            id="test_render_failure_security_injection_locals_call_strict",
         ),
         pytest.param(
             b"{{ config }}",
@@ -818,7 +818,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'config' is forbidden.",
             "Template security error: Use of restricted variable 'config' is forbidden.",
-            id="test_render_security_injection_config_var_fail_strict",
+            id="test_render_failure_security_injection_config_var_strict",
         ),
         pytest.param(
             b"{{ obj.__base__ }}",
@@ -830,7 +830,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__base__' is forbidden.",
             "Template security error: Access to restricted attribute '__base__' is forbidden.",
-            id="test_render_security_injection_base_attr_fail_strict",
+            id="test_render_failure_security_injection_base_attr_strict",
         ),
         pytest.param(
             b"{{ my_dict['os'] }}",
@@ -842,7 +842,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted item 'os' is forbidden.",
             "Template security error: Access to restricted item 'os' is forbidden.",
-            id="test_render_security_injection_os_item_fail_strict",
+            id="test_render_failure_security_injection_os_item_strict",
         ),
         pytest.param(
             b"{% set my_os = os %}{{ my_os }}",
@@ -854,7 +854,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Assignment of restricted variable 'os' is forbidden.",
             "Template security error: Assignment of restricted variable 'os' is forbidden.",
-            id="test_render_security_injection_os_assign_fail_strict",
+            id="test_render_failure_security_injection_os_assign_strict",
         ),
         pytest.param(
             b"{% set my_eval = eval %}{{ my_eval('1') }}",
@@ -866,7 +866,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Assignment of restricted variable 'eval' is forbidden.",
             "Template security error: Assignment of restricted variable 'eval' is forbidden.",
-            id="test_render_security_injection_eval_assign_fail_strict",
+            id="test_render_failure_security_injection_eval_assign_strict",
         ),
         pytest.param(
             b"{% set d = {} %}{% do d.update({'self': d}) %}{{ d }}",
@@ -878,7 +878,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: 'do' tag is not allowed",
             "Template security error: 'do' tag is not allowed",
-            id="test_render_security_do_tag_recursive_dict_fail_strict",
+            id="test_render_failure_security_do_tag_recursive_dict_strict",
         ),
         pytest.param(
             b"{% set l = [[]] %}{% do l[0].append(l) %}{{ l }}",
@@ -890,7 +890,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: 'do' tag is not allowed",
             "Template security error: 'do' tag is not allowed",
-            id="test_render_security_do_tag_recursive_list_fail_strict",
+            id="test_render_failure_security_do_tag_recursive_list_strict",
         ),
         pytest.param(
             b"{% set d = {} %}{% set l = [d] %}{% do d.update({'list': l}) %}{{ l }}",
@@ -902,7 +902,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: 'do' tag is not allowed",
             "Template security error: 'do' tag is not allowed",
-            id="test_render_security_do_tag_recursive_mixed_fail_strict",
+            id="test_render_failure_security_do_tag_recursive_mixed_strict",
         ),
         pytest.param(
             (
@@ -927,7 +927,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             ),
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_logic_complex_loops_conditionals_success_strict",
+            id="test_render_success_logic_complex_loops_conditionals_strict",
         ),
         pytest.param(
             b"{{ undefined_var if undefined_var is defined else 'Default' }}",
@@ -939,7 +939,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Default",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_edgecase_undefined_fallback_success_non_strict",
+            id="test_render_success_undefined_fallback_non_strict",
         ),
         pytest.param(
             b"{% for i in range(count) %}Line {{ i }}\n{% endfor %}",
@@ -951,7 +951,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "\n".join([f"Line {i}" for i in range(50)]) + "\n",  # Add trailing newline
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_edgecase_many_lines_success_strict",
+            id="test_render_success_many_lines_strict",
         ),
         pytest.param(
             "{{ emoji }} {{ japanese }}".encode("utf-8"),
@@ -963,7 +963,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "😁😂🤣😃 こんにちは世界",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_edgecase_unicode_success_strict",
+            id="test_render_success_unicode_strict",
         ),
         pytest.param(
             b"<html><body>{{ content | safe }}</body></html>",
@@ -975,7 +975,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "<html><body>&lt;h1&gt;Title&lt;/h1&gt;&lt;p&gt;Paragraph with &lt;b&gt;bold&lt;/b&gt; text&lt;/p&gt;</body></html>",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_edgecase_html_safe_filter_autoescaped_success_strict",
+            id="test_render_success_html_safe_filter_autoescaped_strict",
         ),
         pytest.param(
             b"<html><body>{{ content | safe }}</body></html>",
@@ -994,7 +994,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
                 "input_type=str]\n"
                 "    For further information visit https://errors.pydantic.dev/2.11/v/value_error"
             ),
-            id="test_render_security_unsafe_html_fail_strict",
+            id="test_render_failure_unsafe_html_strict",
         ),
         pytest.param(
             b"<html><body>{{ content }}</body></html>",
@@ -1006,7 +1006,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "<html><body>&lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;</body></html>",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_edgecase_html_autoescape_success_strict",
+            id="test_render_success_html_autoescape_strict",
         ),
         pytest.param(
             (
@@ -1024,7 +1024,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: 'macro' tag is not allowed",
             "Template security error: 'macro' tag is not allowed",
-            id="test_render_security_macro_definition_fail_strict",
+            id="test_render_failure_security_macro_definition_strict",
         ),
         pytest.param(
             (
@@ -1042,7 +1042,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: 'macro' tag is not allowed",
             "Template security error: 'macro' tag is not allowed",
-            id="test_render_security_macro_definition_fail_non_strict",
+            id="test_render_failure_security_macro_definition_non_strict",
         ),
         pytest.param(
             b"{%- call input('username') %}{% endcall %}",
@@ -1054,7 +1054,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'input' is undefined",
-            id="test_render_logic_call_tag_undefined_fail_strict",
+            id="test_render_failure_logic_call_tag_undefined_strict",
         ),
         pytest.param(
             b"{%- call input('username') %}{% endcall %}",
@@ -1066,7 +1066,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: sequence item 0: expected str instance, CustomUndefined found",
-            id="test_render_logic_call_tag_undefined_fail_non_strict",
+            id="test_render_failure_logic_call_tag_undefined_non_strict",
         ),
         pytest.param(
             b"{% set x = request.args %}{{ x }}",
@@ -1078,7 +1078,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'request' is forbidden.",
             "Template security error: Use of restricted variable 'request' is forbidden.",
-            id="test_render_security_injection_request_var_fail_strict",
+            id="test_render_failure_security_injection_request_var_strict",
         ),
         pytest.param(
             b"{% set x = request.args %}{{ x }}",
@@ -1090,7 +1090,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'request' is forbidden.",
             "Template security error: Use of restricted variable 'request' is forbidden.",
-            id="test_render_security_injection_request_var_fail_non_strict",
+            id="test_render_failure_security_injection_request_var_non_strict",
         ),
         pytest.param(
             b"{{ config.items() }}",
@@ -1102,7 +1102,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'config' is forbidden.",
             "Template security error: Use of restricted variable 'config' is forbidden.",
-            id="test_render_security_injection_config_items_fail_strict",
+            id="test_render_failure_security_injection_config_items_strict",
         ),
         pytest.param(
             b"{{ config.items() }}",
@@ -1114,7 +1114,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'config' is forbidden.",
             "Template security error: Use of restricted variable 'config' is forbidden.",
-            id="test_render_security_injection_config_items_fail_non_strict",
+            id="test_render_failure_security_injection_config_items_non_strict",
         ),
         pytest.param(
             b"{% set x = [] %}{% set _ = x.append(x) %}{{ x }}",
@@ -1126,7 +1126,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_edgecase_recursive_list_success_strict",
+            id="test_render_success_recursive_list_strict",
         ),
         pytest.param(
             b"{% set x = [] %}{% set _ = x.append(x) %}{{ x }}",
@@ -1138,7 +1138,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_edgecase_recursive_list_success_non_strict",
+            id="test_render_success_recursive_list_non_strict",
         ),
         pytest.param(
             b"{% for i in range(999999999) %}{% endfor %}",
@@ -1150,7 +1150,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: loop range exceeds maximum limit of 100000",
             "Template security error: loop range exceeds maximum limit of 100000",
-            id="test_render_security_large_loop_range_999M_fail_strict",
+            id="test_render_failure_large_loop_range_999M_strict",
         ),
         pytest.param(
             b"{% for i in range(999999999) %}{% endfor %}",
@@ -1162,7 +1162,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: loop range exceeds maximum limit of 100000",
             "Template security error: loop range exceeds maximum limit of 100000",
-            id="test_render_security_large_loop_range_999M_fail_non_strict",
+            id="test_render_failure_large_loop_range_999M_non_strict",
         ),
         pytest.param(
             b"Hello {{ user.name }}!",
@@ -1174,7 +1174,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'user' is undefined",
-            id="test_render_nested_undefined_context_fail_strict",
+            id="test_render_failure_nested_undefined_context_strict",
         ),
         pytest.param(
             b"Hello {{ user.name }}!",
@@ -1198,7 +1198,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'user' is undefined",
-            id="test_render_multi_level_nested_undefined_context_fail_strict",
+            id="test_render_failure_multi_level_nested_undefined_context_strict",
         ),
         pytest.param(
             b"Hello {{ user.profile.name }}!",
@@ -1222,7 +1222,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'dict object' has no attribute 'name'",
-            id="test_render_partial_nested_undefined_context_fail_strict",
+            id="test_render_failure_partial_nested_undefined_context_strict",
         ),
         pytest.param(
             b"{{ undefined.method() }}",
@@ -1234,7 +1234,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined' is undefined",
-            id="test_render_undefined_method_call_context_fail_strict",
+            id="test_render_failure_undefined_method_call_context_strict",
         ),
         pytest.param(
             b"{{ items[0] }}",
@@ -1246,7 +1246,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'items' is undefined",
-            id="test_render_undefined_index_access_context_fail_strict",
+            id="test_render_failure_undefined_index_access_context_strict",
         ),
         pytest.param(
             b"{{ 'prefix_' + undefined + '_suffix' }}",
@@ -1258,7 +1258,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined' is undefined",
-            id="test_render_undefined_in_expression_context_fail_strict",
+            id="test_render_failure_undefined_in_expression_context_strict",
         ),
         pytest.param(
             b"{{ 'prefix_' + undefined + '_suffix' }}",
@@ -1270,7 +1270,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "_suffix",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_undefined_in_expression_context_success_non_strict",
+            id="test_render_success_undefined_in_expression_context_non_strict",
         ),
         pytest.param(
             b"{% if condition %}{{ value }}{% endif %}",
@@ -1282,7 +1282,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'condition' is undefined",
-            id="test_render_undefined_in_condition_value_context_fail_strict",
+            id="test_render_failure_undefined_in_condition_value_context_strict",
         ),
         pytest.param(
             b"{{ undefined|upper }}",
@@ -1294,7 +1294,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined' is undefined",
-            id="test_render_undefined_with_filter_context_fail_strict",
+            id="test_render_failure_undefined_with_filter_context_strict",
         ),
         pytest.param(
             b"{{ var1 ~ var2 ~ var3 }}",
@@ -1306,7 +1306,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'var1' is undefined",
-            id="test_render_multiple_undefined_concat_context_fail_strict",
+            id="test_render_failure_multiple_undefined_concat_context_strict",
         ),
         pytest.param(
             b"Hello {{ user.name }}!",
@@ -1318,7 +1318,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "Hello !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_partial_nested_undefined_context_success_non_strict",
+            id="test_render_success_partial_nested_undefined_context_non_strict",
         ),
         pytest.param(
             b"{{ undefined.method() }}",
@@ -1330,7 +1330,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_undefined_method_call_context_success_non_strict",
+            id="test_render_success_undefined_method_call_context_non_strict",
         ),
         pytest.param(
             b"{{ items[0] }}",
@@ -1342,7 +1342,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'items' is undefined",
-            id="test_render_undefined_index_access_context_fail_non_strict",
+            id="test_render_failure_undefined_index_access_context_non_strict",
         ),
         pytest.param(
             b"{% if condition %}{{ value }}{% endif %}",
@@ -1354,7 +1354,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_undefined_in_condition_value_context_success_non_strict",
+            id="test_render_success_undefined_in_condition_value_context_non_strict",
         ),
         pytest.param(
             b"{{ undefined|upper }}",
@@ -1366,7 +1366,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_undefined_with_filter_context_success_non_strict",
+            id="test_render_success_undefined_with_filter_context_non_strict",
         ),
         pytest.param(
             b"{{ var1 ~ var2 ~ var3 }}",
@@ -1378,7 +1378,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_multiple_undefined_concat_context_success_non_strict",
+            id="test_render_success_multiple_undefined_concat_context_non_strict",
         ),
         pytest.param(
             b"{{ large_data }}",
@@ -1390,10 +1390,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             f"Memory consumption exceeds maximum limit of {DocumentRender.MAX_MEMORY_SIZE_BYTES} bytes",
-            id="test_render_memory_limit_exceeded_by_context_fail_strict",
+            id="test_render_failure_memory_limit_exceeded_by_context_strict",
         ),
-        # --- Recursive Structure Tests ---
-        # Test Case: Recursive list passed via context
         pytest.param(
             b"{{ data }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -1404,7 +1402,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_recursive_list_from_context_strict",
+            id="test_render_success_recursive_list_from_context_strict",
         ),
         pytest.param(
             b"{{ data }}",
@@ -1416,7 +1414,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "{&#39;self&#39;: {...}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_recursive_dict_from_context_success_strict",
+            id="test_render_success_recursive_dict_from_context_strict",
         ),
         pytest.param(
             b"{% set l = [] %}{% set _ = l.append(l) %}{{ l }}",
@@ -1428,7 +1426,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_recursive_list_created_in_template_success_strict",
+            id="test_render_success_recursive_list_created_in_template_strict",
         ),
         pytest.param(
             b"{% set d = {} %}{% set _ = d.update({'self': d}) %}{{ d }}",
@@ -1440,340 +1438,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "{&#39;self&#39;: {...}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_recursive_dict_created_in_template_success_strict",
-        ),
-        # Test Case: Indirect recursive list passed via context
-        pytest.param(
-            b"{{ data }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            (lambda: (l1 := [], l2 := [l1], l1.append(l2), {"data": l1})[-1])(),  # Create indirect recursion
-            INITIAL_VALID,
-            RUNTIME_VALID,  # Jinja handles rendering
-            "[[[...]]]",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_indirect_recursive_list_from_context_success_strict",
-        ),
-        # Test Case: Attempt to create indirect recursive list within template
-        pytest.param(
-            b"{% set l1 = [] %}{% set l2 = [l1] %}{% set _ = l1.append(l2) %}{{ l1 }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "[[[...]]]",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_indirect_recursive_list_created_in_template_success_strict",
-        ),
-        # --- Infinite Loop / Large Loop Tests ---
-        # Test Case: Dynamic loop range slightly exceeding the limit
-        pytest.param(
-            b"{% for i in range(limit) %}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {"limit": 1000000},
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_dynamic_loop_range_over_limit_success_strict",
-        ),
-        pytest.param(
-            b"{% for i in range(limit) %}{% for j in range(limit) %}{% endfor %}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {"limit": 1000},
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_nested_dynamic_loop_range_over_limit_success_strict",
-        ),
-        # --- Invalid Range Tests ---
-        # Test Case: Literal range with step=0
-        pytest.param(
-            b"{% for i in range(1, 5, 0) %}{{ i }}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_INVALID,  # Should be caught by RangeConfig validation via _get_range_arguments
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            (
-                "Template security error: 1 validation error for RangeConfig\n"
-                "step\n"
-                "  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n"
-                "    For further information visit https://errors.pydantic.dev/2.11/v/greater_than"
-            ),
-            (
-                "Template security error: 1 validation error for RangeConfig\n"
-                "step\n"
-                "  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n"
-                "    For further information visit https://errors.pydantic.dev/2.11/v/greater_than"
-            ),
-            id="test_render_invalid_range_step_zero_fail_strict",
-        ),
-        # Test Case: Dynamic range with step=0
-        pytest.param(
-            b"{% for i in range(1, 5, step_var) %}{{ i }}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {"step_var": 0},
-            INITIAL_VALID,  # Dynamic values aren't checked initially
-            RUNTIME_INVALID,  # Jinja2 should raise ValueError at runtime
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: range() arg 3 must not be zero",
-            id="test_render_dynamic_range_step_zero_fail_strict",
-        ),
-        # Test Case: Literal range with float argument (stop)
-        pytest.param(
-            b"{% for i in range(1, 5.5) %}{{ i }}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: 'float' object cannot be interpreted as an integer",
-            id="test_render_invalid_range_float_literal_fail_strict",
-        ),
-        # Test Case: Dynamic range with float argument (stop)
-        pytest.param(
-            b"{% for i in range(1, stop_var) %}{{ i }}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {"stop_var": 5.5},
-            INITIAL_VALID,
-            RUNTIME_INVALID,  # Jinja2 range requires integers
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: 'float' object cannot be interpreted as an integer",
-            id="test_render_dynamic_range_float_arg_fail_strict",
-        ),
-        # Test Case: Dynamic range with string argument (stop)
-        pytest.param(
-            b"{% for i in range(1, stop_var) %}{{ i }}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {"stop_var": "5"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,  # Jinja2 range requires integers
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: 'str' object cannot be interpreted as an integer",
-            id="test_render_dynamic_range_string_arg_fail_strict",
-        ),
-        # --- Invalid Range Argument Count Tests ---
-        # Test Case: Literal range with zero arguments
-        pytest.param(
-            b"{% for i in range() %}{{ i }}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_INVALID,  # Caught by _validate_syntax
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            "Template security error: invalid number of arguments for range()",
-            "Template security error: invalid number of arguments for range()",
-            id="test_render_invalid_range_zero_args_fail_strict",
-        ),
-        # Test Case: Literal range with four arguments
-        pytest.param(
-            b"{% for i in range(1, 2, 3, 4) %}{{ i }}{% endfor %}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,  # Caught by _validate_syntax
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: range expected at most 3 arguments, got 4",
-            id="test_render_invalid_range_four_args_fail_strict",
-        ),
-        # --- Binary Operation Edge Cases ---
-        # Test Case: Adding number and string (strict)
-        pytest.param(
-            b"{{ 1 + 'a' }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: unsupported operand type(s) for +: 'int' and 'str'",
-            id="test_render_binop_add_int_str_fail_strict",
-        ),
-        # Test Case: Subtracting number from string (strict)
-        pytest.param(
-            b"{{ 'a' - 1 }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: unsupported operand type(s) for -: 'str' and 'int'",
-            id="test_render_binop_sub_str_int_fail_strict",
-        ),
-        # Test Case: Adding number and None (strict)
-        pytest.param(
-            b"{{ 1 + none_var }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {"none_var": None},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: unsupported operand type(s) for +: 'int' and 'NoneType'",
-            id="test_render_binop_add_int_none_fail_strict",
-        ),
-        pytest.param(
-            b"{{ 1 + undef }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: 'undef' is undefined",
-            id="test_render_binop_add_int_undef_fail_strict",
-        ),
-        pytest.param(
-            b"{{ 'hello' + undef }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_binop_add_str_undef_success_non_strict",
-        ),
-        pytest.param(
-            b"{{ 'hello' ~ undef }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "hello",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_binop_concat_str_undef_success_non_strict",
-        ),
-        pytest.param(
-            b"{{ 1 / none_var }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {"none_var": None},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: unsupported operand type(s) for /: 'int' and 'NoneType'",
-            id="test_render_binop_div_int_none_fail_strict",
-        ),
-        # Test Case: Dividing number by undefined (strict)
-        pytest.param(
-            b"{{ 1 / undef }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            EXPECTED_INITIAL_NO_ERROR,
-            "Template runtime error: 'undef' is undefined",
-            id="test_render_binop_div_int_undef_fail_strict",
-        ),
-        # Test Case: Dividing number by undefined (non-strict)
-        # Note: Our CustomUndefined handles division by returning "", but Jinja's internal division might still fail
-        pytest.param(
-            b"{{ 1 / undef }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            NON_STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_binop_div_int_undef_success_non_strict",
-        ),
-        # --- Recursive Call Edge Cases ---
-        # Test Case: Attempting recursive list append within template
-        pytest.param(
-            b"{% set l = [] %}{{ l.append(l) }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "None",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_recursive_call_list_append_self_fail_strict",
-        ),
-        # Test Case: Attempting recursive dict update within template
-        pytest.param(
-            b"{% set d = {} %}{{ d.update({'self': d}) }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "None",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_recursive_call_dict_update_self_success_strict",
-        ),
-        pytest.param(
-            b"{% macro recursive(n) %}{% if n > 0 %}{{ recursive(n-1) }}{% endif %}{% endmacro %}{{ recursive(5) }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
-            EXPECTED_NO_CONTENT,
-            "Template security error: 'macro' tag is not allowed",
-            "Template security error: 'macro' tag is not allowed",
-            id="test_render_recursive_macro_fail_strict",
-        ),
-        pytest.param(
-            b"{{ data }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            (lambda: (data := [], data.append(data), {"data": data})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "[[...]]",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_context_recursive_list_strict",
-        ),
-        pytest.param(
-            b"{{ data }}",
-            FORMAT_TYPE_COMPRESS_ALT,
-            STRICT_UNDEFINED,
-            (lambda: (data := {}, data.update({"self": data}), {"data": data})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
-            "{&#39;self&#39;: {...}}",
-            EXPECTED_INITIAL_NO_ERROR,
-            EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_context_recursive_dict_strict",
+            id="test_render_success_recursive_dict_created_in_template_strict",
         ),
         pytest.param(
             b"{{ data }}",
@@ -1785,7 +1450,317 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "[[[...]]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_context_indirect_recursive_list_strict",
+            id="test_render_success_indirect_recursive_list_from_context_strict",
+        ),
+        pytest.param(
+            b"{% set l1 = [] %}{% set l2 = [l1] %}{% set _ = l1.append(l2) %}{{ l1 }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "[[[...]]]",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_indirect_recursive_list_created_in_template_strict",
+        ),
+        pytest.param(
+            b"{% for i in range(limit) %}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {"limit": 1000000},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_dynamic_loop_range_over_limit_strict",
+        ),
+        pytest.param(
+            b"{% for i in range(limit) %}{% for j in range(limit) %}{% endfor %}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {"limit": 1000},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_nested_dynamic_loop_range_over_limit_strict",
+        ),
+        pytest.param(
+            b"{% for i in range(1, 5, 0) %}{{ i }}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            (
+                "Template security error: 1 validation error for RangeConfig\n"
+                "step\n"
+                "  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n"
+                "    For further information visit https://errors.pydantic.dev/2.11/v/greater_than"
+            ),
+            (
+                "Template security error: 1 validation error for RangeConfig\n"
+                "step\n"
+                "  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n"
+                "    For further information visit https://errors.pydantic.dev/2.11/v/greater_than"
+            ),
+            id="test_render_failure_invalid_range_step_zero_strict",
+        ),
+        pytest.param(
+            b"{% for i in range(1, 5, step_var) %}{{ i }}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {"step_var": 0},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: range() arg 3 must not be zero",
+            id="test_render_failure_dynamic_range_step_zero_strict",
+        ),
+        pytest.param(
+            b"{% for i in range(1, 5.5) %}{{ i }}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: 'float' object cannot be interpreted as an integer",
+            id="test_render_failure_invalid_range_float_literal_strict",
+        ),
+        pytest.param(
+            b"{% for i in range(1, stop_var) %}{{ i }}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {"stop_var": 5.5},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: 'float' object cannot be interpreted as an integer",
+            id="test_render_failure_dynamic_range_float_arg_strict",
+        ),
+        pytest.param(
+            b"{% for i in range(1, stop_var) %}{{ i }}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {"stop_var": "5"},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: 'str' object cannot be interpreted as an integer",
+            id="test_render_failure_dynamic_range_string_arg_strict",
+        ),
+        pytest.param(
+            b"{% for i in range() %}{{ i }}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template security error: invalid number of arguments for range()",
+            "Template security error: invalid number of arguments for range()",
+            id="test_render_failure_invalid_range_zero_args_strict",
+        ),
+        pytest.param(
+            b"{% for i in range(1, 2, 3, 4) %}{{ i }}{% endfor %}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: range expected at most 3 arguments, got 4",
+            id="test_render_failure_invalid_range_four_args_strict",
+        ),
+        pytest.param(
+            b"{{ 1 + 'a' }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: unsupported operand type(s) for +: 'int' and 'str'",
+            id="test_render_failure_binop_add_int_str_strict",
+        ),
+        pytest.param(
+            b"{{ 'a' - 1 }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: unsupported operand type(s) for -: 'str' and 'int'",
+            id="test_render_failure_binop_sub_str_int_strict",
+        ),
+        pytest.param(
+            b"{{ 1 + none_var }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {"none_var": None},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: unsupported operand type(s) for +: 'int' and 'NoneType'",
+            id="test_render_failure_binop_add_int_none_strict",
+        ),
+        pytest.param(
+            b"{{ 1 + undef }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: 'undef' is undefined",
+            id="test_render_failure_binop_add_int_undef_strict",
+        ),
+        pytest.param(
+            b"{{ 'hello' + undef }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_binop_add_str_undef_non_strict",
+        ),
+        pytest.param(
+            b"{{ 'hello' ~ undef }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "hello",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_binop_concat_str_undef_non_strict",
+        ),
+        pytest.param(
+            b"{{ 1 / none_var }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {"none_var": None},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: unsupported operand type(s) for /: 'int' and 'NoneType'",
+            id="test_render_failure_binop_div_int_none_strict",
+        ),
+        pytest.param(
+            b"{{ 1 / undef }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            EXPECTED_INITIAL_NO_ERROR,
+            "Template runtime error: 'undef' is undefined",
+            id="test_render_failure_binop_div_int_undef_strict",
+        ),
+        pytest.param(
+            b"{{ 1 / undef }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            NON_STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_binop_div_int_undef_non_strict",
+        ),
+        pytest.param(
+            b"{% set l = [] %}{{ l.append(l) }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "None",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_recursive_call_list_append_self_strict",
+        ),
+        pytest.param(
+            b"{% set d = {} %}{{ d.update({'self': d}) }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "None",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_recursive_call_dict_update_self_strict",
+        ),
+        pytest.param(
+            b"{% macro recursive(n) %}{% if n > 0 %}{{ recursive(n-1) }}{% endif %}{% endmacro %}{{ recursive(5) }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            {},
+            INITIAL_INVALID,
+            RUNTIME_INVALID,
+            EXPECTED_NO_CONTENT,
+            "Template security error: 'macro' tag is not allowed",
+            "Template security error: 'macro' tag is not allowed",
+            id="test_render_failure_recursive_macro_strict",
+        ),
+        pytest.param(
+            b"{{ data }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            (lambda: (data := [], data.append(data), {"data": data})[-1])(),
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "[[...]]",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_context_recursive_list_strict",
+        ),
+        pytest.param(
+            b"{{ data }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            (lambda: (data := {}, data.update({"self": data}), {"data": data})[-1])(),
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "{&#39;self&#39;: {...}}",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_context_recursive_dict_strict",
+        ),
+        pytest.param(
+            b"{{ data }}",
+            FORMAT_TYPE_COMPRESS_ALT,
+            STRICT_UNDEFINED,
+            (lambda: (l1 := [], l2 := [l1], l1.append(l2), {"data": l1})[-1])(),
+            INITIAL_VALID,
+            RUNTIME_VALID,
+            "[[[...]]]",
+            EXPECTED_INITIAL_NO_ERROR,
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_context_indirect_recursive_list_strict",
         ),
         pytest.param(
             b"{{ data }}",
@@ -1797,7 +1772,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "{&#39;d2&#39;: {&#39;d1&#39;: {...}}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_context_indirect_recursive_dict_strict",
+            id="test_render_success_context_indirect_recursive_dict_strict",
         ),
         pytest.param(
             b"{{ data }}",
@@ -1809,7 +1784,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "[[[[[[[[[[[]]]]]]]]]]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_context_deeply_nested_list_success_strict",
+            id="test_render_success_context_deeply_nested_list_strict",
         ),
         pytest.param(
             b"{{ data }}",
@@ -1821,7 +1796,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: maximum recursion depth exceeded while getting the repr of an object",
-            id="test_render_context_deeply_nested_list_fail_strict",
+            id="test_render_failure_context_deeply_nested_list_strict",
         ),
         pytest.param(
             b"{{ data }}",
@@ -1833,7 +1808,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: maximum recursion depth exceeded while getting the repr of an object",
-            id="test_render_context_deeply_nested_dict_fail_strict",
+            id="test_render_failure_context_deeply_nested_dict_strict",
         ),
         pytest.param(
             b"{{ 1 / 0 }}",
@@ -1845,7 +1820,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template security error: division by zero is not allowed",
-            id="test_render_div_literal_zero_fail_strict",
+            id="test_render_failure_div_literal_zero_strict",
         ),
         pytest.param(
             b"{{ 1 // 0 }}",
@@ -1857,7 +1832,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: integer division or modulo by zero",
-            id="test_render_floordiv_literal_zero_fail_strict",
+            id="test_render_failure_floordiv_literal_zero_strict",
         ),
         pytest.param(
             b"{{ 1 % 0 }}",
@@ -1869,7 +1844,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: integer modulo by zero",
-            id="test_render_mod_literal_zero_fail_strict",
+            id="test_render_failure_mod_literal_zero_strict",
         ),
         pytest.param(
             b"{{ 1 // zero_var }}",
@@ -1881,7 +1856,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: integer division or modulo by zero",
-            id="test_render_floordiv_context_zero_fail_strict",
+            id="test_render_failure_floordiv_context_zero_strict",
         ),
         pytest.param(
             b"{{ 1 % zero_var }}",
@@ -1893,7 +1868,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: integer modulo by zero",
-            id="test_render_mod_context_zero_fail_strict",
+            id="test_render_failure_mod_context_zero_strict",
         ),
         pytest.param(
             b"{{ 1 / 'a' }}",
@@ -1905,7 +1880,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for /: 'int' and 'str'",
-            id="test_render_div_by_string_fail_strict",
+            id="test_render_failure_div_by_string_strict",
         ),
         pytest.param(
             b"{{ 1 // 'a' }}",
@@ -1917,7 +1892,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for //: 'int' and 'str'",
-            id="test_render_floordiv_by_string_fail_strict",
+            id="test_render_failure_floordiv_by_string_strict",
         ),
         pytest.param(
             b"{{ 1 % 'a' }}",
@@ -1929,7 +1904,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for %: 'int' and 'str'",
-            id="test_render_mod_by_string_fail_strict",
+            id="test_render_failure_mod_by_string_strict",
         ),
         # --- String Operation Edge Cases ---
         pytest.param(
@@ -1942,7 +1917,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             'Template runtime error: can only concatenate str (not "int") to str',
-            id="test_render_string_add_int_fail_strict",
+            id="test_render_failure_string_add_int_strict",
         ),
         pytest.param(
             b"{{ 'a' ~ 1 }}",
@@ -1954,7 +1929,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "a1",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_string_concat_int_success_strict",
+            id="test_render_success_string_concat_int_strict",
         ),
         pytest.param(
             b"{{ 'a' ~ none_var }}",
@@ -1966,7 +1941,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "aNone",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_string_concat_none_success_strict",
+            id="test_render_success_string_concat_none_strict",
         ),
         pytest.param(
             b"{{ 'a' * 2.5 }}",
@@ -1978,7 +1953,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: can't multiply sequence by non-int of type 'float'",
-            id="test_render_string_mul_float_fail_strict",
+            id="test_render_failure_string_mul_float_strict",
         ),
         pytest.param(
             b"{{ 'a' * 'b' }}",
@@ -1990,9 +1965,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: can't multiply sequence by non-int of type 'str'",
-            id="test_render_string_mul_string_fail_strict",
+            id="test_render_failure_string_mul_string_strict",
         ),
-        # Test Case: String formatting (%) with wrong type (strict)
         pytest.param(
             b"{{ '%d' % 'a' }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -2003,9 +1977,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: %d format: a real number is required, not str",
-            id="test_render_string_format_wrong_type_fail_strict",
+            id="test_render_failure_string_format_wrong_type_strict",
         ),
-        # Test Case: String formatting (%) with insufficient arguments (strict)
         pytest.param(
             b"{{ '%s %s' % 'a' }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -2016,9 +1989,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: not enough arguments for format string",
-            id="test_render_string_format_insufficient_args_fail_strict",
+            id="test_render_failure_string_format_insufficient_args_strict",
         ),
-        # Test Case: String formatting (%) with undefined (strict)
         pytest.param(
             b"{{ '%s' % undef }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -2029,9 +2001,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
-            id="test_render_string_format_undefined_fail_strict",
+            id="test_render_failure_string_format_undefined_strict",
         ),
-        # Test Case: String formatting (%) with undefined (non-strict)
         pytest.param(
             b"{{ '%s' % undef }}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -2039,24 +2010,22 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             {},
             INITIAL_VALID,
             RUNTIME_VALID,
-            "",  # CustomUndefined formats as empty string
+            "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_string_format_undefined_success_non_strict",
+            id="test_render_success_string_format_undefined_non_strict",
         ),
-        # --- Assign Node Edge Cases ---
-        # Test Case: Assigning a restricted variable (config)
         pytest.param(
             b"{% set my_conf = config %}{{ my_conf }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"config": {"key": "value"}},
-            INITIAL_INVALID,  # Assignment of restricted variable 'config'
+            INITIAL_INVALID,
             RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Assignment of restricted variable 'config' is forbidden.",
             "Template security error: Assignment of restricted variable 'config' is forbidden.",
-            id="test_render_assign_restricted_var_fail_strict",
+            id="test_render_failure_assign_restricted_var_strict",
         ),
         pytest.param(
             b"{% set cls = getattr(obj, '__class__') %}{{ cls }}",
@@ -2068,7 +2037,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Assignment involving restricted function 'getattr()' is forbidden.",
             "Template security error: Assignment involving restricted function 'getattr()' is forbidden.",
-            id="test_render_assign_restricted_call_fail_strict",
+            id="test_render_failure_assign_restricted_call_strict",
         ),
         pytest.param(
             b"{% set x = 1 / 0 %}{{ x }}",
@@ -2080,7 +2049,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: Assign cannot evaluate expression",
-            id="test_render_assign_div_zero_fail_strict",
+            id="test_render_failure_assign_div_zero_strict",
         ),
         pytest.param(
             b"{% set x = 1 + undef %}{{ x }}",
@@ -2092,7 +2061,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: Assign cannot evaluate expression",
-            id="test_render_assign_op_undefined_fail_strict",
+            id="test_render_failure_assign_op_undefined_strict",
         ),
         pytest.param(
             b"{{ obj.__class__ }}",
@@ -2104,7 +2073,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__class__' is forbidden.",
             "Template security error: Access to restricted attribute '__class__' is forbidden.",
-            id="test_render_getattr_restricted_class_fail_strict",
+            id="test_render_failure_getattr_restricted_class_strict",
         ),
         pytest.param(
             b"{{ my_dict['os'] }}",
@@ -2116,7 +2085,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted item 'os' is forbidden.",
             "Template security error: Access to restricted item 'os' is forbidden.",
-            id="test_render_getitem_restricted_os_fail_strict",
+            id="test_render_failure_getitem_restricted_os_strict",
         ),
         pytest.param(
             b"{{ none_var.attribute }}",
@@ -2128,7 +2097,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'None' has no attribute 'attribute'",
-            id="test_render_getattr_on_none_fail_strict",
+            id="test_render_failure_getattr_on_none_strict",
         ),
         pytest.param(
             b"{{ undef.attribute }}",
@@ -2140,7 +2109,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
-            id="test_render_getattr_on_undef_fail_strict",
+            id="test_render_failure_getattr_on_undef_strict",
         ),
         pytest.param(
             b"{{ undef.attribute }}",
@@ -2152,7 +2121,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_getattr_on_undef_success_non_strict",
+            id="test_render_success_getattr_on_undef_non_strict",
         ),
         pytest.param(
             b"{{ undef.attr1.attr2 }}",
@@ -2164,7 +2133,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
-            id="test_render_getattr_nested_undef_fail_strict",
+            id="test_render_failure_getattr_nested_undef_strict",
         ),
         pytest.param(
             b"{{ undef.attr1.attr2 }}",
@@ -2176,7 +2145,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_getattr_nested_undef_success_non_strict",
+            id="test_render_success_getattr_nested_undef_non_strict",
         ),
         pytest.param(
             b"{{ data[123] }}",
@@ -2188,7 +2157,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Validation error: Input should be a valid string at 'context.123.[key]'",
-            id="test_render_context_int_key_fail_strict",
+            id="test_render_failure_context_int_key_strict",
         ),
         pytest.param(
             b"{{ data[(1, 2)] }}",
@@ -2200,7 +2169,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Validation error: Input should be a valid string at 'context.(1, 2).[key]'",
-            id="test_render_context_tuple_key_fail_strict",
+            id="test_render_failure_context_tuple_key_strict",
         ),
         pytest.param(
             b"{% if 1 > 'a' %}TRUE{% else %}FALSE{% endif %}",
@@ -2212,7 +2181,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: '>' not supported between instances of 'int' and 'str'",
-            id="test_render_if_compare_int_str_fail_strict",
+            id="test_render_failure_if_compare_int_str_strict",
         ),
         pytest.param(
             b"{% if 1 > none_var %}TRUE{% else %}FALSE{% endif %}",
@@ -2224,7 +2193,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: '>' not supported between instances of 'int' and 'NoneType'",
-            id="test_render_if_compare_int_none_fail_strict",
+            id="test_render_failure_if_compare_int_none_strict",
         ),
         pytest.param(
             b"{% if 1 > undef %}TRUE{% else %}FALSE{% endif %}",
@@ -2236,7 +2205,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
-            id="test_render_if_compare_int_undef_fail_strict",
+            id="test_render_failure_if_compare_int_undef_strict",
         ),
         pytest.param(
             b"{% if 1 > undef %}TRUE{% else %}FALSE{% endif %}",
@@ -2248,7 +2217,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
-            id="test_render_if_compare_int_undef_fail_non_strict",
+            id="test_render_failure_if_compare_int_undef_non_strict",
         ),
         pytest.param(
             b"{% if True and undef %}TRUE{% else %}FALSE{% endif %}",
@@ -2260,7 +2229,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
-            id="test_render_if_and_undef_fail_strict",
+            id="test_render_failure_if_and_undef_strict",
         ),
         pytest.param(
             b"{% if True and undef %}TRUE{% else %}FALSE{% endif %}",
@@ -2272,7 +2241,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "FALSE",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_if_and_undef_success_non_strict",
+            id="test_render_success_if_and_undef_non_strict",
         ),
         pytest.param(
             b"{% if False or undef %}TRUE{% else %}FALSE{% endif %}",
@@ -2284,10 +2253,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "FALSE",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_if_or_undef_success_non_strict",
+            id="test_render_success_if_or_undef_non_strict",
         ),
-        # --- For Loop with Circular Reference in Iterable ---
-        # Test Case: For loop iterating over a list containing itself
         pytest.param(
             b"{% for item in data %}{{ item }},{% endfor %}",
             FORMAT_TYPE_COMPRESS_ALT,
@@ -2298,7 +2265,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "1,2,[1, 2, [...]],",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_runtime_for_over_recursive_list_fail_strict",
+            id="test_render_success_for_over_recursive_list_strict",
         ),
         pytest.param(
             b"{% for k, v in data.items() %}{{ k }}:{{ v }},{% endfor %}",
@@ -2310,19 +2277,19 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "a:1,self:{&#39;a&#39;: 1, &#39;self&#39;: {...}},",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_runtime_for_over_recursive_dict_fail_strict",
+            id="test_render_success_for_over_recursive_dict_strict",
         ),
         pytest.param(
             b"{% for item in data %}{{ item }},{% endfor %}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            _create_list_with_circular_dict(),  # Use helper
+            _create_list_with_circular_dict(),
             INITIAL_VALID,
-            RUNTIME_VALID,  # Jinja can represent the recursive dict
+            RUNTIME_VALID,
             "1,{&#39;rec&#39;: {...}},3,",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_runtime_for_over_list_with_recursive_dict_success_strict",
+            id="test_render_success_for_over_list_with_recursive_dict_strict",
         ),
     ],
 )
