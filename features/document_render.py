@@ -430,9 +430,9 @@ class DocumentRender(BaseModel):
             常にFalse
         """
         if isinstance(e, jinja2.UndefinedError):
-            self._validation_state.set_error(str(e))
+            self._validation_state.set_error(f"Template runtime error: {e!s}")
         else:
-            self._validation_state.set_error(f"Template rendering error: {e!s}")
+            self._validation_state.set_error(f"Template runtime error: {e!s}")
         return False
 
     def _validate_input_config(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool) -> Optional[ContextConfig]:
@@ -530,6 +530,7 @@ class DocumentRender(BaseModel):
         if config is None or self._ast is None:
             return None
 
+        self._validation_state = self._security_validator.validate_runtime_security(self._ast, context)
         self._is_strict_undefined = config.format_config.is_strict_undefined
 
         return config
