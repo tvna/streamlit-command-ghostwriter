@@ -1,6 +1,6 @@
 {
     "name": "command_ghostwriter",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "main": "./build/electron/main.js",
     "description": "This application is designed for infrastratcture engineers who want to automatically generate commands in template to configure servers, routers, and switches",
     "license": "MIT",
