@@ -117,11 +117,6 @@ jobs:
           version: ${{ needs.get-npm-versions.outputs.develop_version }}
           compare-to: ${{ needs.get-npm-versions.outputs.main_version }}
 
-      - name: Display version comparison result # Optional: for debugging
-        shell: bash
-        run: |
-          echo "Comparison Result: ${{ steps.compare-versions.outputs.comparison-result }}"
-
       - name: Check if PR already exists and check for duplicate title
         id: check-pr
         if: steps.compare-versions.outputs.comparison-result == '>'
@@ -153,6 +148,7 @@ jobs:
               console.log(`Existing open PRs from develop to main: ${pulls.data.length}`);
               console.log(`Any open PR exists? ${prExists}`);
               console.log(`Open PR with title "${expectedTitle}" exists? ${titleExists}`);
+              console.log(prExists.toString()));
 
               core.setOutput('exists', prExists.toString());
               core.setOutput('title_exists', titleExists.toString());
@@ -238,6 +234,16 @@ jobs:
           echo "以下のコミットが含まれています:" > .commit-log.txt
           echo "" >> .commit-log.txt
           git log origin/main..HEAD --pretty=format:"- %s" --no-merges >> .commit-log.txt
+
+      - name: Display version comparison result # Optional: for debugging
+        shell: bash
+        run: |
+          echo "Comparison Result: ${{ steps.compare-versions.outputs.comparison-result }}"
+          echo "Check PR Success: ${{ steps.check-pr.outputs.success }}"
+          echo "Check PR Exists: ${{ steps.check-pr.outputs.exists }}"
+          echo "Check PR Title Exists: ${{ steps.check-pr.outputs.title_exists }}"
+          echo "Ensure Labels Success: ${{ steps.ensure-labels.outputs.success }}"
+          echo "Show commit log: $(cat .commit-log.txt)"
 
       - name: Create Pull Request using github-script
         id: create-pr-script
