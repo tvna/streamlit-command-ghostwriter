@@ -148,7 +148,7 @@ jobs:
               console.log(`Existing open PRs from develop to main: ${pulls.data.length}`);
               console.log(`Any open PR exists? ${prExists}`);
               console.log(`Open PR with title "${expectedTitle}" exists? ${titleExists}`);
-              console.log(prExists.toString()));
+              console.log(prExists.toString());
 
               core.setOutput('exists', prExists.toString());
               core.setOutput('title_exists', titleExists.toString());
