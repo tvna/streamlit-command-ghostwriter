@@ -1,22 +1,31 @@
-"""テンプレートのレンダリングと検証のテストモジュール。
+"""Template rendering and validation test module.
 
-このモジュールは、DocumentRenderクラスのテストを提供します。
-テストは以下の3つの主要なカテゴリに分かれています:
+This module provides tests for the DocumentRender class, which is responsible for
+template rendering and validation. The tests are divided into three main categories:
 
-1. 初期検証テスト
-   - ファイルサイズ
-   - エンコーディング
-   - 構文
-   - セキュリティ (静的解析)
+1. Initial Validation Tests
+   - File size limits
+   - Encoding validation
+   - Syntax checking
+   - Security (static analysis)
 
-2. ランタイム検証テスト
-   - 再帰的構造
-   - ゼロ除算
-   - メモリ使用量
+2. Runtime Validation Tests
+   - Recursive structures
+   - Division by zero
+   - Memory usage monitoring
 
-3. 検証の一貫性テスト
-   - 初期検証とランタイム検証の結果の整合性
-   - エラーメッセージの一貫性
+3. Validation Consistency Tests
+   - Consistency between initial and runtime validation results
+   - Error message consistency
+   - Handling of various edge cases
+
+4. Date and Time Formatting Tests
+   - ISO 8601 date format handling (e.g. "2024-03-20T15:30:45")
+   - Multilingual date format support (English and Japanese)
+   - Various date/time pattern validations
+
+These tests ensure the template engine operates securely and predictably under
+various conditions, including malformed templates, security attacks, and edge cases.
 """
 
 from io import BytesIO
@@ -44,21 +53,20 @@ from features.document_render import (
     DocumentRender,
 )
 
-# --- Constants for better readability in tests
-INITIAL_VALID: bool = True
-INITIAL_INVALID: bool = False
-RUNTIME_VALID: bool = True
-RUNTIME_INVALID: bool = False
 STRICT_UNDEFINED: bool = True
 NON_STRICT_UNDEFINED: bool = False
-EXPECTED_INITIAL_NO_ERROR: Optional[str] = None  # Expect no error during initial validation
-EXPECTED_RUNTIME_NO_ERROR: Optional[str] = None  # Expect no error during runtime validation/rendering
+EXPECTED_INITIAL_NO_ERROR: Optional[str] = None
+EXPECTED_RUNTIME_NO_ERROR: Optional[str] = None
 EXPECTED_NO_CONTENT: Optional[str] = None
+
+
+UNIT: MarkDecorator = pytest.mark.unit
+SET_TIMEOUT: MarkDecorator = pytest.mark.timeout(10)
 
 
 # --- Helper functions for deeply nested data ---
 def _create_deeply_nested_list(depth: int) -> list:
-    """指定された深さのネストしたリストを作成する。"""
+    """Creates a nested list with the specified depth."""
     root = current = []
     for _ in range(depth):
         new_list = []
@@ -68,7 +76,7 @@ def _create_deeply_nested_list(depth: int) -> list:
 
 
 def _create_deeply_nested_dict(depth: int) -> dict:
-    """指定された深さのネストした辞書を作成する。"""
+    """Creates a nested dictionary with the specified depth."""
     root = current = {}
     for _ in range(depth):
         new_dict = {}
@@ -79,37 +87,33 @@ def _create_deeply_nested_dict(depth: int) -> dict:
 
 # --- Helper functions for circular data ---
 def _create_circular_list() -> Dict[str, list]:
-    """自身を含むリストを持つ辞書を作成する。"""
+    """Creates a dictionary containing a list that references itself."""
     data = [1, 2]
     data.append(data)  # type: ignore[arg-type] # Intentionally creating circular ref
     return {"data": data}
 
 
 def _create_circular_dict() -> Dict[str, dict]:
-    """自身を含む辞書を持つ辞書を作成する。"""
+    """Creates a dictionary containing a dictionary that references itself."""
     data: Dict[str, Any] = {"a": 1}
     data["self"] = data  # Intentionally creating circular ref
     return {"data": data}
 
 
 def _create_list_with_circular_dict() -> Dict[str, list]:
-    """循環参照を持つ辞書を含むリストを持つ辞書を作成する。"""
+    """Creates a dictionary containing a list with a dictionary that references itself."""
     d: Dict[str, Any] = {}
     d["rec"] = d
     data = [1, d, 3]
     return {"data": data}
 
 
-UNIT: MarkDecorator = pytest.mark.unit
-SET_TIMEOUT: MarkDecorator = pytest.mark.timeout(10)
-
-
 @pytest.fixture
 def create_template_file() -> Callable[[bytes, str], BytesIO]:
-    """テスト用のテンプレートファイルを作成するフィクスチャ。
+    """Fixture for creating template files for testing.
 
     Returns:
-        Callable[[bytes, str], BytesIO]: テンプレートファイルを作成する関数
+        Callable[[bytes, str], BytesIO]: A function that creates a template file
     """
 
     def _create_file(content: bytes, filename: str = "template.txt") -> BytesIO:
@@ -128,8 +132,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
         "format_type",
         "is_strict_undefined",
         "context",
-        "expected_initial_valid",
-        "expected_runtime_valid",
         "expected_content",
         "expected_initial_error",
         "expected_runtime_error",
@@ -140,8 +142,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -152,8 +152,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "a" * (30 * 1024 * 1024),
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -164,8 +162,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
             f"Template file size exceeds maximum limit of {30 * 1024 * 1024} bytes",
@@ -176,8 +172,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template file contains invalid UTF-8 bytes",
             "Template file contains invalid UTF-8 bytes",
@@ -188,8 +182,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template file contains invalid binary data",
             "Template file contains invalid binary data",
@@ -200,8 +192,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template file contains invalid binary data",
             "Template file contains invalid binary data",
@@ -212,8 +202,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template syntax error: unexpected '}'",
             "Template syntax error: unexpected '}'",
@@ -224,8 +212,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'macro' tag is not allowed",
             "Template security error: 'macro' tag is not allowed",
@@ -236,8 +222,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"value": 0},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: division by zero",
@@ -248,8 +232,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {"value": 0},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: division by zero",
@@ -260,8 +242,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -272,8 +252,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -284,8 +262,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined' is undefined",
@@ -296,8 +272,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -308,8 +282,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -320,8 +292,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_REMOVE_ALL,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello World!\nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -332,8 +302,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello World!\n\nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -344,8 +312,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_KEEP_ALT,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello World!\n\n\n  \nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -356,8 +322,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello World!\n\nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -368,8 +332,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_KEEP,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello World!\n\n\n  \nGood bye World!",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -380,8 +342,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -392,8 +352,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'name' is undefined",
@@ -404,8 +362,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {"first_name": "John"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello John !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -416,8 +372,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"first_name": "John"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'last_name' is undefined",
@@ -428,8 +382,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hide",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -440,8 +392,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined_var' is undefined",
@@ -452,8 +402,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Anonymous",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -464,8 +412,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Anonymous",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -476,8 +422,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -488,8 +432,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'user' is undefined",
@@ -500,8 +442,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             MIN_FORMAT_TYPE - 1,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Validation error: Input should be greater than or equal to 0 at 'format_type'",
@@ -512,8 +452,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             MAX_FORMAT_TYPE + 1,
             STRICT_UNDEFINED,
             {"name": "World"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Validation error: Input should be less than or equal to 4 at 'format_type'",
@@ -524,8 +462,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"value": 0},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: division by zero",
@@ -544,8 +480,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
                 "last_updated": "2024-03-20T15:30:45",
                 "next_review": "2024-06-20",
             },
-            INITIAL_VALID,
-            RUNTIME_VALID,
             ("Current Date: 2024-03-20\nLast Updated: 2024-03-20 15:30:45\nNext Review: June 20, 2024"),
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -560,11 +494,9 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {
-                "unix_timestamp": "2024-03-20T15:30:45",  # ISO 8601形式
-                "ms_timestamp": "2024-03-20T15:30:45.123",  # ミリ秒付きISO 8601形式
+                "unix_timestamp": "2024-03-20T15:30:45",  # ISO 8601 format
+                "ms_timestamp": "2024-03-20T15:30:45.123",  # ISO 8601 format with milliseconds
             },
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Unix Timestamp: 2024-03-20 15:30:45\nMillisecond Timestamp: 2024-03-20 15:30:45.123000\nFormatted Time: 15:30",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -577,8 +509,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             {
                 "historic_date": "1969-01-01T00:00:00",  # ISO 8601形式
             },
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Historic Date: 1969-01-01 00:00:00",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -597,8 +527,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
                 "iso_with_tz": "2024-06-15T12:30:45+09:00",
                 "future_date": "2025-01-01T00:00:00",
             },
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "ISO String: 31 Dec 2024\nISO with TZ: 2024-06-15 12:30 UTC+09:00\nFuture Date: Wednesday, January 01, 2025",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -609,8 +537,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"invalid_date": "not-a-date"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: Invalid date format",
@@ -621,8 +547,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"date": None},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'NoneType' object has no attribute 'replace'",
@@ -633,8 +557,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__class__' is forbidden.",
             "Template security error: Access to restricted attribute '__class__' is forbidden.",
@@ -645,8 +567,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__mro__' is forbidden.",
             "Template security error: Access to restricted attribute '__mro__' is forbidden.",
@@ -657,8 +577,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__subclasses__' is forbidden.",
             "Template security error: Access to restricted attribute '__subclasses__' is forbidden.",
@@ -669,8 +587,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'getattr()' is forbidden.",
             "Template security error: Call to restricted function 'getattr()' is forbidden.",
@@ -681,8 +597,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"self": object()},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted item 'os' is forbidden.",
             "Template security error: Access to restricted item 'os' is forbidden.",
@@ -693,8 +607,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'import' tag is not allowed",
             "Template security error: 'import' tag is not allowed",
@@ -705,8 +617,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'extends' tag is not allowed",
             "Template security error: 'extends' tag is not allowed",
@@ -717,8 +627,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"eval": eval},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'eval()' is forbidden.",
             "Template security error: Call to restricted function 'eval()' is forbidden.",
@@ -729,8 +637,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"exec": exec},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'exec()' is forbidden.",
             "Template security error: Call to restricted function 'exec()' is forbidden.",
@@ -741,8 +647,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"os": __import__("os")},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'os' is forbidden.",
             "Template security error: Use of restricted variable 'os' is forbidden.",
@@ -753,8 +657,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"sys": __import__("sys")},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'sys' is forbidden.",
             "Template security error: Use of restricted variable 'sys' is forbidden.",
@@ -765,8 +667,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"builtins": __import__("builtins")},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'builtins' is forbidden.",
             "Template security error: Use of restricted variable 'builtins' is forbidden.",
@@ -777,8 +677,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"setattr": setattr, "obj": object()},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'setattr()' is forbidden.",
             "Template security error: Call to restricted function 'setattr()' is forbidden.",
@@ -789,8 +687,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"delattr": delattr, "obj": type("Dummy", (), {"attr": 1})()},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'delattr()' is forbidden.",
             "Template security error: Call to restricted function 'delattr()' is forbidden.",
@@ -801,8 +697,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"locals": locals},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Call to restricted function 'locals()' is forbidden.",
             "Template security error: Call to restricted function 'locals()' is forbidden.",
@@ -813,8 +707,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"config": {}},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'config' is forbidden.",
             "Template security error: Use of restricted variable 'config' is forbidden.",
@@ -825,8 +717,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"obj": "test"},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__base__' is forbidden.",
             "Template security error: Access to restricted attribute '__base__' is forbidden.",
@@ -837,8 +727,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"my_dict": {"os": "value"}},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted item 'os' is forbidden.",
             "Template security error: Access to restricted item 'os' is forbidden.",
@@ -849,8 +737,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"os": "fake_os"},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Assignment of restricted variable 'os' is forbidden.",
             "Template security error: Assignment of restricted variable 'os' is forbidden.",
@@ -861,8 +747,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"eval": eval},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Assignment of restricted variable 'eval' is forbidden.",
             "Template security error: Assignment of restricted variable 'eval' is forbidden.",
@@ -873,8 +757,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'do' tag is not allowed",
             "Template security error: 'do' tag is not allowed",
@@ -885,8 +767,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'do' tag is not allowed",
             "Template security error: 'do' tag is not allowed",
@@ -897,8 +777,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'do' tag is not allowed",
             "Template security error: 'do' tag is not allowed",
@@ -919,8 +797,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"data": [[1, 2], [3, 4], [5, 6]]},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             (
                 "\n      0 - 0: Start\n\n      0 - 1: Start\n\n      1 - 0: Start\n\n"
                 "      1 - 1: 4\n\n      2 - 0: Start\n\n      2 - 1: 6\n\n"
@@ -934,8 +810,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Default",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -946,8 +820,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"count": 50},  # 1000から50に減らす
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "\n".join([f"Line {i}" for i in range(50)]) + "\n",  # Add trailing newline
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -958,8 +830,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"emoji": "😁😂🤣😃", "japanese": "こんにちは世界"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "😁😂🤣😃 こんにちは世界",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -970,8 +840,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"content": "<h1>Title</h1><p>Paragraph with <b>bold</b> text</p>"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "<html><body>&lt;h1&gt;Title&lt;/h1&gt;&lt;p&gt;Paragraph with &lt;b&gt;bold&lt;/b&gt; text&lt;/p&gt;</body></html>",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -982,8 +850,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"content": "<script>alert('XSS')</script>"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             (
@@ -1001,8 +867,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"content": "<script>alert('XSS')</script>"},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "<html><body>&lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;</body></html>",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1019,8 +883,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'macro' tag is not allowed",
             "Template security error: 'macro' tag is not allowed",
@@ -1037,8 +899,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'macro' tag is not allowed",
             "Template security error: 'macro' tag is not allowed",
@@ -1049,8 +909,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'input' is undefined",
@@ -1061,8 +919,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: sequence item 0: expected str instance, CustomUndefined found",
@@ -1073,8 +929,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"request": {"args": {"debug": "true"}}},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'request' is forbidden.",
             "Template security error: Use of restricted variable 'request' is forbidden.",
@@ -1085,8 +939,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {"request": {"args": {"debug": "true"}}},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'request' is forbidden.",
             "Template security error: Use of restricted variable 'request' is forbidden.",
@@ -1097,8 +949,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"config": {"secret": "sensitive_data"}},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'config' is forbidden.",
             "Template security error: Use of restricted variable 'config' is forbidden.",
@@ -1109,8 +959,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {"config": {"secret": "sensitive_data"}},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Use of restricted variable 'config' is forbidden.",
             "Template security error: Use of restricted variable 'config' is forbidden.",
@@ -1121,8 +969,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1133,8 +979,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1145,8 +989,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: loop range exceeds maximum limit of 100000",
             "Template security error: loop range exceeds maximum limit of 100000",
@@ -1157,8 +999,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: loop range exceeds maximum limit of 100000",
             "Template security error: loop range exceeds maximum limit of 100000",
@@ -1169,8 +1009,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'user' is undefined",
@@ -1181,8 +1019,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1193,8 +1029,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'user' is undefined",
@@ -1205,8 +1039,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1217,8 +1049,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"user": {}},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'dict object' has no attribute 'name'",
@@ -1229,8 +1059,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined' is undefined",
@@ -1241,8 +1069,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'items' is undefined",
@@ -1253,8 +1079,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined' is undefined",
@@ -1265,8 +1089,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "_suffix",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1277,8 +1099,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'condition' is undefined",
@@ -1289,8 +1109,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undefined' is undefined",
@@ -1301,8 +1119,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'var1' is undefined",
@@ -1313,8 +1129,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {"user": {}},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "Hello !",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1325,8 +1139,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1337,8 +1149,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'items' is undefined",
@@ -1349,8 +1159,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1361,8 +1169,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1373,8 +1179,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1385,8 +1189,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_KEEP,
             STRICT_UNDEFINED,
             {"large_data": "a" * (DocumentRender.MAX_MEMORY_SIZE_BYTES + 10)},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             f"Memory consumption exceeds maximum limit of {DocumentRender.MAX_MEMORY_SIZE_BYTES} bytes",
@@ -1397,8 +1199,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             (lambda: (data := [], data.append(data), {"data": data})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1409,8 +1209,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             (lambda: (data := {}, data.update({"self": data}), {"data": data})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "{&#39;self&#39;: {...}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1421,8 +1219,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1433,8 +1229,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "{&#39;self&#39;: {...}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1445,8 +1239,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             (lambda: (l1 := [], l2 := [l1], l1.append(l2), {"data": l1})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[[...]]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1457,8 +1249,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[[...]]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1469,8 +1259,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"limit": 1000000},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1481,8 +1269,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"limit": 1000},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1493,8 +1279,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             (
                 "Template security error: 1 validation error for RangeConfig\n"
@@ -1515,8 +1299,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"step_var": 0},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: range() arg 3 must not be zero",
@@ -1527,8 +1309,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'float' object cannot be interpreted as an integer",
@@ -1539,8 +1319,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"stop_var": 5.5},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'float' object cannot be interpreted as an integer",
@@ -1551,8 +1329,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"stop_var": "5"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'str' object cannot be interpreted as an integer",
@@ -1563,8 +1339,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: invalid number of arguments for range()",
             "Template security error: invalid number of arguments for range()",
@@ -1575,8 +1349,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: range expected at most 3 arguments, got 4",
@@ -1587,8 +1359,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for +: 'int' and 'str'",
@@ -1599,8 +1369,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for -: 'str' and 'int'",
@@ -1611,8 +1379,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"none_var": None},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for +: 'int' and 'NoneType'",
@@ -1623,8 +1389,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
@@ -1635,8 +1399,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1647,8 +1409,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "hello",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1659,8 +1419,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"none_var": None},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for /: 'int' and 'NoneType'",
@@ -1671,8 +1429,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
@@ -1683,8 +1439,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1695,8 +1449,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "None",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1707,8 +1459,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "None",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1719,8 +1469,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: 'macro' tag is not allowed",
             "Template security error: 'macro' tag is not allowed",
@@ -1731,8 +1479,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             (lambda: (data := [], data.append(data), {"data": data})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1743,8 +1489,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             (lambda: (data := {}, data.update({"self": data}), {"data": data})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "{&#39;self&#39;: {...}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1755,8 +1499,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             (lambda: (l1 := [], l2 := [l1], l1.append(l2), {"data": l1})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[[...]]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1767,8 +1509,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             (lambda: (d1 := {}, d2 := {"d1": d1}, d1.update({"d2": d2}), {"data": d1})[-1])(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "{&#39;d2&#39;: {&#39;d1&#39;: {...}}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1779,8 +1519,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"data": _create_deeply_nested_list(10)},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "[[[[[[[[[[[]]]]]]]]]]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1791,8 +1529,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"data": _create_deeply_nested_list(50000)},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: maximum recursion depth exceeded while getting the repr of an object",
@@ -1803,8 +1539,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"data": _create_deeply_nested_dict(50000)},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: maximum recursion depth exceeded while getting the repr of an object",
@@ -1815,8 +1549,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template security error: division by zero is not allowed",
@@ -1827,8 +1559,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: integer division or modulo by zero",
@@ -1839,8 +1569,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: integer modulo by zero",
@@ -1851,8 +1579,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"zero_var": 0},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: integer division or modulo by zero",
@@ -1863,8 +1589,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"zero_var": 0},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: integer modulo by zero",
@@ -1875,8 +1599,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for /: 'int' and 'str'",
@@ -1887,8 +1609,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for //: 'int' and 'str'",
@@ -1899,8 +1619,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: unsupported operand type(s) for %: 'int' and 'str'",
@@ -1912,8 +1630,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             'Template runtime error: can only concatenate str (not "int") to str',
@@ -1924,8 +1640,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "a1",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1936,8 +1650,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"none_var": None},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "aNone",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1948,8 +1660,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: can't multiply sequence by non-int of type 'float'",
@@ -1960,8 +1670,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: can't multiply sequence by non-int of type 'str'",
@@ -1972,8 +1680,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: %d format: a real number is required, not str",
@@ -1984,8 +1690,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: not enough arguments for format string",
@@ -1996,8 +1700,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
@@ -2008,8 +1710,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -2020,8 +1720,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"config": {"key": "value"}},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Assignment of restricted variable 'config' is forbidden.",
             "Template security error: Assignment of restricted variable 'config' is forbidden.",
@@ -2032,8 +1730,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"getattr": getattr, "obj": object()},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Assignment involving restricted function 'getattr()' is forbidden.",
             "Template security error: Assignment involving restricted function 'getattr()' is forbidden.",
@@ -2044,8 +1740,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: Assign cannot evaluate expression",
@@ -2056,8 +1750,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: Assign cannot evaluate expression",
@@ -2068,8 +1760,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"obj": object()},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted attribute '__class__' is forbidden.",
             "Template security error: Access to restricted attribute '__class__' is forbidden.",
@@ -2080,8 +1770,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"my_dict": {"os": "value"}},
-            INITIAL_INVALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             "Template security error: Access to restricted item 'os' is forbidden.",
             "Template security error: Access to restricted item 'os' is forbidden.",
@@ -2092,8 +1780,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"none_var": None},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'None' has no attribute 'attribute'",
@@ -2104,8 +1790,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
@@ -2116,8 +1800,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -2128,8 +1810,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
@@ -2140,8 +1820,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -2152,8 +1830,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {123: "value"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Validation error: Input should be a valid string at 'context.123.[key]'",
@@ -2164,8 +1840,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {(1, 2): "value"},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Validation error: Input should be a valid string at 'context.(1, 2).[key]'",
@@ -2176,8 +1850,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: '>' not supported between instances of 'int' and 'str'",
@@ -2188,8 +1860,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"none_var": None},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: '>' not supported between instances of 'int' and 'NoneType'",
@@ -2200,8 +1870,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
@@ -2212,8 +1880,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
@@ -2224,8 +1890,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_INVALID,
             EXPECTED_NO_CONTENT,
             EXPECTED_INITIAL_NO_ERROR,
             "Template runtime error: 'undef' is undefined",
@@ -2236,8 +1900,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "FALSE",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -2248,8 +1910,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             NON_STRICT_UNDEFINED,
             {},
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "FALSE",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -2260,8 +1920,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             _create_circular_list(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "1,2,[1, 2, [...]],",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -2272,8 +1930,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             _create_circular_dict(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "a:1,self:{&#39;a&#39;: 1, &#39;self&#39;: {...}},",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -2284,8 +1940,6 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             _create_list_with_circular_dict(),
-            INITIAL_VALID,
-            RUNTIME_VALID,
             "1,{&#39;rec&#39;: {...}},3,",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -2299,28 +1953,34 @@ def test_render_template(
     format_type: int,
     is_strict_undefined: bool,
     context: Dict[str, AnyType],
-    expected_initial_valid: bool,
-    expected_runtime_valid: bool,
     expected_content: Optional[str],
     expected_initial_error: Optional[str],
     expected_runtime_error: Optional[str],
 ) -> None:
-    """初期検証とランタイム検証の一貫性を確認する。
+    """Tests template rendering with various inputs and configurations.
+
+    This comprehensive test checks template rendering behavior with different:
+    - Template content
+    - Format types
+    - Strict/non-strict undefined variable handling
+    - Context data
+    - Expected output content
+    - Initial errors (parsing/syntax)
+    - Runtime errors (during template execution)
 
     Args:
-        create_template_file: テンプレートファイル作成用フィクスチャ
-        template_content: テンプレートの内容
-        format_type: フォーマットタイプ
-        is_strict_undefined: 未定義変数を厳密にチェックするかどうか
-        context: テンプレートに適用するコンテキスト
-        expected_initial_valid: 初期検証が成功することが期待されるかどうか
-        expected_runtime_valid: ランタイム検証が成功することが期待されるかどうか
-        expected_content: 期待される出力内容
-        expected_initial_error: 初期検証の期待されるエラーメッセージ
-        expected_runtime_error: ランタイム検証の期待されるエラーメッセージ
+        create_template_file: Fixture to create template files for testing
+        template_content: Raw template content bytes
+        format_type: Formatting option to apply to the rendered template
+        is_strict_undefined: Whether undefined variables raise errors
+        context: Dictionary of variables to use during rendering
+        expected_content: Expected rendered output or None if error expected
+        expected_initial_error: Expected error during template parsing/initialization
+        expected_runtime_error: Expected error during template rendering
     """
     # Arrange
     template_file: BytesIO = create_template_file(template_content, "template.txt")
+    expected_initial_valid: bool = True if expected_initial_error is EXPECTED_INITIAL_NO_ERROR else False
 
     # Act
     render = DocumentRender(template_file)
@@ -2335,6 +1995,7 @@ def test_render_template(
 
     # Act
     apply_result: bool = render.apply_context(context, format_type, is_strict_undefined)
+    expected_runtime_valid: bool = True if expected_runtime_error is EXPECTED_RUNTIME_NO_ERROR else False
 
     # Assert
     assert apply_result == expected_runtime_valid, (
