@@ -1,3 +1,22 @@
+"""Unit tests for the ConfigParser class.
+
+This module contains unit tests for the `ConfigParser` class found in the
+`features.config_parser` module. It verifies the parser's ability to correctly
+handle TOML, YAML, and CSV configuration files, including various edge cases,
+error conditions, data types, and file format specifics.
+
+The tests cover:
+- Parsing valid and invalid TOML, YAML, and CSV files.
+- Handling different data types within the files.
+- Support for comments and specific syntax features (e.g., TOML inline tables,
+  YAML anchors).
+- Error handling for syntax errors, encoding issues, unsupported file types,
+  and file size limits.
+- CSV-specific features like NaN handling and custom row naming.
+- Robustness against edge cases like empty files, whitespace variations,
+  and large files.
+"""
+
 import datetime
 import pprint
 from io import BytesIO
@@ -13,12 +32,11 @@ from features.config_parser import ConfigParser
 # Define descriptive constants for boolean and None values
 SHOULD_FILL_NAN: Final[bool] = True
 SHOULD_NOT_FILL_NAN: Final[bool] = False
-PARSE_SHOULD_SUCCEED: Final[bool] = True
-PARSE_SHOULD_FAIL: Final[bool] = False
 DEFAULT_FILL_VALUE: Final[Optional[str]] = None
-NO_EXPECTED_DICT: Final[Optional[Dict[str, Any]]] = None
-NO_EXPECTED_ERROR: Final[Optional[str]] = None
 DEFAULT_CSV_ROWS_NAME: Final[str] = "csv_rows"
+NO_EXPECTED_DICT: Final[Optional[Dict[str, Any]]] = None
+NO_EXPECTED_INITIAL_ERROR: Final[Optional[str]] = None
+NO_EXPECTED_RUNTIME_ERROR: Final[Optional[str]] = None
 
 UNIT: MarkDecorator = pytest.mark.unit
 
@@ -154,7 +172,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
     (
         "config_content",
         "file_name",
-        "expected_parse_result",
         "expected_init_error",
         "expected_dict",
         "expected_parse_error",
@@ -163,17 +180,15 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b'key = "value"',
             "config.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"key": "value"},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_toplevel_key",
         ),
         pytest.param(
             b'[section\nkey = "value"',  # Invalid TOML
             "config.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Expected ']' at the end of a table declaration (at line 1, column 9)",
             id="toml_failure_invalid_syntax",
@@ -181,16 +196,14 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             _create_large_toml_content(1000),
             "large_ok.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"section": {f"key{i}": f"value{i}" for i in range(1000)}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_moderately_large",
         ),
         pytest.param(
             _create_large_toml_content(2 * 10**6),
             "large_ng.toml",
-            PARSE_SHOULD_FAIL,
             "File size exceeds maximum limit of 31457280 bytes",
             NO_EXPECTED_DICT,
             "File size exceeds maximum limit of 31457280 bytes",
@@ -199,44 +212,39 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b'# This is a comment\n[section] # Another comment\nkey = "value" # Inline comment',
             "commented.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"section": {"key": "value"}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_with_comments",
         ),
         pytest.param(
             b'[data]\nint_val = 123\nfloat_val = 4.56\nbool_val = true\narray_val = [1, "two", 3.0]',
             "datatypes.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"data": {"int_val": 123, "float_val": 4.56, "bool_val": True, "array_val": [1, "two", 3.0]}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_various_types",
         ),
         pytest.param(
             b'[parent.child]\nkey = "nested_value"',
             "nested.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"parent": {"child": {"key": "nested_value"}}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_nested_tables",
         ),
         pytest.param(
             b"",
             "empty.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_failure_empty_file",
         ),
         pytest.param(
             b"[error]\nkey = value_without_quotes",  # Invalid syntax
             "syntax_error.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Invalid value (at line 2, column 7)",
             id="toml_failure_missing_quotes",
@@ -244,19 +252,17 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b'[inline]\ndata = { key1 = "val1", key2 = 123 }',
             "inline.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"inline": {"data": {"key1": "val1", "key2": 123}}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_inline_table",
         ),
         pytest.param(
             b'[[products]]\nname = "Hammer"\nsku = 738594937\n\n[[products]]\nname = "Nail"\nsku = 284758393\ncolor = "gray"',
             "array_table.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"products": [{"name": "Hammer", "sku": 738594937}, {"name": "Nail", "sku": 284758393, "color": "gray"}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_array_of_tables",
         ),
         pytest.param(
@@ -268,8 +274,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                 b"local_time = 07:32:00"
             ),
             "dates.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             # Note: Exact representation might depend on the TOML library (e.g., datetime objects)
             # Assuming the library parses them into standard Python types or specific objects
             # We'll assert structure and type presence rather than exact object equality for simplicity
@@ -283,14 +288,13 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                     "offset_dt": datetime.datetime(1979, 5, 27, 7, 32, tzinfo=datetime.timezone.utc),
                 }
             },
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_date_time_formats",
         ),
         pytest.param(
             b"[invalid]\ndate = 2023/01/01",
             "invalid_date.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Expected newline or end of document after a statement (at line 2, column 12)",
             id="toml_failure_invalid_date_format",
@@ -298,8 +302,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"date = 2024-04-00",
             "invalid_date.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Expected newline or end of document after a statement (at line 1, column 12)",
             id="toml_failure_invalid_date_out_of_range",
@@ -307,35 +310,31 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b'[a.b.c]\nkey = "deep_value"',
             "deep_nested.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"a": {"b": {"c": {"key": "deep_value"}}}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_deeply_nested_tables",
         ),
         pytest.param(
             b'[table]\ninline = { key = "value" }\n[table.nested]\nval = 123',
             "mixed_tables.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"table": {"inline": {"key": "value"}, "nested": {"val": 123}}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_mixed_inline_standard_tables",
         ),
         pytest.param(
             b"points = [ { x = 1, y = 2 }, { x = 7, y = 8 } ]",
             "array_inline_tables.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"points": [{"x": 1, "y": 2}, {"x": 7, "y": 8}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_array_of_inline_tables",
         ),
         pytest.param(
             b"[invalid#key]\nval = 1",  # Disallowed char # in bare key
             "invalid_bare_key.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Expected ']' at the end of a table declaration (at line 1, column 9)",
             id="toml_failure_disallowed_char_in_bare_key",
@@ -343,8 +342,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b'[duplicate]\nkey = "value1"\nkey = "value2"',  # Duplicate key
             "duplicate_key.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Cannot overwrite a value (at end of document)",
             id="toml_failure_duplicate_key",
@@ -352,8 +350,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"title: YAML content",
             "config.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Expected '=' after a key in a key/value pair (at line 1, column 6)",
             id="toml_with_yaml_content_fail",
@@ -361,8 +358,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\xef\xbb\xbftitle = 'TOML with BOM'",
             "config.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Invalid statement (at line 1, column 1)",
             id="toml_with_bom_fail",
@@ -370,7 +366,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\x80\x81\x82title = 'TOML test'",
             "config.toml",
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
@@ -379,8 +374,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"title = 'TOML test'\n" + b"key_" + b"a" * 1000 + b" = 'value'\n" * 100,
             "config.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Invalid statement (at line 3, column 2)",
             id="toml_failure_large_file_long_keys",
@@ -388,8 +382,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\xef\xbb\xbftitle = 'TOML test'",
             "config.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Invalid statement (at line 1, column 1)",
             id="toml_failure_with_bom",
@@ -397,8 +390,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\xef\xbb\xbftitle: YAML test",
             "config.toml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Invalid statement (at line 1, column 1)",
             id="yaml_failure_with_bom",
@@ -406,7 +398,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\xff\xfe\xfd",
             "config.toml",
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
@@ -415,27 +406,24 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"unicode = '\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e'",
             "config.toml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"unicode": "日本語"},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="toml_success_unicode_chars",
         ),
         # --- YAML Cases ---
         pytest.param(
             b"section:\n key: value",  # Valid YAML (indentation)
             "config.yml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"section": {"key": "value"}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_valid_indentation",
         ),
         pytest.param(
             b"- item1\n- item2",  # Valid YAML but not a dictionary at the root
             "config.yaml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Invalid YAML file loaded.",
             id="yaml_failure_not_a_dict",
@@ -443,16 +431,14 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             _create_large_yaml_content(1000),
             "large_ok.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"data": {f"key{i}": f"value{i}" for i in range(1000)}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_moderately_large",
         ),
         pytest.param(
             _create_large_yaml_content(2 * 10**6),
             "large_ng.yaml",
-            PARSE_SHOULD_FAIL,
             "File size exceeds maximum limit of 31457280 bytes",
             NO_EXPECTED_DICT,
             "File size exceeds maximum limit of 31457280 bytes",
@@ -461,16 +447,14 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"section:\n  list:\n    - item1\n    - {key: value}\nnested:\n  map:\n    subkey: subvalue",  # Complex YAML
             "complex.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"nested": {"map": {"subkey": "subvalue"}}, "section": {"list": ["item1", {"key": "value"}]}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_complex_mapping_value",
         ),
         pytest.param(
             "セクション:\n  キー: 値".encode("shift_jis"),  # YAML with Shift-JIS encoding
             "sjis.yaml",
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0x83 in position 0: invalid start byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0x83 in position 0: invalid start byte",
@@ -479,19 +463,17 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"# Root comment\nsection: # Comment on section\n  key: value # Comment on value",  # YAML with comments
             "commented.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"section": {"key": "value"}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_with_comments",
         ),
         pytest.param(
             b"data:\n  int_val: 123\n  float_val: 4.56\n  bool_val: true\n  null_val: null\n  list_val:\n    - item1\n    - 2\n    - false",
             "datatypes.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"data": {"int_val": 123, "float_val": 4.56, "bool_val": True, "null_val": None, "list_val": ["item1", 2, False]}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_various_types",
         ),
         pytest.param(
@@ -510,22 +492,20 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                 b"    - simple_item"
             ),
             "nested.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {
                 "nested": {
                     "level1": {"list_in_map": ["itemA", "itemB"], "map_in_map": {"key1": "val1", "key2": "val2"}},
                     "level1_list": [{"map_in_list": {"k": "v"}}, "simple_item"],
                 }
             },
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_nested_structures",
         ),
         pytest.param(
             b"",
             "empty.yaml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Invalid YAML file loaded.",
             id="yaml_failure_empty_file",
@@ -533,8 +513,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"section:\n  key1: value1\n key2: value2",  # Indentation error
             "indent_error.yaml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             (
                 "while parsing a block mapping\n"
@@ -551,17 +530,15 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"anchor_example: &anchor1\n  name: Anchor Name\n  value: 10\nalias_example: *anchor1",  # Anchors and aliases
             "anchor.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"anchor_example": {"name": "Anchor Name", "value": 10}, "alias_example": {"name": "Anchor Name", "value": 10}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_anchors_aliases",
         ),
         pytest.param(
             b"doc1:\n  key: value1\n---\ndoc2:\n  key: value2",  # Multiple documents
             "multidoc.yaml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             (
                 "expected a single document in the stream\n"
@@ -584,8 +561,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                 b"  date_only: 2002-12-14"
             ),
             "timestamps.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             # PyYAML parses these into datetime.datetime and datetime.date objects
             # We represent the expected structure; actual test might need type checks
             {
@@ -598,25 +574,23 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                     ),
                 }
             },
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_valid_timestamps",
         ),
         pytest.param(
             b"dates_as_strings:\n  ambiguous: 01-02-2023 # Could be Jan 2 or Feb 1",
             "ambiguous_dates.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"dates_as_strings": {"ambiguous": "01-02-2023"}},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_ambiguous_date_as_string",
         ),
         pytest.param(
             b"invalid_time: 20:30:40,123",
             "invalid_timestamp.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"invalid_time": "20:30:40,123"},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_failure_invalid_timestamp_format",
         ),
         pytest.param(
@@ -632,8 +606,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                 b"      level3_key: value_e"
             ),
             "deep_mixed_nesting.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {
                 "deep_mix": {
                     "level1_map": {
@@ -642,7 +615,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                     }
                 }
             },
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_deeply_nested_mixed",
         ),
         pytest.param(
@@ -658,22 +631,20 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                 b"      size: M"
             ),
             "list_nested_maps.yaml",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {
                 "list_of_maps": [
                     {"id": 1, "properties": {"color": "red", "size": "L"}},
                     {"id": 2, "properties": {"color": "blue", "size": "M"}},
                 ]
             },
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="yaml_success_list_of_nested_maps",
         ),
         pytest.param(
             b"   \n\t\n  ",
             "tab_indent.yaml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             (
                 "while scanning for the next token\n"
@@ -687,7 +658,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"invalid_utf8: Str with \xc3\x28 invalid seq",  # Invalid UTF-8 sequence (incomplete)
             "invalid_utf8_seq.yaml",
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0xc3 in position 23: invalid continuation byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0xc3 in position 23: invalid continuation byte",
@@ -696,7 +666,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\x80\x81\x82title: YAML test",
             "config.yaml",
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
@@ -705,7 +674,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\xff\xfe\xfd",
             "config.yaml",
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
@@ -714,8 +682,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"key: @unexpected_character",
             "config.yaml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             (
                 "while scanning for the next token\n"
@@ -729,8 +696,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"date: 2024-04-00",
             "invalid_date.yaml",
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "day is out of range for month",
             id="yaml_failure_invalid_date_out_of_range",
@@ -738,7 +704,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"content",
             "file.txt",  # Unsupported extension
-            PARSE_SHOULD_FAIL,
             "Unsupported file type",
             NO_EXPECTED_DICT,
             "Unsupported file type",
@@ -747,7 +712,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\x80abc",  # Invalid UTF-8 start byte (for TOML/YAML)
             "config.toml",
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
@@ -756,7 +720,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"\x80abc",  # Invalid UTF-8 start byte (for TOML/YAML)
             "config.yaml",
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte",
@@ -765,7 +728,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b'key = "value"',  # Valid TOML content
             "invalid_extension.abc",  # But wrong extension
-            PARSE_SHOULD_FAIL,
             "Unsupported file type",
             NO_EXPECTED_DICT,
             "Unsupported file type",
@@ -776,7 +738,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
 def test_parse_toml_or_yaml(
     config_content: bytes,
     file_name: str,
-    expected_parse_result: bool,
     expected_init_error: Optional[str],
     expected_dict: Optional[Dict[str, Any]],
     expected_parse_error: Optional[str],
@@ -808,36 +769,30 @@ def test_parse_toml_or_yaml(
         expected_parse_error: The expected error message string in `parser.error_message`
             after `parser.parse()` is called, or `None` if no error is expected post-parse.
     """
-    config_file = BytesIO(config_content)
-    config_file.name = file_name  # Set the name attribute for extension checking
 
-    # Initialize parser
+    # Arrange
+    config_file = BytesIO(config_content)
+    config_file.name = file_name
+
+    # Act
     parser = ConfigParser(config_file=config_file)
 
-    # --- Assert Initial State ---
+    # Assert for initial state
     assert parser.error_message == expected_init_error, (
         f"Initial error message mismatch\nGot: {parser.error_message}\nExpected: {expected_init_error}"
     )
 
-    # Call parse method
+    # Act for runtime state
     parse_result = parser.parse()
+    expected_parse_result: Final[bool] = False if expected_dict is None else True
+    expected_str_final: Final[str] = pprint.pformat(expected_dict) if expected_init_error is None and expected_parse_result else "None"
 
-    # --- Assert Final State ---
+    # Assert for runtime state
     assert parse_result == expected_parse_result, f"Parse result mismatch\nGot: {parse_result}\nExpected: {expected_parse_result}"
-
     assert parser.parsed_dict == expected_dict, (
         f"Parsed dictionary mismatch\nGot: {pprint.pformat(parser.parsed_dict)}\nExpected: {pprint.pformat(expected_dict)}"
     )
-
-    # Check final parsed string representation
-    if expected_init_error is None and expected_parse_result:
-        expected_str_final = pprint.pformat(expected_dict)
-    else:
-        expected_str_final = "None"
-
     assert parser.parsed_str == expected_str_final, f"Parsed string mismatch\nGot: {parser.parsed_str}\nExpected: {expected_str_final}"
-
-    # Check final error message
     assert parser.error_message == expected_parse_error, (
         f"Final error message mismatch\nGot: {parser.error_message}\nExpected: {expected_parse_error}"
     )
@@ -851,7 +806,6 @@ def test_parse_toml_or_yaml(
         "csv_rows_name",
         "enable_fill_nan",
         "fill_nan_with",
-        "expected_parse_result",
         "expected_init_error",
         "expected_dict",
         "expected_parse_error",
@@ -864,8 +818,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "CSV file must contain at least one data row.",
             id="csv_failure_header_only_custom_name",
@@ -876,10 +829,9 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,  # Default csv_rows_name, no NaN fill
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"csv_rows": [{"col1": "val1", "col2": np.nan}, {"col1": "val2", "col2": "val3"}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_nan_no_fill",
         ),
         pytest.param(
@@ -888,10 +840,9 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_FILL_NAN,
             "",  # Fill with empty string
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"csv_rows": [{"col1": "val1", "col2": ""}, {"col1": "val3", "col2": "val4"}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_nan_fill_empty_string",
         ),
         pytest.param(
@@ -900,10 +851,9 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_FILL_NAN,
             "N/A",  # Fill with "N/A"
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"csv_rows": [{"col1": "val1", "col2": "N/A"}, {"col1": "val3", "col2": "val4"}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_nan_fill_na_string",
         ),
         pytest.param(
@@ -912,8 +862,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "CSV file must contain at least one data row.",
             id="csv_failure_header_only",
@@ -924,8 +873,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "No columns to parse from file",  # Error message might vary slightly based on pandas version
             id="csv_failure_empty_file",
@@ -936,11 +884,10 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             # Generate expected dict (can be large)
             {"csv_rows": [{f"col{c}": f"val_{r}_{c}" for c in range(100)} for r in range(100)]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_moderately_large",
         ),
         # Note: Testing the exact >30MB boundary failure within parametrize is infeasible
@@ -951,8 +898,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Failed to parse CSV: Null byte detected in input data.",
             id="csv_failure_null_byte",
@@ -963,10 +909,9 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"csv_rows": [{"col,2": "v,al2", "col1": "val1"}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_quoted_commas_newline",
         ),
         pytest.param(
@@ -975,10 +920,9 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"csv_rows": [{"col1;col2": "val1;val2"}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_semicolon_delimiter",
         ),
         pytest.param(
@@ -987,10 +931,9 @@ def test_parse_toml_or_yaml(
             "items",  # Custom rows name
             SHOULD_FILL_NAN,
             "MISSING",  # Fill value
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"items": [{"header1": "value1", "header2": "MISSING"}, {"header1": "value3", "header2": "value4"}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_nan_fill_missing_custom_name",
         ),
         pytest.param(
@@ -999,8 +942,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_FILL_NAN,
             "",
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {
                 "csv_rows": [
                     {"col_a": float(1.0), "col_b": "alpha", "col_c": ""},
@@ -1008,7 +950,7 @@ def test_parse_toml_or_yaml(
                     {"col_a": float(3.0), "col_b": "", "col_c": "delta"},
                 ]
             },
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_multi_nan_fill_empty_string",
         ),
         pytest.param(
@@ -1017,8 +959,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_FILL_NAN,
             "N/A",  # Fill value
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {
                 "csv_rows": [
                     {"id": 1, "value": 100.0, "category": "A"},
@@ -1026,7 +967,7 @@ def test_parse_toml_or_yaml(
                     {"id": 3, "value": 300.0, "category": "C"},
                 ]
             },
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_numeric_nan_fill_na",
         ),
         pytest.param(
@@ -1035,8 +976,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_FILL_NAN,
             "DEFAULT",  # Fill value
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {
                 "csv_rows": [
                     {"field1": "valueA", "field2": "valueB"},
@@ -1044,7 +984,7 @@ def test_parse_toml_or_yaml(
                     {"field1": "valueC", "field2": "valueD"},
                 ]
             },
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_all_nan_row_fill_default",
         ),
         pytest.param(
@@ -1053,7 +993,6 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_FAIL,
             "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
             NO_EXPECTED_DICT,
             "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
@@ -1065,8 +1004,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "No columns to parse from file",
             id="csv_failure_whitespace_only",
@@ -1077,10 +1015,9 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_SUCCEED,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             {"csv_rows": [{" col1 ": " val1 ", " col2 ": " val2 "}]},
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_whitespace_in_header_data",
         ),
         pytest.param(
@@ -1089,8 +1026,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Failed to parse CSV: Null byte detected in input data.",
             id="csv_failure_invalid_binary_fail",
@@ -1101,8 +1037,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_FAIL,
-            NO_EXPECTED_ERROR,
+            NO_EXPECTED_INITIAL_ERROR,
             NO_EXPECTED_DICT,
             "Error tokenizing data. C error: EOF inside string starting at row 2",
             id="csv_failure_unclosed_quote",
@@ -1115,7 +1050,6 @@ def test_parse_csv(
     csv_rows_name: str,
     enable_fill_nan: bool,
     fill_nan_with: str,
-    expected_parse_result: bool,
     expected_init_error: Optional[str],
     expected_dict: Optional[Dict[str, Any]],
     expected_parse_error: Optional[str],
@@ -1153,46 +1087,40 @@ def test_parse_csv(
         expected_parse_error: The expected error message in `parser.error_message`
             after `parser.parse()` is called, or `None`.
     """
-    config_file = BytesIO(config_content)
-    config_file.name = file_name  # Set the name attribute for extension checking
 
-    # Initialize parser
+    # Arrange
+    config_file = BytesIO(config_content)
+    config_file.name = file_name
+
+    # Act
     parser = ConfigParser(config_file=config_file)
 
-    # --- Assert Initial State ---
+    # Assert for initial state
     assert parser.error_message == expected_init_error, (
         f"Initial error message mismatch\nGot: {parser.error_message}\nExpected: {expected_init_error}"
     )
 
-    # Configure CSV options (only if parser initialized without error)
+    # Arrange for runtime state
     parser.csv_rows_name = csv_rows_name
     parser.enable_fill_nan = enable_fill_nan
     parser.fill_nan_with = fill_nan_with
 
-    # Call parse method
+    # Act for runtime state
     parse_result = parser.parse()
+    expected_parse_result: Final[bool] = False if expected_dict is None else True
+    expected_str_final: Final[str] = pprint.pformat(expected_dict)
 
-    # --- Assert Final State ---
+    # Assert for runtime state
+    assert parser.fill_nan_with == fill_nan_with, f"fill_nan_with mismatch\nGot: {parser.fill_nan_with}\nExpected: {fill_nan_with}"
+    assert parser.enable_fill_nan == enable_fill_nan, (
+        f"enable_fill_nan mismatch\nGot: {parser.enable_fill_nan}\nExpected: {enable_fill_nan}"
+    )
     assert parse_result == expected_parse_result, f"Parse result mismatch\nGot: {parse_result}\nExpected: {expected_parse_result}"
-
-    # Use the helper function for dictionary comparison
-
     if expected_dict is None or parser.parsed_dict is None:
         assert parser.parsed_dict is None, f"Parsed dictionary mismatch (expected None)\nGot: {pprint.pformat(parser.parsed_dict)}"
     else:
         _assert_csv_dicts_equal(parser.parsed_dict, expected_dict, parser.csv_rows_name)
-
-    assert parser.enable_fill_nan == enable_fill_nan, (
-        f"enable_fill_nan mismatch\nGot: {parser.enable_fill_nan}\nExpected: {enable_fill_nan}"
-    )
-
-    assert parser.fill_nan_with == fill_nan_with, f"fill_nan_with mismatch\nGot: {parser.fill_nan_with}\nExpected: {fill_nan_with}"
-
-    # Check final parsed string representation
-    expected_str_final = pprint.pformat(expected_dict)
     assert parser.parsed_str == expected_str_final, f"Parsed string mismatch\nGot: {parser.parsed_str}\nExpected: {expected_str_final}"
-
-    # Check final error message
     assert parser.error_message == expected_parse_error, (
         f"Final error message mismatch\nGot: {parser.error_message}\nExpected: {expected_parse_error}"
     )
