@@ -5,6 +5,7 @@ from typing import Any, Dict, Final, Optional, Union
 
 import numpy as np
 import pytest
+from _pytest.mark.structures import MarkDecorator
 
 # Assuming features is importable from tests/unit, adjust if necessary
 from features.config_parser import ConfigParser
@@ -19,23 +20,47 @@ NO_EXPECTED_DICT: Final[Optional[Dict[str, Any]]] = None
 NO_EXPECTED_ERROR: Final[Optional[str]] = None
 DEFAULT_CSV_ROWS_NAME: Final[str] = "csv_rows"
 
+UNIT: MarkDecorator = pytest.mark.unit
+
 
 def _create_large_toml_content(num_entries: int) -> bytes:
-    """Generates moderately large TOML content."""
+    """Generates moderately large TOML content for testing.
+
+    Args:
+        num_entries: The number of key-value entries to generate in the [section] table.
+
+    Returns:
+        A bytes object containing the generated TOML content encoded in UTF-8.
+    """
     content = "[section]\n"
     entries = [f'key{i} = "value{i}"' for i in range(num_entries)]
     return (content + "\n".join(entries)).encode("utf-8")
 
 
 def _create_large_yaml_content(num_entries: int) -> bytes:
-    """Generates moderately large YAML content."""
+    """Generates moderately large YAML content for testing.
+
+    Args:
+        num_entries: The number of key-value entries to generate under the 'data' key.
+
+    Returns:
+        A bytes object containing the generated YAML content encoded in UTF-8.
+    """
     content = "data:\n"
     entries = [f"  key{i}: value{i}" for i in range(num_entries)]
     return (content + "\n".join(entries)).encode("utf-8")
 
 
 def _create_large_csv_content(num_rows: int, num_cols: int) -> bytes:
-    """Generates moderately large CSV content."""
+    """Generates moderately large CSV content for testing.
+
+    Args:
+        num_rows: The number of data rows to generate (excluding the header).
+        num_cols: The number of columns to generate.
+
+    Returns:
+        A bytes object containing the generated CSV content encoded in UTF-8.
+    """
     header = ",".join([f"col{c}" for c in range(num_cols)])
     rows = [",".join([f"val_{r}_{c}" for c in range(num_cols)]) for r in range(num_rows)]
     return (header + "\n" + "\n".join(rows)).encode("utf-8")
@@ -44,13 +69,14 @@ def _create_large_csv_content(num_rows: int, num_cols: int) -> bytes:
 def _assert_csv_values_equal(p_val: Union[str, int, float, None], e_val: Union[str, int, float, None], row_idx: int, key: str) -> None:
     """Asserts equality between a parsed value and an expected value from a CSV row.
 
-    Handles NaN values and potential float/int type differences.
+    Handles NaN values specifically and allows for type flexibility between
+    integers and floats if their values are numerically equivalent.
 
     Args:
-        p_val: The parsed value.
-        e_val: The expected value.
-        row_idx: The index of the row being compared (for error messages).
-        key: The key of the value being compared (for error messages).
+        p_val: The parsed value from the CSV.
+        e_val: The expected value for comparison.
+        row_idx: The 0-based index of the CSV row being checked (for error reporting).
+        key: The column name (key) of the value being checked (for error reporting).
     """
     if isinstance(e_val, float) and np.isnan(e_val):
         assert isinstance(p_val, float), f"CSV row {row_idx}, key '{key}' NaN check: Type mismatch: Got {type(p_val)}, Expected float"
@@ -68,11 +94,13 @@ def _assert_csv_values_equal(p_val: Union[str, int, float, None], e_val: Union[s
 def _assert_csv_rows_equal(parsed_rows: list, expected_rows: list) -> None:
     """Asserts equality between two lists of dictionaries representing CSV rows.
 
-    Delegates individual value comparison to _assert_csv_values_equal.
+    Validates the structure (list of dicts) and length, then delegates
+    individual value comparison within each row dictionary to
+    `_assert_csv_values_equal`.
 
     Args:
-        parsed_rows: The list of rows obtained from the parser.
-        expected_rows: The expected list of rows.
+        parsed_rows: The list of row dictionaries obtained from the parser.
+        expected_rows: The expected list of row dictionaries.
     """
     assert isinstance(parsed_rows, list), "Parsed CSV rows is not a list."
     assert isinstance(expected_rows, list), "Expected CSV rows is not a list."
@@ -91,15 +119,16 @@ def _assert_csv_rows_equal(parsed_rows: list, expected_rows: list) -> None:
 
 
 def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str, Any], csv_rows_name: str) -> None:
-    """Asserts equality between two dictionaries, handling CSV list comparison.
+    """Asserts equality between two dictionaries, with special handling for CSV data.
 
-    Delegates the comparison of the list of CSV rows to _assert_csv_rows_equal.
-    Compares the remaining dictionary keys directly.
+    Compares the list of CSV rows (stored under `csv_rows_name`) using
+    `_assert_csv_rows_equal`. Compares all other key-value pairs in the
+    dictionaries directly.
 
     Args:
         parsed_dict: The dictionary obtained from the parser.
-        expected_dict: The expected dictionary.
-        csv_rows_name: The key under which the list of CSV rows is stored.
+        expected_dict: The expected dictionary structure and content.
+        csv_rows_name: The key under which the list of CSV row dictionaries is stored.
     """
     parsed_rows = parsed_dict.get(csv_rows_name)
     expected_rows = expected_dict.get(csv_rows_name)
@@ -120,6 +149,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
     )
 
 
+@UNIT
 @pytest.mark.parametrize(
     (
         "config_content",
@@ -130,7 +160,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         "expected_parse_error",
     ),
     [
-        # --- TOML Cases ---
         pytest.param(
             b'key = "value"',
             "config.toml",
@@ -209,7 +238,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
             PARSE_SHOULD_FAIL,
             NO_EXPECTED_ERROR,
             NO_EXPECTED_DICT,
-            "Invalid value (at line 2, column 7)",  # Example error message
+            "Invalid value (at line 2, column 7)",
             id="toml_failure_missing_quotes",
         ),
         pytest.param(
@@ -308,7 +337,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
             PARSE_SHOULD_FAIL,
             NO_EXPECTED_ERROR,
             NO_EXPECTED_DICT,
-            "Expected ']' at the end of a table declaration (at line 1, column 9)",  # Example error
+            "Expected ']' at the end of a table declaration (at line 1, column 9)",
             id="toml_failure_disallowed_char_in_bare_key",
         ),
         pytest.param(
@@ -317,7 +346,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
             PARSE_SHOULD_FAIL,
             NO_EXPECTED_ERROR,
             NO_EXPECTED_DICT,
-            "Cannot overwrite a value (at end of document)",  # Example error
+            "Cannot overwrite a value (at end of document)",
             id="toml_failure_duplicate_key",
         ),
         pytest.param(
@@ -479,7 +508,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                 b"    - map_in_list:\n"
                 b"        k: v\n"
                 b"    - simple_item"
-            ),  # Nested structures
+            ),
             "nested.yaml",
             PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
@@ -553,7 +582,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
                 b"  space_sep: 2001-12-14 21:59:43 -05:00\n"
                 b"  no_secs: 2001-12-14 21:59 -05:00\n"
                 b"  date_only: 2002-12-14"
-            ),  # Valid YAML timestamps
+            ),
             "timestamps.yaml",
             PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
@@ -575,7 +604,7 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
         pytest.param(
             b"dates_as_strings:\n  ambiguous: 01-02-2023 # Could be Jan 2 or Feb 1",
             "ambiguous_dates.yaml",
-            PARSE_SHOULD_SUCCEED,  # Should parse as a string
+            PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
             {"dates_as_strings": {"ambiguous": "01-02-2023"}},
             NO_EXPECTED_ERROR,
@@ -706,7 +735,6 @@ def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str
             "day is out of range for month",
             id="yaml_failure_invalid_date_out_of_range",
         ),
-        # --- Common Error Cases ---
         pytest.param(
             b"content",
             "file.txt",  # Unsupported extension
@@ -753,19 +781,32 @@ def test_parse_toml_or_yaml(
     expected_dict: Optional[Dict[str, Any]],
     expected_parse_error: Optional[str],
 ) -> None:
-    """Tests the ConfigParser for TOML and YAML file inputs.
+    """Tests `ConfigParser`'s ability to parse TOML and YAML files.
 
-    Covers various scenarios including valid syntax, invalid syntax,
-    different data types, comments, nesting, encoding issues, file size limits,
-    and unsupported file types.
+    This parameterized test covers a wide range of scenarios, including:
+    - Basic valid TOML and YAML syntax.
+    - Invalid syntax and parsing errors.
+    - Various data types (integers, floats, booleans, arrays, nested tables/maps).
+    - Handling of comments.
+    - Edge cases like empty files, large files (within limits and exceeding limits).
+    - Specific TOML features like inline tables, arrays of tables, date/time formats.
+    - Specific YAML features like anchors/aliases, different timestamp formats,
+      nested structures, and indentation rules/errors.
+    - Encoding issues (e.g., invalid UTF-8, BOM).
+    - File type detection based on extension and handling unsupported types.
+    - Validation of initial and final error messages and parsed dictionary/string states.
 
     Args:
-        config_content: The byte content of the configuration file.
-        file_name: The simulated name of the file (determines parser used).
-        expected_parse_result: Expected boolean result from the parse() method.
-        expected_init_error: Expected error message during ConfigParser init, or None.
-        expected_dict: Expected dictionary output after parsing, or None.
-        expected_parse_error: Expected error message after calling parse(), or None.
+        config_content: The byte string representing the content of the config file.
+        file_name: The simulated filename, used to determine the expected format (.toml or .yaml).
+        expected_parse_result: Boolean indicating if `parser.parse()` is expected to succeed.
+        expected_init_error: The expected error message string during `ConfigParser`
+            initialization (e.g., for file size or encoding errors detected early),
+            or `None` if no init error is expected.
+        expected_dict: The dictionary expected to be in `parser.parsed_dict` after parsing,
+            or `None` if parsing is expected to fail or the file is empty/invalid.
+        expected_parse_error: The expected error message string in `parser.error_message`
+            after `parser.parse()` is called, or `None` if no error is expected post-parse.
     """
     config_file = BytesIO(config_content)
     config_file.name = file_name  # Set the name attribute for extension checking
@@ -802,6 +843,7 @@ def test_parse_toml_or_yaml(
     )
 
 
+@UNIT
 @pytest.mark.parametrize(
     (
         "config_content",
@@ -894,7 +936,7 @@ def test_parse_toml_or_yaml(
             DEFAULT_CSV_ROWS_NAME,
             SHOULD_NOT_FILL_NAN,
             DEFAULT_FILL_VALUE,
-            PARSE_SHOULD_SUCCEED,  # Should pass 30MB limit
+            PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
             # Generate expected dict (can be large)
             {"csv_rows": [{f"col{c}": f"val_{r}_{c}" for c in range(100)} for r in range(100)]},
@@ -943,7 +985,7 @@ def test_parse_toml_or_yaml(
             b"header1,header2\nvalue1,\nvalue3,value4",  # NaN in second column
             "nan_fill_missing.csv",
             "items",  # Custom rows name
-            SHOULD_FILL_NAN,  # Enable fill
+            SHOULD_FILL_NAN,
             "MISSING",  # Fill value
             PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
@@ -955,8 +997,8 @@ def test_parse_toml_or_yaml(
             b"col_a,col_b,col_c\n1,alpha,\n,beta,gamma\n3,,delta",  # Multiple NaNs
             "multi_nan_fill_empty.csv",
             DEFAULT_CSV_ROWS_NAME,
-            SHOULD_FILL_NAN,  # Enable fill
-            "",  # Fill value (empty string)
+            SHOULD_FILL_NAN,
+            "",
             PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
             {
@@ -973,7 +1015,7 @@ def test_parse_toml_or_yaml(
             b"id,value,category\n1,100,A\n2,,B\n3,300,C",  # NaN in potentially numeric column
             "numeric_nan_fill_na.csv",
             DEFAULT_CSV_ROWS_NAME,
-            SHOULD_FILL_NAN,  # Enable fill
+            SHOULD_FILL_NAN,
             "N/A",  # Fill value
             PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
@@ -991,7 +1033,7 @@ def test_parse_toml_or_yaml(
             b"field1,field2\nvalueA,valueB\n,\nvalueC,valueD",  # Row with all NaNs
             "all_nan_row.csv",
             DEFAULT_CSV_ROWS_NAME,
-            SHOULD_FILL_NAN,  # Enable fill
+            SHOULD_FILL_NAN,
             "DEFAULT",  # Fill value
             PARSE_SHOULD_SUCCEED,
             NO_EXPECTED_ERROR,
@@ -1078,22 +1120,38 @@ def test_parse_csv(
     expected_dict: Optional[Dict[str, Any]],
     expected_parse_error: Optional[str],
 ) -> None:
-    """Tests the ConfigParser specifically for CSV file inputs.
+    """Tests `ConfigParser`'s ability to parse CSV files.
 
-    Covers scenarios such as different delimiters, quoting, NaN values (with and
-    without filling), empty files, large files, null bytes, encoding issues,
-    and whitespace handling.
+    This parameterized test covers various CSV-specific scenarios:
+    - Basic CSV structure with headers and data.
+    - Handling of empty files or files with only headers.
+    - Parsing values with different delimiters (implicitly handled by pandas sniffing).
+    - Correctly parsing quoted fields containing commas or newlines.
+    - Handling of Not a Number (NaN) values:
+        - Recognizing empty fields as NaN (using `numpy.nan`).
+        - Optionally filling NaN values with a specified string (`enable_fill_nan`, `fill_nan_with`).
+    - Using a custom key name for the list of CSV rows (`csv_rows_name`).
+    - Large file handling (within size limits).
+    - Detection of null bytes within the content.
+    - Encoding issues (e.g., invalid UTF-8).
+    - Handling of leading/trailing whitespace in headers and data.
+    - Errors due to unclosed quotes.
+    - Validation of initial and final error messages and parsed dictionary/string states,
+      using helper functions (`_assert_csv_dicts_equal`) for robust comparison.
 
     Args:
-        config_content: The byte content of the CSV file.
-        file_name: The simulated name of the file (must end with .csv).
-        csv_rows_name: The key name to use for the list of CSV rows in the output dict.
-        enable_fill_nan: Whether to enable filling NaN values.
-        fill_nan_with: The string value to replace NaN values with if enabled.
-        expected_parse_result: Expected boolean result from the parse() method.
-        expected_init_error: Expected error message during ConfigParser init, or None.
-        expected_dict: Expected dictionary output after parsing, or None.
-        expected_parse_error: Expected error message after calling parse(), or None.
+        config_content: The byte string representing the content of the CSV file.
+        file_name: The simulated filename (must end with .csv).
+        csv_rows_name: The dictionary key under which the list of parsed CSV rows should be stored.
+        enable_fill_nan: Boolean flag passed to the parser to control NaN filling.
+        fill_nan_with: The string value used to replace NaNs when `enable_fill_nan` is True.
+        expected_parse_result: Boolean indicating if `parser.parse()` is expected to succeed.
+        expected_init_error: The expected error message during `ConfigParser`
+            initialization (e.g., for encoding errors detected early), or `None`.
+        expected_dict: The dictionary expected in `parser.parsed_dict` after parsing,
+            or `None` if parsing fails. The comparison is done via `_assert_csv_dicts_equal`.
+        expected_parse_error: The expected error message in `parser.error_message`
+            after `parser.parse()` is called, or `None`.
     """
     config_file = BytesIO(config_content)
     config_file.name = file_name  # Set the name attribute for extension checking
