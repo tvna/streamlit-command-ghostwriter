@@ -274,7 +274,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Release: v${developVersion}`,
-              head: context.sha,
+              head: 'develop',
               base: 'main',
               body: commitLogContent,
               maintainer_can_modify: true,
