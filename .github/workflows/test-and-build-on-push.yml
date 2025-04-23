@@ -150,12 +150,12 @@ jobs:
               console.log(`Open PR with title "${expectedTitle}" exists? ${titleExists}`);
               console.log(prExists.toString());
 
-              core.setOutput('exists', prExists.toString());
+              core.setOutput('pr_exists', prExists.toString());
               core.setOutput('title_exists', titleExists.toString());
               core.setOutput('success', 'true');
             } catch (error) {
               console.error(`Error checking for existing PRs: ${error.message}`);
-              core.setOutput('exists', ''); // Indicate failure
+              core.setOutput('pr_exists', ''); // Indicate failure
               core.setOutput('title_exists', ''); // Indicate failure
               core.setOutput('success', 'false');
               core.setFailed(`Error checking for existing PRs: ${error.message}`);
@@ -240,7 +240,7 @@ jobs:
         run: |
           echo "Comparison Result: ${{ steps.compare-versions.outputs.comparison-result }}"
           echo "Check PR Success: ${{ steps.check-pr.outputs.success }}"
-          echo "Check PR Exists: ${{ steps.check-pr.outputs.exists }}"
+          echo "Check PR Exists: ${{ steps.check-pr.outputs.pr_exists }}"
           echo "Check PR Title Exists: ${{ steps.check-pr.outputs.title_exists }}"
           echo "Ensure Labels Success: ${{ steps.ensure-labels.outputs.success }}"
           echo "Show commit log: $(cat .commit-log.txt)"
@@ -251,7 +251,7 @@ jobs:
         if: |
           steps.compare-versions.outputs.comparison-result == '>' &&
           steps.check-pr.outputs.success == 'true' &&
-          steps.check-pr.outputs.exists == '0' &&
+          steps.check-pr.outputs.pr_exists == 'false' &&
           steps.check-pr.outputs.title_exists == 'false' &&
           steps.ensure-labels.outputs.success == 'true'
         with:
@@ -323,7 +323,7 @@ jobs:
           script: |
             const compareResult = "${{ steps.compare-versions.outputs.comparison-result }}";
             const checkPrSuccess = "${{ steps.check-pr.outputs.success }}";
-            const checkPrExists = "${{ steps.check-pr.outputs.exists }}";
+            const checkPrExists = "${{ steps.check-pr.outputs.pr_exists }}";
             const checkPrTitleExists = "${{ steps.check-pr.outputs.title_exists }}";
             const ensureLabelsSuccess = "${{ steps.ensure-labels.outputs.success }}";
             // Use the outcome and URL from the new script step
