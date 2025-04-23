@@ -1,5 +1,5 @@
 ---
-name: Test and Build (main)
+name: Test and Build (on merged to main)
 
 on:
   push:
