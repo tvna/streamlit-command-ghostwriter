@@ -498,7 +498,10 @@ class DocumentRender(BaseModel):
             5. メモリ使用量の検証
             6. フォーマット処理
         """
-        if not self._validation_state.is_valid or self._template_content is None:
+        if not self._validation_state.is_valid:
+            return False
+
+        if self._template_content is None:
             return False
 
         config: Optional[ContextConfig] = self._prepare_context_config(context, format_type, is_strict_undefined)

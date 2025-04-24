@@ -113,7 +113,7 @@ class TemplateConfig(BaseModel):
 
     model_config = ConfigDict(strict=True, validate_assignment=True)
 
-    max_range_size: Annotated[int, Field(gt=0)] = Field(default=100000)
+    max_range_size: Annotated[int, Field(default=100000, gt=0)]
     restricted_tags: Set[str] = Field(default_factory=lambda: {"macro", "include", "import", "extends", "do"})
     restricted_attributes: Set[str] = Field(
         default_factory=lambda: {
@@ -142,9 +142,9 @@ class RangeConfig(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    start: int = Field(default=0, gt=0)
-    stop: int = Field(default=100, gt=0)
-    step: int = Field(default=1, gt=0)
+    start: Annotated[int, Field(default=0, gt=0, validate_default=False)]
+    stop: Annotated[int, Field(default=100, gt=0, validate_default=True)]
+    step: Annotated[int, Field(default=1, gt=0, validate_default=False)]
 
 
 class ValidationState(BaseModel):
@@ -240,9 +240,9 @@ class TemplateSecurityValidator(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)  # Allow custom types if needed
 
     # --- Public Fields (Configuration) ---
-    config: TemplateConfig = Field(default_factory=TemplateConfig)
-    max_file_size_bytes: int = Field(gt=0)
-    max_memory_size_bytes: int = Field(gt=0)
+    _config: TemplateConfig = PrivateAttr(default=TemplateConfig())
+    max_file_size_bytes: Annotated[int, Field(gt=0)]
+    max_memory_size_bytes: Annotated[int, Field(gt=0)]
 
     # --- Private Fields (Internal State) ---
     _validation_state: ValidationState = PrivateAttr(default_factory=ValidationState)
@@ -251,17 +251,17 @@ class TemplateSecurityValidator(BaseModel):
     @property
     def max_range_size(self) -> int:
         """最大range値を返す。"""
-        return self.config.max_range_size
+        return self._config.max_range_size
 
     @property
     def restricted_tags(self) -> Set[str]:
         """禁止タグのセットを返す。"""
-        return self.config.restricted_tags
+        return self._config.restricted_tags
 
     @property
     def restricted_attributes(self) -> Set[str]:
         """禁止属性のセットを返す。"""
-        return self.config.restricted_attributes
+        return self._config.restricted_attributes
 
     def validate_runtime_security(self, ast: nodes.Template, context: Dict[str, Any]) -> ValidationState:
         """ランタイムセキュリティの検証を実行する。
