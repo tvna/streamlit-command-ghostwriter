@@ -21,7 +21,7 @@ import datetime
 import pprint
 import typing
 from io import BytesIO
-from typing import Any, Final, Optional, Union
+from typing import Any, Dict, Final, List, Optional, Union
 
 import numpy as np
 import pytest
@@ -110,7 +110,7 @@ def _assert_csv_values_equal(p_val: Union[str, int, float, None], e_val: Union[s
         assert p_val == e_val, f"CSV row {row_idx}, key '{key}' value check: Mismatch: Got {p_val!r}, Expected {e_val!r}"
 
 
-def _assert_csv_rows_equal(parsed_rows: typing.List[str], expected_rows: typing.List[str]) -> None:
+def _assert_csv_rows_equal(parsed_rows: List[Dict[str, Any]], expected_rows: List[Dict[str, Any]]) -> None:
     """Asserts equality between two lists of dictionaries representing CSV rows.
 
     Validates the structure (list of dicts) and length, then delegates

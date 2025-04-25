@@ -75,7 +75,6 @@ from datetime import datetime
 from decimal import Decimal
 from functools import wraps
 from io import BytesIO
-from types import UnionType
 from typing import (
     Annotated,
     Any,
@@ -85,7 +84,7 @@ from typing import (
     Final,
     List,
     Optional,
-    Type,
+    TypeAlias,
     TypeVar,
     Union,
 )
@@ -111,12 +110,12 @@ MAX_FORMAT_TYPE: Final[int] = FORMAT_TYPE_REMOVE_ALL
 MAX_BYTES_PER_CHAR_UTF8: Final[int] = 4  # Maximum bytes per character assumed for UTF-8 estimate
 
 T = TypeVar("T")
-ValueType: UnionType = Union[str, Decimal, bool, None]
-ListType: Type = List[Union[ValueType, "ListType", "DictType"]]
-DictType: Type = Dict[str, Union[ValueType, ListType, "DictType"]]
-ContextType: Type = Dict[str, Union[ValueType, ListType, DictType]]
-RecursiveValue: UnionType = Union[ValueType, ListType, DictType]
-ContainerType: UnionType = Union[ValueType, ListType, DictType]
+ValueType: TypeAlias = Union[str, Decimal, bool, None]
+ListType: TypeAlias = List[Union[ValueType, "ListType", "DictType"]]
+DictType: TypeAlias = Dict[str, Union[ValueType, ListType, "DictType"]]
+ContextType: TypeAlias = Dict[str, Union[ValueType, ListType, DictType]]
+RecursiveValue: TypeAlias = Union[ValueType, ListType, DictType]
+ContainerType: TypeAlias = Union[ValueType, ListType, DictType]
 
 
 def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", "OperandType"], str]:
@@ -166,54 +165,54 @@ class CustomUndefined(Undefined):
 
     # 算術演算子のサポート
     @undefined_operation
-    def __add__(self, other: "OperandType") -> str:
+    def __add__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __radd__(self, other: "OperandType") -> str:
+    def __radd__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __sub__(self, other: "OperandType") -> str:
+    def __sub__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rsub__(self, other: "OperandType") -> str:
+    def __rsub__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __mul__(self, other: "OperandType") -> str:
+    def __mul__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rmul__(self, other: "OperandType") -> str:
+    def __rmul__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __truediv__(self, other: "OperandType") -> str:
+    def __truediv__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rtruediv__(self, other: "OperandType") -> str:
+    def __rtruediv__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __floordiv__(self, other: "OperandType") -> str:
+    def __floordiv__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rfloordiv__(self, other: "OperandType") -> str:
+    def __rfloordiv__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __mod__(self, other: "OperandType") -> str:
+    def __mod__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rmod__(self, other: "OperandType") -> str:
+    def __rmod__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
-    def __call__(self, *args: object, **kwargs: object) -> "CustomUndefined":
+    def __call__(self, *args: object, **kwargs: object) -> "CustomUndefined":  # type: ignore[override]
         return self
 
 
@@ -236,7 +235,7 @@ class FormatConfig(BaseModel):
 class ContextConfig(BaseModel):
     """コンテキスト設定のバリデーションモデル。"""
 
-    model_config: ConfigDict = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True)
 
     context: Dict[str, Any] = Field(default_factory=dict)
     format_config: FormatConfig

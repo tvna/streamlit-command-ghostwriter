@@ -31,8 +31,10 @@ various conditions, including malformed templates, security attacks, and edge ca
 import typing
 from io import BytesIO
 from typing import (
-    Any,  # Import Any directly
+    Any,
     Callable,
+    Dict,
+    List,
     Optional,
 )
 from typing import (
@@ -65,47 +67,65 @@ SET_TIMEOUT: MarkDecorator = pytest.mark.timeout(10)
 
 
 # --- Helper functions for deeply nested data ---
-def _create_deeply_nested_list(depth: int) -> typing.List[Any]:
+def _create_deeply_nested_list(depth: int) -> List[Any]:
     """Creates a nested list with the specified depth."""
-    root = current = []
+    root: List[Any] = []
+    current: List[Any] = root
     for _ in range(depth):
-        new_list = []
+        new_list: List[Any] = []
         current.append(new_list)
         current = new_list
     return root
 
 
-def _create_deeply_nested_dict(depth: int) -> typing.Dict[str, Any]:
+def _create_deeply_nested_dict(depth: int) -> Dict[str, Any]:
     """Creates a nested dictionary with the specified depth."""
-    root = current = {}
+    root: Dict[str, Any] = {}
+    current: Dict[str, Any] = root
     for _ in range(depth):
-        new_dict = {}
+        new_dict: Dict[str, Any] = {}
         current["next"] = new_dict
         current = new_dict
     return root
 
 
 # --- Helper functions for circular data ---
-def _create_circular_list() -> typing.Dict[str, list]:
+def _create_circular_list() -> Dict[str, List[Any]]:
     """Creates a dictionary containing a list that references itself."""
     data = [1, 2]
     data.append(data)  # type: ignore[arg-type] # Intentionally creating circular ref
     return {"data": data}
 
 
-def _create_circular_dict() -> typing.Dict[str, dict]:
+def _create_circular_dict() -> Dict[str, Dict[Any, Any]]:
     """Creates a dictionary containing a dictionary that references itself."""
-    data: typing.Dict[str, Any] = {"a": 1}
+    data: Dict[str, Any] = {"a": 1}
     data["self"] = data  # Intentionally creating circular ref
     return {"data": data}
 
 
-def _create_list_with_circular_dict() -> typing.Dict[str, list]:
+def _create_list_with_circular_dict() -> Dict[str, List[Any]]:
     """Creates a dictionary containing a list with a dictionary that references itself."""
-    d: typing.Dict[str, Any] = {}
+    d: Dict[str, Any] = {}
     d["rec"] = d
     data = [1, d, 3]
     return {"data": data}
+
+
+def _create_indirect_circular_list() -> Dict[str, List[Any]]:
+    """Creates a dictionary containing an indirectly circular list."""
+    l1: List[Any] = []
+    l2: List[Any] = [l1]
+    l1.append(l2)
+    return {"data": l1}
+
+
+def _create_indirect_circular_dict() -> Dict[str, Dict[str, Any]]:
+    """Creates a dictionary containing an indirectly circular dictionary."""
+    d1: Dict[str, Any] = {}
+    d2: Dict[str, Any] = {"d1": d1}
+    d1["d2"] = d2
+    return {"data": d1}
 
 
 @pytest.fixture
@@ -1198,8 +1218,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             b"{{ data }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            (lambda: (data := [], data.append(data), {"data": data})[-1])(),
-            "[[...]]",
+            _create_circular_list(),  # Use helper function
+            "[1, 2, [...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
             id="test_render_success_recursive_list_from_context_strict",
@@ -1208,8 +1228,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             b"{{ data }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            (lambda: (data := {}, data.update({"self": data}), {"data": data})[-1])(),
-            "{&#39;self&#39;: {...}}",
+            _create_circular_dict(),  # Use helper function
+            "{&#39;a&#39;: 1, &#39;self&#39;: {...}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
             id="test_render_success_recursive_dict_from_context_strict",
@@ -1238,7 +1258,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             b"{{ data }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            (lambda: (l1 := [], l2 := [l1], l1.append(l2), {"data": l1})[-1])(),
+            _create_indirect_circular_list(),  # Use helper function
             "[[[...]]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1478,8 +1498,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             b"{{ data }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            (lambda: (data := [], data.append(data), {"data": data})[-1])(),
-            "[[...]]",
+            _create_circular_list(),  # Use helper function
+            "[1, 2, [...]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
             id="test_render_success_context_recursive_list_strict",
@@ -1488,8 +1508,8 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             b"{{ data }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            (lambda: (data := {}, data.update({"self": data}), {"data": data})[-1])(),
-            "{&#39;self&#39;: {...}}",
+            _create_circular_dict(),  # Use helper function
+            "{&#39;a&#39;: 1, &#39;self&#39;: {...}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
             id="test_render_success_context_recursive_dict_strict",
@@ -1498,7 +1518,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             b"{{ data }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            (lambda: (l1 := [], l2 := [l1], l1.append(l2), {"data": l1})[-1])(),
+            _create_indirect_circular_list(),  # Use helper function
             "[[[...]]]",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
@@ -1508,7 +1528,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             b"{{ data }}",
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
-            (lambda: (d1 := {}, d2 := {"d1": d1}, d1.update({"d2": d2}), {"data": d1})[-1])(),
+            _create_indirect_circular_dict(),  # Use helper function
             "{&#39;d2&#39;: {&#39;d1&#39;: {...}}}",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,

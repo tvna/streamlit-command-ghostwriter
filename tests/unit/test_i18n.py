@@ -45,7 +45,6 @@ def test_i18n_structure_consistency() -> None:
     lang_name: str
     lang_dict: Dict[str, Any]
     section_key: str
-    section_dict: Dict[str, Any]
     key: str
     value: Union[str, Dict[str, Any]]
 
@@ -57,12 +56,14 @@ def test_i18n_structure_consistency() -> None:
 
         # Check that all second-level dictionaries have the same keys
         for section_key, section_dict in lang_dict.items():
+            assert isinstance(section_dict, dict), f"Value for {section_key} in {lang_name} is not a dict"
             ref_section: Mapping[str, Any] = reference_lang[section_key]
             assert set(section_dict.keys()) == set(ref_section.keys()), f"Section {section_key} in {lang_name} has different keys"
 
             # Check nested dictionaries (like format_type_items)
             for key, value in section_dict.items():
-                if isinstance(value, dict) and isinstance(ref_section[key], dict):
+                if isinstance(value, dict):
+                    assert isinstance(ref_section[key], dict), f"Ref value for {key} in {section_key} is not a dict"
                     assert set(value.keys()) == set(ref_section[key].keys()), (
                         f"Nested dict {key} in {section_key}.{lang_name} has different keys"
                     )
@@ -79,12 +80,12 @@ def test_i18n_no_empty_strings() -> None:
     lang_name: str
     lang_dict: Dict[str, Any]
     section_key: str
-    section_dict: Dict[str, Any]
     key: str
     value: Union[str, Dict[str, Any]]
 
     for lang_name, lang_dict in LANGUAGES.items():
         for section_key, section_dict in lang_dict.items():
+            assert isinstance(section_dict, dict), f"Value for {section_key} in {lang_name} is not a dict"
             for key, value in section_dict.items():
                 if isinstance(value, str):
                     assert value.strip() != "", f"Empty string found at {lang_name}.{section_key}.{key}"
@@ -113,7 +114,6 @@ def test_i18n_string_interpolation_safety(unsafe_pattern: str) -> None:
     lang_name: str
     lang_dict: Dict[str, Any]
     section_key: str
-    section_dict: Dict[str, Any]
     key: str
     value: Union[str, Dict[str, Any]]
     subkey: str
@@ -122,6 +122,7 @@ def test_i18n_string_interpolation_safety(unsafe_pattern: str) -> None:
     # Arrange & Act & Assert
     for lang_name, lang_dict in LANGUAGES.items():
         for section_key, section_dict in lang_dict.items():
+            assert isinstance(section_dict, dict), f"Value for {section_key} in {lang_name} is not a dict"
             for key, value in section_dict.items():
                 if isinstance(value, str):
                     assert unsafe_pattern not in value, f"Unsafe pattern {unsafe_pattern} found in {lang_name}.{section_key}.{key}"

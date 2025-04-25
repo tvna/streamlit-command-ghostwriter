@@ -86,7 +86,7 @@ import pprint
 import sys
 import tomllib
 from io import BytesIO, StringIO
-from typing import ClassVar, Dict, Final, List, Optional, TypeAlias, Union
+from typing import Any, ClassVar, Dict, Final, List, Optional, TypeAlias, Union, cast
 
 import pandas as pd
 import yaml
@@ -96,9 +96,11 @@ from .validate_uploaded_file import FileSizeConfig, FileValidator
 
 # Type aliases for complex types
 JSONScalarValue: TypeAlias = Union[str, int, float, bool, None]
-JSONValue: TypeAlias = Union[JSONScalarValue, List, Dict]
+# Reverting List and Dict to use Any to resolve complex type compatibility issues
+JSONValue: TypeAlias = Union[JSONScalarValue, List[Any], Dict[str, Any]]
 JSONDict: TypeAlias = Dict[str, JSONValue]
 CSVRow: TypeAlias = Dict[str, JSONScalarValue]
+# Keep CSVData specific as List[CSVRow]
 CSVData: TypeAlias = List[CSVRow]
 
 
@@ -242,10 +244,12 @@ class ConfigParser(BaseModel):
                 return tomllib.loads(config_data)
             case "yaml" | "yml":
                 try:
-                    parsed_data: Final[Union[JSONDict, List[JSONValue]]] = yaml.safe_load(config_data)
+                    # Use Any for parsed_data from yaml as structure can be variable
+                    parsed_data: Final[Any] = yaml.safe_load(config_data)
                     if not isinstance(parsed_data, dict):
                         raise SyntaxError("Invalid YAML file loaded.")
-                    return parsed_data
+                    # Ensure the returned dictionary conforms to JSONDict
+                    return cast("JSONDict", parsed_data)
                 except yaml.MarkedYAMLError as e:
                     # Re-raise the original exception to preserve marks for tests
                     raise e from e
@@ -290,6 +294,7 @@ class ConfigParser(BaseModel):
                 raise ValueError("CSV file must contain at least one data row.")
 
             # 5. Return the successful result
+            # Reverting the cast as JSONValue now uses Any for List/Dict elements
             return {self.csv_rows_name: mapped_list}
 
         # 6. Exception Handling (slightly adjusted comments/structure)

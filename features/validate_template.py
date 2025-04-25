@@ -142,7 +142,7 @@ class RangeConfig(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    start: Annotated[int, Field(default=0, gt=0, validate_default=False)]
+    start: Annotated[int, Field(default=0, ge=0, validate_default=False)]
     stop: Annotated[int, Field(default=100, gt=0, validate_default=True)]
     step: Annotated[int, Field(default=1, gt=0, validate_default=False)]
 
@@ -390,7 +390,7 @@ class TemplateSecurityValidator(BaseModel):
             bool: 検証が成功したかどうか
         """
         for node in ast.find_all(nodes.Div):
-            right_value: Final[EvaluatedValue] = self._evaluate_expression(node.right, context, assignments)
+            right_value: EvaluatedValue = self._evaluate_expression(node.right, context, assignments)
             if right_value == 0:
                 validation_state.set_error("Template security error: division by zero is not allowed")
                 return False
@@ -788,7 +788,8 @@ class TemplateSecurityValidator(BaseModel):
         try:
             if len(args) == 1:  # range(stop)
                 stop = self._evaluate_literal(args[0])
-                range_config = RangeConfig(stop=stop)
+                # Provide default start and step explicitly for RangeConfig validation
+                range_config = RangeConfig(start=0, stop=stop, step=1)
                 return range_config.start, range_config.stop, range_config.step
             elif len(args) >= 2:  # range(start, stop[, step])
                 start = self._evaluate_literal(args[0])

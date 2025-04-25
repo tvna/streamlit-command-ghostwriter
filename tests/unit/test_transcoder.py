@@ -156,7 +156,7 @@ def test_transcoder_non_string_data(
     assert isinstance(export_file_allow_fallback, BytesIO), "Export file with allow fallback should be BytesIO instance"
     if isinstance(export_file_allow_fallback, BytesIO):
         assert export_file_allow_fallback.getvalue() == expected_result, (
-            f"Binary content mismatch with allow fallback.\nExpected: {expected_result}\nGot: {export_file_allow_fallback.getvalue()}"
+            f"Binary content mismatch with allow fallback.\nExpected: {expected_result!r}\nGot: {export_file_allow_fallback.getvalue()!r}"
         )
         assert export_file_allow_fallback.name == import_file.name, (
             f"Filename mismatch with allow fallback.\nExpected: {import_file.name}\nGot: {export_file_allow_fallback.name}"
@@ -275,7 +275,7 @@ def test_transcoder_binary_edge_cases(
     if expected_encoding is None:
         # エンコーディングが検出されない場合は、バイナリデータとして扱われる
         assert isinstance(result, BytesIO), "Result should be BytesIO instance for binary data"
-        assert result.getvalue() == expected_result, f"Binary content mismatch.\nExpected: {expected_result}\nGot: {result.getvalue()}"
+        assert result.getvalue() == expected_result, f"Binary content mismatch.\nExpected: {expected_result!r}\nGot: {result.getvalue()!r}"
     else:
         # エンコーディングが検出された場合は、テキストデータとして扱われる
         assert result is not None, "Result should not be None for text data"
@@ -377,12 +377,13 @@ def test_transcoder_encoding_conversion(
 
     # Act
     transcoder = TextTranscoder(import_file)
+    result: Optional[BytesIO] = None
 
     if expected_error is None:
-        result: Optional[BytesIO] = transcoder.convert(target_encoding, is_allow_fallback)
+        result = transcoder.convert(target_encoding, is_allow_fallback)
     else:
         with pytest.raises(UnicodeEncodeError) as exc_info:
-            result: Optional[BytesIO] = transcoder.convert(target_encoding, is_allow_fallback)
+            transcoder.convert(target_encoding, is_allow_fallback)
 
     # Assert
     if expected_result is None:
@@ -402,7 +403,7 @@ def test_transcoder_encoding_conversion(
                         # その他のエンコーディングの場合
                         assert result.getvalue() == expected_result
                 except UnicodeDecodeError:
-                    pytest.fail(f"Could not decode {result.getvalue()} with {target_encoding}")
+                    pytest.fail(f"Could not decode {result.getvalue()!r} with {target_encoding}")
 
 
 @UNIT
@@ -435,5 +436,5 @@ def test_transcoder_missing_encoding(test_data: bytes, invalid_encoding: str, ex
     assert isinstance(result_with_fallback, BytesIO), "Result with fallback should be BytesIO instance"
     if isinstance(result_with_fallback, BytesIO):
         assert result_with_fallback.getvalue() == test_data, (
-            f"Content mismatch with fallback.\nExpected: {test_data}\nGot: {result_with_fallback.getvalue()}"
+            f"Content mismatch with fallback.\nExpected: {test_data!r}\nGot: {result_with_fallback.getvalue()!r}"
         )
