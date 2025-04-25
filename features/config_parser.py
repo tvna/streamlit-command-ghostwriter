@@ -86,13 +86,20 @@ import pprint
 import sys
 import tomllib
 from io import BytesIO, StringIO
-from typing import Any, ClassVar, Dict, Final, List, Optional, Union
+from typing import ClassVar, Dict, Final, List, Optional, TypeAlias, Union
 
 import pandas as pd
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from .validate_uploaded_file import FileSizeConfig, FileValidator  # type: ignore
+from .validate_uploaded_file import FileSizeConfig, FileValidator
+
+# Type aliases for complex types
+JSONScalarValue: TypeAlias = Union[str, int, float, bool, None]
+JSONValue: TypeAlias = Union[JSONScalarValue, List, Dict]
+JSONDict: TypeAlias = Dict[str, JSONValue]
+CSVRow: TypeAlias = Dict[str, JSONScalarValue]
+CSVData: TypeAlias = List[CSVRow]
 
 
 class ConfigParser(BaseModel):
@@ -158,7 +165,7 @@ class ConfigParser(BaseModel):
     # Private attributes
     _file_extension: str = PrivateAttr()
     _config_data: Optional[str] = PrivateAttr(default=None)
-    _parsed_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
+    _parsed_dict: Optional[JSONDict] = PrivateAttr(default=None)
     _error_message: Optional[str] = PrivateAttr(default=None)
     _is_enable_fill_nan: bool = PrivateAttr(default=False)
     _fill_nan_with: Optional[str] = PrivateAttr(default=None)
@@ -219,7 +226,7 @@ class ConfigParser(BaseModel):
             self._parsed_dict = None
             return False
 
-    def _parse_by_file_type(self, config_data: str) -> Dict[str, Any]:
+    def _parse_by_file_type(self, config_data: str) -> JSONDict:
         """ファイルタイプに応じたパース処理を行います。
 
         Returns:
@@ -235,7 +242,7 @@ class ConfigParser(BaseModel):
                 return tomllib.loads(config_data)
             case "yaml" | "yml":
                 try:
-                    parsed_data: Final[Union[Dict[str, Any], List[Any]]] = yaml.safe_load(config_data)
+                    parsed_data: Final[Union[JSONDict, List[JSONValue]]] = yaml.safe_load(config_data)
                     if not isinstance(parsed_data, dict):
                         raise SyntaxError("Invalid YAML file loaded.")
                     return parsed_data
@@ -246,13 +253,13 @@ class ConfigParser(BaseModel):
                 return self._parse_csv_data(config_data)
             # The 'case _:' is used here to satisfy the type checker and catch unexpected states.
             # Validation in __initialize_from_file should prevent reaching this point.
-            case _:  # type: ignore
+            case _:
                 raise RuntimeError(
                     f"Internal error: Reached _parse_by_file_type with unexpected extension '{self._file_extension}'. "
                     "Validation should have caught this."
                 )
 
-    def _parse_csv_data(self, config_data: str) -> Dict[str, Any]:
+    def _parse_csv_data(self, config_data: str) -> JSONDict:
         """CSVデータをパースします。
 
         Returns:
@@ -276,7 +283,7 @@ class ConfigParser(BaseModel):
                 csv_data = self._handle_csv_nan_values(csv_data)
 
             # 3. Convert DataFrame rows to a list of dictionaries
-            mapped_list: List[Dict[str, Any]] = [row.to_dict() for _, row in csv_data.iterrows()]
+            mapped_list: CSVData = [row.to_dict() for _, row in csv_data.iterrows()]
 
             # 4. Early exit for header-only files (columns exist, but no data rows)
             if not mapped_list and csv_data.columns.size > 0:
@@ -317,7 +324,7 @@ class ConfigParser(BaseModel):
         csv_data.fillna(value=self._fill_nan_with, inplace=True)
         return csv_data
 
-    def _validate_memory_size(self, obj: Union[Dict[str, Any], str]) -> bool:
+    def _validate_memory_size(self, obj: Union[JSONDict, str]) -> bool:
         """メモリサイズのバリデーションを行います。
 
         Args:
@@ -337,7 +344,7 @@ class ConfigParser(BaseModel):
             return False
 
     @property
-    def parsed_dict(self) -> Optional[Dict[str, Any]]:
+    def parsed_dict(self) -> Optional[JSONDict]:
         """パースされた辞書を返します。エラーが発生した場合やメモリ消費量が上限を超える場合はNoneを返します。
 
         Returns:
