@@ -113,7 +113,7 @@ class TemplateConfig(BaseModel):
 
     model_config = ConfigDict(strict=True, validate_assignment=True)
 
-    max_range_size: Annotated[int, Field(default=100000, gt=0)]
+    max_range_size: Annotated[int, Field(gt=0)]
     restricted_tags: Set[str] = Field(default_factory=lambda: {"macro", "include", "import", "extends", "do"})
     restricted_attributes: Set[str] = Field(
         default_factory=lambda: {
@@ -240,7 +240,7 @@ class TemplateSecurityValidator(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)  # Allow custom types if needed
 
     # --- Public Fields (Configuration) ---
-    _config: TemplateConfig = PrivateAttr(default=TemplateConfig())
+    _config: TemplateConfig = PrivateAttr(default=TemplateConfig(max_range_size=100000))
     max_file_size_bytes: Annotated[int, Field(gt=0)]
     max_memory_size_bytes: Annotated[int, Field(gt=0)]
 

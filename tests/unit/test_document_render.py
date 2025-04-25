@@ -28,11 +28,11 @@ These tests ensure the template engine operates securely and predictably under
 various conditions, including malformed templates, security attacks, and edge cases.
 """
 
+import typing
 from io import BytesIO
 from typing import (
     Any,  # Import Any directly
     Callable,
-    Dict,
     Optional,
 )
 from typing import (
@@ -65,7 +65,7 @@ SET_TIMEOUT: MarkDecorator = pytest.mark.timeout(10)
 
 
 # --- Helper functions for deeply nested data ---
-def _create_deeply_nested_list(depth: int) -> list:
+def _create_deeply_nested_list(depth: int) -> typing.List[Any]:
     """Creates a nested list with the specified depth."""
     root = current = []
     for _ in range(depth):
@@ -75,7 +75,7 @@ def _create_deeply_nested_list(depth: int) -> list:
     return root
 
 
-def _create_deeply_nested_dict(depth: int) -> dict:
+def _create_deeply_nested_dict(depth: int) -> typing.Dict[str, Any]:
     """Creates a nested dictionary with the specified depth."""
     root = current = {}
     for _ in range(depth):
@@ -86,23 +86,23 @@ def _create_deeply_nested_dict(depth: int) -> dict:
 
 
 # --- Helper functions for circular data ---
-def _create_circular_list() -> Dict[str, list]:
+def _create_circular_list() -> typing.Dict[str, list]:
     """Creates a dictionary containing a list that references itself."""
     data = [1, 2]
     data.append(data)  # type: ignore[arg-type] # Intentionally creating circular ref
     return {"data": data}
 
 
-def _create_circular_dict() -> Dict[str, dict]:
+def _create_circular_dict() -> typing.Dict[str, dict]:
     """Creates a dictionary containing a dictionary that references itself."""
-    data: Dict[str, Any] = {"a": 1}
+    data: typing.Dict[str, Any] = {"a": 1}
     data["self"] = data  # Intentionally creating circular ref
     return {"data": data}
 
 
-def _create_list_with_circular_dict() -> Dict[str, list]:
+def _create_list_with_circular_dict() -> typing.Dict[str, list]:
     """Creates a dictionary containing a list with a dictionary that references itself."""
-    d: Dict[str, Any] = {}
+    d: typing.Dict[str, Any] = {}
     d["rec"] = d
     data = [1, d, 3]
     return {"data": data}
@@ -1952,7 +1952,7 @@ def test_render_template(
     template_content: bytes,
     format_type: int,
     is_strict_undefined: bool,
-    context: Dict[str, AnyType],
+    context: typing.Dict[str, AnyType],
     expected_content: Optional[str],
     expected_initial_error: Optional[str],
     expected_runtime_error: Optional[str],

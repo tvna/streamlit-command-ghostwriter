@@ -19,8 +19,7 @@
     "docs",
     "htmlcov",
     "node_modules",
-    "scripts",
-    "tests"
+    "scripts"
   ],
   "extensions": [
     ".py",

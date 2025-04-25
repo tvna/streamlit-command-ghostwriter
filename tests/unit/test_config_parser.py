@@ -19,8 +19,9 @@ The tests cover:
 
 import datetime
 import pprint
+import typing
 from io import BytesIO
-from typing import Any, Dict, Final, Optional, Union
+from typing import Any, Final, Optional, Union
 
 import numpy as np
 import pytest
@@ -34,7 +35,7 @@ SHOULD_FILL_NAN: Final[bool] = True
 SHOULD_NOT_FILL_NAN: Final[bool] = False
 DEFAULT_FILL_VALUE: Final[Optional[str]] = None
 DEFAULT_CSV_ROWS_NAME: Final[str] = "csv_rows"
-NO_EXPECTED_DICT: Final[Optional[Dict[str, Any]]] = None
+NO_EXPECTED_DICT: Final[Optional[typing.Dict[str, Any]]] = None
 NO_EXPECTED_INITIAL_ERROR: Final[Optional[str]] = None
 NO_EXPECTED_RUNTIME_ERROR: Final[Optional[str]] = None
 
@@ -109,7 +110,7 @@ def _assert_csv_values_equal(p_val: Union[str, int, float, None], e_val: Union[s
         assert p_val == e_val, f"CSV row {row_idx}, key '{key}' value check: Mismatch: Got {p_val!r}, Expected {e_val!r}"
 
 
-def _assert_csv_rows_equal(parsed_rows: list, expected_rows: list) -> None:
+def _assert_csv_rows_equal(parsed_rows: typing.List[str], expected_rows: typing.List[str]) -> None:
     """Asserts equality between two lists of dictionaries representing CSV rows.
 
     Validates the structure (list of dicts) and length, then delegates
@@ -136,7 +137,7 @@ def _assert_csv_rows_equal(parsed_rows: list, expected_rows: list) -> None:
             _assert_csv_values_equal(p_val, e_val, i, key)
 
 
-def _assert_csv_dicts_equal(parsed_dict: Dict[str, Any], expected_dict: Dict[str, Any], csv_rows_name: str) -> None:
+def _assert_csv_dicts_equal(parsed_dict: typing.Dict[str, Any], expected_dict: typing.Dict[str, Any], csv_rows_name: str) -> None:
     """Asserts equality between two dictionaries, with special handling for CSV data.
 
     Compares the list of CSV rows (stored under `csv_rows_name`) using
@@ -739,7 +740,7 @@ def test_parse_toml_or_yaml(
     config_content: bytes,
     file_name: str,
     expected_init_error: Optional[str],
-    expected_dict: Optional[Dict[str, Any]],
+    expected_dict: Optional[typing.Dict[str, Any]],
     expected_parse_error: Optional[str],
 ) -> None:
     """Tests `ConfigParser`'s ability to parse TOML and YAML files.
@@ -1051,7 +1052,7 @@ def test_parse_csv(
     enable_fill_nan: bool,
     fill_nan_with: str,
     expected_init_error: Optional[str],
-    expected_dict: Optional[Dict[str, Any]],
+    expected_dict: Optional[typing.Dict[str, Any]],
     expected_parse_error: Optional[str],
 ) -> None:
     """Tests `ConfigParser`'s ability to parse CSV files.
