@@ -147,4 +147,5 @@ runs:
       with:
         name: Python Benchmark on ${{ runner.os }}
         tool: "pytest"
+        github-token: ${{ inputs.github-token }}
         output-file-path: output.json
