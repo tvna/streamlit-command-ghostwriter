@@ -145,8 +145,6 @@ runs:
         inputs.browser == 'chromium'
       uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 # v1.20.4
       with:
-        name: Python Benchmark
+        name: Python Benchmark on ${{ runner.os }}
         tool: "pytest"
         output-file-path: output.json
-        github-token: ${{ inputs.github-token }}
-        skip-fetch-gh-pages: true
