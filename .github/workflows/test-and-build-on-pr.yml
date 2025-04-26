@@ -10,11 +10,16 @@ on:
       - .cursor/**
       - .devcontainer/**
       - assets/**
-      - README.md
+      - docs/**
       - .gitignore
-      - .cz_config.js
       - .pre-commit-config.yaml
+      - .pyre_configuration
+      - .yamllint.yml
       - "**.code-workspace"
+      - codecov.yml
+      - commitlint.config.js
+      - LICENSE
+      - README.md
     types:
       - opened
       - synchronize
@@ -36,6 +41,7 @@ env:
 
 jobs:
   test-and-build:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/reusable-test-and-build.yml
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
