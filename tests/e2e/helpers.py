@@ -343,7 +343,7 @@ class StreamlitTestHelper:
 
         Note:
             - アップロード要素の表示を確認
-            - ファイル選択ダイアログをイベントリスナーで処理
+            - ファイル選択ダイアログを処理
             - アップロード完了を待機
         """
         upload_container: Final[Locator] = self.page.locator(upload_container_selector).first
@@ -353,22 +353,10 @@ class StreamlitTestHelper:
         expect(upload_button).to_be_visible()
 
         test_file_path: str = TestData.get_test_file_path(file_name)
-
-        # Define the file chooser handler
-        def handle_file_chooser(file_chooser: FileChooser) -> None:
-            file_chooser.set_files(test_file_path)
-
-        # Listen for the file chooser event
-        self.page.on("filechooser", handle_file_chooser)
-
-        # Click the button to trigger the file chooser
-        upload_button.click()
-
-        # Wait for the file chooser event to be handled
-        self.page.wait_for_event("filechooser")
-
-        # Remove the listener
-        self.page.remove_listener("filechooser", handle_file_chooser)
+        with self.page.expect_file_chooser() as fc_info:
+            upload_button.click()
+        file_chooser: Final[FileChooser] = fc_info.value
+        file_chooser.set_files(test_file_path)
 
         self.wait_for_ui_stabilization()
 
@@ -453,7 +441,7 @@ class StreamlitTestHelper:
 
         Note:
             - 2つのアップロード要素の存在を確認
-            - 各ファイルのアップロードをイベントリスナーで実行
+            - 各ファイルのアップロードを実行
             - アップロード後のファイル名表示を確認
         """
         upload_containers: Final[List[Locator]] = self.page.locator("div[data-testid='stFileUploader']").all()
@@ -464,14 +452,11 @@ class StreamlitTestHelper:
         expect(config_upload_button).to_be_visible()
 
         config_file_path: str = TestData.get_test_file_path(config_file)
+        with self.page.expect_file_chooser() as fc_info:
+            config_upload_button.click()
+        config_file_chooser: Final[FileChooser] = fc_info.value
+        config_file_chooser.set_files(config_file_path)
 
-        def handle_config_chooser(file_chooser: FileChooser) -> None:
-            file_chooser.set_files(config_file_path)
-
-        self.page.on("filechooser", handle_config_chooser)
-        config_upload_button.click()
-        self.page.wait_for_event("filechooser")
-        self.page.remove_listener("filechooser", handle_config_chooser)
         self.wait_for_ui_stabilization()
 
         jinja_upload_container: Final[Locator] = upload_containers[1]
@@ -479,14 +464,11 @@ class StreamlitTestHelper:
         expect(jinja_upload_button).to_be_visible()
 
         jinja_file_path: str = TestData.get_test_file_path(template_file)
+        with self.page.expect_file_chooser() as fc_info:
+            jinja_upload_button.click()
+        template_file_chooser: Final[FileChooser] = fc_info.value
+        template_file_chooser.set_files(jinja_file_path)
 
-        def handle_template_chooser(file_chooser: FileChooser) -> None:
-            file_chooser.set_files(jinja_file_path)
-
-        self.page.on("filechooser", handle_template_chooser)
-        jinja_upload_button.click()
-        self.page.wait_for_event("filechooser")
-        self.page.remove_listener("filechooser", handle_template_chooser)
         self.wait_for_ui_stabilization()
 
         config_text: Final[str] = config_upload_container.inner_text()
@@ -596,14 +578,10 @@ class StreamlitTestHelper:
         expect(upload_button).to_be_visible()
 
         test_file_path: str = TestData.get_test_file_path(file_name)
-
-        def handle_debug_file_chooser(file_chooser: FileChooser) -> None:
-            file_chooser.set_files(test_file_path)
-
-        self.page.on("filechooser", handle_debug_file_chooser)
-        upload_button.click()
-        self.page.wait_for_event("filechooser")
-        self.page.remove_listener("filechooser", handle_debug_file_chooser)
+        with self.page.expect_file_chooser() as fc_info:
+            upload_button.click()
+        file_chooser: Final[FileChooser] = fc_info.value
+        file_chooser.set_files(test_file_path)
 
         self.page.wait_for_load_state("networkidle")
         self.page.wait_for_timeout(1000)
