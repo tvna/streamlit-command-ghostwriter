@@ -111,11 +111,14 @@ MAX_BYTES_PER_CHAR_UTF8: Final[int] = 4  # Maximum bytes per character assumed f
 
 T = TypeVar("T")
 ValueType: TypeAlias = Union[str, Decimal, bool, None]
-ListType: TypeAlias = List[Union[ValueType, "ListType", "DictType"]]
-DictType: TypeAlias = Dict[str, Union[ValueType, ListType, "DictType"]]
-ContextType: TypeAlias = Dict[str, Union[ValueType, ListType, DictType]]
-RecursiveValue: TypeAlias = Union[ValueType, ListType, DictType]
-ContainerType: TypeAlias = Union[ValueType, ListType, DictType]
+# Define RecursiveValue first to handle recursive structure more clearly
+RecursiveValue: TypeAlias = Union[ValueType, List["RecursiveValue"], Dict[str, "RecursiveValue"]]
+# Now define other types based on RecursiveValue
+ListType: TypeAlias = List[RecursiveValue]
+DictType: TypeAlias = Dict[str, RecursiveValue]
+ContextType: TypeAlias = Dict[str, RecursiveValue]  # Context can hold recursive structures
+# ContainerType is effectively the same as RecursiveValue in this structure
+ContainerType: TypeAlias = RecursiveValue
 
 
 def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", "OperandType"], str]:

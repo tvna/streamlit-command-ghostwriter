@@ -96,8 +96,8 @@ from .validate_uploaded_file import FileSizeConfig, FileValidator
 
 # Type aliases for complex types
 JSONScalarValue: TypeAlias = Union[str, int, float, bool, None]
-# Reverting List and Dict to use Any to resolve complex type compatibility issues
-JSONValue: TypeAlias = Union[JSONScalarValue, List[Any], Dict[str, Any]]
+# Revert to recursive definition without Any
+JSONValue: TypeAlias = Union[JSONScalarValue, List["JSONValue"], Dict[str, "JSONValue"]]
 JSONDict: TypeAlias = Dict[str, JSONValue]
 CSVRow: TypeAlias = Dict[str, JSONScalarValue]
 # Keep CSVData specific as List[CSVRow]
@@ -241,14 +241,15 @@ class ConfigParser(BaseModel):
 
         match self._file_extension:
             case "toml":
+                # tomllib.loads is assumed to return a structure compatible with JSONDict
                 return tomllib.loads(config_data)
             case "yaml" | "yml":
                 try:
-                    # Use Any for parsed_data from yaml as structure can be variable
+                    # yaml.safe_load returns Any, so we need to check and cast
                     parsed_data: Final[Any] = yaml.safe_load(config_data)
                     if not isinstance(parsed_data, dict):
                         raise SyntaxError("Invalid YAML file loaded.")
-                    # Ensure the returned dictionary conforms to JSONDict
+                    # Cast to JSONDict after checking it's a dict
                     return cast("JSONDict", parsed_data)
                 except yaml.MarkedYAMLError as e:
                     # Re-raise the original exception to preserve marks for tests
@@ -294,8 +295,9 @@ class ConfigParser(BaseModel):
                 raise ValueError("CSV file must contain at least one data row.")
 
             # 5. Return the successful result
-            # Reverting the cast as JSONValue now uses Any for List/Dict elements
-            return {self.csv_rows_name: mapped_list}
+            # Cast mapped_list to JSONValue to satisfy the dict item type check
+            # due to list invariance (List[CSVRow] vs List[JSONValue]).
+            return {self.csv_rows_name: cast("JSONValue", mapped_list)}
 
         # 6. Exception Handling (slightly adjusted comments/structure)
         except (pd.errors.ParserError, pd.errors.EmptyDataError) as e:
