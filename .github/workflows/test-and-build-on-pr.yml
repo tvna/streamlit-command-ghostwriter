@@ -14,9 +14,10 @@ on:
       - .gitignore
       - .pre-commit-config.yaml
       - .pyre_configuration
+      - .watchmanconfig
       - .yamllint.yml
       - "**.code-workspace"
-      - codecov.yml
+      - codecov.yaml
       - commitlint.config.js
       - LICENSE
       - README.md
