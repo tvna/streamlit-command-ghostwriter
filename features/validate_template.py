@@ -90,15 +90,6 @@ from .validate_uploaded_file import FileSizeConfig, FileValidator
 T = TypeVar("T")
 NodeT = TypeVar("NodeT", bound=nodes.Node)
 
-# Type definitions for container validation
-ContainerValueType: TypeAlias = Union[str, Decimal, bool, None]
-# Define ContainerType recursively using forward references directly, removing intermediate aliases
-ContainerType: TypeAlias = Union[
-    ContainerValueType,
-    List["ContainerType"],
-    Dict[str, "ContainerType"],
-]
-
 # Type definition for evaluated values
 # Define recursively to avoid Any
 EvaluatedValue: TypeAlias = Union[str, Decimal, bool, List["EvaluatedValue"], Dict[str, "EvaluatedValue"], None]
@@ -187,8 +178,9 @@ class HTMLContent(BaseModel):
 
     content: str = Field(...)
 
+    @classmethod
     @field_validator("content")
-    def _validate_html_content(cls, v: str) -> str:  # noqa: N805 (Keep cls for Pydantic validator)
+    def _validate_html_content(cls, v: str) -> str:
         """HTMLコンテンツを検証する。
 
         Args:
@@ -412,7 +404,7 @@ class TemplateSecurityValidator(BaseModel):
             ValueError: 安全でないHTML要素が含まれる場合
         """
         try:
-            html_content: Final[HTMLContent] = HTMLContent(content=value)
+            html_content = HTMLContent(content=value)
             return Markup("").join(html_content.content)
         except ValidationError as e:
             raise ValueError(str(e)) from e
