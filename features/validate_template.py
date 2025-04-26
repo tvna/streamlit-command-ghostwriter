@@ -706,7 +706,6 @@ class TemplateSecurityValidator(BaseModel):
             bool: 検証が成功した場合はTrue、失敗した場合はFalse
         """
         # マッピング: Node Type -> Validation Handler Function
-        # Remove type annotation from handler_map and let type checker infer
         handler_map = {
             nodes.Getattr: self._check_getattr,
             nodes.Getitem: self._check_getitem,
@@ -719,15 +718,25 @@ class TemplateSecurityValidator(BaseModel):
 
         for node in nodes_to_check:
             node_type = type(node)
-            # handler type will be inferred, remove explicit annotation
             handler = handler_map.get(node_type)
 
-            if handler:
-                # Call the handler (potential runtime errors if signature mismatches)
-                if not handler(node, validation_state):
-                    return False
-            # If no handler is found for the node type, it's ignored.
+            # If no handler exists for this node type, skip to the next node
+            if not handler:
+                continue
 
+            # Check if the retrieved handler is actually callable
+            if not callable(handler):
+                # This indicates an internal setup error, raise TypeError
+                raise TypeError(f"Internal error: Handler for {node_type} is not callable")
+
+            # Cast the handler to the expected generic signature
+            generic_handler = cast("Callable[[nodes.Node, ValidationState], bool]", handler)
+
+            # Execute the handler; if it returns False, a violation was found, so return False immediately
+            if not generic_handler(node, validation_state):
+                return False
+
+        # If the loop completes without finding any violations, return True
         return True
 
     def _validate_loop_range(self, ast: nodes.Template, validation_state: ValidationState) -> bool:
