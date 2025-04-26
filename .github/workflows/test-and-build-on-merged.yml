@@ -59,13 +59,13 @@ jobs:
       - name: Download macOS build artifact
         uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
-          name: desktop-app-macOS
+          name: desktop-app-macOS.zip
           path: artifacts/macos
 
       - name: Download Windows build artifact
         uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
-          name: desktop-app-Windows
+          name: desktop-app-Windows.zip
           path: artifacts/windows
 
       - name: Create Release with Artifacts
