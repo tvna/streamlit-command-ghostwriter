@@ -503,14 +503,15 @@ class DocumentRender(BaseModel):
         if not self._validation_state.is_valid:
             return False
 
-        if self._template_content is None:
+        template_content = self._template_content
+        if template_content is None:
             return False
 
         config: Optional[ContextConfig] = self._prepare_context_config(context, format_type, is_strict_undefined)
         if config is None or not self._validation_state.is_valid:
             return False
 
-        rendered_content: Optional[str] = self._process_template(config, self._template_content)
+        rendered_content: Optional[str] = self._process_template(config, template_content)
         if rendered_content is None or not self._validation_state.is_valid:
             return False
 
