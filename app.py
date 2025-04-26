@@ -184,12 +184,12 @@ def main() -> None:
 
     texts: Final[Box] = Box(LANGUAGES[default_language])
 
-    st.session_state.update(
-        {
-            "tab1_result_content": st.session_state.get("tab1_result_content"),
-            "tab2_result_content": st.session_state.get("tab2_result_content"),
-        }
-    )
+    # Initialize session state keys if they don't exist
+    if "tab1_result_content" not in st.session_state:
+        st.session_state["tab1_result_content"] = None
+    if "tab2_result_content" not in st.session_state:
+        st.session_state["tab2_result_content"] = None
+    # No need to update here initially, values are retrieved later
 
     st.set_page_config(page_title=app_title, page_icon=app_icon, layout="wide", initial_sidebar_state="expanded")
     st.title(f"{app_title} {app_icon}")
@@ -248,13 +248,10 @@ def main() -> None:
             st.session_state.get("strict_undefined", True),
         )
 
-        st.session_state.update(
-            {
-                "tab1_result_content": tab1_model.formatted_text,
-                "tab1_error_config": tab1_model.config_error_message,
-                "tab1_error_template": tab1_model.template_error_message,
-            }
-        )
+        # Update session state individually
+        st.session_state["tab1_result_content"] = tab1_model.formatted_text
+        st.session_state["tab1_error_config"] = tab1_model.config_error_message
+        st.session_state["tab1_error_template"] = tab1_model.template_error_message
 
         tab1_row2[2].download_button(
             label=texts.tab1.download_button,
@@ -301,12 +298,9 @@ def main() -> None:
         tab2_row2[1].button(texts.tab2.generate_toml_button, use_container_width=True, key="tab2_execute_toml")
         tab2_row2[2].button(texts.tab2.generate_yaml_button, use_container_width=True, key="tab2_execute_yaml")
 
-        st.session_state.update(
-            {
-                "tab2_result_content": tab2_model.config_dict,
-                "tab2_error_config": tab2_model.config_error_message,
-            }
-        )
+        # Update session state individually
+        st.session_state["tab2_result_content"] = tab2_model.config_dict
+        st.session_state["tab2_error_config"] = tab2_model.config_error_message
 
         tab2_view_model = TabViewModel(texts)
         tab2_view_model.set_execute_mode(
