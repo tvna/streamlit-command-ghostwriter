@@ -246,7 +246,7 @@ class ConfigParser(BaseModel):
             case "yaml" | "yml":
                 try:
                     # yaml.safe_load returns Any, so we need to check and cast
-                    parsed_data: Final[Any] = yaml.safe_load(config_data)
+                    parsed_data: Final[Union[Dict[str, Any], List[Any]]] = yaml.safe_load(config_data)
                     if not isinstance(parsed_data, dict):
                         raise SyntaxError("Invalid YAML file loaded.")
                     # Cast to JSONDict after checking it's a dict
@@ -288,7 +288,8 @@ class ConfigParser(BaseModel):
                 csv_data = self._handle_csv_nan_values(csv_data)
 
             # 3. Convert DataFrame rows to a list of dictionaries
-            mapped_list: CSVData = [row.to_dict() for _, row in csv_data.iterrows()]
+            # Cast the result of the list comprehension to CSVData to satisfy the type checker
+            mapped_list: CSVData = cast("CSVData", [row.to_dict() for _, row in csv_data.iterrows()])
 
             # 4. Early exit for header-only files (columns exist, but no data rows)
             if not mapped_list and csv_data.columns.size > 0:

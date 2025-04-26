@@ -31,14 +31,13 @@ various conditions, including malformed templates, security attacks, and edge ca
 import typing
 from io import BytesIO
 from typing import (
-    Any,
+    Any as AnyType,
+)
+from typing import (
     Callable,
     Dict,
     List,
     Optional,
-)
-from typing import (
-    Any as AnyType,
 )
 
 import pytest
@@ -67,63 +66,64 @@ SET_TIMEOUT: MarkDecorator = pytest.mark.timeout(10)
 
 
 # --- Helper functions for deeply nested data ---
-def _create_deeply_nested_list(depth: int) -> List[Any]:
+def _create_deeply_nested_list(depth: int) -> List[object]:
     """Creates a nested list with the specified depth."""
-    root: List[Any] = []
-    current: List[Any] = root
+    root: List[object] = []
+    current: List[object] = root
     for _ in range(depth):
-        new_list: List[Any] = []
+        new_list: List[object] = []
         current.append(new_list)
         current = new_list
     return root
 
 
-def _create_deeply_nested_dict(depth: int) -> Dict[str, Any]:
+def _create_deeply_nested_dict(depth: int) -> Dict[str, object]:
     """Creates a nested dictionary with the specified depth."""
-    root: Dict[str, Any] = {}
-    current: Dict[str, Any] = root
+    root: Dict[str, object] = {}
+    current: Dict[str, object] = root
     for _ in range(depth):
-        new_dict: Dict[str, Any] = {}
+        new_dict: Dict[str, object] = {}
         current["next"] = new_dict
         current = new_dict
     return root
 
 
 # --- Helper functions for circular data ---
-def _create_circular_list() -> Dict[str, List[Any]]:
+def _create_circular_list() -> Dict[str, List[object]]:
     """Creates a dictionary containing a list that references itself."""
-    data = [1, 2]
-    data.append(data)  # type: ignore[arg-type] # Intentionally creating circular ref
+    data: List[object] = [1, 2]  # Explicitly type data as List[object]
+    data.append(data)
     return {"data": data}
 
 
-def _create_circular_dict() -> Dict[str, Dict[Any, Any]]:
+def _create_circular_dict() -> Dict[str, Dict[str, object]]:
     """Creates a dictionary containing a dictionary that references itself."""
-    data: Dict[str, Any] = {"a": 1}
+    data: Dict[str, object] = {"a": 1}
     data["self"] = data  # Intentionally creating circular ref
     return {"data": data}
 
 
-def _create_list_with_circular_dict() -> Dict[str, List[Any]]:
+def _create_list_with_circular_dict() -> Dict[str, List[object]]:
     """Creates a dictionary containing a list with a dictionary that references itself."""
-    d: Dict[str, Any] = {}
+    # Use Dict[str, object] because 'd' holds itself
+    d: Dict[str, object] = {}
     d["rec"] = d
     data = [1, d, 3]
     return {"data": data}
 
 
-def _create_indirect_circular_list() -> Dict[str, List[Any]]:
+def _create_indirect_circular_list() -> Dict[str, List[object]]:
     """Creates a dictionary containing an indirectly circular list."""
-    l1: List[Any] = []
-    l2: List[Any] = [l1]
+    l1: List[object] = []
+    l2: List[object] = [l1]
     l1.append(l2)
     return {"data": l1}
 
 
-def _create_indirect_circular_dict() -> Dict[str, Dict[str, Any]]:
+def _create_indirect_circular_dict() -> Dict[str, Dict[str, object]]:
     """Creates a dictionary containing an indirectly circular dictionary."""
-    d1: Dict[str, Any] = {}
-    d2: Dict[str, Any] = {"d1": d1}
+    d1: Dict[str, object] = {}
+    d2: Dict[str, object] = {"d1": d1}
     d1["d2"] = d2
     return {"data": d1}
 
