@@ -97,7 +97,8 @@ ContainerDictType: TypeAlias = Dict[str, Union[ContainerValueType, ContainerList
 ContainerType: TypeAlias = Union[ContainerValueType, ContainerListType, ContainerDictType]
 
 # Type definition for evaluated values
-EvaluatedValue: TypeAlias = Union[str, Decimal, List[Any], Dict[str, Any], bool, None]
+# Define recursively to avoid Any
+EvaluatedValue: TypeAlias = Union[str, Decimal, bool, List["EvaluatedValue"], Dict[str, "EvaluatedValue"], None]
 
 
 # Type definition for node evaluator function
@@ -516,7 +517,7 @@ class TemplateSecurityValidator(BaseModel):
         node: nodes.List,
         context: Dict[str, Any],
         assignments: Dict[str, Any],
-    ) -> List[Any]:
+    ) -> List[EvaluatedValue]:
         """リストを評価する。
 
         Args:
@@ -525,12 +526,12 @@ class TemplateSecurityValidator(BaseModel):
             assignments: 変数の割り当て状態
 
         Returns:
-            List[Any]: 評価結果
+            List[EvaluatedValue]: 評価結果
 
         Raises:
             ValueError: 再帰的構造が検出された場合
         """
-        values: List[Any] = []
+        values: List[EvaluatedValue] = []
         for item in node.items:
             value = self._evaluate_expression(item, context, assignments)
             values.append(value)
@@ -705,26 +706,27 @@ class TemplateSecurityValidator(BaseModel):
             bool: 検証が成功した場合はTrue、失敗した場合はFalse
         """
         # マッピング: Node Type -> Validation Handler Function
-        handler_map: Dict[type[nodes.Node], Callable[[Any, ValidationState], bool]] = {
-            nodes.Getattr: self._check_getattr,  # type: ignore
-            nodes.Getitem: self._check_getitem,  # type: ignore
+        # Remove type annotation from handler_map and let type checker infer
+        handler_map = {
+            nodes.Getattr: self._check_getattr,
+            nodes.Getitem: self._check_getitem,
             nodes.Name: self._check_name,
             nodes.Call: self._check_call,
-            nodes.Assign: self._check_assign,  # type: ignore
+            nodes.Assign: self._check_assign,
         }
 
         nodes_to_check = list(ast.find_all(tuple(handler_map.keys())))
 
         for node in nodes_to_check:
             node_type = type(node)
-            handler: Optional[Callable[[Any, ValidationState], bool]] = handler_map.get(node_type)
+            # handler type will be inferred, remove explicit annotation
+            handler = handler_map.get(node_type)
 
             if handler:
-                # Note: We pass the specific node type expected by the handler.
-                # The type ignore comments are necessary because the map values have a broader type hint.
+                # Call the handler (potential runtime errors if signature mismatches)
                 if not handler(node, validation_state):
                     return False
-            # If no handler is found for the node type, it's ignored (as intended).
+            # If no handler is found for the node type, it's ignored.
 
         return True
 
