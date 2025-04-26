@@ -1,35 +1,24 @@
 {
   "site_package_search_strategy": "pep561",
   "source_directories": [
-    "."
-  ],
-  "search_path": [
-    "features/",
-    "tests/",
-    "tests/unit/",
-    "tests/e2e/"
+    ".",
+    "features"
   ],
   "exclude": [
-    ".cursor",
-    ".github",
-    ".venv",
-    "assets",
-    "build",
-    "dist",
-    "docs",
-    "htmlcov",
-    "node_modules",
-    "scripts"
+    ".*\/.cursor\/.*",
+    ".*\/.devcontainer\/.*",
+    ".*\/.github\/.*",
+    ".*\/.venv\/.*",
+    ".*\/assets\/.*",
+    ".*\/build\/.*",
+    ".*\/dist\/.*",
+    ".*\/docs\/.*",
+    ".*\/htmlcov\/.*",
+    ".*\/node_modules\/.*"
   ],
   "extensions": [
     ".py",
     ".pyi"
-  ],
-  "ignore_all_errors": [
-    "altair",
-    "narwhals",
-    "numpy",
-    "pandas"
   ],
   "strict": true
 }
