@@ -29,6 +29,9 @@ on:
       build_succeeded:
         description: "Whether the build succeeded"
         value: ${{ jobs.workflow-summary.outputs.build_succeeded }}
+    secrets:
+      CODECOV_TOKEN:
+        required: true
 
 defaults:
   run:
@@ -51,9 +54,6 @@ env:
 concurrency:
   group: ${{ inputs.concurrency_group }}
   cancel-in-progress: ${{ inputs.concurrency_cancel_in_progress }}
-
-permissions:
-  contents: read
 
 jobs:
   # ============================================================
@@ -140,7 +140,7 @@ jobs:
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
 
       - name: Convert SARIF to Markdown Summary
         uses: ./.github/actions/convert-sarif-to-summary
@@ -293,7 +293,11 @@ jobs:
     needs: small-unit-test
     permissions:
       contents: read
+      checks: write
+      id-token: write
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
@@ -312,23 +316,38 @@ jobs:
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-        timeout-minutes: 10
 
-      - name: Test coverage
-        uses: ./.github/actions/test-coverage
-        with:
-          github-branch-name: ${{ github.ref }}
-          codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          codeclimate-token: ${{ secrets.CODECLIMATE_TEST_REPORTER_ID }}
+      - name: Run pytest (coverage without e2e)
+        shell: bash
+        run: |
+          cmd_array=(
+            poetry run pytest
+            --benchmark-disable
+            --cov=app.py
+            --cov=features
+            --cov=i18n
+            --cov=scripts
+            --cov-report=xml
+            --cov-report=term
+            --dist loadfile
+            --junitxml=junit.xml
+            -n auto
+            -k "not e2e"
+            -o junit_family=legacy
+          )
+          "${cmd_array[@]}"
 
-      - name: Upload Coverage Reports
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - name: Upload test results to Codecov
+        uses: codecov/test-results-action@f2dba722c67b86c6caa034178c6e4d35335f6706 # v1.1.0
         with:
-          name: coverage-reports
-          path: |
-            coverage.xml
-            htmlcov/
-          retention-days: 3
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@ad3126e916f78f00edff4ed0317cf185271ccc2d # v5.4.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
 
   test-e2e:
     name: E2E Tests (${{ matrix.os }} & ${{ matrix.browser }})
@@ -500,6 +519,8 @@ jobs:
     name: ${{ inputs.workflow_summary_name }}
     if: always()
     needs: [test-coverage, test-e2e, analysis-code-ccn, build-desktop]
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:

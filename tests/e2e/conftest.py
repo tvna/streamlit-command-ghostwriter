@@ -217,13 +217,12 @@ def _get_validated_streamlit_executable() -> str:
     return streamlit_executable
 
 
-def _run_streamlit_safely(app_path: str, port: int) -> subprocess.Popen:
+def _run_streamlit_safely(app_path: str, port: int) -> subprocess.Popen[bytes]:
     """Streamlitサーバーを安全に起動.
 
     Args:
         app_path: Streamlitアプリケーションのパス
         port: 使用するポート番号
-        pytestconfig: pytestの設定オブジェクト
 
     Returns:
         subprocess.Popen: 起動したStreamlitプロセス
@@ -241,7 +240,7 @@ def _run_streamlit_safely(app_path: str, port: int) -> subprocess.Popen:
 
     logger.info(f"Streamlitを起動します: port={port}, headless=true")
 
-    process: subprocess.Popen = subprocess.Popen(
+    process: subprocess.Popen[bytes] = subprocess.Popen(
         args=args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -267,12 +266,11 @@ def streamlit_port() -> int:
 
 
 @pytest.fixture
-def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[subprocess.Popen, None, None]:
+def streamlit_app(streamlit_port: int) -> Generator[subprocess.Popen[bytes], None, None]:
     """テスト用のStreamlitサーバーを提供.
 
     Args:
         streamlit_port: 使用するポート番号
-        pytestconfig: pytestの設定オブジェクト
 
     Yields:
         subprocess.Popen: 起動したStreamlitプロセス
@@ -283,7 +281,7 @@ def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[
         - テスト終了時に自動的にプロセスを終了
     """
 
-    process: Optional[subprocess.Popen] = None
+    process: Optional[subprocess.Popen[bytes]] = None
     try:
         streamlit_path: Final[str] = _get_validated_streamlit_path()
         process = _run_streamlit_safely(streamlit_path, port=streamlit_port)
@@ -316,7 +314,7 @@ def streamlit_app(streamlit_port: int, pytestconfig: PytestConfig) -> Generator[
 
 
 @pytest.fixture(autouse=True)
-def setup_teardown(page: Page, streamlit_app: subprocess.Popen, streamlit_port: int) -> Generator[None, None, None]:
+def setup_teardown(page: Page, streamlit_app: subprocess.Popen[bytes], streamlit_port: int) -> Generator[None, None, None]:
     """各テストの前後処理を実行.
 
     Args:

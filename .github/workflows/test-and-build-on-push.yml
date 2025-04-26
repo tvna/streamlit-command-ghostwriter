@@ -18,7 +18,9 @@ on:
 permissions:
   actions: read
   contents: read
+  checks: write
   security-events: write
+  id-token: write
 
 env:
   GLOBAL_ALLOWED_ENDPOINTS: |
@@ -29,6 +31,8 @@ env:
 jobs:
   test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: true
@@ -113,18 +117,18 @@ jobs:
           version: ${{ needs.get-npm-versions.outputs.develop_version }}
           compare-to: ${{ needs.get-npm-versions.outputs.main_version }}
 
-      - name: Display version comparison result # Optional: for debugging
-        shell: bash
-        run: |
-          echo "Comparison Result: ${{ steps.compare-versions.outputs.comparison-result }}"
-
-      - name: Check if PR already exists
+      - name: Check if PR already exists and check for duplicate title
         id: check-pr
         if: steps.compare-versions.outputs.comparison-result == '>'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const developVersion = "${{ needs.get-npm-versions.outputs.develop_version }}";
+            const expectedTitle = `Release: v${developVersion}`;
+            let prExists = false;
+            let titleExists = false;
+
             try {
               const pulls = await github.rest.pulls.list({
                 owner: context.repo.owner,
@@ -134,13 +138,25 @@ jobs:
                 state: 'open'
               });
 
-              const prExists = pulls.data.length;
-              console.log(`Existing open PRs from develop to main: ${prExists}`);
-              core.setOutput('exists', prExists.toString());
+              if (pulls.data.length > 0) {
+                prExists = true;
+                // Check if any existing PR has the target title
+                titleExists = pulls.data.some(pr => pr.title === expectedTitle);
+              }
+
+              console.log(`Expected PR Title: ${expectedTitle}`);
+              console.log(`Existing open PRs from develop to main: ${pulls.data.length}`);
+              console.log(`Any open PR exists? ${prExists}`);
+              console.log(`Open PR with title "${expectedTitle}" exists? ${titleExists}`);
+              console.log(prExists.toString());
+
+              core.setOutput('pr_exists', prExists.toString());
+              core.setOutput('title_exists', titleExists.toString());
               core.setOutput('success', 'true');
             } catch (error) {
               console.error(`Error checking for existing PRs: ${error.message}`);
-              core.setOutput('exists', ''); // Indicate failure
+              core.setOutput('pr_exists', ''); // Indicate failure
+              core.setOutput('title_exists', ''); // Indicate failure
               core.setOutput('success', 'false');
               core.setFailed(`Error checking for existing PRs: ${error.message}`);
             }
@@ -217,7 +233,17 @@ jobs:
         run: |
           echo "以下のコミットが含まれています:" > .commit-log.txt
           echo "" >> .commit-log.txt
-          git log origin/main..HEAD --pretty=format:"- %s" --no-merges > .commit-log.txt
+          git log origin/main..HEAD --pretty=format:"- %s" --no-merges >> .commit-log.txt
+
+      - name: Display version comparison result # Optional: for debugging
+        shell: bash
+        run: |
+          echo "Comparison Result: ${{ steps.compare-versions.outputs.comparison-result }}"
+          echo "Check PR Success: ${{ steps.check-pr.outputs.success }}"
+          echo "Check PR Exists: ${{ steps.check-pr.outputs.pr_exists }}"
+          echo "Check PR Title Exists: ${{ steps.check-pr.outputs.title_exists }}"
+          echo "Ensure Labels Success: ${{ steps.ensure-labels.outputs.success }}"
+          echo "Show commit log: $(cat .commit-log.txt)"
 
       - name: Create Pull Request using github-script
         id: create-pr-script
@@ -225,7 +251,8 @@ jobs:
         if: |
           steps.compare-versions.outputs.comparison-result == '>' &&
           steps.check-pr.outputs.success == 'true' &&
-          steps.check-pr.outputs.exists == '0' &&
+          steps.check-pr.outputs.pr_exists == 'false' &&
+          steps.check-pr.outputs.title_exists == 'false' &&
           steps.ensure-labels.outputs.success == 'true'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -247,7 +274,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Release: v${developVersion}`,
-              head: 'develop', // Pointing to the develop branch
+              head: 'develop',
               base: 'main',
               body: commitLogContent,
               maintainer_can_modify: true,
@@ -296,7 +323,8 @@ jobs:
           script: |
             const compareResult = "${{ steps.compare-versions.outputs.comparison-result }}";
             const checkPrSuccess = "${{ steps.check-pr.outputs.success }}";
-            const checkPrExists = "${{ steps.check-pr.outputs.exists }}";
+            const checkPrExists = "${{ steps.check-pr.outputs.pr_exists }}";
+            const checkPrTitleExists = "${{ steps.check-pr.outputs.title_exists }}";
             const ensureLabelsSuccess = "${{ steps.ensure-labels.outputs.success }}";
             // Use the outcome and URL from the new script step
             const createPrOutcome = "${{ steps.create-pr-script.outputs.outcome }}";
@@ -307,14 +335,22 @@ jobs:
             let status = "unknown"; // Default status
             let prUrl = createPrUrl || "";
 
-            core.info(`Initial evaluation: compareResult='${compareResult}', checkPrSuccess='${checkPrSuccess}', checkPrExists='${checkPrExists}', ensureLabelsSuccess='${ensureLabelsSuccess}', createPrOutcome='${createPrOutcome}'`);
+            core.info(
+              `Initial evaluation: compareResult='${compareResult}', ` +
+              `checkPrSuccess='${checkPrSuccess}', checkPrExists='${checkPrExists}', ` +
+              `checkPrTitleExists='${checkPrTitleExists}', ensureLabelsSuccess='${ensureLabelsSuccess}', ` +
+              `createPrOutcome='${createPrOutcome}'`
+            );
 
             if (compareResult === '>') {
               if (checkPrSuccess === 'true') {
-                if (checkPrExists !== '0') {
+                if (checkPrTitleExists === 'true') {
+                  status = "skipped_title_exists";
+                  core.info(`Status update: PR with the same title already exists (title_exists=${checkPrTitleExists}). Setting status to '${status}'.`);
+                } else if (checkPrExists !== '0') {
                   status = "exists";
                   core.info(`Status update: PR already exists (checkPrExists=${checkPrExists}). Setting status to '${status}'.`);
-                } else { // No existing PR
+                } else { // No existing PR with this title or any PR at all
                   if (ensureLabelsSuccess === 'true') {
                     // Check the outcome of the create-pr-script step
                     if (createPrOutcome === 'success') {
@@ -343,8 +379,8 @@ jobs:
             }
 
             // Override status if the create-pr-script step was explicitly skipped by its 'if' condition
-            if (compareResult !== '>' || checkPrSuccess !== 'true' || checkPrExists !== '0' || ensureLabelsSuccess !== 'true') {
-                if (status === 'unknown') { // Only override if not already set by inner logic
+            if (compareResult !== '>' || checkPrSuccess !== 'true' || checkPrExists !== '0' || checkPrTitleExists !== 'false' || ensureLabelsSuccess !== 'true') {
+                if (status === 'unknown' || status === 'exists') { // Only override if not already set by inner logic or if it's the general 'exists'
                     status = 'skipped_precondition_fail';
                     core.info(`Create PR script step preconditions not met. Setting status to '${status}'.`);
                 }

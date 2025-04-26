@@ -1,6 +1,6 @@
 {
     "name": "command_ghostwriter",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "main": "./build/electron/main.js",
     "description": "This application is designed for infrastratcture engineers who want to automatically generate commands in template to configure servers, routers, and switches",
     "license": "MIT",
@@ -15,10 +15,9 @@
         "dist": "electron-builder",
         "postinstall": "electron-builder install-app-deps",
         "lint": "poetry run ruff check . --fix && poetry run mypy .",
-        "test": "poetry run pytest -vv -n auto --cov=. --cov-report=html --cov-report=term --dist loadfile --durations=10 --cache-clear --maxfail=10 -k 'not e2e' --benchmark-disable",
-        "coverage": "poetry run pytest -vv -n auto --cov=app.py --cov=features --cov=i18n --cov=scripts --cov-report=html -k 'not e2e' --benchmark-disable",
+        "test": "poetry run pytest -vv -n auto --cov=. --cov-report=html --cov-report=xml --cov-report=term --dist loadfile --durations=10 -k 'not e2e' --benchmark-disable",
         "benchmark": "poetry run pytest -vv -n 0 -m 'e2e' --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean",
-        "lizard": "poetry run lizard -l python --CCN '10'",
+        "ccn": "poetry run lizard -l python --CCN '10'",
         "scan": "pre-commit run --all-files",
         "commit": "pre-commit run && npx cz"
     },
@@ -26,7 +25,8 @@
         "files": [
             "build/**/*"
         ],
-        "productName": "CommandGhostwriter",
+        "productName": "Command Ghostwriter",
+        "artifactName": "command-ghostwriter.${ext}",
         "directories": {
             "buildResources": "assets"
         },
@@ -46,11 +46,12 @@
         "@stlite/desktop": "^0.80.5",
         "commitizen": "^4.3.1",
         "cross-env": "^7.0.3",
-        "electron": "^35.1.4",
+        "electron": "^35.1.5",
         "electron-builder": "^26.0.12",
         "husky": "^9.1.7",
-        "lint-staged": "^15.5.0",
+        "lint-staged": "^15.5.1",
         "prettier": "^3.5.3",
+        "prettier-plugin-sort-json": "^4.1.1",
         "rimraf": "^6.0.1"
     },
     "stlite": {

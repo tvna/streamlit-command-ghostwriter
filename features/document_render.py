@@ -75,7 +75,6 @@ from datetime import datetime
 from decimal import Decimal
 from functools import wraps
 from io import BytesIO
-from types import UnionType
 from typing import (
     Annotated,
     Any,
@@ -85,7 +84,7 @@ from typing import (
     Final,
     List,
     Optional,
-    Type,
+    TypeAlias,
     TypeVar,
     Union,
 )
@@ -93,30 +92,33 @@ from typing import (
 import jinja2
 from jinja2 import Environment, Template, nodes
 from jinja2.runtime import StrictUndefined, Undefined
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError
 
 from .validate_template import TemplateSecurityValidator, ValidationState
 from .validate_uploaded_file import FileSizeConfig, FileValidator
 
 # --- Format Type Constants ---
-FORMAT_KEEP: Final[int] = 0  # Keep whitespace
-FORMAT_COMPRESS: Final[int] = 1  # Compress consecutive whitespace lines to one
-FORMAT_KEEP_ALT: Final[int] = 2  # Alias for KEEP
-FORMAT_COMPRESS_ALT: Final[int] = 3  # Alias for COMPRESS
-FORMAT_REMOVE: Final[int] = 4  # Remove all whitespace lines
-MIN_FORMAT_TYPE: Final[int] = FORMAT_KEEP
-MAX_FORMAT_TYPE: Final[int] = FORMAT_REMOVE
+FORMAT_TYPE_KEEP: Final[int] = 0  # Keep whitespace
+FORMAT_TYPE_COMPRESS: Final[int] = 1  # Compress consecutive whitespace lines to one
+FORMAT_TYPE_KEEP_ALT: Final[int] = 2  # Alias for KEEP
+FORMAT_TYPE_COMPRESS_ALT: Final[int] = 3  # Alias for COMPRESS
+FORMAT_TYPE_REMOVE_ALL: Final[int] = 4  # Remove all whitespace lines
+MIN_FORMAT_TYPE: Final[int] = FORMAT_TYPE_KEEP
+MAX_FORMAT_TYPE: Final[int] = FORMAT_TYPE_REMOVE_ALL
 
 # --- Validation Constants ---
 MAX_BYTES_PER_CHAR_UTF8: Final[int] = 4  # Maximum bytes per character assumed for UTF-8 estimate
 
 T = TypeVar("T")
-ValueType: UnionType = Union[str, Decimal, bool, None]
-ListType: Type = List[Union[ValueType, "ListType", "DictType"]]
-DictType: Type = Dict[str, Union[ValueType, ListType, "DictType"]]
-ContextType: Type = Dict[str, Union[ValueType, ListType, DictType]]
-RecursiveValue: UnionType = Union[ValueType, ListType, DictType]
-ContainerType: UnionType = Union[ValueType, ListType, DictType]
+ValueType: TypeAlias = Union[str, Decimal, bool, None]
+# Define RecursiveValue first to handle recursive structure more clearly
+RecursiveValue: TypeAlias = Union[ValueType, List["RecursiveValue"], Dict[str, "RecursiveValue"]]
+# Now define other types based on RecursiveValue
+ListType: TypeAlias = List[RecursiveValue]
+DictType: TypeAlias = Dict[str, RecursiveValue]
+ContextType: TypeAlias = Dict[str, RecursiveValue]  # Context can hold recursive structures
+# ContainerType is effectively the same as RecursiveValue in this structure
+ContainerType: TypeAlias = RecursiveValue
 
 
 def undefined_operation(func: Callable[..., T]) -> Callable[["CustomUndefined", "OperandType"], str]:
@@ -166,54 +168,54 @@ class CustomUndefined(Undefined):
 
     # 算術演算子のサポート
     @undefined_operation
-    def __add__(self, other: "OperandType") -> str:
+    def __add__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __radd__(self, other: "OperandType") -> str:
+    def __radd__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __sub__(self, other: "OperandType") -> str:
+    def __sub__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rsub__(self, other: "OperandType") -> str:
+    def __rsub__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __mul__(self, other: "OperandType") -> str:
+    def __mul__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rmul__(self, other: "OperandType") -> str:
+    def __rmul__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __truediv__(self, other: "OperandType") -> str:
+    def __truediv__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rtruediv__(self, other: "OperandType") -> str:
+    def __rtruediv__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __floordiv__(self, other: "OperandType") -> str:
+    def __floordiv__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rfloordiv__(self, other: "OperandType") -> str:
+    def __rfloordiv__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __mod__(self, other: "OperandType") -> str:
+    def __mod__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
     @undefined_operation
-    def __rmod__(self, other: "OperandType") -> str:
+    def __rmod__(self, other: "OperandType") -> str:  # type: ignore[override]
         return ""
 
-    def __call__(self, *args: object, **kwargs: object) -> "CustomUndefined":
+    def __call__(self, *args: object, **kwargs: object) -> "CustomUndefined":  # type: ignore[override]
         return self
 
 
@@ -232,51 +234,14 @@ class FormatConfig(BaseModel):
     format_type: Annotated[int, Field(ge=MIN_FORMAT_TYPE, le=MAX_FORMAT_TYPE)]
     is_strict_undefined: bool = Field(default=True)
 
-    @classmethod
-    @field_validator("format_type")
-    def validate_format_type(cls, v: int) -> int:
-        """フォーマットタイプの検証。
-
-        Args:
-            v: フォーマットタイプ
-
-        Returns:
-            検証済みのフォーマットタイプ
-
-        Raises:
-            ValueError: 無効なフォーマットタイプの場合
-        """
-        # Use constants for validation range
-        if not isinstance(v, int) or not MIN_FORMAT_TYPE <= v <= MAX_FORMAT_TYPE:
-            raise ValueError("Unsupported format type")
-        return v
-
 
 class ContextConfig(BaseModel):
     """コンテキスト設定のバリデーションモデル。"""
 
-    model_config: ConfigDict = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True)
 
     context: Dict[str, Any] = Field(default_factory=dict)
     format_config: FormatConfig
-
-    @classmethod
-    @field_validator("context")
-    def validate_context(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        """コンテキストの検証。
-
-        Args:
-            v: コンテキスト辞書
-
-        Returns:
-            検証済みのコンテキスト辞書
-
-        Raises:
-            ValueError: コンテキストが辞書でない場合
-        """
-        if not isinstance(v, dict):
-            raise ValueError("Context must be a dictionary")
-        return v
 
 
 class ContentFormatter(BaseModel):
@@ -301,15 +266,12 @@ class ContentFormatter(BaseModel):
             フォーマット後の文字列
         """
         # Use format type constants
-        if format_type in [FORMAT_KEEP, FORMAT_KEEP_ALT]:
-            return content
-        elif format_type in [FORMAT_COMPRESS, FORMAT_COMPRESS_ALT]:
+        if format_type in [FORMAT_TYPE_COMPRESS, FORMAT_TYPE_COMPRESS_ALT]:
             return self._compress_whitespace(content)
-        elif format_type == FORMAT_REMOVE:
+        elif format_type == FORMAT_TYPE_REMOVE_ALL:
             return self._remove_all_whitespace(content)
-        else:
-            # This case should ideally be caught by FormatConfig validation earlier
-            raise ValueError("Unsupported format type")
+
+        return content
 
     def _compress_whitespace(self, content: str) -> str:
         """連続する空白行を1行に圧縮する。
@@ -417,15 +379,8 @@ class DocumentRender(BaseModel):
         """
 
         super().__init__()
-        try:
-            self._file_validator.validate_size(template_file)
-            self._template_file = template_file
-        except ValueError as e:
-            self._validation_state.set_error(str(e))
-            return
-        except IOError as e:
-            self._validation_state.set_error(f"Failed to validate template file: {e!s}")
-            return
+        self._file_validator.validate_size(template_file)
+        self._template_file = template_file
 
         # 初期検証を実行
         template_content: Optional[str] = None
@@ -477,11 +432,9 @@ class DocumentRender(BaseModel):
             常にFalse
         """
         if isinstance(e, jinja2.UndefinedError):
-            self._validation_state.set_error(str(e))
-        elif isinstance(e, jinja2.TemplateError):
-            self._validation_state.set_error(str(e))
+            self._validation_state.set_error(f"Template runtime error: {e!s}")
         else:
-            self._validation_state.set_error(f"Template rendering error: {e!s}")
+            self._validation_state.set_error(f"Template runtime error: {e!s}")
         return False
 
     def _validate_input_config(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool) -> Optional[ContextConfig]:
@@ -496,36 +449,19 @@ class DocumentRender(BaseModel):
             Optional[ContextConfig]: バリデーション済みの設定 (エラー時はNone)
         """
         try:
-            return ContextConfig(
-                context=context, format_config=FormatConfig(format_type=format_type, is_strict_undefined=is_strict_undefined)
-            )
+            # FormatConfig のバリデーション
+            format_config = FormatConfig(format_type=format_type, is_strict_undefined=is_strict_undefined)
+            # ContextConfig のバリデーション (context はここで検証される)
+            return ContextConfig(context=context, format_config=format_config)
         except ValidationError as e:
-            if "format_type" in str(e):
-                self._validation_state.set_error("Unsupported format type")
-            else:
-                self._validation_state.set_error(str(e))
+            # エラーリストから最初の詳細なエラーメッセージを取得
+            # TODO(all): Handle multiple errors if needed
+            first_error = e.errors()[0]
+            error_field = ".".join(map(str, first_error["loc"])) if first_error.get("loc") else "input"
+            error_msg = first_error["msg"]
+            # より具体的なエラーメッセージを設定
+            self._validation_state.set_error(f"Validation error: {error_msg} at '{error_field}'")
             return None
-
-    def _validate_template_state(self, context: Dict[str, Any], ast: nodes.Template) -> bool:
-        """テンプレートの状態を検証する。
-
-        Args:
-            context: テンプレートに適用するコンテキスト
-
-        Returns:
-            bool: 検証が成功したかどうか
-        """
-
-        security_result: ValidationState = self._security_validator.validate_runtime_security(ast, context)
-        if not security_result.is_valid:
-            self._validation_state.set_error(security_result.error_message)
-            return False
-
-        if self._template_content is None:
-            self._validation_state.set_error("Template content is not loaded")
-            return False
-
-        return True
 
     def _render_template(self, context: Dict[str, Any], template_content: str) -> Optional[str]:
         """テンプレートをレンダリングする。
@@ -541,10 +477,7 @@ class DocumentRender(BaseModel):
             template: Template = env.from_string(template_content)
             return template.render(**context)
         except Exception as e:
-            if "recursive structure detected" in str(e):
-                self._validation_state.set_error("Template security error: recursive structure detected")
-            else:
-                self._handle_rendering_error(e)
+            self._handle_rendering_error(e)
             return None
 
     def apply_context(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool = True) -> bool:
@@ -567,36 +500,25 @@ class DocumentRender(BaseModel):
             5. メモリ使用量の検証
             6. フォーマット処理
         """
-        if not self._validate_preconditions():
+        if not self._validation_state.is_valid:
+            return False
+
+        template_content = self._template_content
+        if template_content is None:
             return False
 
         config: Optional[ContextConfig] = self._prepare_context_config(context, format_type, is_strict_undefined)
         if config is None or not self._validation_state.is_valid:
             return False
 
-        rendered_content: Optional[str] = self._process_template(config)
-        if not self._validation_state.is_valid:
+        rendered_content: Optional[str] = self._process_template(config, template_content)
+        if rendered_content is None or not self._validation_state.is_valid:
             return False
 
-        return self._post_process_content(rendered_content, config.format_config.format_type)
-
-    def _validate_preconditions(self) -> bool:
-        """前提条件を検証する。
-
-        Returns:
-            bool: 前提条件を満たしている場合はTrue
-        """
-        if not self._validation_state.is_valid:
+        if not self._validate_memory_usage(rendered_content):
             return False
 
-        if self._ast is None:
-            self._validation_state.set_error("AST is not available despite initial validation success")
-            return False
-
-        if self._template_content is None:
-            self._validation_state.set_error("Template content is not available despite validation success")
-            return False
-
+        self._render_content = self._formatter.format(rendered_content, config.format_config.format_type)
         return True
 
     def _prepare_context_config(self, context: Dict[str, Any], format_type: int, is_strict_undefined: bool) -> Optional[ContextConfig]:
@@ -614,13 +536,12 @@ class DocumentRender(BaseModel):
         if config is None or self._ast is None:
             return None
 
+        self._validation_state = self._security_validator.validate_runtime_security(self._ast, context)
         self._is_strict_undefined = config.format_config.is_strict_undefined
-        if not self._validate_template_state(config.context, self._ast):
-            return None
 
         return config
 
-    def _process_template(self, config: ContextConfig) -> Optional[str]:
+    def _process_template(self, config: ContextConfig, template_content: str) -> Optional[str]:
         """テンプレートの処理を行う。
 
         Args:
@@ -629,33 +550,12 @@ class DocumentRender(BaseModel):
         Returns:
             Optional[str]: レンダリング結果
         """
-        if self._template_content is None:
-            self._validation_state.set_error("Template content is not available")
-            return None
 
-        rendered: Optional[str] = self._render_template(config.context, self._template_content)
+        rendered: Optional[str] = self._render_template(config.context, template_content)
         if rendered is None:
             return None
 
         return rendered
-
-    def _post_process_content(self, content: Optional[str], format_type: int) -> bool:
-        """レンダリング結果の後処理を行う。
-
-        Args:
-            content: レンダリング結果
-            format_type: フォーマットタイプ
-
-        Returns:
-            bool: 処理が成功したかどうか
-        """
-        if content is None:
-            return False
-
-        if not self._validate_memory_usage(content):
-            return False
-
-        return self._format_content(content, format_type)
 
     def _validate_memory_usage(self, content: str) -> bool:
         """メモリ使用量を検証する。
@@ -669,48 +569,13 @@ class DocumentRender(BaseModel):
         Returns:
             メモリ使用量が制限内の場合はTrue
         """
-        try:
-            # バイナリデータの検出
-            if "\x00" in content:
-                self._validation_state.set_error("Content contains invalid binary data")
-                return False
 
-            # メモリ使用量の検証
-            content_size: Final[int] = len(content.encode("utf-8"))
-            if content_size > self.MAX_MEMORY_SIZE_BYTES:
-                self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
-                return False
-            return True
-        except UnicodeEncodeError:
-            # UTF-8エンコードに失敗した場合は、文字数で概算
-            # Use constant for max bytes per char estimate
-            if len(content) * MAX_BYTES_PER_CHAR_UTF8 > self.MAX_MEMORY_SIZE_BYTES:
-                self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
-                return False
-            return True
-        except Exception as e:
-            self._validation_state.set_error(f"Memory usage validation error: {e!s}")
+        # メモリ使用量の検証
+        content_size: Final[int] = len(content.encode("utf-8"))
+        if content_size > self.MAX_MEMORY_SIZE_BYTES:
+            self._validation_state.set_error(f"Memory consumption exceeds maximum limit of {self.MAX_MEMORY_SIZE_BYTES} bytes")
             return False
-
-    def _format_content(self, content: str, format_type: int) -> bool:
-        """レンダリング結果をフォーマットする。
-
-        指定されたフォーマットタイプに従ってコンテンツを整形します。
-        フォーマット結果は内部状態として保持されます。
-
-        Args:
-            content: フォーマット対象のコンテンツ
-            format_type: フォーマットタイプ [0-4の整数]
-
-        Returns:
-            フォーマットが成功したかどうか
-        """
-        try:
-            self._render_content = self._formatter.format(content, format_type)
-            return True
-        except Exception as e:
-            self._validation_state.set_error(f"Content formatting error: {e!s}")
-            return False
+        return True
 
     def _create_environment(self) -> Environment:
         """Jinja2環境を作成する。
@@ -734,7 +599,7 @@ class DocumentRender(BaseModel):
 
         return env
 
-    def _date_filter(self, value: Union[str, datetime], format_str: str = "%Y-%m-%d") -> str:
+    def _date_filter(self, value: str, format_str: str = "%Y-%m-%d") -> str:
         """日付文字列をフォーマットする。
 
         Args:
@@ -749,13 +614,10 @@ class DocumentRender(BaseModel):
         """
 
         try:
-            if isinstance(value, str):
-                # ISO形式の日付文字列をパース
-                dt: datetime = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            elif isinstance(value, datetime):
-                dt: datetime = value
+            # ISO形式の日付文字列をパース
+            dt: datetime = datetime.fromisoformat(value.replace("Z", "+00:00"))
 
             return dt.strftime(format_str)
 
-        except (ValueError, TypeError) as e:
+        except ValueError as e:
             raise ValueError("Invalid date format") from e

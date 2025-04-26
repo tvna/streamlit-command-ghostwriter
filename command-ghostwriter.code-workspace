@@ -1,153 +1,158 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
-	],
-	"settings": {
-		"editor.defaultFormatter": "charliermarsh.ruff",
-		"editor.formatOnSave": true,
-		"editor.bracketPairColorization.enabled": true,
-		"editor.codeActionsOnSave": {
-		},
-		"editor.guides.bracketPairs": true,
-		"editor.renderWhitespace": "boundary",
-		"isort.args": [
-			"--profile",
-			"black"
-		],
-		"cSpell.words": [
-			"breakline",
-			"chardet",
-			"charliermarsh",
-			"choco",
-			"codeclimate",
-			"Codecov",
-			"commitlint",
-			"conventionalcommits",
-			"devcontainer",
-			"Dtype",
-			"EDITMSG",
-			"endfor",
-			"endswith",
-			"htmlcov",
-			"IHDR",
-			"isort",
-			"iterrows",
-			"itertuples",
-			"listdir",
-			"LOCALAPPDATA",
-			"maxfail",
-			"micropip",
-			"mypy",
-			"nohup",
-			"noreply",
-			"pprint",
-			"pycache",
-			"pydantic",
-			"pyodide",
-			"pypoetry",
-			"pytest",
-			"pyyaml",
-			"rcfile",
-			"remarkablemark",
-			"selectbox",
-			"stlite",
-			"streamlit",
-			"USERPROFILE",
-			"venv",
-			"virtualenvs"
-		],
-		"cSpell.ignorePaths": [
-			"poetry.lock",
-			"package-lock.json",
-			"node_modules",
-			"vscode-extension",
-			".git/objects",
-			".vscode",
-			".vscode-insiders",
-			"**/.cursor/extensions/ms-python.vscode-pylance-**"
-		],
-		"files.exclude": {
-			"LICENSE": true,
-			".coverage**": true,
-			"coverage.xml": true,
-			".venv": true,
-			"**/.mypy_cache": true,
-			"**/.pytest_cache": true,
-			"**/.ruff_cache": true,
-			"**/__pycache__": true,
-			"**/tmp": true,
-			"htmlcov": false,
-			"htmlcov/z_**.html": true,
-			"htmlcov/**.js": true,
-			"node_modules": true,
-			"build": true,
-			"commitlint.config.cjs": true,
-			"requirements.txt": false,
-			"poetry.lock": false,
-			"package-lock.json": false,
-			"pytestdebug.log": true,
-			"tests/**/.benchmarks": true,
-			".codeclimate.yml": true,
-			".benchmarks": true,
-			".devcontainer": true,
-			".gitignore": true,
-			".github": false,
-			".pre-commit-config.yaml": true,
-			".pyre": true,
-			".pyre_configuration": true,
-			".streamlit": true,
-			".yamllint.yml": true,
-			".watchmanconfig": true,
-			"__init__.py": true
-		},
-		"explorer.excludeGitIgnore": false,
-		"python.analysis.autoImportCompletions": true,
-		"python.analysis.indexing": true,
-		"python.analysis.diagnosticMode": "workspace",
-		"python.analysis.autoSearchPaths": true,
-		"python.autoComplete.extraPaths": [
-			"${workspaceRoot}/.venv/*/site-packages",
-			"${workspaceRoot}/features",
-			"${workspaceRoot}/tests/e2e"
-		],
-		"python.analysis.extraPaths": [
-			"${workspaceRoot}/.venv/*/site-packages",
-			"${workspaceRoot}/features",
-			"${workspaceRoot}/tests/e2e"
-		],
-		"python.analysis.include": [
-			"${workspaceRoot}/.venv/*/site-packages",
-			"${workspaceRoot}/features",
-			"${workspaceRoot}/tests/e2e"
-		],
-		"python.analysis.ignore": [
-			"/opt/homebrew/Cellar/python**"
-		],
-		"python.analysis.typeCheckingMode": "basic",
-		"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-		"python.testing.pytestArgs": [
-			"tests"
-		],
-		"python.testing.unittestEnabled": false,
-		"python.testing.pytestEnabled": true,
-		"python.poetryPath": "poetry",
-		"ruff.format.preview": true,
-		"ruff.lineLength": 140,
-		"ruff.lint.preview": true,
-		"ruff.path": [
-			"ruff"
-		],
-		"yaml.format.enable": true,
-		"yaml.validate": false,
-		"yaml.schemas": {
-			"https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-action.json": [".github/*.yml",".github/*.yaml"],
-			"https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json": [".github/*.yml",".github/*.yaml"]
-		},
-		"yaml.keyOrdering": true,
-		"[github-actions-workflow]": {
-			"editor.defaultFormatter": "esbenp.prettier-vscode"
-		}
-	}
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "cSpell.ignorePaths": [
+      "poetry.lock",
+      "package-lock.json",
+      "node_modules",
+      "vscode-extension",
+      ".git/objects",
+      ".vscode",
+      ".vscode-insiders",
+      "**/.cursor/extensions/ms-python.vscode-pylance-**"
+    ],
+    "cSpell.words": [
+      "breakline",
+      "chardet",
+      "charliermarsh",
+      "choco",
+      "Codecov",
+      "commitlint",
+      "conventionalcommits",
+      "devcontainer",
+      "Dtype",
+      "EDITMSG",
+      "endfor",
+      "endswith",
+      "htmlcov",
+      "IHDR",
+      "isort",
+      "iterrows",
+      "itertuples",
+      "listdir",
+      "LOCALAPPDATA",
+      "maxfail",
+      "micropip",
+      "mypy",
+      "nohup",
+      "noreply",
+      "pprint",
+      "pycache",
+      "pydantic",
+      "pyodide",
+      "pypoetry",
+      "pytest",
+      "pyyaml",
+      "rcfile",
+      "remarkablemark",
+      "selectbox",
+      "stlite",
+      "streamlit",
+      "USERPROFILE",
+      "venv",
+      "virtualenvs"
+    ],
+    "editor.bracketPairColorization.enabled": true,
+    "editor.codeActionsOnSave": {},
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.guides.bracketPairs": true,
+    "editor.renderWhitespace": "boundary",
+    "explorer.excludeGitIgnore": false,
+    "files.autoSave": "afterDelay",
+    "files.exclude": {
+      "LICENSE": true,
+      ".benchmarks": true,
+      ".coverage**": true,
+      ".devcontainer": false,
+      ".gitignore": false,
+      ".github": false,
+      ".pyre": true,
+      ".pyre_configuration": false,
+      ".pre-commit-config.yaml": false,
+      ".streamlit": true,
+      ".venv": true,
+      ".watchmanconfig": true,
+      ".yamllint.yml": true,
+      "build": true,
+      "commitlint.config.cjs": true,
+      "codecov.yaml": false,
+      "coverage.xml": true,
+      "htmlcov": false,
+      "htmlcov/z_**.html": true,
+      "htmlcov/**.js": true,
+      "node_modules": true,
+      "package-lock.json": false,
+      "poetry.lock": false,
+      "pytestdebug.log": true,
+      "requirements.txt": false,
+      "tests/**/.benchmarks": true,
+      "**/.mypy_cache": true,
+      "**/.pytest_cache": true,
+      "**/.ruff_cache": true,
+      "**/__pycache__": true,
+      "**/tmp": true,
+      "__init__.py": true
+    },
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.extraPaths": [
+      "${workspaceFolder}/.venv/*/site-packages",
+      "${workspaceFolder}/features",
+      "${workspaceFolder}/tests/e2e"
+    ],
+    "python.analysis.ignore": ["/opt/homebrew/Cellar/python**"],
+    "python.analysis.include": [
+      "${workspaceFolder}/.venv/*/site-packages",
+      "${workspaceFolder}/features",
+      "${workspaceFolder}/tests/e2e"
+    ],
+    "python.analysis.indexing": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.autoComplete.extraPaths": [
+      "${workspaceFolder}/.venv/*/site-packages",
+      "${workspaceFolder}/features",
+      "${workspaceFolder}/tests/e2e"
+    ],
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "python.poetryPath": "poetry",
+    "python.testing.pytestArgs": ["tests"],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "ruff.format.preview": true,
+    "ruff.lineLength": 140,
+    "ruff.lint.preview": true,
+    "ruff.path": ["ruff"],
+    "terminal.integrated.env.windows": {
+      "PYTHONPATH": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+    },
+    "yaml.format.enable": true,
+    "yaml.keyOrdering": true,
+    "yaml.schemas": {
+      "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-action.json": [
+        ".github/*.yml",
+        ".github/*.yaml"
+      ],
+      "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json": [
+        ".github/*.yml",
+        ".github/*.yaml"
+      ],
+      "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/codecov.json": [
+        "codecov.yml"
+      ],
+      "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json": [
+        ".pre-commit-config.yaml"
+      ],
+      "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pyproject.json": [
+        "pyproject.toml"
+      ]
+    },
+    "yaml.validate": false
+  }
 }

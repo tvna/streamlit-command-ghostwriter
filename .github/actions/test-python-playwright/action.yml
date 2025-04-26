@@ -31,6 +31,10 @@ inputs:
   browser:
     description: "Browser to use"
     required: true
+  github-token:
+    description: "GitHub token"
+    required: false
+    type: string
   is-benchmark:
     description: "Whether to run benchmark tests"
     required: false
@@ -95,7 +99,20 @@ runs:
       shell: bash
       run: |
         # E2Eテストのベンチマーク実行
-        poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+        cmd_array=(
+          poetry run pytest
+          -n 0
+          -vv
+          --browser ${{ inputs.browser }}
+          -m "e2e"
+          --benchmark-verbose
+          --benchmark-only
+          --benchmark-autosave
+          --benchmark-columns=min,max,mean,stddev,median,ops
+          --benchmark-sort=mean
+          --benchmark-json output.json
+        )
+        "${cmd_array[@]}"
 
     - name: E2E benchmark (Windows)
       if: |
@@ -107,15 +124,28 @@ runs:
         chcp 65001
 
         # E2Eテストのベンチマーク実行
-        poetry run pytest -n 0 -vv --browser ${{ inputs.browser }} -m "e2e" --benchmark-verbose --benchmark-only --benchmark-autosave --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean
+        cmd_array=(
+          poetry run pytest
+          -n 0
+          -vv
+          --browser ${{ inputs.browser }}
+          -m "e2e"
+          --benchmark-verbose
+          --benchmark-only
+          --benchmark-autosave
+          --benchmark-columns=min,max,mean,stddev,median,ops
+          --benchmark-sort=mean
+          --benchmark-json output.json
+        )
+        "${cmd_array[@]}"
 
-    - name: Upload Benchmark Results
+    - name: Store benchmark result
       if: |
         inputs.is-benchmark == 'true' &&
         inputs.browser == 'chromium'
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 # v1.20.4
       with:
-        name: benchmark-results-${{ matrix.os }}-${{ env.GLOBAL_PYTHON_VERSION }}-${{ inputs.browser }}
-        path: .benchmarks/**/*.json
-        retention-days: 90
-        if-no-files-found: warn
+        name: Python Benchmark on ${{ runner.os }}
+        tool: "pytest"
+        github-token: ${{ inputs.github-token }}
+        output-file-path: output.json

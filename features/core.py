@@ -12,12 +12,12 @@ from .transcoder import TextTranscoder
 
 class AppCore(BaseModel):
     _config_dict: Optional[Dict[str, Any]] = PrivateAttr(default=None)
-    _config_error_header: Final[Optional[str]]
+    _config_error_header: Optional[str] = PrivateAttr(default=None)
     _config_error_message: Optional[str] = PrivateAttr(default=None)
     _formatted_text: Optional[str] = PrivateAttr(default=None)
-    _render: Optional[DocumentRender] = None
+    _render: Optional[DocumentRender] = PrivateAttr(default=None)
     _template_filename: Optional[str] = PrivateAttr(default=None)
-    _template_error_header: Final[Optional[str]]
+    _template_error_header: Optional[str] = PrivateAttr(default=None)
     _template_error_message: Optional[str] = PrivateAttr(default=None)
 
     def __init__(self: "AppCore", config_error_header: Optional[str] = None, template_error_header: Optional[str] = None) -> None:

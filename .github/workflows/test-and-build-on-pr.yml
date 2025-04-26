@@ -24,7 +24,9 @@ on:
 permissions:
   actions: read
   contents: read
+  checks: write
   security-events: write
+  id-token: write
 
 env:
   GLOBAL_ALLOWED_ENDPOINTS: |
@@ -35,6 +37,8 @@ env:
 jobs:
   test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
       concurrency_group: pr-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: false
@@ -44,13 +48,13 @@ jobs:
     name: E2E Benchmark (${{ matrix.os }})
     permissions:
       contents: read
+      pull-requests: write
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os:
           - macos-latest
-          - windows-latest
         browser:
           - chromium
     steps:
@@ -79,6 +83,7 @@ jobs:
         uses: ./.github/actions/test-python-playwright
         with:
           browser: ${{ matrix.browser }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           is-benchmark: true
         timeout-minutes: 30
 
