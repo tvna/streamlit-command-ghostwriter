@@ -67,8 +67,7 @@ class FileSizeConfig(BaseModel):
     max_size_bytes: Annotated[int, Field(gt=0, description="許可される最大ファイルサイズ (バイト)")]
 
     @field_validator("max_size_bytes")
-    @classmethod
-    def validate_max_size(cls, v: int) -> int:
+    def validate_max_size(cls, v: int) -> int:  # noqa: N805 (Keep cls for Pydantic validator)
         """最大サイズの値を検証する。
 
         Args:
