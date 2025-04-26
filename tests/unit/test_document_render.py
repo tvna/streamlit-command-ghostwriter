@@ -38,6 +38,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Union,
 )
 
 import pytest
@@ -103,12 +104,13 @@ def _create_circular_dict() -> Dict[str, Dict[str, object]]:
     return {"data": data}
 
 
-def _create_list_with_circular_dict() -> Dict[str, List[object]]:
+def _create_list_with_circular_dict() -> Dict[str, List[Union[Dict[str, object], int]]]:
     """Creates a dictionary containing a list with a dictionary that references itself."""
     # Use Dict[str, object] because 'd' holds itself
     d: Dict[str, object] = {}
     d["rec"] = d
-    data = [1, d, 3]
+    # Explicitly annotate data with the expected Union type
+    data: List[Union[Dict[str, object], int]] = [1, d, 3]
     return {"data": data}
 
 
