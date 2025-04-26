@@ -14,13 +14,23 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GLOBAL_ALLOWED_ENDPOINTS: |
+    api.github.com:443
+    github.com:443
+  GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
+
 permissions:
   contents: read
 
 jobs:
-  merge:
+  detect-dependabot-pr:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    outputs:
+      package-ecosystem: ${{ steps.meta.outputs.package-ecosystem }}
+      package-name: ${{ steps.meta.outputs.package-name }}
+      package-version: ${{ steps.meta.outputs.package-version }}
     permissions:
       contents: write
       pull-requests: write
@@ -41,60 +51,55 @@ jobs:
         id: meta
         timeout-minutes: 5
         uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # v2.3.0
-
-      - name: Wait for Test & Build workflow
-        id: wait-for-test-and-build
-        timeout-minutes: 30
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const ref = context.payload.pull_request.head.sha;
-            // Define the name of the check run created by the 'test-and-build' job
-            // within the 'test-and-build-on-pr.yml' workflow.
-            const check_name = 'test-and-build';
-            const max_attempts = 60; // 60 attempts * 30 seconds = 30 minutes
-            const poll_interval_ms = 30000; // 30 seconds
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-            console.log(`Waiting for check run "${check_name}" (from test-and-build-on-pr.yml) on ref ${ref} to complete...`);
+  test-and-build:
+    needs:
+      - detect-dependabot-pr
+    uses: ./.github/workflows/reusable-test-and-build.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    with:
+      concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
+      concurrency_cancel_in_progress: true
+      workflow_summary_name: "Workflow summary [Test & Build (dependabot)]"
 
-            for (let attempt = 0; attempt < max_attempts; attempt++) {
-              const { data: checks } = await github.rest.checks.listForRef({
-                owner,
-                repo,
-                ref,
-                check_name,
-                per_page: 1 // We only need the latest run for this specific check name
-              });
+  pyre:
+    needs:
+      - detect-dependabot-pr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-file-monitoring: true
+          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-              if (checks.total_count > 0) {
-                const checkRun = checks.check_runs[0];
-                console.log(`Attempt ${attempt + 1}/${max_attempts}: Check run status is ${checkRun.status}, conclusion is ${checkRun.conclusion}`);
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
 
-                if (checkRun.status === 'completed') {
-                  if (checkRun.conclusion === 'success') {
-                    console.log(`Check run "${check_name}" completed successfully.`);
-                    return; // Success
-                  } else {
-                    core.setFailed(`Check run "${check_name}" completed with conclusion: ${checkRun.conclusion}`);
-                    return; // Failure or other non-success conclusion
-                  }
-                }
-              } else {
-                 console.log(`Attempt ${attempt + 1}/${max_attempts}: No check run named "${check_name}" found yet.`);
-              }
+      - name: Test Pyre
+        uses: ./.github/actions/test-pyre
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 10
+        continue-on-error: true
 
-              await new Promise(r => setTimeout(r, poll_interval_ms));
-            }
-
-            core.setFailed(`Timeout waiting for check run "${check_name}" to complete after ${max_attempts} attempts.`);
-
+  merge:
+    runs-on: ubuntu-latest
+    needs:
+      - detect-dependabot-pr
+      - test-and-build
+    steps:
       - name: Approve and auto-merge
         if: |
-          steps.meta.outputs.package-ecosystem == 'github-actions' ||
-          steps.meta.outputs.package-ecosystem == 'pip' ||
-          steps.meta.outputs.package-ecosystem == 'npm_and_yarn'
+          needs.detect-dependabot-pr.outputs.package-ecosystem == 'github-actions' ||
+          needs.detect-dependabot-pr.outputs.package-ecosystem == 'pip' ||
+          needs.detect-dependabot-pr.outputs.package-ecosystem == 'npm_and_yarn'
         run: |
           gh pr review "$PR_URL" --approve
           gh pr merge --auto --merge "$PR_URL"

@@ -30,6 +30,7 @@ env:
 
 jobs:
   test-and-build:
+    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/reusable-test-and-build.yml
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
