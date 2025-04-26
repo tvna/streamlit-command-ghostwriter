@@ -4,6 +4,10 @@
     ".",
     "features"
   ],
+  "search_path": [
+    ".venv/bin",
+    ".venv/lib/python*/site-packages"
+  ],
   "exclude": [
     ".*\/.cursor\/.*",
     ".*\/.devcontainer\/.*",
@@ -14,11 +18,13 @@
     ".*\/dist\/.*",
     ".*\/docs\/.*",
     ".*\/htmlcov\/.*",
-    ".*\/node_modules\/.*"
+    ".*\/node_modules\/.*",
+    ".*\/tests\/.*"
   ],
   "extensions": [
     ".py",
     ".pyi"
   ],
+  "show_error_traces": true,
   "strict": true
 }
