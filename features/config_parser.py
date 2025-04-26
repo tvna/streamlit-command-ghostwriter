@@ -255,13 +255,8 @@ class ConfigParser(BaseModel):
                     raise e from e
             case "csv":
                 return self._parse_csv_data(config_data)
-            # The 'case _:' is used here to satisfy the type checker and catch unexpected states.
-            # Validation in __initialize_from_file should prevent reaching this point.
-            case _:
-                raise RuntimeError(
-                    f"Internal error: Reached _parse_by_file_type with unexpected extension '{self._file_extension}'. "
-                    "Validation should have caught this."
-                )
+
+        return {}
 
     def _parse_csv_data(self, config_data: str) -> JSONDict:
         """CSVデータをパースします。
