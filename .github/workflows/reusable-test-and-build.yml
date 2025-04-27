@@ -226,10 +226,10 @@ jobs:
         continue-on-error: true
 
       - name: Create requirements.txt
+        id: create-requirements-txt-for-pyre
         shell: bash
         run: |
-          # poetry.lockからメインの依存関係のみを抽出し、requirements.txtを生成
-          poetry run python3 -c "import toml; packages = toml.load('poetry.lock')['package']; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in packages if p['category'] == 'main'))" > requirements.txt
+          poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
 
       - name: Run Pyre Action
         uses: facebook/pyre-action@12b8d923443ea66cb657facc2e5faac1c8c86e64 # v0.0.2
@@ -491,8 +491,10 @@ jobs:
 
       - name: Install pyre
         run: |
-          pipx install poetry
-          poetry install --no-interaction --no-root --only main
+          pip install toml
+          python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
+          pip install -r requirements.txt
+          pip install pyre-check
 
       - name: Run Pysa
         run: |
