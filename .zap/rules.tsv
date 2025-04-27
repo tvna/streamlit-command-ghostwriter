@@ -1,0 +1,3 @@
+# ZAP Scan Rules
+# Add your custom ZAP rules here in TSV format.
+# Example: RULE_ID	ACTION

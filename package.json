@@ -20,6 +20,7 @@
         "benchmark": "poetry run pytest -vv -n 0 -m 'e2e' --benchmark-columns=min,max,mean,stddev,median,ops --benchmark-sort=mean",
         "pyre": "pyre --noninteractive check",
         "ccn": "poetry run lizard -l python --CCN '10'",
+        "zap": "docker run --rm -v $(pwd):/zap/wrk/:rw --add-host=host.docker.internal:host-gateway ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py -t http://host.docker.internal:8501 -r report.html -d",
         "scan": "pre-commit run --all-files",
         "commit": "pre-commit run && npx cz"
     },
