@@ -13,6 +13,9 @@ permissions:
   security-events: write
   id-token: write
 
+env:
+  HARDEN_RUNNER_EGRESS_POLICY: audit
+
 jobs:
   test-and-build:
     uses: ./.github/workflows/reusable-test-and-build.yml
@@ -26,17 +29,19 @@ jobs:
   create-tag-and-release:
     needs:
       - test-and-build
-    runs-on: ubuntu-latest
     outputs:
       tag_name: ${{ steps.set_tag_output.outputs.tag_name }}
       commit_sha: ${{ steps.get_commit_sha.outputs.sha }}
     permissions:
       contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
 
