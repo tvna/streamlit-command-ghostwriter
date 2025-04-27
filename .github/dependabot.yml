@@ -9,11 +9,12 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
+    directory: /
     groups:
       github-actions:
         patterns:
           - "*"
-    directory: /
+    security-updates: true
     schedule:
       interval: daily
       time: "18:00"
@@ -21,11 +22,12 @@ updates:
     target-branch: develop
 
   - package-ecosystem: npm
+    directory: /
     groups:
       npm:
         patterns:
           - "*"
-    directory: /
+    security-updates: true
     schedule:
       interval: daily
       time: "19:00"
@@ -33,11 +35,12 @@ updates:
     target-branch: develop
 
   - package-ecosystem: pip
+    directory: /
     groups:
       pip:
         patterns:
           - "*"
-    directory: /
+    security-updates: true
     schedule:
       interval: daily
       time: "20:00"
@@ -46,6 +49,11 @@ updates:
 
   - package-ecosystem: devcontainers
     directory: /
+    groups:
+      devcontainers:
+        patterns:
+          - "*"
+    security-updates: true
     schedule:
       interval: daily
       time: "21:00"
