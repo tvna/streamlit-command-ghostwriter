@@ -32,6 +32,23 @@ on:
     secrets:
       CODECOV_TOKEN:
         required: true
+  workflow_dispatch:
+    inputs:
+      concurrency_group:
+        required: false
+        type: string
+        default: "dispatch-test-and-build"
+        description: "The concurrency group for the workflow dispatch"
+      concurrency_cancel_in_progress:
+        required: false
+        type: boolean
+        default: true
+        description: "Whether to cancel in progress workflows"
+      workflow_summary_name:
+        required: false
+        type: string
+        default: "Workflow summary [Test & Build (dispatch)]"
+        description: "The name of the workflow summary"
 
 defaults:
   run:
@@ -227,6 +244,7 @@ jobs:
       contents: read
       security-events: write
     runs-on: ubuntu-latest
+
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
@@ -235,21 +253,25 @@ jobs:
           disable-sudo: true
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 3
 
       - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+        timeout-minutes: 3
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 3
 
       - name: Create requirements.txt
         shell: bash
         run: |
           poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
+        timeout-minutes: 3
 
       - name: Run Pyre Action
         uses: facebook/pyre-action@12b8d923443ea66cb657facc2e5faac1c8c86e64 # v0.0.2
@@ -263,6 +285,7 @@ jobs:
         with:
           sarif-path: sarif.json
           summary-title: "Pyre Static Analysis Results"
+        timeout-minutes: 3
 
   # ============================================================
   # TESTS GROUP
@@ -411,7 +434,6 @@ jobs:
           - os: windows-latest
             browser: webkit
       max-parallel: 10
-    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
@@ -421,16 +443,19 @@ jobs:
           disable-sudo: false
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 3
 
       - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+        timeout-minutes: 3
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 3
 
       - name: Run E2E Tests (Playwright)
         uses: ./.github/actions/test-python-playwright
@@ -445,24 +470,26 @@ jobs:
       contents: read
       issues: write
     runs-on: ubuntu-latest
-    timeout-minutes: 3
 
     steps:
       - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+        timeout-minutes: 3
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+        timeout-minutes: 3
 
       - name: Run Streamlit app in background
         run: |
           poetry run streamlit run app.py &
           # Wait a bit for the app to start
           sleep 10
+        timeout-minutes: 3
 
       - name: ZAP Scan
         uses: zaproxy/action-full-scan@v0.12.0
@@ -559,7 +586,6 @@ jobs:
         os:
           - macos-latest
           - windows-latest
-    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
@@ -569,16 +595,19 @@ jobs:
           disable-sudo: true
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+        timeout-minutes: 3
 
       - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
+        timeout-minutes: 3
 
       - name: Setup Node.js and cache
         uses: ./.github/actions/setup-node
         with:
           node-version: ${{ env.GLOBAL_NODE_VERSION }}
+        timeout-minutes: 3
 
       - name: Build by stlite
         uses: ./.github/actions/build-stlite
