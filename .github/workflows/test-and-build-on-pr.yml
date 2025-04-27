@@ -39,6 +39,7 @@ env:
     api.github.com:443
     github.com:443
   GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
+  HARDEN_RUNNER_EGRESS_POLICY: audit
 
 jobs:
   test-and-build:
@@ -64,27 +65,26 @@ jobs:
           - macos-latest
         browser:
           - chromium
+    timeout-minutes: 5
+
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
-        timeout-minutes: 5
 
       - name: Check out Git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
-        timeout-minutes: 3
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-        timeout-minutes: 10
 
       - name: Run E2E Benchmark (Playwright)
         uses: ./.github/actions/test-python-playwright
@@ -110,7 +110,7 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
@@ -140,7 +140,7 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
