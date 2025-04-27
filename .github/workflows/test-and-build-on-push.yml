@@ -9,11 +9,28 @@ on:
       - .cursor/**
       - .devcontainer/**
       - assets/**
-      - README.md
+      - docs/**
       - .gitignore
-      - .cz_config.js
       - .pre-commit-config.yaml
+      - .pyre_configuration
+      - .watchmanconfig
+      - .yamllint.yml
       - "**.code-workspace"
+      - codecov.yaml
+      - commitlint.config.js
+      - LICENSE
+      - README.md
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GLOBAL_ALLOWED_ENDPOINTS: |
+    api.github.com:443
+    github.com:443
+  GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
+  HARDEN_RUNNER_EGRESS_POLICY: audit
 
 permissions:
   actions: read
@@ -21,12 +38,6 @@ permissions:
   checks: write
   security-events: write
   id-token: write
-
-env:
-  GLOBAL_ALLOWED_ENDPOINTS: |
-    api.github.com:443
-    github.com:443
-  GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
 
 jobs:
   test-and-build:
@@ -36,19 +47,22 @@ jobs:
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
       concurrency_cancel_in_progress: true
-      workflow_summary_name: "Workflow summary [Test & Build (on Push)]"
+      workflow_summary_name: "Workflow summary [Test & Build (on push to develop)]"
 
   get-npm-versions:
     outputs:
       main_version: ${{ steps.set-versions.outputs.main_version }}
       develop_version: ${{ steps.set-versions.outputs.develop_version }}
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
 
@@ -56,7 +70,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: main
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Get version from main
         id: get-main-ver
@@ -66,7 +80,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: develop
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Get version from develop
         id: get-dev-ver
@@ -89,11 +103,12 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: false
 
@@ -105,7 +120,6 @@ jobs:
 
       - name: Dump GitHub context # Keep for potential debugging/context needs within the action
         id: github_context_step
-        shell: bash
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT" | jq -r '. | {event_name, workflow_ref, repository, run_id, run_number}'
@@ -236,7 +250,6 @@ jobs:
           git log origin/main..HEAD --pretty=format:"- %s" --no-merges >> .commit-log.txt
 
       - name: Display version comparison result # Optional: for debugging
-        shell: bash
         run: |
           echo "Comparison Result: ${{ steps.compare-versions.outputs.comparison-result }}"
           echo "Check PR Success: ${{ steps.check-pr.outputs.success }}"
