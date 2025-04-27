@@ -493,11 +493,11 @@ jobs:
         run: |
           pipx install poetry
           poetry install --no-interaction --no-root --only main
-          pip install pyre-check
+          poetry add pyre-check
 
       - name: Run Pysa
         run: |
-          pyre --noninteractive analyze --save-results-to ./
+          poetry run pyre --noninteractive analyze --save-results-to ./
         continue-on-error: true
 
       - name: Upload artifact
