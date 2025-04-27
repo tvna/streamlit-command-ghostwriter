@@ -208,3 +208,16 @@ timer = "time.perf_counter"
 disable_gc = false
 warmup = false
 warmup_iterations = 10000
+
+[tool.vulture]
+paths = [
+  "app.py",
+  "features",
+  "tests",
+  "tests/e2e",
+  "tests/unit",
+]
+make_whitelist = true
+min_confidence = 80
+sort_by_size = true
+verbose = false

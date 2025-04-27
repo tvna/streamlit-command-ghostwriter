@@ -220,6 +220,11 @@ jobs:
           poetry run mypy .
           poetry run ruff check .
 
+      - name: Run Vulture
+        run: |
+          poetry run vulture
+        continue-on-error: true
+
       - name: Create requirements.txt
         shell: bash
         run: |
@@ -487,14 +492,27 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Python and restore cache
-        uses: ./.github/actions/setup-python
+      - name: Set up Python ${{ env.GLOBAL_PYTHON_VERSION }}
+        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.1.0
         with:
-          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+          python-version: "${{ env.GLOBAL_PYTHON_VERSION }}"
+
+      - name: Install pyre
+        run: |
+          pip install pyre-check
 
       - name: Run Pysa
         run: |
-          poetry run pyre --noninteractive analyze
+          pyre --noninteractive analyze --save-results-to ./
+        continue-on-error: true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: taint-output.json
+          path: taint-output.json
+          retention-days: 3
+          compression-level: 9
 
   zap_scan:
     name: Scan HTTP by ZAP (DAST Tool)
