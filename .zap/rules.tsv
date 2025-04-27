@@ -1,3 +1,6 @@
 # ZAP Scan Rules
 # Add your custom ZAP rules here in TSV format.
 # Example: RULE_ID	ACTION
+10096	IGNORE
+10106   IGNORE
+10038	IGNORE

@@ -25,6 +25,10 @@ inputs:
     description: "Python version to use"
     required: true
 
+defaults:
+  run:
+    shell: bash
+
 runs:
   using: "composite"
   steps:
@@ -66,12 +70,10 @@ runs:
           ${{ runner.os }}-python${{ inputs.python-version }}-poetry
 
     - name: Bootstrap poetry
-      shell: bash
       run: |
         pipx install poetry
         poetry config virtualenvs.in-project false
 
     - name: Install dependencies
-      shell: bash
       run: |
         poetry install --no-interaction --no-root --only main,dev

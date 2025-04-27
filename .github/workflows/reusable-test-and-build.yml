@@ -261,40 +261,17 @@ jobs:
       - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
         with:
-          scan-type: "fs"
-          ignore-unfixed: true
-          format: "table"
-
-  guard-npm:
-    name: Guard NPM
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
-        with:
-          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
-          disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
-
-      - name: Check out git repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 1
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
 
       - name: Setup Node.js and restore cache
         uses: ./.github/actions/setup-node
         with:
           node-version: ${{ env.GLOBAL_NODE_VERSION }}
 
-      - name: NPM Audit
+      - name: Run npm audit
         run: |
           # npm auditを実行 (高リスクの脆弱性のみ失敗とする)
           echo "### NPM Audit Results" >> "$GITHUB_STEP_SUMMARY"
@@ -303,6 +280,13 @@ jobs:
             echo "⚠️ High severity vulnerabilities found in production dependencies" >> "$GITHUB_STEP_SUMMARY"
             npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
           }
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
+        with:
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: "table"
 
   # ============================================================
   # TESTS GROUP
@@ -315,7 +299,6 @@ jobs:
       - guard-api-key
       - guard-python-code-quality
       - guard-vulnerabilities
-      - guard-npm
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -499,6 +482,8 @@ jobs:
 
       - name: Install pyre
         run: |
+          pipx install poetry
+          poetry install --no-interaction --no-root --only main
           pip install pyre-check
 
       - name: Run Pysa
