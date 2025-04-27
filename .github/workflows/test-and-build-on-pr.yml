@@ -31,8 +31,9 @@ permissions:
   actions: read
   contents: read
   checks: write
-  security-events: write
   id-token: write
+  issues: write
+  security-events: write
 
 env:
   GLOBAL_ALLOWED_ENDPOINTS: |

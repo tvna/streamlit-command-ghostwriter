@@ -36,8 +36,9 @@ permissions:
   actions: read
   contents: read
   checks: write
-  security-events: write
   id-token: write
+  issues: write
+  security-events: write
 
 jobs:
   test-and-build:

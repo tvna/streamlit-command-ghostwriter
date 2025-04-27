@@ -6,15 +6,20 @@ on:
     branches:
       - main
 
+defaults:
+  run:
+    shell: bash
+
+env:
+  HARDEN_RUNNER_EGRESS_POLICY: audit
+
 permissions:
   actions: read
   contents: read
   checks: write
-  security-events: write
   id-token: write
-
-env:
-  HARDEN_RUNNER_EGRESS_POLICY: audit
+  issues: write
+  security-events: write
 
 jobs:
   test-and-build:
