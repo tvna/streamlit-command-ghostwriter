@@ -489,11 +489,10 @@ jobs:
         with:
           python-version: "${{ env.GLOBAL_PYTHON_VERSION }}"
 
-      - name: Install pyre
+      - name: Install pyre (pysa)
         run: |
-          pip install toml
-          python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
-          pip install -r requirements.txt
+          pipx install poetry
+          poetry install --no-interaction --no-root --only main
           pip install pyre-check
 
       - name: Run Pysa
