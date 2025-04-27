@@ -6,41 +6,40 @@ on:
     branches:
       - develop
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 defaults:
   run:
     shell: bash
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   GLOBAL_ALLOWED_ENDPOINTS: |
     api.github.com:443
     github.com:443
   GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
+  HARDEN_RUNNER_EGRESS_POLICY: audit
 
 permissions:
   contents: read
 
 jobs:
   detect-dependabot-pr:
+    name: Detect Dependabot pull request
     if: github.actor == 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    outputs:
-      package-ecosystem: ${{ steps.meta.outputs.package-ecosystem }}
-      package-name: ${{ steps.meta.outputs.package-name }}
-      package-version: ${{ steps.meta.outputs.package-version }}
     permissions:
       contents: write
       pull-requests: write
       checks: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
       - name: Harden Runner
-        timeout-minutes: 5
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: false
           allowed-endpoints: |
@@ -48,8 +47,6 @@ jobs:
             github.com:443
 
       - name: Dependabot metadata
-        id: meta
-        timeout-minutes: 5
         uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # v2.3.0
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
@@ -62,5 +59,36 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
       concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
-      concurrency_cancel_in_progress: true
-      workflow_summary_name: "Workflow summary [Test & Build (dependabot)]"
+      concurrency_cancel_in_progress: false
+      workflow_summary_name: "Workflow summary [Test & Build (pull request from dependabot)]"
+
+  auto-approve-dependabot-pr:
+    needs:
+      - test-and-build
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: |
+            api.github.com:443
+            github.com:443
+
+      - name: Dependabot metadata
+        uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # v2.3.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Approve a PR
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
