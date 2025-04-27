@@ -217,8 +217,8 @@ jobs:
 
       - name: Lint Python and check types
         run: |
-          poetry run mypy .
-          poetry run ruff check .
+          poetry run mypy . -v
+          poetry run ruff check . -v
 
       - name: Run Vulture
         run: |
