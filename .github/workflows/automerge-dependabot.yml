@@ -34,7 +34,7 @@ jobs:
       pull-requests: write
       checks: read
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
@@ -70,7 +70,7 @@ jobs:
       contents: read
       pull-requests: write
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
