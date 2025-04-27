@@ -436,7 +436,7 @@ jobs:
         uses: ./.github/actions/test-python-playwright
         with:
           browser: ${{ matrix.browser }}
-        timeout-minutes: 10
+        timeout-minutes: 15
 
   zap_scan:
     name: Scan the webapplication
@@ -584,7 +584,7 @@ jobs:
         uses: ./.github/actions/build-stlite
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-        timeout-minutes: 5
+        timeout-minutes: 15
 
   # ============================================================
   # WORKFLOW SUMMARY
