@@ -222,7 +222,8 @@ jobs:
             npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
           }
 
-  pyre:
+  guard-pyre:
+    name: Guard by Pyre
     permissions:
       contents: read
       security-events: write
@@ -240,12 +241,28 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Test Pyre
-        uses: ./.github/actions/test-pyre
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+
+      - name: Create requirements.txt
+        shell: bash
+        run: |
+          poetry run python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
+
+      - name: Run Pyre Action
+        uses: facebook/pyre-action@12b8d923443ea66cb657facc2e5faac1c8c86e64 # v0.0.2
+        with:
+          repo-directory: "./"
+          requirements-path: "requirements.txt"
         timeout-minutes: 10
-        continue-on-error: true
+
+      - name: Convert SARIF to markdown summary
+        uses: ./.github/actions/convert-sarif-to-summary
+        with:
+          sarif-path: sarif.json
+          summary-title: "Pyre Static Analysis Results"
 
   # ============================================================
   # TESTS GROUP
