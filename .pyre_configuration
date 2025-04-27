@@ -5,7 +5,6 @@
     "features"
   ],
   "search_path": [
-    ".venv/bin",
     ".venv/lib/python*/site-packages"
   ],
   "exclude": [
@@ -25,6 +24,6 @@
     ".py",
     ".pyi"
   ],
-  "show_error_traces": true,
-  "strict": true
+  "strict": true,
+  "taint_models_path": "taint"
 }
