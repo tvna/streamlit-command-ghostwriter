@@ -33,7 +33,6 @@ runs:
       with:
         python-version: "${{ inputs.python-version }}"
 
-    # 非Windows環境用のキャッシュ復元
     - name: Restore cache pip dependencies (without Windows)
       uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
       if: runner.os != 'Windows'
@@ -43,13 +42,11 @@ runs:
           ~/.cache/pip
           .ruff_cache
           .pytest_cache
-          %LOCALAPPDATA%\pypoetry\Cache
-          %USERPROFILE%\.cache\pypoetry
+          /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages
         key: ${{ runner.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
           ${{ runner.os }}-python${{ inputs.python-version }}-poetry
 
-    # Windowsのみキャッシュ障害に備えてリトライロジックを追加
     - name: Restore cache pip dependencies (Windows with retry)
       uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
       if: runner.os == 'Windows'

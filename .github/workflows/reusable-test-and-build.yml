@@ -489,14 +489,9 @@ jobs:
         with:
           python-version: "${{ env.GLOBAL_PYTHON_VERSION }}"
 
-      - name: Install pyre (pysa)
-        run: |
-          pipx install poetry
-          poetry install --no-interaction --no-root --only main
-          poetry add pyre-check
-
       - name: Run Pysa
         run: |
+          pyre info
           poetry run pyre --noninteractive analyze --save-results-to ./
         continue-on-error: true
 
