@@ -42,7 +42,6 @@ runs:
           ~/.cache/pip
           .ruff_cache
           .pytest_cache
-          /opt/hostedtoolcache/Python/*/x64/bin/pyre.bin
           /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages
         key: ${{ runner.os }}-python${{ inputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
@@ -71,5 +70,6 @@ runs:
 
     - name: Install dependencies
       run: |
+        pip install pyre-check
         poetry install --no-interaction --no-root --only main,dev
       shell: bash

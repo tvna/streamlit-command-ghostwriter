@@ -218,6 +218,9 @@ jobs:
       - name: Lint Python and check types
         run: |
           poetry run mypy . -v
+
+      - name: Check formatting
+        run: |
           poetry run ruff check . -v
 
       - name: Run Vulture
@@ -484,13 +487,14 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Set up Python ${{ env.GLOBAL_PYTHON_VERSION }}
-        uses: actions/setup-python@19e4675e06535f6b54e894da5c1f044400bb4996 # v5.1.0
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
         with:
-          python-version: "${{ env.GLOBAL_PYTHON_VERSION }}"
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
 
       - name: Run Pysa
         run: |
+          pip install pyre-check
           pyre info
           poetry run pyre --noninteractive analyze --save-results-to ./
         continue-on-error: true
