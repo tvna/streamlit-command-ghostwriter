@@ -76,7 +76,7 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -130,7 +130,7 @@ jobs:
           disable-sudo: true
           disable-file-monitoring: true
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: ALL_FETCH_DEPTH
@@ -164,7 +164,7 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Python and restore cache
@@ -201,7 +201,7 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -237,7 +237,8 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Check out git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
 
@@ -299,7 +300,7 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -349,7 +350,7 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -423,7 +424,7 @@ jobs:
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
         timeout-minutes: 5
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -446,10 +447,10 @@ jobs:
     needs: small-unit-test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Check out git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: master
+          fetch-depth: 1
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
@@ -493,7 +494,7 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -567,7 +568,7 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
