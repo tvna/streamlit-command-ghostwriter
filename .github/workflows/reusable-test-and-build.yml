@@ -482,8 +482,8 @@ jobs:
 
       - name: Install pyre
         run: |
-          pipx install poetry
-          poetry install --no-interaction --no-root --only main
+          python3 -c "import toml; print('\n'.join(f'{p[\"name\"]}=={p[\"version\"]}' for p in toml.load('poetry.lock')['package']))" > requirements.txt
+          pip install -r requirements.txt
           pip install pyre-check
 
       - name: Run Pysa
@@ -533,7 +533,7 @@ jobs:
           docker_name: "ghcr.io/zaproxy/zaproxy:stable"
           target: "http://localhost:8501"
           rules_file_name: ".zap/rules.tsv"
-          cmd_options: "-a"
+          cmd_options: "-a -d"
 
   # ============================================================
   # ANALYSIS GROUP
@@ -675,7 +675,8 @@ jobs:
           disable-file-monitoring: true
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
-      - id: set-result
+      - name: Show workflow summary
+        id: set-result
         run: |
           {
             # 総合結果の表示
