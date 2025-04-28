@@ -45,7 +45,7 @@
         "@commitlint/cli": "^19.8.0",
         "@commitlint/config-conventional": "^19.8.0",
         "@commitlint/cz-commitlint": "^19.8.0",
-        "@stlite/desktop": "^0.80.5",
+        "@stlite/desktop": "^0.81.6",
         "commitizen": "^4.3.1",
         "cross-env": "^7.0.3",
         "electron": "^35.2.1",
