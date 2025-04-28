@@ -28,7 +28,7 @@ permissions:
 jobs:
   detect-dependabot-pr:
     name: Detect Dependabot pull request
-    if: github.actor == 'dependabot[bot]'
+    if: github.actor == 'dependabot'
     permissions:
       contents: write
       pull-requests: write
