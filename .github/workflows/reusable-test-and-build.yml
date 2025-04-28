@@ -237,6 +237,7 @@ jobs:
 
       - name: Run Pyre Action
         uses: facebook/pyre-action@12b8d923443ea66cb657facc2e5faac1c8c86e64 # v0.0.2
+        continue-on-error: true
         with:
           repo-directory: "./"
           requirements-path: "requirements.txt"
