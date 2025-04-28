@@ -494,14 +494,17 @@ jobs:
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
 
-      - name: Run Pysa
+      - name: Install Pysa
         run: |
           pipx inject poetry poetry-plugin-export
           poetry export -f requirements.txt --only=main --output requirements.txt
           pip install pyre-check
           pip install -r requirements.txt
+
+      - name: Run Pysa
+        run: |
           pyre info
-          poetry run pyre --noninteractive analyze --save-results-to ./
+          pyre --noninteractive analyze --save-results-to ./
         continue-on-error: true
 
       - name: Upload artifact
