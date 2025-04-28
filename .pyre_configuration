@@ -4,9 +4,6 @@
     ".",
     "features"
   ],
-  "search_path": [
-    ".venv/lib/python*/site-packages"
-  ],
   "exclude": [
     ".*\/.cursor\/.*",
     ".*\/.devcontainer\/.*",
