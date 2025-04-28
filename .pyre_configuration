@@ -5,6 +5,7 @@
     "features"
   ],
   "search_path": [
+    "features",
     ".venv/lib/python*/site-packages"
   ],
   "exclude": [

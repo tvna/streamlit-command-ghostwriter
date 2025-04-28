@@ -13,7 +13,6 @@ on:
       - docs/**
       - .gitignore
       - .pre-commit-config.yaml
-      - .pyre_configuration
       - .watchmanconfig
       - .yamllint.yml
       - "**.code-workspace"
