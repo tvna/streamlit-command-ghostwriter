@@ -46,7 +46,7 @@
 #
 # ============================================================
 ---
-name: Test and Build (dispatch)
+name: Test and Build - dispatch
 
 on:
   workflow_call:
@@ -174,7 +174,9 @@ jobs:
   guard-api-key:
     name: Guard API Key
     permissions:
+      actions: read
       contents: read
+      security-events: write
     runs-on: ubuntu-latest
     timeout-minutes: 3
 
@@ -209,9 +211,16 @@ jobs:
           sarif-path: results.sarif
           summary-title: "Gitleaks Analysis Results"
 
+      - name: Upload Gitleaks scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: gitleaks
+          sarif_file: "results.sarif"
+
   guard-python-code-quality:
     name: Guard Python code quality
     permissions:
+      actions: read
       contents: read
       security-events: write
     runs-on: ubuntu-latest
@@ -266,21 +275,24 @@ jobs:
           repo-directory: "./"
           requirements-path: "requirements.txt"
 
-      - name: Upload Pyre scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: "sarif.json"
-
       - name: Convert SARIF to markdown summary
         uses: ./.github/actions/convert-sarif-to-summary
         with:
           sarif-path: sarif.json
           summary-title: "Pyre Static Analysis Results"
 
+      - name: Upload Pyre scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: pyre
+          sarif_file: "sarif.json"
+
   guard-vulnerabilities:
     name: Guard vulnerabilities from remote repositories
     permissions:
+      actions: read
       contents: read
+      security-events: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -332,16 +344,17 @@ jobs:
           format: "sarif"
           output: "trivy-results.json"
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: "trivy-results.json"
-
       - name: Convert SARIF to markdown summary
         uses: ./.github/actions/convert-sarif-to-summary
         with:
           sarif-path: trivy-results.json
           summary-title: "Trivy Vulnerability Scan Results"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: trivy
+          sarif_file: "trivy-results.json"
 
   # ============================================================
   # TESTS GROUP
