@@ -849,18 +849,6 @@ docs = ["Sphinx", "furo"]
 test = ["objgraph", "psutil"]
 
 [[package]]
-name = "h11"
-version = "0.16.0"
-description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
-optional = false
-python-versions = ">=3.8"
-groups = ["dev"]
-files = [
-    {file = "h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"},
-    {file = "h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1"},
-]
-
-[[package]]
 name = "identify"
 version = "2.6.9"
 description = "File identification library for Python"
@@ -1176,14 +1164,14 @@ dev-without-jupyter = ["Sphinx (>=5.1.1)", "black (==24.8.0)", "build (>=0.10.0)
 
 [[package]]
 name = "lizard"
-version = "1.17.27"
+version = "1.17.28"
 description = "A code analyzer without caring the C/C++ header files. It works with Java, C/C++, JavaScript, Python, Ruby, Swift, Objective C. Metrics includes cyclomatic complexity number etc."
 optional = false
 python-versions = "*"
 groups = ["dev"]
 files = [
-    {file = "lizard-1.17.27-py2.py3-none-any.whl", hash = "sha256:bed0ff8119d4acd9440b56810d210fe1403fd51e4f5a7a86fe3a7c6306b1435f"},
-    {file = "lizard-1.17.27.tar.gz", hash = "sha256:178c9c776b8e507a2d4f7048974947151fa8c39d180ca31a975070675092b2fa"},
+    {file = "lizard-1.17.28-py2.py3-none-any.whl", hash = "sha256:8570e4991e15538a39a56c539c4c795abed720aa6ba49fd364139556fc928de1"},
+    {file = "lizard-1.17.28.tar.gz", hash = "sha256:e34b0a955de2d836c6f74642b71320cb92f13e218f34dd1bbe43cd929dca2b23"},
 ]
 
 [package.dependencies]
@@ -3780,4 +3768,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "831a470df5e30b256dc04bc5b2a18e0bde5681a29682a73d4af5e2a25f4cd80a"
+content-hash = "db5b05e27aabea8d9b5e213e72bd7db8f2afcce36756cc94f7c90239af5bab72"
