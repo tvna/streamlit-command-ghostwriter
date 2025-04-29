@@ -276,13 +276,14 @@ jobs:
           disable-sudo: true
           disable-file-monitoring: true
           allowed-endpoints: >
-            api.github.com:443
-            files.pythonhosted.org:443
             github.com:443
-            mirror.gcr.io:443
+            api.github.com:443
+            objects.githubusercontent.com:443
+            files.pythonhosted.org:443
             pypi.org:443
-            registry.npmjs.org:443
             install.python-poetry.org:443
+            registry.npmjs.org:443
+            mirror.gcr.io:443
 
       - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
