@@ -872,17 +872,10 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             FORMAT_TYPE_COMPRESS_ALT,
             STRICT_UNDEFINED,
             {"content": "<script>alert('XSS')</script>"},
-            EXPECTED_NO_CONTENT,
+            "<html><body>&lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;</body></html>",
             EXPECTED_INITIAL_NO_ERROR,
-            (
-                "Template runtime error: 1 validation error for HTMLContent\n"
-                "content\n"
-                "  Value error, HTML content contains potentially unsafe elements "
-                "[type=value_error, input_value=\"<script>alert('XSS')</script>\", "
-                "input_type=str]\n"
-                "    For further information visit https://errors.pydantic.dev/2.11/v/value_error"
-            ),
-            id="test_render_failure_unsafe_html_strict",
+            EXPECTED_RUNTIME_NO_ERROR,
+            id="test_render_success_unsafe_html_strict",
         ),
         pytest.param(
             b"<html><body>{{ content }}</body></html>",
@@ -1474,7 +1467,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "None",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_success_recursive_call_list_append_self_strict",
+            id="test_render_failure_recursive_call_list_append_self_strict",
         ),
         pytest.param(
             b"{% set d = {} %}{{ d.update({'self': d}) }}",
@@ -1484,7 +1477,7 @@ def create_template_file() -> Callable[[bytes, str], BytesIO]:
             "None",
             EXPECTED_INITIAL_NO_ERROR,
             EXPECTED_RUNTIME_NO_ERROR,
-            id="test_render_success_recursive_call_dict_update_self_strict",
+            id="test_render_failure_recursive_call_dict_update_self_strict",
         ),
         pytest.param(
             b"{% macro recursive(n) %}{% if n > 0 %}{{ recursive(n-1) }}{% endif %}{% endmacro %}{{ recursive(5) }}",

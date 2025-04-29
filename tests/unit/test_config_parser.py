@@ -812,17 +812,22 @@ def test_parse_toml_or_yaml(
         "expected_parse_error",
     ),
     [
-        # --- CSV Cases ---
         pytest.param(
-            b"col1,col2",
-            "data.csv",
+            b"field1,field2\nvalueA,valueB\n,\nvalueC,valueD",  # Row with all NaNs
+            "all_nan_row.csv",
             DEFAULT_CSV_ROWS_NAME,
-            SHOULD_NOT_FILL_NAN,
-            DEFAULT_FILL_VALUE,
+            SHOULD_FILL_NAN,
+            "DEFAULT",  # Fill value
             NO_EXPECTED_INITIAL_ERROR,
-            NO_EXPECTED_DICT,
-            "CSV file must contain at least one data row.",
-            id="csv_failure_header_only_custom_name",
+            {
+                "csv_rows": [
+                    {"field1": "valueA", "field2": "valueB"},
+                    {"field1": "DEFAULT", "field2": "DEFAULT"},
+                    {"field1": "valueC", "field2": "valueD"},
+                ]
+            },
+            NO_EXPECTED_RUNTIME_ERROR,
+            id="csv_success_all_nan_row_fill_default",
         ),
         pytest.param(
             b"col1,col2\nval1,\nval2,val3",
@@ -858,26 +863,15 @@ def test_parse_toml_or_yaml(
             id="csv_success_nan_fill_na_string",
         ),
         pytest.param(
-            b"col1,col2",  # CSV with only header
-            "data.csv",
-            DEFAULT_CSV_ROWS_NAME,
-            SHOULD_NOT_FILL_NAN,
-            DEFAULT_FILL_VALUE,
+            b"header1,header2\nvalue1,\nvalue3,value4",  # NaN in second column
+            "nan_fill_missing.csv",
+            "items",  # Custom rows name
+            SHOULD_FILL_NAN,
+            "MISSING",  # Fill value
             NO_EXPECTED_INITIAL_ERROR,
-            NO_EXPECTED_DICT,
-            "CSV file must contain at least one data row.",
-            id="csv_failure_header_only",
-        ),
-        pytest.param(
-            b"",  # Empty CSV
-            "data.csv",
-            DEFAULT_CSV_ROWS_NAME,
-            SHOULD_NOT_FILL_NAN,
-            DEFAULT_FILL_VALUE,
-            NO_EXPECTED_INITIAL_ERROR,
-            NO_EXPECTED_DICT,
-            "No columns to parse from file",  # Error message might vary slightly based on pandas version
-            id="csv_failure_empty_file",
+            {"items": [{"header1": "value1", "header2": "MISSING"}, {"header1": "value3", "header2": "value4"}]},
+            NO_EXPECTED_RUNTIME_ERROR,
+            id="csv_success_nan_fill_missing_custom_name",
         ),
         pytest.param(
             _create_large_csv_content(100, 100),  # ~100KB CSV
@@ -890,19 +884,6 @@ def test_parse_toml_or_yaml(
             {"csv_rows": [{f"col{c}": f"val_{r}_{c}" for c in range(100)} for r in range(100)]},
             NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_moderately_large",
-        ),
-        # Note: Testing the exact >30MB boundary failure within parametrize is infeasible
-        # due to the size of data required. Recommend separate test functions for that.
-        pytest.param(
-            b"a,b\n\x00,d",  # CSV with null byte
-            "null.csv",
-            DEFAULT_CSV_ROWS_NAME,
-            SHOULD_NOT_FILL_NAN,
-            DEFAULT_FILL_VALUE,
-            NO_EXPECTED_INITIAL_ERROR,
-            NO_EXPECTED_DICT,
-            "Failed to parse CSV: Null byte detected in input data.",
-            id="csv_failure_null_byte",
         ),
         pytest.param(
             b'col1,"col,2"\nval1,"v,al2"',
@@ -925,17 +906,6 @@ def test_parse_toml_or_yaml(
             {"csv_rows": [{"col1;col2": "val1;val2"}]},
             NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_semicolon_delimiter",
-        ),
-        pytest.param(
-            b"header1,header2\nvalue1,\nvalue3,value4",  # NaN in second column
-            "nan_fill_missing.csv",
-            "items",  # Custom rows name
-            SHOULD_FILL_NAN,
-            "MISSING",  # Fill value
-            NO_EXPECTED_INITIAL_ERROR,
-            {"items": [{"header1": "value1", "header2": "MISSING"}, {"header1": "value3", "header2": "value4"}]},
-            NO_EXPECTED_RUNTIME_ERROR,
-            id="csv_success_nan_fill_missing_custom_name",
         ),
         pytest.param(
             b"col_a,col_b,col_c\n1,alpha,\n,beta,gamma\n3,,delta",  # Multiple NaNs
@@ -972,45 +942,6 @@ def test_parse_toml_or_yaml(
             id="csv_success_numeric_nan_fill_na",
         ),
         pytest.param(
-            b"field1,field2\nvalueA,valueB\n,\nvalueC,valueD",  # Row with all NaNs
-            "all_nan_row.csv",
-            DEFAULT_CSV_ROWS_NAME,
-            SHOULD_FILL_NAN,
-            "DEFAULT",  # Fill value
-            NO_EXPECTED_INITIAL_ERROR,
-            {
-                "csv_rows": [
-                    {"field1": "valueA", "field2": "valueB"},
-                    {"field1": "DEFAULT", "field2": "DEFAULT"},
-                    {"field1": "valueC", "field2": "valueD"},
-                ]
-            },
-            NO_EXPECTED_RUNTIME_ERROR,
-            id="csv_success_all_nan_row_fill_default",
-        ),
-        pytest.param(
-            b"\xff\xfe\xfd",
-            "config.csv",
-            DEFAULT_CSV_ROWS_NAME,
-            SHOULD_NOT_FILL_NAN,
-            DEFAULT_FILL_VALUE,
-            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
-            NO_EXPECTED_DICT,
-            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
-            id="parse_csv_failure_unicode_decode_error",
-        ),
-        pytest.param(
-            b" \t \n \n \t\t ",
-            "config.csv",
-            DEFAULT_CSV_ROWS_NAME,
-            SHOULD_NOT_FILL_NAN,
-            DEFAULT_FILL_VALUE,
-            NO_EXPECTED_INITIAL_ERROR,
-            NO_EXPECTED_DICT,
-            "No columns to parse from file",
-            id="csv_failure_whitespace_only",
-        ),
-        pytest.param(
             b" col1 , col2 \n val1 , val2 \n",
             "config.csv",
             DEFAULT_CSV_ROWS_NAME,
@@ -1020,6 +951,61 @@ def test_parse_toml_or_yaml(
             {"csv_rows": [{" col1 ": " val1 ", " col2 ": " val2 "}]},
             NO_EXPECTED_RUNTIME_ERROR,
             id="csv_success_whitespace_in_header_data",
+        ),
+        pytest.param(
+            b"col1,col2\nval1,val2,val3\nval4,val5",  # Row 1 has too many columns
+            "mismatched_cols.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            NO_EXPECTED_INITIAL_ERROR,
+            {"csv_rows": [{"col1": "val2", "col2": "val3"}, {"col1": "val5", "col2": float("nan")}]},
+            NO_EXPECTED_RUNTIME_ERROR,
+            id="csv_success_mismatched_columns",
+        ),
+        pytest.param(
+            b'col1,col2\nval1"bad,val2',  # Quote character appearing *inside* an unquoted field
+            "bad_internal_quote.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            NO_EXPECTED_INITIAL_ERROR,
+            {"csv_rows": [{"col1": 'val1"bad', "col2": "val2"}]},
+            NO_EXPECTED_RUNTIME_ERROR,
+            id="csv_success_internal_unescaped_quote",
+        ),
+        pytest.param(
+            b"",  # Empty CSV
+            "data.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            NO_EXPECTED_INITIAL_ERROR,
+            NO_EXPECTED_DICT,
+            "No columns to parse from file",  # Error message might vary slightly based on pandas version
+            id="csv_failure_empty_file",
+        ),
+        pytest.param(
+            b"col1,col2",
+            "data.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            NO_EXPECTED_INITIAL_ERROR,
+            NO_EXPECTED_DICT,
+            "CSV file must contain at least one data row.",
+            id="csv_failure_header_only_custom_name",
+        ),
+        pytest.param(
+            b"col1,col2",  # CSV with only header
+            "data.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            NO_EXPECTED_INITIAL_ERROR,
+            NO_EXPECTED_DICT,
+            "CSV file must contain at least one data row.",
+            id="csv_failure_header_only",
         ),
         pytest.param(
             b"\x00\x01\x02\x03\x04",
@@ -1033,6 +1019,17 @@ def test_parse_toml_or_yaml(
             id="csv_failure_invalid_binary_fail",
         ),
         pytest.param(
+            b"a,b\n\x00,d",  # CSV with null byte
+            "null.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            NO_EXPECTED_INITIAL_ERROR,
+            NO_EXPECTED_DICT,
+            "Failed to parse CSV: Null byte detected in input data.",
+            id="csv_failure_null_byte",
+        ),
+        pytest.param(
             b'a,b,c\ncat,foo,bar\ndog,foo,"baz',
             "config.csv",
             DEFAULT_CSV_ROWS_NAME,
@@ -1042,6 +1039,28 @@ def test_parse_toml_or_yaml(
             NO_EXPECTED_DICT,
             "Error tokenizing data. C error: EOF inside string starting at row 2",
             id="csv_failure_unclosed_quote",
+        ),
+        pytest.param(
+            b"\xff\xfe\xfd",
+            "config.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            NO_EXPECTED_DICT,
+            "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte",
+            id="csv_failure_unicode_decode_error",
+        ),
+        pytest.param(
+            b" \t \n \n \t\t ",
+            "config.csv",
+            DEFAULT_CSV_ROWS_NAME,
+            SHOULD_NOT_FILL_NAN,
+            DEFAULT_FILL_VALUE,
+            NO_EXPECTED_INITIAL_ERROR,
+            NO_EXPECTED_DICT,
+            "No columns to parse from file",
+            id="csv_failure_whitespace_only",
         ),
     ],
 )

@@ -86,7 +86,7 @@ import pprint
 import sys
 import tomllib
 from io import BytesIO, StringIO
-from typing import Any, ClassVar, Dict, Final, List, Optional, TypeAlias, Union, cast
+from typing import ClassVar, Dict, Final, List, Optional, TypeAlias, Union, cast
 
 import pandas as pd
 import yaml
@@ -245,24 +245,18 @@ class ConfigParser(BaseModel):
                 return tomllib.loads(config_data)
             case "yaml" | "yml":
                 try:
-                    # yaml.safe_load returns Any, so we need to check and cast
-                    parsed_data: Final[Union[Dict[str, Any], List[Any]]] = yaml.safe_load(config_data)
+                    parsed_data: Final[JSONValue] = yaml.safe_load(config_data)
                     if not isinstance(parsed_data, dict):
                         raise SyntaxError("Invalid YAML file loaded.")
-                    # Cast to JSONDict after checking it's a dict
-                    return cast("JSONDict", parsed_data)
+                    # Type checker knows it's a dict here, no cast needed.
+                    return parsed_data
                 except yaml.MarkedYAMLError as e:
                     # Re-raise the original exception to preserve marks for tests
                     raise e from e
             case "csv":
                 return self._parse_csv_data(config_data)
-            # The 'case _:' is used here to satisfy the type checker and catch unexpected states.
-            # Validation in __initialize_from_file should prevent reaching this point.
-            case _:
-                raise RuntimeError(
-                    f"Internal error: Reached _parse_by_file_type with unexpected extension '{self._file_extension}'. "
-                    "Validation should have caught this."
-                )
+
+        return {}
 
     def _parse_csv_data(self, config_data: str) -> JSONDict:
         """CSVデータをパースします。

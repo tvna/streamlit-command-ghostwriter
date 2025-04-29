@@ -130,11 +130,17 @@ class AppCore(BaseModel):
         if config_dict is None or self._render is None:
             return self
 
-        if self._render.apply_context(config_dict, format_type, is_strict_undefined) is False and self._render.error_message is not None:
-            self._template_error_message = f"{self._template_error_header}: {self._render.error_message} in '{self._template_filename}'"
+        # Assign to a local variable after the None check for type refinement
+        render_instance = self._render
+
+        if (
+            render_instance.apply_context(config_dict, format_type, is_strict_undefined) is False
+            and render_instance.error_message is not None
+        ):
+            self._template_error_message = f"{self._template_error_header}: {render_instance.error_message} in '{self._template_filename}'"
             return self
 
-        self._formatted_text = self._render.render_content
+        self._formatted_text = render_instance.render_content
         self._template_error_message = None
 
         return self

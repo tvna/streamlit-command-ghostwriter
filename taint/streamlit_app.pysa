@@ -1,0 +1,79 @@
+# Pysa taint model for app.py (Streamlit application)
+
+def streamlit.file_uploader(label, type, key) -> TaintSource[UserControlled]: ...
+
+def streamlit.text_input(label, value, key) -> TaintSource[UserControlled]: ...
+
+def streamlit.selectbox(label, options, index, format_func, key) -> TaintSource[UserControlled]: ...
+
+def streamlit.radio(label, options, horizontal, key) -> TaintSource[UserControlled]: ...
+
+def streamlit.toggle(label, value, key) -> TaintSource[UserControlled]: ...
+
+# Model the underlying Mapping.get for session_state access
+def typing.Mapping.get(*args, **kwargs) -> TaintSource[UserControlled]: ...
+
+# --- Sinks ---
+
+# Mark parameters receiving potentially tainted data in core.AppCore methods
+def core.AppCore.load_config_file(
+    self,
+    config_file: TaintSink[UserControlled],
+    csv_rows_name: TaintSink[UserControlled],
+    enable_auto_transcoding: bool,
+    enable_fill_nan: bool,
+    fill_nan_with: TaintSink[UserControlled]
+) -> core.AppCore: ...
+
+def core.AppCore.load_template_file(
+    self,
+    template_file: TaintSink[UserControlled],
+    enable_auto_transcoding: bool
+) -> core.AppCore: ...
+
+# result_format_type and strict_undefined might come from user input via session_state
+def core.AppCore.apply(
+    self,
+    format_type: TaintSink[UserControlled],
+    is_strict_undefined: TaintSink[UserControlled]
+) -> core.AppCore: ...
+
+# Sinks for Streamlit output functions
+def streamlit.markdown(body: TaintSink[XSS]) -> None: ...
+
+def streamlit.text_area(label, value: TaintSink[UntrustedData], key, height) -> None: ...
+
+def streamlit.json(body: TaintSink[UntrustedData]) -> None: ...
+
+# Mark data and file_name parameters as sinks
+def streamlit.download_button(
+    label,
+    data: TaintSink[UntrustedData],
+    file_name: TaintSink[FileSystemAccess],
+    disabled,
+    use_container_width
+) -> bool: ...
+
+# Sinks for data returned from core.AppCore (mark return values)
+# Assuming content returned might still be tainted
+def core.AppCore.get_download_content(
+    self,
+    encode
+) -> TaintSource[UntrustedData]: ...
+
+# Filename based on user input should be treated carefully
+def core.AppCore.get_download_filename(
+    self,
+    filename: TaintSink[FileSystemAccess],
+    file_ext: TaintSink[FileSystemAccess],
+    is_append_timestamp: bool
+) -> TaintSource[FileSystemAccess]: ...
+
+# --- Rules ---
+
+# Rule: User input reaching Streamlit markdown (potential XSS)
+
+# Rule: User input used directly in download button data or filename
+
+# Rule: User input flowing through core.AppCore to potentially unsafe outputs
+# This rule is broad and might need refinement based on core.AppCore's internals

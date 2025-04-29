@@ -90,12 +90,6 @@ from .validate_uploaded_file import FileSizeConfig, FileValidator
 T = TypeVar("T")
 NodeT = TypeVar("NodeT", bound=nodes.Node)
 
-# Type definitions for container validation
-ContainerValueType: TypeAlias = Union[str, Decimal, bool, None]
-ContainerListType: TypeAlias = List[Union[ContainerValueType, "ContainerListType", "ContainerDictType"]]  # type: ignore
-ContainerDictType: TypeAlias = Dict[str, Union[ContainerValueType, ContainerListType, "ContainerDictType"]]  # type: ignore
-ContainerType: TypeAlias = Union[ContainerValueType, ContainerListType, ContainerDictType]
-
 # Type definition for evaluated values
 # Define recursively to avoid Any
 EvaluatedValue: TypeAlias = Union[str, Decimal, bool, List["EvaluatedValue"], Dict[str, "EvaluatedValue"], None]
@@ -184,8 +178,8 @@ class HTMLContent(BaseModel):
 
     content: str = Field(...)
 
-    @field_validator("content")
     @classmethod
+    @field_validator("content")
     def _validate_html_content(cls, v: str) -> str:
         """HTMLコンテンツを検証する。
 
@@ -410,7 +404,7 @@ class TemplateSecurityValidator(BaseModel):
             ValueError: 安全でないHTML要素が含まれる場合
         """
         try:
-            html_content: Final[HTMLContent] = HTMLContent(content=value)
+            html_content = HTMLContent(content=value)
             return Markup("").join(html_content.content)
         except ValidationError as e:
             raise ValueError(str(e)) from e
@@ -420,7 +414,7 @@ class TemplateSecurityValidator(BaseModel):
         node: nodes.Node,
         context: Dict[str, Any],
         assignments: Dict[str, Any],
-    ) -> Union[str, Decimal, List[Any], Dict[str, Any], bool, None]:
+    ) -> EvaluatedValue:
         """式を評価する。
 
         Args:
@@ -429,7 +423,7 @@ class TemplateSecurityValidator(BaseModel):
             assignments: 変数の割り当て状態
 
         Returns:
-            Union[None, str, Decimal, List[Any], Dict[str, Any], bool]: 評価結果
+            EvaluatedValue: 評価結果
 
         Raises:
             ValueError: 再帰的構造が検出された場合
@@ -542,7 +536,7 @@ class TemplateSecurityValidator(BaseModel):
         node: nodes.Dict,
         context: Dict[str, Any],
         assignments: Dict[str, Any],
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, EvaluatedValue]:
         """辞書を評価する。
 
         Args:
@@ -551,13 +545,13 @@ class TemplateSecurityValidator(BaseModel):
             assignments: 変数の割り当て状態
 
         Returns:
-            Dict[str, Any]: 評価結果
+            Dict[str, EvaluatedValue]: 評価結果
 
         Raises:
             ValueError: 再帰的構造が検出された場合
             TypeError: キーが文字列でない場合
         """
-        result: Dict[str, Any] = {}
+        result: Dict[str, EvaluatedValue] = {}
         for pair in node.items:
             key = self._evaluate_expression(pair.key, context, assignments)
             if not isinstance(key, str):

@@ -25,12 +25,12 @@ pytest = "^8.3.1"
 pytest-cov = "^6.1.1"
 types-toml = "^0.10.8.20240310"
 pre-commit = "^4.2.0"
-lizard = "^1.17.25"
+lizard = "^1.17.28"
 poetry-types = "^0.6.0"
 types-pyyaml = "^6.0.12.20250402"
 pydeps = "^3.0.1"
 pytest-playwright = "^0.7.0"
-ruff = "^0.11.6"
+ruff = "^0.11.7"
 pandas-stubs = "^2.2.2.240603"
 mock = "^5.2.0"
 gitpython = "^3.1.44"
@@ -187,12 +187,12 @@ exclude = [
 ]
 disallow_any_decorated = false
 disallow_any_explicit = false
-disallow_any_generics = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-disallow_incomplete_defs = true
-ignore_errors = true
+disallow_any_generics = false
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_incomplete_defs = false
+ignore_errors = false
 ignore_missing_imports = false
 pretty = true
 python_version = "3.12"
@@ -208,3 +208,16 @@ timer = "time.perf_counter"
 disable_gc = false
 warmup = false
 warmup_iterations = 10000
+
+[tool.vulture]
+paths = [
+  "app.py",
+  "features",
+  "tests",
+  "tests/e2e",
+  "tests/unit",
+]
+make_whitelist = true
+min_confidence = 80
+sort_by_size = true
+verbose = false

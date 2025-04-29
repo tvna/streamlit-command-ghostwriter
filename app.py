@@ -110,11 +110,13 @@ class TabViewModel(BaseModel):
         match self.__execute_mode:
             case ExecuteMode.parsed_text:
                 st.success(self.__texts.tab1.success_formatted_text)
-                st.container(border=True).text_area(self.__texts.tab1.formatted_text, result, key="tab1_result_textarea", height=500)
+                with st.container(border=True):
+                    st.text_area(self.__texts.tab1.formatted_text, result, key="tab1_result_textarea", height=500)
 
             case ExecuteMode.parsed_markdown:
                 st.success(self.__texts.tab1.success_formatted_text)
-                st.container(border=True).markdown(result)
+                with st.container(border=True):
+                    st.markdown(result)
 
     def __show_tab1_error(self: "TabViewModel", first_error_message: Optional[str], second_error_message: Optional[str]) -> None:
         """タブ1のエラーコンテンツを表示します。
@@ -149,7 +151,8 @@ class TabViewModel(BaseModel):
 
         match self.__execute_mode:
             case ExecuteMode.debug_visual:
-                st.container(border=True).json(parsed_config)
+                with st.container(border=True):
+                    st.json(parsed_config)
 
             case ExecuteMode.debug_toml:
                 toml_config = toml.dumps(parsed_config)
@@ -184,25 +187,26 @@ def main() -> None:
 
     texts: Final[Box] = Box(LANGUAGES[default_language])
 
-    st.session_state.update(
-        {
-            "tab1_result_content": st.session_state.get("tab1_result_content"),
-            "tab2_result_content": st.session_state.get("tab2_result_content"),
-        }
-    )
+    # Initialize session state keys if they don't exist
+    if "tab1_result_content" not in st.session_state:
+        st.session_state["tab1_result_content"] = None
+    if "tab2_result_content" not in st.session_state:
+        st.session_state["tab2_result_content"] = None
+    # No need to update here initially, values are retrieved later
 
     st.set_page_config(page_title=app_title, page_icon=app_icon, layout="wide", initial_sidebar_state="expanded")
     st.title(f"{app_title} {app_icon}")
 
     with st.sidebar:
         st.write(texts.sidebar.welcome)
-        st.expander(texts.sidebar.syntax_of_each_file, expanded=True).markdown(
-            f"""
-            - [toml syntax docs]({texts.sidebar.toml_syntax_doc})
-            - [yaml syntax docs]({texts.sidebar.yaml_syntax_doc})
-            - [jinja syntax docs]({texts.sidebar.jinja_syntax_doc})
-            """
-        )
+        with st.expander(texts.sidebar.syntax_of_each_file, expanded=True):
+            st.markdown(
+                f"""
+                - [toml syntax docs]({texts.sidebar.toml_syntax_doc})
+                - [yaml syntax docs]({texts.sidebar.yaml_syntax_doc})
+                - [jinja syntax docs]({texts.sidebar.jinja_syntax_doc})
+                """
+            )
 
     header_emojis = [
         ":memo:",
@@ -227,8 +231,10 @@ def main() -> None:
         tab1_row1 = st.columns(2)
         tab1_row2 = st.columns(3)
 
-        tab1_row1[0].container(border=True).file_uploader(texts.tab1.upload_config, type=config_file_exts, key="tab1_config_file")
-        tab1_row1[1].container(border=True).file_uploader(texts.tab1.upload_template, type=["jinja2", "j2"], key="tab1_template_file")
+        with tab1_row1[0].container(border=True):
+            st.file_uploader(texts.tab1.upload_config, type=config_file_exts, key="tab1_config_file")
+        with tab1_row1[1].container(border=True):
+            st.file_uploader(texts.tab1.upload_template, type=["jinja2", "j2"], key="tab1_template_file")
 
         tab1_row2[0].button(texts.tab1.generate_text_button, use_container_width=True, key="tab1_execute_text")
         tab1_row2[1].button(texts.tab1.generate_markdown_button, use_container_width=True, key="tab1_execute_markdown")
@@ -248,25 +254,23 @@ def main() -> None:
             st.session_state.get("strict_undefined", True),
         )
 
-        st.session_state.update(
-            {
-                "tab1_result_content": tab1_model.formatted_text,
-                "tab1_error_config": tab1_model.config_error_message,
-                "tab1_error_template": tab1_model.template_error_message,
-            }
-        )
+        # Update session state individually
+        st.session_state["tab1_result_content"] = tab1_model.formatted_text
+        st.session_state["tab1_error_config"] = tab1_model.config_error_message
+        st.session_state["tab1_error_template"] = tab1_model.template_error_message
 
-        tab1_row2[2].download_button(
-            label=texts.tab1.download_button,
-            data=tab1_model.get_download_content(st.session_state.get("download_encoding", "Shift_JIS")) or "No data available",
-            file_name=tab1_model.get_download_filename(
-                st.session_state.get("download_filename", "command"),
-                st.session_state.get("download_file_ext", "txt"),
-                st.session_state.get("is_append_timestamp", True),
-            ),
-            disabled=False if tab1_model.is_ready_formatted else True,
-            use_container_width=True,
-        )
+        with tab1_row2[2]:
+            st.download_button(
+                label=texts.tab1.download_button,
+                data=tab1_model.get_download_content(st.session_state.get("download_encoding", "Shift_JIS")) or "No data available",
+                file_name=tab1_model.get_download_filename(
+                    st.session_state.get("download_filename", "command"),
+                    st.session_state.get("download_file_ext", "txt"),
+                    st.session_state.get("is_append_timestamp", True),
+                ),
+                disabled=False if tab1_model.is_ready_formatted else True,
+                use_container_width=True,
+            )
 
         tab1_view_model = TabViewModel(texts)
         tab1_view_model.set_execute_mode(
@@ -286,7 +290,8 @@ def main() -> None:
         tab2_row1 = st.columns(2)
         tab2_row2 = st.columns(3)
 
-        tab2_row1[0].container(border=True).file_uploader(texts.tab2.upload_debug_config, type=config_file_exts, key="tab2_config_file")
+        with tab2_row1[0].container(border=True):
+            st.file_uploader(texts.tab2.upload_debug_config, type=config_file_exts, key="tab2_config_file")
 
         tab2_model = AppCore(texts.tab2.error_debug_config)
         tab2_model.load_config_file(
@@ -301,12 +306,9 @@ def main() -> None:
         tab2_row2[1].button(texts.tab2.generate_toml_button, use_container_width=True, key="tab2_execute_toml")
         tab2_row2[2].button(texts.tab2.generate_yaml_button, use_container_width=True, key="tab2_execute_yaml")
 
-        st.session_state.update(
-            {
-                "tab2_result_content": tab2_model.config_dict,
-                "tab2_error_config": tab2_model.config_error_message,
-            }
-        )
+        # Update session state individually
+        st.session_state["tab2_result_content"] = tab2_model.config_dict
+        st.session_state["tab2_error_config"] = tab2_model.config_error_message
 
         tab2_view_model = TabViewModel(texts)
         tab2_view_model.set_execute_mode(
@@ -326,12 +328,15 @@ def main() -> None:
 
         with tab3_row1[0].container(border=True):
             st.subheader(texts.tab3.subheader_input_file)
-            st.container(border=True).text_input(texts.tab3.csv_rows_name, value="csv_rows", key="csv_rows_name")
+            with st.container(border=True):
+                st.text_input(texts.tab3.csv_rows_name, value="csv_rows", key="csv_rows_name")
             with st.container(border=True):
                 st.toggle(texts.tab3.enable_fill_nan, value=True, key="enable_fill_nan")
                 st.text_input(texts.tab3.fill_nan_with, value="#", key="fill_nan_with")
-            st.container(border=True).toggle(texts.tab3.strict_undefined, value=True, key="strict_undefined")
-            st.container(border=True).toggle(texts.tab3.auto_transcoding, value=True, key="enable_auto_transcoding")
+            with st.container(border=True):
+                st.toggle(texts.tab3.strict_undefined, value=True, key="strict_undefined")
+            with st.container(border=True):
+                st.toggle(texts.tab3.auto_transcoding, value=True, key="enable_auto_transcoding")
 
         with tab3_row1[1].container(border=True):
             st.subheader(texts.tab3.subheader_output_file)

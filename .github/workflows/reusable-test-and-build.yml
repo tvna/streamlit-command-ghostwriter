@@ -1,17 +1,52 @@
-# コードにハッシュ検証ポリシーを追加
-# SECURITY NOTE FOR REVIEWERS:
-# All external actions in this workflow are pinned to specific versions.
-# We use either:
-# 1. Verified tags (vX.Y.Z) from trusted publishers
-# 2. Specific commit SHAs when tags are not preferred
+# ============================================================
+# Workflow Information: reusable-test-and-build.yml
+# ============================================================
 #
-# When updating any action, always:
-# - Check for security advisories for the action
-# - Verify the publisher's reputation
-# - Test the new version in a controlled environment first
-# - Update this policy comment with any changes
+# ワークフローの目的 (Purpose):
+# -----------------------------
+# 他のワークフローから呼び出される再利用可能なワークフローです。
+# 主な目的は、コードの品質とセキュリティを多角的に検証することです。
+# 具体的には、静的解析、単体テスト、E2Eテスト、カバレッジ計測、
+# 脆弱性スキャン (依存関係、SAST、DAST)、コード複雑度分析、
+# デスクトップアプリケーションのビルドを実行します。
+#
+# ワークフローの影響範囲 (Scope of Impact):
+# ---------------------------------------
+# - 呼び出し元のワークフローにテスト、ビルド、分析の結果を提供します。
+# - 複数のOS (Ubuntu, macOS, Windows) および Python バージョンでテストを実行します。
+# - Codecov にカバレッジレポートをアップロードします。
+# - ZAP スキャンによって GitHub Issue が作成される可能性があります。
+# - Pyre, Gitleaks の結果を SARIF 形式で出力し、要約をワークフローサマリーに追記します。
+# - デスクトップアプリのビルドアーティファクトを生成します (呼び出し元で利用可能)。
+#
+# 依存する外部のワークフロー (External Dependencies):
+# ------------------------------------------------
+# - このワークフローは他のワークフローから `workflow_call` によって呼び出されます。
+# - 非常に多くの外部 GitHub Actions および内部カスタムアクション (`./.github/actions/*`) に依存します。
+#   (例: Harden Runner, Checkout, Setup Python/Node, 各種リンター/テスター/スキャナーのアクション)
+#
+# セキュリティポリシー (Security Policy):
+# ------------------------------------
+# - **アクションのバージョン固定:** サプライチェーン攻撃リスク低減のため、全ての外部アクションは
+#   コミットSHAまたは検証済みタグに固定されています (冒頭のポリシーコメント参照)。
+# - **Harden Runner:** `step-security/harden-runner` を全てのジョブで使用し、
+#   `egress-policy: block` と `allowed-endpoints` によりアウトバウンド通信を厳格に制御します。
+# - **最小権限:** `permissions` キーでワークフローが必要とする最小限の権限を設定しています。
+# - **多層的なセキュリティスキャン:** Gitleaks (シークレット検出), Trivy (依存関係脆弱性),
+#   Pyre/Pysa (SAST), ZAP (DAST) を組み合わせて実施します。
+# - **依存関係のキャッシュ:** セットアップアクション内でキャッシュを利用しますが、
+#   キャッシュキーには厳密なコンテキストを使用します。
+#
+# 参考URL (Reference URLs):
+# -------------------------
+# - GitHub Actions Documentation: https://docs.github.com/ja/actions
+# - Reusable Workflows: https://docs.github.com/ja/actions/using-workflows/reusing-workflows
+# - Security Hardening for GitHub Actions: https://docs.github.com/ja/actions/security-guides/security-hardening-for-github-actions
+# - 使用している各アクション/ツールのドキュメント (例: Codecov, Pyre, Trivy, ZAP, Lizard)
+#
+# ============================================================
 ---
-name: Reusable Test & Build
+name: Test and Build - dispatch
 
 on:
   workflow_call:
@@ -32,6 +67,23 @@ on:
     secrets:
       CODECOV_TOKEN:
         required: true
+  workflow_dispatch:
+    inputs:
+      concurrency_group:
+        required: false
+        type: string
+        default: "dispatch-test-and-build"
+        description: "The concurrency group for the workflow dispatch"
+      concurrency_cancel_in_progress:
+        required: false
+        type: boolean
+        default: true
+        description: "Whether to cancel in progress workflows"
+      workflow_summary_name:
+        required: false
+        type: string
+        default: "Workflow summary [Test & Build (dispatch)]"
+        description: "The name of the workflow summary"
 
 defaults:
   run:
@@ -49,6 +101,7 @@ env:
   GLOBAL_NODE_VERSION: ${{ vars.GLOBAL_NODE_VERSION }}
   GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
   ALL_FETCH_DEPTH: 0
+  HARDEN_RUNNER_EGRESS_POLICY: block
   LIZARD_CCN_COUNT: 10
 
 concurrency:
@@ -65,18 +118,20 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+          allowed-endpoints: >
+            github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -113,24 +168,30 @@ jobs:
           ./actionlint -color
 
       - name: Check typos
-        uses: crate-ci/typos@b1a1ef3893ff35ade0cfa71523852a49bfd05d19 # v1.31.1
+        uses: crate-ci/typos@3be83342e28b9421997e9f781f713f8dde8453d2 # v1.31.2
 
   guard-api-key:
     name: Guard API Key
     permissions:
+      actions: read
       contents: read
+      security-events: write
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: ALL_FETCH_DEPTH
@@ -148,47 +209,87 @@ jobs:
           sarif-path: results.sarif
           summary-title: "Gitleaks Analysis Results"
 
-  guard-python:
-    name: Guard Python
+      - name: Upload Gitleaks scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: gitleaks
+          sarif_file: "results.sarif"
+
+  guard-python-code-quality:
+    name: Guard Python code quality
     permissions:
+      actions: read
       contents: read
+      security-events: write
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+          allowed-endpoints: >
+            api.github.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            pypi.org:443
+            install.python-poetry.org:443
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-        timeout-minutes: 10
 
       - name: Lint Python and check types
         run: |
-          poetry run ruff check .
-          poetry run mypy .
+          poetry run mypy . -v
 
-      - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
+      - name: Check formatting
+        run: |
+          poetry run ruff check . -v
+
+      - name: Run Vulture
+        run: |
+          poetry run vulture
+        continue-on-error: true
+
+      - name: Create requirements.txt
+        id: create-requirements-txt-for-pyre
+        shell: bash
+        run: |
+          pipx inject poetry poetry-plugin-export
+          poetry export -f requirements.txt --only=main --output requirements.txt
+
+      - name: Run Pyre Action
+        uses: facebook/pyre-action@12b8d923443ea66cb657facc2e5faac1c8c86e64 # v0.0.2
+        continue-on-error: true
         with:
-          scan-type: "fs"
-          ignore-unfixed: true
-          format: "table"
+          repo-directory: "./"
+          requirements-path: "requirements.txt"
 
-  guard-npm:
-    name: Guard NPM
+      - name: Convert SARIF to markdown summary
+        uses: ./.github/actions/convert-sarif-to-summary
+        with:
+          sarif-path: sarif.json
+          summary-title: "Pyre Static Analysis Results"
+
+      - name: Upload Pyre scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: pyre
+          sarif_file: "sarif.json"
+
+  guard-vulnerabilities:
+    name: Guard vulnerabilities from remote repositories
     permissions:
+      actions: read
       contents: read
+      security-events: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -196,31 +297,59 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            objects.githubusercontent.com:443
+            files.pythonhosted.org:443
+            pypi.org:443
+            install.python-poetry.org:443
+            registry.npmjs.org:443
+            mirror.gcr.io:443
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
         with:
-          fetch-depth: 1
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
 
       - name: Setup Node.js and restore cache
         uses: ./.github/actions/setup-node
         with:
           node-version: ${{ env.GLOBAL_NODE_VERSION }}
-        timeout-minutes: 10
 
-      - name: NPM Audit
+      - name: Run npm audit
         run: |
           # npm auditを実行 (高リスクの脆弱性のみ失敗とする)
-          echo "### NPM Audit Results" >> "$GITHUB_STEP_SUMMARY"
           npm audit --production --audit-level=high || {
             echo "::warning::High severity vulnerabilities found in production dependencies"
-            echo "⚠️ High severity vulnerabilities found in production dependencies" >> "$GITHUB_STEP_SUMMARY"
-            npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
+            echo "⚠️ High severity vulnerabilities found in production dependencies"
+            npm audit --production --audit-level=high
           }
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
+        with:
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: "sarif"
+          output: "trivy-results.json"
+
+      - name: Convert SARIF to markdown summary
+        uses: ./.github/actions/convert-sarif-to-summary
+        with:
+          sarif-path: trivy-results.json
+          summary-title: "Trivy Vulnerability Scan Results"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: trivy
+          sarif_file: "trivy-results.json"
 
   # ============================================================
   # TESTS GROUP
@@ -231,8 +360,8 @@ jobs:
     needs:
       - guard-workflow
       - guard-api-key
-      - guard-python
-      - guard-npm
+      - guard-python-code-quality
+      - guard-vulnerabilities
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -246,18 +375,21 @@ jobs:
           - "3.13"
           - "3.12"
           - "3.11"
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+          allowed-endpoints: >
+            api.github.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            pypi.org:443
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -266,23 +398,15 @@ jobs:
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-        timeout-minutes: 10
 
       - name: Run Unit Tests
         run: |
-          # 通常のテスト実行 (カバレッジ有、ベンチマークなし)
+          # 通常のテスト実行 (カバレッジなし、ベンチマークなし)
           cmd_array=(
             poetry run pytest -n auto
-            --cov=app.py
-            --cov=features
-            --cov=i18n
-            --cov=scripts
-            --cov-report=xml
-            --cov-report=term
             --dist loadfile
             --durations=10
             --cache-clear
-            --maxfail=5
             --verbose -k 'not e2e'
             --benchmark-disable
           )
@@ -293,21 +417,29 @@ jobs:
     needs: small-unit-test
     permissions:
       contents: read
-      checks: write
-      id-token: write
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+          allowed-endpoints: >
+            api.github.com:443
+            cli.codecov.io:443
+            codeclimate.com:443
+            d3iz1jjs17r6kg.cloudfront.net:443
+            files.pythonhosted.org:443
+            github.com:443
+            ingest.codecov.io:443
+            keybase.io:443
+            o26192.ingest.us.sentry.io:443
+            pypi.org:443
+            storage.googleapis.com:443
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -325,8 +457,7 @@ jobs:
             --benchmark-disable
             --cov=app.py
             --cov=features
-            --cov=i18n
-            --cov=scripts
+            --cov=i18n.py
             --cov-report=xml
             --cov-report=term
             --dist loadfile
@@ -370,34 +501,160 @@ jobs:
           - os: windows-latest
             browser: webkit
       max-parallel: 10
+    timeout-minutes: 15
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: false
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
-        timeout-minutes: 5
 
-      - name: Check out Git repository
+          allowed-endpoints: |+
+
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
-        timeout-minutes: 3
 
       - name: Setup Python and restore cache
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-        timeout-minutes: 10
 
       - name: Run E2E Tests (Playwright)
         uses: ./.github/actions/test-python-playwright
         with:
           browser: ${{ matrix.browser }}
-        timeout-minutes: 10
+
+  pysa_scan:
+    name: Scan code by pysa (SAST Tool)
+    needs: small-unit-test
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            pypi.org:443
+
+      - name: Check out git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+
+      - name: Install Pysa
+        run: |
+          pipx inject poetry poetry-plugin-export
+          poetry export -f requirements.txt --only=main --output requirements.txt
+          pip install pyre-check
+          pip install -r requirements.txt
+
+      - name: Show Pyre info
+        run: |
+          pyre info
+          cat .pyre_configuration
+          pyre -h
+          pyre analyze -h
+
+      - name: Run Pysa
+        run: |
+          pyre --noninteractive --number-of-workers="$(nproc)" analyze --save-results-to ./
+        continue-on-error: true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: taint-output.json
+          path: taint-output.json
+          retention-days: 3
+          compression-level: 9
+
+  zap_scan:
+    name: Scan HTTP by ZAP (DAST Tool)
+    needs: small-unit-test
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
+          disable-sudo: true
+          allowed-endpoints: >
+            api.github.com:443
+            cfu.zaproxy.org:443
+            checkip.amazonaws.com:80
+            content-signature-2.cdn.mozilla.net:443
+            data.streamlit.io:443
+            files.pythonhosted.org:443
+            firefox-settings-attachments.cdn.mozilla.net:443
+            firefox.settings.services.mozilla.com:443
+            ghcr.io:443
+            github.com:443
+            news.zaproxy.org:443
+            objects.githubusercontent.com:443
+            pkg-containers.githubusercontent.com:443
+            pypi.org:443
+            r10.o.lencr.org:80
+            r11.o.lencr.org:80
+            raw.githubusercontent.com:443
+            tel.zaproxy.org:443
+            webhooks.fivetran.com:443
+
+      - name: Check out git repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python and restore cache
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+
+      - name: Run Streamlit app in background
+        run: |
+          poetry run streamlit run app.py &
+          # Wait a bit for the app to start
+          sleep 10
+
+      - name: ZAP Scan
+        uses: zaproxy/action-full-scan@v0.12.0
+        continue-on-error: true
+        with:
+          fail_action: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          docker_name: "ghcr.io/zaproxy/zaproxy:stable"
+          target: "http://localhost:8501"
+          rules_file_name: ".zap/rules.tsv"
+          cmd_options: "-a -d"
+
+      - name: Append ZAP Report to Summary
+        if: always() # Run even if ZAP scan fails due to finding issues
+        run: |
+          if [[ -f "report_md.md" ]]; then
+            cat report_md.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ ZAP report file (report_md.md) not found." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # ============================================================
   # ANALYSIS GROUP
@@ -410,18 +667,21 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+          allowed-endpoints: >
+            api.github.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            pypi.org:443
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -430,7 +690,6 @@ jobs:
         uses: ./.github/actions/setup-python
         with:
           python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
-        timeout-minutes: 10
 
       - name: Run lizard (analyze CCN for production codes)
         run: |
@@ -484,18 +743,17 @@ jobs:
         os:
           - macos-latest
           - windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+          allowed-endpoints: |+
 
-      - name: Check out Git repository
+      - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
@@ -504,7 +762,6 @@ jobs:
         uses: ./.github/actions/setup-node
         with:
           node-version: ${{ env.GLOBAL_NODE_VERSION }}
-        timeout-minutes: 10
 
       - name: Build by stlite
         uses: ./.github/actions/build-stlite
@@ -518,30 +775,87 @@ jobs:
   workflow-summary:
     name: ${{ inputs.workflow_summary_name }}
     if: always()
-    needs: [test-coverage, test-e2e, analysis-code-ccn, build-desktop]
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    needs:
+      - build-desktop
+      - test-coverage
+      - test-e2e
+      - analysis-code-ccn
+      - pysa_scan
+      - zap_scan
     outputs:
       build_succeeded: ${{ steps.set-result.outputs.build_succeeded }}
+    permissions:
+      contents: read
+      actions: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
 
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
-          egress-policy: audit
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
-          allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
+          allowed-endpoints: |+
 
-      - id: set-result
+      - name: Delete Artifacts
+        uses: actions/github-script@v7 # Use a specific version
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const artifactNamesToDelete = [
+              "SARIF Results",
+              "gitleaks-results.sarif",
+            ];
+
+            const run_id = context.runId;
+            console.log(`Looking for artifacts to delete in run ${run_id}...`);
+
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run_id,
+            });
+
+            if (!artifacts || artifacts.length === 0) {
+              console.log("No artifacts found for this run.");
+              return;
+            }
+
+            console.log(`Found ${artifacts.length} artifacts in total.`);
+
+            let deletedCount = 0;
+            for (const artifactName of artifactNamesToDelete) {
+              console.log(`Checking for artifact: ${artifactName}`);
+              const artifactsToDelete = artifacts.filter(artifact => artifact.name === artifactName);
+
+              if (artifactsToDelete.length > 0) {
+                for (const artifact of artifactsToDelete) {
+                  console.log(`Deleting artifact "${artifact.name}" (ID: ${artifact.id})...`);
+                  try {
+                    await github.rest.actions.deleteArtifact({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      artifact_id: artifact.id,
+                    });
+                    console.log(`Artifact "${artifact.name}" (ID: ${artifact.id}) deleted.`);
+                    deletedCount++;
+                  } catch (error) {
+                    console.error(`Failed to delete artifact "${artifact.name}" (ID: ${artifact.id}):`, error);
+                    // Decide if you want to fail the step on error
+                    // core.setFailed(`Failed to delete artifact: ${error.message}`);
+                  }
+                }
+              } else {
+                console.log(`Artifact "${artifactName}" not found.`);
+              }
+            }
+            console.log(`Finished deleting artifacts. Total deleted: ${deletedCount}`);
+
+      - name: Show workflow summary
+        id: set-result
         run: |
           {
-            # 総合結果の表示
-            echo ""
-            echo "## 総合結果"
-
             # いずれかのジョブが失敗した場合に失敗とする
             if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
               echo "⚠️ **一部のジョブが失敗しました。詳細を確認してください。**"
@@ -550,7 +864,7 @@ jobs:
               echo "✅ **すべてのジョブが正常に完了しました**"
               echo "build_succeeded=true" >> "$GITHUB_OUTPUT"
             fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          }
 
           # ワークフロー全体の結果を設定 - いずれかのジョブが失敗した場合に失敗とする
           if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then

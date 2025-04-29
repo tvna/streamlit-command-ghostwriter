@@ -1,35 +1,38 @@
 {
   "site_package_search_strategy": "pep561",
   "source_directories": [
-    "."
+    ".",
+    "features"
   ],
   "search_path": [
-    "features/",
-    "tests/",
-    "tests/unit/",
-    "tests/e2e/"
+    "features",
+    ".venv/bin",
+    ".venv/lib/python*/site-packages",
+    ".venv/lib/pyre_check"
   ],
   "exclude": [
-    ".cursor",
-    ".github",
-    ".venv",
-    "assets",
-    "build",
-    "dist",
-    "docs",
-    "htmlcov",
-    "node_modules",
-    "scripts"
+    ".*\/.cursor\/.*",
+    ".*\/.devcontainer\/.*",
+    ".*\/.github\/.*",
+    ".*\/.venv\/.*",
+    ".*\/assets\/.*",
+    ".*\/build\/.*",
+    ".*\/dist\/.*",
+    ".*\/docs\/.*",
+    ".*\/htmlcov\/.*",
+    ".*\/node_modules\/.*",
+    ".*\/site-packages\/altair\/.*",
+    ".*\/site-packages\/narwhals\/.*",
+    ".*\/tests\/.*"
   ],
   "extensions": [
     ".py",
     ".pyi"
   ],
+  "strict": true,
+  "taint_models_path": "taint",
   "ignore_all_errors": [
-    "altair",
-    "narwhals",
-    "numpy",
-    "pandas"
-  ],
-  "strict": true
+    ".venv/lib/python*/site-packages/altair",
+    ".venv/lib/python*/site-packages/narwhals"
+  ]
 }

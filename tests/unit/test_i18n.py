@@ -1,4 +1,4 @@
-from typing import Any, Dict, Final, Mapping, Union
+from typing import Any, Dict, Final, Mapping, Union, cast
 
 import pytest
 from _pytest.mark.structures import MarkDecorator
@@ -57,14 +57,16 @@ def test_i18n_structure_consistency() -> None:
         # Check that all second-level dictionaries have the same keys
         for section_key, section_dict in lang_dict.items():
             assert isinstance(section_dict, dict), f"Value for {section_key} in {lang_name} is not a dict"
-            ref_section: Mapping[str, Any] = reference_lang[section_key]
+            ref_section = reference_lang[section_key]
+            assert isinstance(ref_section, dict), f"Reference section {section_key} is not a dict, inconsistency detected."
             assert set(section_dict.keys()) == set(ref_section.keys()), f"Section {section_key} in {lang_name} has different keys"
 
             # Check nested dictionaries (like format_type_items)
             for key, value in section_dict.items():
                 if isinstance(value, dict):
                     assert isinstance(ref_section[key], dict), f"Ref value for {key} in {section_key} is not a dict"
-                    assert set(value.keys()) == set(ref_section[key].keys()), (
+                    ref_nested_dict = cast("Dict[int, str]", ref_section[key])
+                    assert set(value.keys()) == set(ref_nested_dict.keys()), (
                         f"Nested dict {key} in {section_key}.{lang_name} has different keys"
                     )
 
