@@ -16,7 +16,6 @@ on:
       - .watchmanconfig
       - .yamllint.yml
       - "**.code-workspace"
-      - codecov.yaml
       - commitlint.config.js
       - LICENSE
       - README.md
@@ -43,7 +42,6 @@ env:
 
 jobs:
   test-and-build:
-    if: github.actor != 'dependabot[bot]'
     uses: ./.github/workflows/reusable-test-and-build.yml
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -74,7 +72,7 @@ jobs:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
-          allowed-endpoints: |
+          allowed-endpoints: >
             api.github.com:443
             github.com:443
 
@@ -160,3 +158,38 @@ jobs:
           # Pull Requestのコンテキストからbase_refとhead_refを取得
           base-ref: ${{ github.event.pull_request.base.ref }}
           head-ref: ${{ github.event.pull_request.head.ref }}
+
+  auto-approve-dependabot-pr:
+    name: Auto-approve Dependabot pull request
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      startsWith(github.head_ref, 'dependabot/')
+    needs:
+      - test-and-build
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
+          disable-sudo: true
+          disable-file-monitoring: false
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+
+      - name: Dependabot metadata
+        uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # v2.3.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Approve a PR
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
