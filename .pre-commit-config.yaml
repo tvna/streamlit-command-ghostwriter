@@ -133,7 +133,11 @@ repos:
     hooks:
       - id: mypy
         description: "Static type checking for Python."
-        additional_dependencies: ["types-PyYAML"]
+        additional_dependencies: [
+          "types-PyYAML",
+          "types-toml",
+          "types-requests"
+        ]
         types: [python]
 
   - repo: https://github.com/pre-commit/pygrep-hooks
