@@ -811,7 +811,6 @@ jobs:
             const artifactNamesToDelete = [
               "SARIF Results",
               "gitleaks-results.sarif",
-              "zap_scan",
             ];
 
             const run_id = context.runId;
