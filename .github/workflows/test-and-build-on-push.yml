@@ -1,3 +1,44 @@
+# ============================================================
+# Workflow Information: test-and-build-on-push.yml
+# ============================================================
+#
+# ワークフローの目的 (Purpose):
+# -----------------------------
+# develop ブランチへのプッシュをトリガーとして実行されます。
+# 最新の develop ブランチのコードに対してテストとビルドを実行し、
+# develop ブランチのバージョンが main ブランチのバージョンよりも新しい場合、
+# main ブランチへの Pull Request を自動的に作成します。
+# 特定のファイルパスの変更は無視されます。
+#
+# ワークフローの影響範囲 (Scope of Impact):
+# ---------------------------------------
+# - develop ブランチのコード品質を検証します。
+# - リポジトリに新しい Pull Request を作成する可能性があります (develop -> main)。
+# - PR 作成時には、必要なラベル ("automated-pr", "release") が存在しない場合に自動作成します。
+# - 既存のオープンな PR (develop -> main) がある場合、または同じバージョンのリリース PR が既に存在する場合は、新規 PR 作成をスキップします。
+#
+# 依存する外部のワークフロー (External Dependencies):
+# ------------------------------------------------
+# - ./.github/workflows/reusable-test-and-build.yml (テストとビルドのコアロジック)
+# - 複数の外部 GitHub Actions (Harden Runner, Checkout, NPM Version, Semver Utils, GitHub Script)
+#
+# セキュリティポリシー (Security Policy):
+# ------------------------------------
+# - `permissions` キーでワークフローの権限を最小限に制限しています (PR 作成のために contents: write, pull-requests: write が必要)。
+# - `step-security/harden-runner` を使用してランナーのセキュリティを強化しています (egress-policy: block)。
+# - PR 作成ジョブ (`create-pr-to-main`) は、テストジョブ (`test-and-build`) の成功を条件とします。
+# - バージョン比較 (`madhead/semver-utils`) を行い、develop が main より新しい場合にのみ PR を作成します。
+# - PR 作成前に既存の PR をチェックし、重複を防ぎます。
+# - GitHub Script 内で GitHub API を利用して PR 作成やラベル操作を行いますが、スクリプトの実行権限は制限されています。
+#
+# 参考URL (Reference URLs):
+# -------------------------
+# - GitHub Actions Documentation: https://docs.github.com/ja/actions
+# - Reusable Workflow: ./.github/workflows/reusable-test-and-build.yml
+# - GitHub Script Action: https://github.com/actions/github-script
+# - Semver Utils Action: https://github.com/madhead/semver-utils
+#
+# ============================================================
 ---
 name: Test and Build (on push to develop)
 
@@ -10,6 +51,8 @@ on:
       - .devcontainer/**
       - assets/**
       - docs/**
+      - .github/workflows/test-and-build-on-merged.yml
+      - .github/workflows/test-and-build-on-pr.yml
       - .gitignore
       - .pre-commit-config.yaml
       - .watchmanconfig
