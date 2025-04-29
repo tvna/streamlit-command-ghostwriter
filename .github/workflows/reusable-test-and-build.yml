@@ -401,17 +401,12 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          # 通常のテスト実行 (カバレッジ有、ベンチマークなし)
+          # 通常のテスト実行 (カバレッジなし、ベンチマークなし)
           cmd_array=(
             poetry run pytest -n auto
-            --cov=app.py
-            --cov=features
-            --cov=i18n.py
-            --cov-report=term
             --dist loadfile
             --durations=10
             --cache-clear
-            --maxfail=5
             --verbose -k 'not e2e'
             --benchmark-disable
           )
