@@ -56,7 +56,7 @@ env:
   HARDEN_RUNNER_EGRESS_POLICY: audit
 
 permissions:
-  actions: read
+  actions: write
   contents: write
   checks: write
   id-token: write

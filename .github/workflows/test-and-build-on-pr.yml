@@ -66,7 +66,7 @@ on:
       - edited
 
 permissions:
-  actions: read
+  actions: write
   contents: read
   checks: write
   id-token: write
