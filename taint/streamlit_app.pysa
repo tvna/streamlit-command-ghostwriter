@@ -1,107 +1,79 @@
-from typing import Union, List, Optional, Any, Callable
-import pyre_extensions as pysa_annotation
-from pyre_extensions import AnnotationType
-import pyre_extensions.pysa_dsl as pysa_rule
-from streamlit.uploaded_file_manager import UploadedFile # For type hint
-from features.core import AppCore # For type hint
-
 # Pysa taint model for app.py (Streamlit application)
 
-def st_file_uploader(label: str, type: Optional[Union[str, List[str]]], key: str) -> TaintSource[UserControlled, UploadedFile]: ...
+def streamlit.file_uploader(label, type, key) -> TaintSource[UserControlled]: ...
 
-def st_text_input(label: str, value: str, key: str) -> TaintSource[UserControlled, str]: ...
+def streamlit.text_input(label, value, key) -> TaintSource[UserControlled]: ...
 
-def st_selectbox(label: str, options: tuple, index: int, format_func: Callable, key: str) -> TaintSource[UserControlled, Any]: ...
+def streamlit.selectbox(label, options, index, format_func, key) -> TaintSource[UserControlled]: ...
 
-def st_radio(label: str, options: list[str], horizontal: bool, key: str) -> TaintSource[UserControlled, str]: ...
+def streamlit.radio(label, options, horizontal, key) -> TaintSource[UserControlled]: ...
 
-def st_toggle(label: str, value: bool, key: str) -> TaintSource[UserControlled, bool]: ...
+def streamlit.toggle(label, value, key) -> TaintSource[UserControlled]: ...
 
-# Assuming st.session_state.get returns tainted data based on key
-def st_session_state_get(key: TaintSink[UserControlled, str], default: Any = None) -> TaintSource[UserControlled, Any]: ...
+# Model the underlying Mapping.get for session_state access
+def typing.Mapping.get(*args, **kwargs) -> TaintSource[UserControlled]: ...
 
 # --- Sinks ---
 
-# Mark parameters receiving potentially tainted data in AppCore methods
-def AppCore.load_config_file(
+# Mark parameters receiving potentially tainted data in core.AppCore methods
+def core.AppCore.load_config_file(
     self,
-    uploaded_file: TaintSink[UserControlled, Optional[UploadedFile]],
-    csv_rows_name: TaintSink[UserControlled, str],
+    config_file: TaintSink[UserControlled],
+    csv_rows_name: TaintSink[UserControlled],
     enable_auto_transcoding: bool,
     enable_fill_nan: bool,
-    fill_nan_with: TaintSink[UserControlled, str]
-) -> AppCore: ...
+    fill_nan_with: TaintSink[UserControlled]
+) -> core.AppCore: ...
 
-def AppCore.load_template_file(
+def core.AppCore.load_template_file(
     self,
-    uploaded_file: TaintSink[UserControlled, Optional[UploadedFile]],
+    template_file: TaintSink[UserControlled],
     enable_auto_transcoding: bool
-) -> AppCore: ...
+) -> core.AppCore: ...
 
 # result_format_type and strict_undefined might come from user input via session_state
-def AppCore.apply(
+def core.AppCore.apply(
     self,
-    result_format_type: TaintSink[UserControlled, str],
-    strict_undefined: TaintSink[UserControlled, bool]
-) -> AppCore: ...
+    format_type: TaintSink[UserControlled],
+    is_strict_undefined: TaintSink[UserControlled]
+) -> core.AppCore: ...
 
 # Sinks for Streamlit output functions
-def st_markdown(body: TaintSink[XSS, str]) -> None: ...
+def streamlit.markdown(body: TaintSink[XSS]) -> None: ...
 
-def st_text_area(label: str, value: TaintSink[UntrustedData, str], key: str, height: int) -> None: ...
+def streamlit.text_area(label, value: TaintSink[UntrustedData], key, height) -> None: ...
 
-def st_json(body: TaintSink[UntrustedData, Any]) -> None: ...
+def streamlit.json(body: TaintSink[UntrustedData]) -> None: ...
 
 # Mark data and file_name parameters as sinks
-def st_download_button(label: str, data: TaintSink[UntrustedData, FileSystemAccess, Any], file_name: TaintSink[UntrustedData, FileSystemAccess, str], disabled: bool, use_container_width: bool) -> bool: ...
+def streamlit.download_button(
+    label,
+    data: TaintSink[UntrustedData],
+    file_name: TaintSink[FileSystemAccess],
+    disabled,
+    use_container_width
+) -> bool: ...
 
-# Sinks for data returned from AppCore (mark return values)
+# Sinks for data returned from core.AppCore (mark return values)
 # Assuming content returned might still be tainted
-def AppCore.get_download_content(self, encoding: str) -> TaintSource[UntrustedData, Optional[str]]: ...
+def core.AppCore.get_download_content(
+    self,
+    encode
+) -> TaintSource[UntrustedData]: ...
 
 # Filename based on user input should be treated carefully
-def AppCore.get_download_filename(self, base_name: TaintSink[FileSystemAccess, str], extension: TaintSink[FileSystemAccess, str], append_timestamp: bool) -> TaintSource[FileSystemAccess, str]: ...
+def core.AppCore.get_download_filename(
+    self,
+    filename: TaintSink[FileSystemAccess],
+    file_ext: TaintSink[FileSystemAccess],
+    is_append_timestamp: bool
+) -> TaintSource[FileSystemAccess]: ...
 
 # --- Rules ---
 
 # Rule: User input reaching Streamlit markdown (potential XSS)
-@pysa_rule.Rule(
-    name="User input to st.markdown",
-    sources=[AnnotationType.USER_CONTROLLED],
-    sinks=[AnnotationType.XSS],
-    filters=[
-        # Add filters here if needed, e.g., to exclude sanitized data
-    ]
-)
-def rule_user_input_to_markdown(): ...
 
 # Rule: User input used directly in download button data or filename
-@pysa_rule.Rule(
-    name="User input to st.download_button",
-    sources=[AnnotationType.USER_CONTROLLED],
-    sinks=[AnnotationType.UNTRUSTED_DATA, AnnotationType.FILE_SYSTEM_ACCESS],
-    filters=[
-        # Add filters to specify which parts of download_button are risky
-        # Example: Filter for data sink
-        pysa_rule.SinkFilter(lambda sink: sink.parameter_name == "data"),
-        # Example: Filter for file_name sink
-        pysa_rule.SinkFilter(lambda sink: sink.parameter_name == "file_name"),
-    ]
-)
-def rule_user_input_to_download(): ...
 
-# Rule: User input flowing through AppCore to potentially unsafe outputs
-# This rule is broad and might need refinement based on AppCore's internals
-@pysa_rule.Rule(
-    name="User input flow through AppCore",
-    sources=[AnnotationType.USER_CONTROLLED],
-    sinks=[
-        AnnotationType.USER_CONTROLLED, # To track flow into AppCore methods
-        AnnotationType.UNTRUSTED_DATA,  # To track flow to generic data sinks
-        AnnotationType.XSS              # To track flow to XSS sinks like st.markdown
-    ],
-    filters=[
-        # Add filters to exclude flows that are known to be safe
-    ]
-)
-def rule_user_input_flow_through_appcore(): ...
+# Rule: User input flowing through core.AppCore to potentially unsafe outputs
+# This rule is broad and might need refinement based on core.AppCore's internals
