@@ -1,8 +1,50 @@
+# ============================================================
+# Workflow Information: test-and-build-on-merged.yml
+# ============================================================
+#
+# ワークフローの目的 (Purpose):
+# -----------------------------
+# `develop` ブランチから `main` ブランチへのバージョンアップを示す
+# プルリクエスト (タイトルが "Release: v" で始まるもの) がマージされた際に実行されます。
+# マージ後の `main` ブランチのコードに対して最終的なテストとビルドを実行し、
+# 成功した場合に package.json のバージョンに基づいた Git タグを作成し、
+# GitHub Release を発行します。リリースにはビルドされたデスクトップアプリの
+# アーティファクト (macOS, Windows) が含まれます。
+#
+# ワークフローの影響範囲 (Scope of Impact):
+# ---------------------------------------
+# - main ブランチの最終的なコード品質を確認します。
+# - リポジトリに新しい Git タグを作成します (例: v1.2.3)。
+# - GitHub Releases に新しいリリースを作成し、ビルドアーティファクトを添付します。
+#
+# 依存する外部のワークフロー (External Dependencies):
+# ------------------------------------------------
+# - ./.github/workflows/reusable-test-and-build.yml (テストとビルドのコアロジック)
+# - 複数の外部 GitHub Actions (Harden Runner, Checkout, NPM Version, Download Artifact, Release Action など)
+#
+# セキュリティポリシー (Security Policy):
+# ------------------------------------
+# - `permissions` キーでワークフローの権限を最小限に制限しています (contents: write が必要)。
+# - `step-security/harden-runner` を使用してランナーのセキュリティを強化しています (egress-policy: audit)。
+# - 特定の条件 (main へのマージ、ベースが main、タイトルが "Release: v" で始まる) を満たす PR がクローズされた場合にのみトリガーされます。
+# - テストとビルド (`test-and-build` job) が成功した場合にのみリリースを作成します。
+# - GITHUB_TOKEN の権限に基づき動作します。
+#
+# 参考URL (Reference URLs):
+# -------------------------
+# - GitHub Actions Documentation: https://docs.github.com/ja/actions
+# - Reusable Workflow: ./.github/workflows/reusable-test-and-build.yml
+# - GitHub Releases: https://docs.github.com/ja/repositories/releasing-projects-on-github/about-releases
+# - Release Action: https://github.com/softprops/action-gh-release
+#
+# ============================================================
 ---
 name: Test and Build (on merged to main)
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - main
 
@@ -15,7 +57,7 @@ env:
 
 permissions:
   actions: read
-  contents: read
+  contents: write
   checks: write
   id-token: write
   issues: write
@@ -23,24 +65,36 @@ permissions:
 
 jobs:
   test-and-build:
+    # Run only if a PR titled "Release: v*" targeting main was merged
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      startsWith(github.event.pull_request.title, 'Release: v')
     uses: ./.github/workflows/reusable-test-and-build.yml
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:
-      concurrency_group: push-${{ github.workflow }}-${{ github.ref }}
-      concurrency_cancel_in_progress: true
-      workflow_summary_name: "Workflow summary [Test & Build (main)]"
+      # Use PR number in concurrency group for merged PRs
+      concurrency_group: merged-${{ github.workflow }}-${{ github.event.pull_request.number }}
+      concurrency_cancel_in_progress: false # Do not cancel if another merge happens quickly
+      workflow_summary_name: "Workflow summary [Test & Build (on merged to main)]"
 
   create-tag-and-release:
+    # Run only if a PR titled "Release: v*" targeting main was merged
+    # AND the test-and-build job succeeded
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      startsWith(github.event.pull_request.title, 'Release: v')
     needs:
       - test-and-build
     outputs:
       tag_name: ${{ steps.set_tag_output.outputs.tag_name }}
       commit_sha: ${{ steps.get_commit_sha.outputs.sha }}
     permissions:
-      contents: write
+      contents: write # Needs write permission to create tags and releases
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5 # Increased timeout slightly
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -49,12 +103,21 @@ jobs:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
+          allowed-endpoints: |
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            files.pythonhosted.org:443 # Needed for martinbeentjes/npm-get-version-action -> setup-python
+            pypi.org:443 # Needed for martinbeentjes/npm-get-version-action -> setup-python
+            *.actions.githubusercontent.com:443 # Needed for softprops/action-gh-release
 
+      # Checkout the main branch AFTER the merge
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: main # Ensure we checkout the target branch (main)
           fetch-depth: 1
 
-      - name: Get version from main
+      - name: Get version from main (after merge)
         id: get-main-ver
         uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b # v1.3.1
 
@@ -62,21 +125,29 @@ jobs:
         id: set_tag_output
         run: echo "tag_name=v${{ steps.get-main-ver.outputs.current-version }}" >> "$GITHUB_OUTPUT"
 
-      - name: Get commit SHA
+      - name: Get commit SHA (of merge commit on main)
         id: get_commit_sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Download macOS build artifact
+        # This assumes the artifacts were produced by the test-and-build job
+        # in *this* workflow run. We might need to adjust if artifacts
+        # are produced by the PR workflow instead.
+        # Consider using actions/upload-artifact and actions/download-artifact
+        # consistently across workflows if needed.
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: desktop-app-macOS.zip
-          path: artifacts/macos
+          # path: artifacts/macos # Default path is $GITHUB_WORKSPACE
 
       - name: Download Windows build artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: desktop-app-Windows.zip
-          path: artifacts/windows
+          # path: artifacts/windows # Default path is $GITHUB_WORKSPACE
+
+      - name: List downloaded files # For debugging
+        run: ls -R
 
       - name: Create Release with Artifacts
         id: create_release # Add an ID for potential future use
@@ -88,7 +159,8 @@ jobs:
           generate_release_notes: true
           target_commitish: ${{ steps.get_commit_sha.outputs.sha }}
           files: |
-            artifacts/macos/*.zip
-            artifacts/windows/*.zip
+            desktop-app-macOS.zip
+            desktop-app-Windows.zip
           draft: false
           prerelease: false
+          fail_on_unmatched_files: true # Ensure artifacts were downloaded
