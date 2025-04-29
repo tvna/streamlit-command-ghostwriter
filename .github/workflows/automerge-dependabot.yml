@@ -15,9 +15,6 @@ defaults:
     shell: bash
 
 env:
-  GLOBAL_ALLOWED_ENDPOINTS: |
-    api.github.com:443
-    github.com:443
   GLOBAL_PYTHON_VERSION: ${{ vars.GLOBAL_PYTHON_VERSION }}
   HARDEN_RUNNER_EGRESS_POLICY: audit
 
@@ -43,7 +40,7 @@ jobs:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
+          allowed-endpoints: >
             api.github.com:443
             github.com:443
 
@@ -79,7 +76,7 @@ jobs:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: false
-          allowed-endpoints: |
+          allowed-endpoints: >
             api.github.com:443
             github.com:443
 
