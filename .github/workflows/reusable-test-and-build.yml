@@ -473,7 +473,7 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 120
 
     steps:
       - name: Harden Runner
@@ -501,10 +501,15 @@ jobs:
           pip install pyre-check
           pip install -r requirements.txt
 
-      - name: Run Pysa
+      - name: Show Pyre info
         run: |
           pyre info
-          pyre --noninteractive analyze --save-results-to ./
+          pyre -h
+          pyre analyze -h
+
+      - name: Run Pysa
+        run: |
+          pyre --noninteractive --number-of-workers="$(nproc)" analyze --save-results-to ./
         continue-on-error: true
 
       - name: Upload artifact
