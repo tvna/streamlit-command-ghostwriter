@@ -102,7 +102,7 @@ jobs:
         with:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: false
+
           allowed-endpoints: |
             api.github.com:443
             github.com:443

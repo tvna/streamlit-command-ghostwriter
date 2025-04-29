@@ -111,7 +111,7 @@ jobs:
         with:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
+
           allowed-endpoints: >
             api.github.com:443
             github.com:443
@@ -152,7 +152,7 @@ jobs:
         with:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
+
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: "Checkout code"
@@ -182,7 +182,7 @@ jobs:
         with:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: true
+
           allowed-endpoints: ${{ env.GLOBAL_ALLOWED_ENDPOINTS }}
 
       - name: Check out Git repository
@@ -218,7 +218,7 @@ jobs:
         with:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
-          disable-file-monitoring: false
+
           allowed-endpoints: >
             api.github.com:443
             github.com:443
