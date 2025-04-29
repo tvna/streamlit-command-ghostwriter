@@ -495,7 +495,7 @@ jobs:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: false
           disable-file-monitoring: true
-          allowed-endpoints: >+
+          allowed-endpoints: |+
 
       - name: Check out git repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -573,6 +573,7 @@ jobs:
     name: Scan HTTP by ZAP (DAST Tool)
     needs: small-unit-test
     permissions:
+      actions: read
       contents: read
       issues: write
     runs-on: ubuntu-latest
@@ -631,7 +632,16 @@ jobs:
           docker_name: "ghcr.io/zaproxy/zaproxy:stable"
           target: "http://localhost:8501"
           rules_file_name: ".zap/rules.tsv"
-          cmd_options: "-a -d"
+          cmd_options: "-a -d -w report_md.md"
+
+      - name: Append ZAP Report to Summary
+        if: always() # Run even if ZAP scan fails due to finding issues
+        run: |
+          if [[ -f "report_md.md" ]]; then
+            cat report_md.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ ZAP report file (report_md.md) not found." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # ============================================================
   # ANALYSIS GROUP
@@ -730,7 +740,7 @@ jobs:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
-          allowed-endpoints: >+
+          allowed-endpoints: |+
 
 
       - name: Check out git repository
@@ -766,6 +776,7 @@ jobs:
       build_succeeded: ${{ steps.set-result.outputs.build_succeeded }}
     permissions:
       contents: read
+      actions: write
     runs-on: ubuntu-latest
     timeout-minutes: 3
 
@@ -776,16 +787,46 @@ jobs:
           egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
           disable-sudo: true
           disable-file-monitoring: true
-          allowed-endpoints: >+
+          allowed-endpoints: |+
+
+      - name: Delete Artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          GH_RUN_ID: ${{ github.run_id }}
+        run: |
+          artifact_names=(
+            "SARIF Results"
+            "gitleaks-results.sarif"
+            "zap_scan"
+          )
+
+          echo "Looking for ZAP artifacts in run ${GH_RUN_ID}..."
+          artifact_ids=$(gh api "repos/$GH_REPO/actions/runs/$GH_RUN_ID/artifacts" --paginate -q '.artifacts[] | .id')
+
+          if [[ -z "$artifact_ids" ]]; then
+            echo "No artifacts found for this run."
+            exit 0
+          fi
+
+          echo "Found artifact IDs: $artifact_ids"
+
+          for name in "${artifact_names[@]}"; do
+            echo "Checking for artifact: ${name}"
+            artifact_id=$(gh api "repos/${GH_REPO}/actions/runs/${GH_RUN_ID}/artifacts" --paginate -q --arg name "${name}" ".artifacts[] | select(.name == \\$name) | .id")
+            if [[ -n "$artifact_id" ]]; then
+              echo "Deleting artifact \"${name}\" (ID: ${artifact_id})..."
+              gh api "repos/${GH_REPO}/actions/artifacts/${artifact_id}" -X DELETE
+              echo "Artifact \"${name}\" deleted."
+            else
+              echo "Artifact \"${name}\" not found."
+            fi
+          done
 
       - name: Show workflow summary
         id: set-result
         run: |
           {
-            # 総合結果の表示
-            echo ""
-            echo "## 総合結果"
-
             # いずれかのジョブが失敗した場合に失敗とする
             if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
               echo "⚠️ **一部のジョブが失敗しました。詳細を確認してください。**"
@@ -794,7 +835,7 @@ jobs:
               echo "✅ **すべてのジョブが正常に完了しました**"
               echo "build_succeeded=true" >> "$GITHUB_OUTPUT"
             fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          }
 
           # ワークフロー全体の結果を設定 - いずれかのジョブが失敗した場合に失敗とする
           if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
