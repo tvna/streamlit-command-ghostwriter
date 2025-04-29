@@ -5,9 +5,7 @@
     "features"
   ],
   "search_path": [
-    ".venv/bin",
-    ".venv/lib/python*/site-packages",
-    ".venv/lib/pyre_check"
+    ".venv/lib/python*/site-packages"
   ],
   "exclude": [
     ".*\/.cursor\/.*",
@@ -20,6 +18,9 @@
     ".*\/docs\/.*",
     ".*\/htmlcov\/.*",
     ".*\/node_modules\/.*",
+    ".*\/site-packages\/altair\/.*",
+    ".*\/site-packages\/narwhals\/.*",
+    ".*\/site-packages\/pandas\/.*",
     ".*\/tests\/.*"
   ],
   "extensions": [
@@ -27,5 +28,10 @@
     ".pyi"
   ],
   "strict": true,
-  "taint_models_path": "taint"
+  "taint_models_path": "taint",
+  "ignore_all_errors": [
+    ".venv/lib/python*/site-packages/altair",
+    ".venv/lib/python*/site-packages/narwhals",
+    ".venv/lib/python*/site-packages/pandas"
+  ]
 }
