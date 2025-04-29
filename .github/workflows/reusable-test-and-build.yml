@@ -266,6 +266,11 @@ jobs:
           repo-directory: "./"
           requirements-path: "requirements.txt"
 
+      - name: Upload Pyre scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "sarif.json"
+
       - name: Convert SARIF to markdown summary
         uses: ./.github/actions/convert-sarif-to-summary
         with:
@@ -315,8 +320,8 @@ jobs:
           echo "### NPM Audit Results" >> "$GITHUB_STEP_SUMMARY"
           npm audit --production --audit-level=high || {
             echo "::warning::High severity vulnerabilities found in production dependencies"
-            echo "⚠️ High severity vulnerabilities found in production dependencies" >> "$GITHUB_STEP_SUMMARY"
-            npm audit --production --audit-level=high >> "$GITHUB_STEP_SUMMARY"
+            echo "⚠️ High severity vulnerabilities found in production dependencies"
+            npm audit --production --audit-level=high
           }
 
       - name: Run Trivy vulnerability scan
@@ -324,7 +329,19 @@ jobs:
         with:
           scan-type: "fs"
           ignore-unfixed: true
-          format: "table"
+          format: "sarif"
+          output: "trivy-results.json"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "trivy-results.json"
+
+      - name: Convert SARIF to markdown summary
+        uses: ./.github/actions/convert-sarif-to-summary
+        with:
+          sarif-path: trivy-results.json
+          summary-title: "Trivy Vulnerability Scan Results"
 
   # ============================================================
   # TESTS GROUP
