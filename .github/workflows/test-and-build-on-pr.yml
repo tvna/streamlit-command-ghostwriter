@@ -1,3 +1,43 @@
+# ============================================================
+# Workflow Information: test-and-build-on-pr.yml
+# ============================================================
+#
+# ワークフローの目的 (Purpose):
+# -----------------------------
+# main または develop ブランチに対する Pull Request (オープン、同期、再オープン、編集)
+# をトリガーとして実行されます。PR のコードに対してテスト、ビルド、ベンチマーク、
+# および追加のセキュリティチェック (OSS Scorecards, Dependency Review) を実行します。
+# Dependabot による PR の場合、テストが成功すれば自動的に承認します。
+#
+# ワークフローの影響範囲 (Scope of Impact):
+# ---------------------------------------
+# - main および develop ブランチへのマージ前のコード品質を検証します。
+# - Pull Request にテスト結果、ベンチマーク結果、セキュリティレビュー結果をコメントとして投稿する可能性があります。
+# - Dependabot PR を自動承認することがあります。
+# - OpenSSF Scorecards の結果を Security タブにアップロードします。
+#
+# 依存する外部のワークフロー (External Dependencies):
+# ------------------------------------------------
+# - ./.github/workflows/reusable-test-and-build.yml (テストとビルドのコアロジック)
+# - 複数の外部 GitHub Actions (Harden Runner, Checkout, Setup Python, Test Playwright, Scorecard, Dependency Review, Fetch Metadata, gh CLI など)
+#
+# セキュリティポリシー (Security Policy):
+# ------------------------------------
+# - `permissions` キーでワークフローの権限を最小限に制限しています (PR コメント、Dependabot 承認、Scorecards 結果アップロードのため write 権限を含む)。
+# - `step-security/harden-runner` を使用してランナーのセキュリティを強化しています (egress-policy: audit)。
+# - OpenSSF Scorecards によるセキュリティベストプラクティスの評価を実施します。
+# - Dependency Review Action により、PR で導入される依存関係の脆弱性をチェックします。
+# - Dependabot PR の自動承認は、テストジョブ (`test-and-build`) の成功を条件とします。
+#
+# 参考URL (Reference URLs):
+# -------------------------
+# - GitHub Actions Documentation: https://docs.github.com/ja/actions
+# - Reusable Workflow: ./.github/workflows/reusable-test-and-build.yml
+# - OpenSSF Scorecards: https://github.com/ossf/scorecard
+# - Dependency Review Action: https://github.com/actions/dependency-review-action
+# - Dependabot: https://docs.github.com/ja/code-security/dependabot
+#
+# ============================================================
 ---
 name: Test and Build (on pull request)
 
