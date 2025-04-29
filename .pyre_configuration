@@ -5,7 +5,9 @@
     "features"
   ],
   "search_path": [
-    ".venv/lib/python*/site-packages"
+    ".venv/bin",
+    ".venv/lib/python*/site-packages",
+    ".venv/lib/pyre_check"
   ],
   "exclude": [
     ".*\/.cursor\/.*",
