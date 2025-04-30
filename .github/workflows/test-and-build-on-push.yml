@@ -471,8 +471,7 @@ jobs:
   test-e2e-benchmark:
     name: E2E Benchmark (${{ matrix.os }})
     permissions:
-      contents: read
-      pull-requests: write
+      contents: write
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
