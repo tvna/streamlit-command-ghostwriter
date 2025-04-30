@@ -10,12 +10,12 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.11, <4.0"
-streamlit = "^1.44.1"
+streamlit = "^1.45.0"
 jinja2 = "^3.1.6"
 pyyaml = "^6.0.1"
 chardet = "^5.2.0"
 python-box = "^7.2.0"
-pydantic = "^2.11.3"
+pydantic = "^2.11.4"
 toml = "^0.10.2"
 markupsafe = "^3.0.2"
 
