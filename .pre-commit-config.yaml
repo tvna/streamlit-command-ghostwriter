@@ -1,0 +1,18 @@
+minimum_pre_commit_version: "3.7.1" # pyproject.tomlと一致させる
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: no-commit-to-branch
+        args: [--branch, main]
+        description: "Run 'no-commit-to-branch' for preventing commits to main branch"
+        name: don't commit to main branch
+      - id: trailing-whitespace
+        description: "Fixes trailing whitespace."
+        types: [text]
+      - id: check-added-large-files
+        description: "Run 'check-added-large-files' for checking added large files"
+      - id: detect-private-key
+        description: "Detects the presence of private keys."
