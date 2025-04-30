@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1746048827174,
+  "lastUpdate": 1746049572315,
   "repoUrl": "https://github.com/tvna/command-ghostwriter",
   "entries": {
     "Python E2E Benchmark": [
@@ -178,6 +178,184 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.08002165766055373",
             "extra": "mean: 7.384728116599945 sec\nrounds: 5"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "31282861+tvna@users.noreply.github.com",
+            "name": "Tsubasa Nagano",
+            "username": "tvna"
+          },
+          "committer": {
+            "email": "31282861+tvna@users.noreply.github.com",
+            "name": "Tsubasa Nagano",
+            "username": "tvna"
+          },
+          "distinct": true,
+          "id": "999761fadb5bb339a1bf9a194e98d6b6e05b8e79",
+          "message": "ci(E2E Tests): gh-pagesのpush方法の見直し",
+          "timestamp": "2025-05-01T06:25:51+09:00",
+          "tree_id": "f71ebe0d40f7134fe26f5fcc3a9ee9a22f9ea889",
+          "url": "https://github.com/tvna/command-ghostwriter/commit/999761fadb5bb339a1bf9a194e98d6b6e05b8e79"
+        },
+        "date": 1746049570825,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_success_config_debug_yaml_to_yaml]",
+            "value": 0.12165362901626386,
+            "unit": "iter/sec",
+            "range": "stddev: 0.01740552211540405",
+            "extra": "mean: 8.2200589336 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_file_upload_parametrized_in_tab1[chromium-e2e_upload_toml_config]",
+            "value": 0.3179662935287414,
+            "unit": "iter/sec",
+            "range": "stddev: 0.034390597259201565",
+            "extra": "mean: 3.1449874416000285 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_cisco_config_debug_to_yaml]",
+            "value": 0.12065397943949185,
+            "unit": "iter/sec",
+            "range": "stddev: 0.09459628062243707",
+            "extra": "mean: 8.28816425820005 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_dns_dig_config_debug_csv_to_toml]",
+            "value": 0.12086015434503773,
+            "unit": "iter/sec",
+            "range": "stddev: 0.08661229578941412",
+            "extra": "mean: 8.274025508399973 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_success_config_debug_yaml_to_toml]",
+            "value": 0.12159507396433253,
+            "unit": "iter/sec",
+            "range": "stddev: 0.06921032995215326",
+            "extra": "mean: 8.22401736679999 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_command_generation_parametrized_in_tab1[chromium-e2e_command_gen_with_dns_dig_config_to_file]",
+            "value": 0.13668419372638924,
+            "unit": "iter/sec",
+            "range": "stddev: 0.06058398546412964",
+            "extra": "mean: 7.31613490000002 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_cisco_config_debug_to_visual]",
+            "value": 0.12129397970206192,
+            "unit": "iter/sec",
+            "range": "stddev: 0.09565534526709586",
+            "extra": "mean: 8.244432266599961 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_jinja_template_upload_in_tab1[chromium]",
+            "value": 0.9052452695087873,
+            "unit": "iter/sec",
+            "range": "stddev: 0.03799570167987447",
+            "extra": "mean: 1.1046729915999776 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_ui_input_field[chromium]",
+            "value": 132.9080559535072,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0010897766097404257",
+            "extra": "mean: 7.52399839743207 msec\nrounds: 78"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_command_generation_parametrized_in_tab1[chromium-e2e_command_gen_with_cisco_config_to_markdown]",
+            "value": 0.13650492221066451,
+            "unit": "iter/sec",
+            "range": "stddev: 0.04407086528792821",
+            "extra": "mean: 7.325743158599994 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_command_generation_parametrized_in_tab1[chromium-e2e_command_gen_with_wget_config_to_markdown]",
+            "value": 0.13726469689340956,
+            "unit": "iter/sec",
+            "range": "stddev: 0.06221701753105686",
+            "extra": "mean: 7.285194391800042 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_cisco_config_debug_to_toml]",
+            "value": 0.12153640797049768,
+            "unit": "iter/sec",
+            "range": "stddev: 0.06095333968668579",
+            "extra": "mean: 8.22798712499998 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_dns_dig_config_debug_csv_to_visual]",
+            "value": 0.12101507505268246,
+            "unit": "iter/sec",
+            "range": "stddev: 0.06349011636575007",
+            "extra": "mean: 8.263433291799902 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_command_generation_parametrized_in_tab1[chromium-e2e_command_gen_with_dns_dig_config_to_markdown]",
+            "value": 0.1359720772637122,
+            "unit": "iter/sec",
+            "range": "stddev: 0.09885343499717705",
+            "extra": "mean: 7.354451150000022 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_file_upload_parametrized_in_tab1[chromium-e2e_upload_csv_config]",
+            "value": 0.3213983089288275,
+            "unit": "iter/sec",
+            "range": "stddev: 0.04458281594579898",
+            "extra": "mean: 3.1114040497999214 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_command_generation_parametrized_in_tab1[chromium-e2e_command_gen_with_wget_config_to_file]",
+            "value": 0.13610690564334144,
+            "unit": "iter/sec",
+            "range": "stddev: 0.04047068558748607",
+            "extra": "mean: 7.34716578320008 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_file_upload_in_tab1[chromium]",
+            "value": 0.8797359208712455,
+            "unit": "iter/sec",
+            "range": "stddev: 0.03485918563938682",
+            "extra": "mean: 1.1367047500000353 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_success_config_debug_yaml_to_visual]",
+            "value": 0.12183922672554884,
+            "unit": "iter/sec",
+            "range": "stddev: 0.038619935304309704",
+            "extra": "mean: 8.207537316800018 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_ui_app_title[chromium]",
+            "value": 228.56289773346688,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0014099266789865679",
+            "extra": "mean: 4.3751632916648004 msec\nrounds: 24"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_file_upload_parametrized_in_tab1[chromium-e2e_upload_jinja_template]",
+            "value": 0.3191762452700506,
+            "unit": "iter/sec",
+            "range": "stddev: 0.028760726280501386",
+            "extra": "mean: 3.1330652416000246 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_command_generation_parametrized_in_tab1[chromium-e2e_command_gen_with_cisco_config_to_file]",
+            "value": 0.13533913327384414,
+            "unit": "iter/sec",
+            "range": "stddev: 0.026608835938818777",
+            "extra": "mean: 7.388845900000024 sec\nrounds: 5"
+          },
+          {
+            "name": "tests/e2e/test_e2e.py::test_config_debug_parametrized_in_tab2[chromium-e2e_dns_dig_config_debug_csv_to_yaml]",
+            "value": 0.12110389213165006,
+            "unit": "iter/sec",
+            "range": "stddev: 0.05208632296283956",
+            "extra": "mean: 8.257372924999936 sec\nrounds: 5"
           }
         ]
       }
