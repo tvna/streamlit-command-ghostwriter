@@ -149,7 +149,4 @@ runs:
         tool: "pytest"
         github-token: ${{ inputs.github-token }}
         output-file-path: output.json
-
-    - name: Push benchmark result
-      shell: bash
-      run: git push 'https://${{ github.repository_owner }}:${{ inputs.github-token }}@github.com/${{ github.repository }}.git' gh-pages:gh-pages
+        auto-push: true
