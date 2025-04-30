@@ -145,7 +145,10 @@ runs:
         inputs.browser == 'chromium'
       uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 # v1.20.4
       with:
-        name: Python Benchmark on ${{ runner.os }}
+        name: Python E2E Benchmark
         tool: "pytest"
         github-token: ${{ inputs.github-token }}
         output-file-path: output.json
+
+    - name: Push benchmark result
+      run: git push 'https://${{ github.repository_owner }}:${{ inputs.github-token }}@github.com/${{ github.repository }}.git' gh-pages:gh-pages
