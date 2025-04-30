@@ -39,7 +39,7 @@
 #
 # ============================================================
 ---
-name: Test and Build (on pull request)
+name: Test and Build - on pull request
 
 on:
   workflow_dispatch:
@@ -208,7 +208,7 @@ jobs:
     needs:
       - test-and-build
     permissions:
-      contents: read
+      contents: write # Allow merging
       pull-requests: write
     runs-on: ubuntu-latest
     timeout-minutes: 3
@@ -231,6 +231,12 @@ jobs:
 
       - name: Approve a PR
         run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge the PR
+        run: gh pr merge --auto --merge "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
