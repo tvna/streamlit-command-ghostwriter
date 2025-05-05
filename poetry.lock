@@ -3728,14 +3728,14 @@ test = ["pytest"]
 
 [[package]]
 name = "yamllint"
-version = "1.37.0"
+version = "1.37.1"
 description = "A linter for YAML files."
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "yamllint-1.37.0-py3-none-any.whl", hash = "sha256:c03ab4e79ab4af964c8eb16ac9746880fc76a3bb0ffb14925b9a55220ae7dda0"},
-    {file = "yamllint-1.37.0.tar.gz", hash = "sha256:ead81921d4d87216b2528b7a055664708f9fb8267beb0c427cb706ac6ab93580"},
+    {file = "yamllint-1.37.1-py3-none-any.whl", hash = "sha256:364f0d79e81409f591e323725e6a9f4504c8699ddf2d7263d8d2b539cd66a583"},
+    {file = "yamllint-1.37.1.tar.gz", hash = "sha256:81f7c0c5559becc8049470d86046b36e96113637bcbe4753ecef06977c00245d"},
 ]
 
 [package.dependencies]
@@ -3768,4 +3768,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "44e7f9b978b0e4e0668072be34e558a34bf45eb22621658f2e022aaabebd8ca2"
+content-hash = "0594e8368c050db351fb03e93e513e176b9fa0250e98465d523d3c2844b15849"
