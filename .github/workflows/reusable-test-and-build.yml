@@ -117,6 +117,8 @@ jobs:
     name: Setup Python
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    permissions:
+      contents: read
 
     steps:
       - name: Harden Runner
@@ -143,6 +145,8 @@ jobs:
     name: Setup Node.js
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    permissions:
+      contents: read
 
     steps:
       - name: Harden Runner
