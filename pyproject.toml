@@ -52,8 +52,6 @@ vulture = "^2.14"
 yamllint = "^1.37.1"
 types-psutil = "^7.0.0.20250401"
 types-requests = "^2.32.0.20250328"
-pyre-extensions = "^0.0.32"
-pyre = "^1.12.5"
 
 [tool.ruff]
 target-version = "py312"

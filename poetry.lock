@@ -2367,28 +2367,6 @@ files = [
 ]
 
 [[package]]
-name = "pyre"
-version = "1.12.5"
-description = "A framework for building scientific applications"
-optional = false
-python-versions = ">3.7.2"
-groups = ["dev"]
-files = [
-    {file = "pyre-1.12.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:fce943a262a0b53901d295ccc1de83079be1e7f9c641e7e649c4ebb326d7d1cd"},
-    {file = "pyre-1.12.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f1984c40d31816dac021088a5a519e0d778310a188f4064d9508153954a7c908"},
-    {file = "pyre-1.12.5-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:6ab96289572ccd83d2951ed013ff80a6c8661a43690bb1ea05365d081d7fa2bc"},
-    {file = "pyre-1.12.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:12a19c28373c2e6fbec38ca5326bdacf701606ee04d29eac3530078bf57e5aaa"},
-    {file = "pyre-1.12.5-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:727f2823c8124275956a0e5a39dc11306a3bf9f7ec29c2c93386896b10bbbe5b"},
-    {file = "pyre-1.12.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c514ea180e44061f118f2b6172452e8cf36d9de8cca48dd229c62a2228232e24"},
-    {file = "pyre-1.12.5-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:5f8d0573d06e1438e5db65aa5c34706da075a8037a216cf6f08282f5852cb5cc"},
-    {file = "pyre-1.12.5-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1fd902f24d7bde8c22b0cf36d88b7c74f3e9421a5f823630b18df273a1fafbc3"},
-    {file = "pyre-1.12.5.tar.gz", hash = "sha256:9be1e0b75e0fe5a8259b4a0a7d445745c3f3a0dd93bef4f99687e000e92293d6"},
-]
-
-[package.dependencies]
-PyYAML = "*"
-
-[[package]]
 name = "pyre-check"
 version = "0.9.23"
 description = "A performant type checker for Python"
@@ -3790,4 +3768,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "9354c1d7dfba0fff53f8b540f2f2613b7a6254432bd9de165143e806f66ba051"
+content-hash = "0594e8368c050db351fb03e93e513e176b9fa0250e98465d523d3c2844b15849"
