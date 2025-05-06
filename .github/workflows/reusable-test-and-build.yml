@@ -113,6 +113,46 @@ jobs:
   # GUARD CLAUSE GROUP
   # ============================================================
 
+  setup-python:
+    name: Setup Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
+          disable-sudo: true
+          allowed-endpoints: >
+            github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+      - name: Setup Python
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ env.GLOBAL_PYTHON_VERSION }}
+
+  setup-node:
+    name: Setup Node.js
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: ${{ env.HARDEN_RUNNER_EGRESS_POLICY }}
+          disable-sudo: true
+          allowed-endpoints: >
+            github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ env.GLOBAL_NODE_VERSION }}
+
   guard-workflow:
     name: Guard workflow files
     permissions:
@@ -217,6 +257,8 @@ jobs:
 
   guard-python-code-quality:
     name: Guard Python code quality
+    needs:
+      - setup-python
     permissions:
       actions: read
       contents: read
@@ -286,6 +328,9 @@ jobs:
 
   guard-vulnerabilities:
     name: Guard vulnerabilities from remote repositories
+    needs:
+      - setup-node
+      - setup-python
     permissions:
       actions: read
       contents: read
