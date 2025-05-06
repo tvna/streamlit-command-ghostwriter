@@ -40,7 +40,7 @@
 #
 # ============================================================
 ---
-name: Test and Build (on push to develop)
+name: Test and Build - on push to develop
 
 on:
   push:
