@@ -48,7 +48,7 @@
         "@stlite/desktop": "^0.81.6",
         "commitizen": "^4.3.1",
         "cross-env": "^7.0.3",
-        "electron": "^36.0.0",
+        "electron": "^36.1.0",
         "electron-builder": "^26.0.12",
         "husky": "^9.1.7",
         "lint-staged": "^15.5.1",
