@@ -51,7 +51,7 @@ data-to-xml = "^1.0.9"
 vulture = "^2.14"
 yamllint = "^1.37.1"
 types-psutil = "^7.0.0.20250401"
-types-requests = "^2.32.0.20250328"
+types-requests = "^2.32.0.20250515"
 
 [tool.ruff]
 target-version = "py312"
